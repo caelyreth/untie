@@ -87,3 +87,44 @@ func TestCallableSymbolsFollowTypstWrapperRules(t *testing.T) {
 		t.Fatalf("closing delimiter call = %q, want non-function display", got)
 	}
 }
+
+func TestAttachAndCasesPreserveNeutralMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		src    string
+		class  ir.MathClass
+		limits ir.LimitsPlacement
+	}{
+		{`attach(limits(sum), tl: b, bl: a, tr: d, br: c)`, ir.ClassLarge, ir.LimitsAlways},
+		{`attach(limits(=), t: "def")`, ir.ClassRelation, ir.LimitsAlways},
+		{`op("argmax", limits: #true)_x`, ir.ClassLarge, ir.LimitsAlways},
+	}
+	for _, test := range tests {
+		result := parse(t, test.src)
+		requireNoDiagnostics(t, test.src, result)
+		scripts := find[*ir.Scripts](t, result.Root)
+		if scripts.Class != test.class || scripts.Limits != test.limits {
+			t.Fatalf("%s scripts metadata = class %v limits %v", test.src, scripts.Class, scripts.Limits)
+		}
+	}
+
+	for _, test := range []struct {
+		src   string
+		open  string
+		close string
+	}{
+		{`cases(a, b)`, "{", ""},
+		{`cases(reverse: #true, a, b)`, "", "}"},
+		{`cases(delim: "[", a, b)`, "[", ""},
+		{`cases(reverse: #true, delim: "[", a, b)`, "", "]"},
+	} {
+		result := parse(t, test.src)
+		requireNoDiagnostics(t, test.src, result)
+		fenced := find[*ir.Fenced](t, result.Root)
+		if nodeText(fenced.Open) != test.open || nodeText(fenced.Close) != test.close || !fenced.Balanced {
+			t.Fatalf("%s delimiters = %q/%q balanced=%v", test.src,
+				nodeText(fenced.Open), nodeText(fenced.Close), fenced.Balanced)
+		}
+	}
+}

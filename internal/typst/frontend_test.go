@@ -234,8 +234,8 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	cases := parse(t, `cases(reverse: #true, a, b)`)
 	requireNoDiagnostics(t, "cases", cases)
 	casesFence := find[*ir.Fenced](t, cases.Root)
-	if got := nodeText(casesFence.Open); got != "}" {
-		t.Fatalf("reversed open delimiter = %q", got)
+	if nodeText(casesFence.Open) != "" || nodeText(casesFence.Close) != "}" {
+		t.Fatalf("reversed cases delimiters = %q/%q", nodeText(casesFence.Open), nodeText(casesFence.Close))
 	}
 
 	caseTable := find[*ir.Table](t, cases.Root)

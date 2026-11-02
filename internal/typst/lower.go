@@ -375,15 +375,22 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	scripts.BottomLeft = l.lowerOptional(n.bottomLeft)
 	scripts.TopRight = l.lowerOptional(n.topRight)
 	scripts.BottomRight = l.lowerOptional(n.bottomRight)
-	if g, ok := scripts.BaseItem.(*ir.Glyph); ok {
-		if scripts.Limits == ir.LimitsAuto {
-			scripts.Limits = g.Limits
-		}
-		if scripts.Limits == ir.LimitsAuto && g.Class == ir.ClassRelation {
-			scripts.Limits = ir.LimitsAlways
-		}
-	}
+	inheritScriptMetadata(scripts)
 	return scripts
+}
+
+func inheritScriptMetadata(scripts *ir.Scripts) {
+	if scripts == nil || scripts.BaseItem == nil {
+		return
+	}
+	base := scripts.BaseItem.NodeBase()
+	scripts.Class = base.Class
+	if scripts.Limits == ir.LimitsAuto {
+		scripts.Limits = base.Limits
+	}
+	if scripts.Limits == ir.LimitsAuto && base.Class == ir.ClassRelation {
+		scripts.Limits = ir.LimitsAlways
+	}
 }
 
 func (l *lowerer) lowerOptional(n *astNode) ir.Node {

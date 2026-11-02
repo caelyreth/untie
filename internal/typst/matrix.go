@@ -134,16 +134,35 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 			openText, closeText = open, close
 		}
 	}
+	var body ir.Node = table
 	if kind == "cases" {
+		if openText == "" && closeText == "" {
+			return table
+		}
+		fenced := ir.NewFenced(call.span, table)
+		reverse := false
 		if arg := namedArgument(call, "reverse"); arg != nil {
-			if reverse, ok := l.valueBool(arg.node); ok && reverse {
-				openText, closeText = closeText, openText
+			if value, ok := l.valueBool(arg.node); ok {
+				reverse = value
 			}
 		}
-	}
-
-	var body ir.Node = table
-	if openText != "" || closeText != "" {
+		if reverse {
+			if closeText != "" {
+				closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), closeText)
+				closeGlyph.Class = ir.ClassClosing
+				fenced.Close = closeGlyph
+			}
+			fenced.Open = ir.NewRow(source.NewRange(call.span.Start, call.span.Start))
+		} else if openText != "" {
+			open := l.glyph(source.NewRange(call.span.Start, call.span.Start), openText)
+			open.Class = ir.ClassOpening
+			fenced.Open = open
+			fenced.Close = ir.NewRow(source.NewRange(call.span.End, call.span.End))
+		}
+		fenced.Balanced = true
+		fenced.Class = ir.ClassInner
+		body = fenced
+	} else if openText != "" || closeText != "" {
 		fenced := ir.NewFenced(call.span, table)
 		if openText != "" {
 			open := l.glyph(source.NewRange(call.span.Start, call.span.Start), openText)

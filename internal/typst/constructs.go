@@ -96,12 +96,7 @@ func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 	scripts.BottomLeft = l.contentNamed(call, "bl")
 	scripts.TopRight = l.contentNamed(call, "tr")
 	scripts.BottomRight = l.contentNamed(call, "br")
-	if g, ok := base.(*ir.Glyph); ok {
-		scripts.Limits = g.Limits
-		if scripts.Limits == ir.LimitsAuto && g.Class == ir.ClassRelation {
-			scripts.Limits = ir.LimitsAlways
-		}
-	}
+	inheritScriptMetadata(scripts)
 	return scripts
 }
 
@@ -118,6 +113,7 @@ func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 			}
 		}
 	}
+	inheritScriptMetadata(scripts)
 	return scripts
 }
 
