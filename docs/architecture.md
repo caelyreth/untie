@@ -266,7 +266,9 @@ line offset and baseline, never both. Parent `Width` is the requested
 `MaxWidth`, including for single-line and overfull results. An overfull
 unbreakable line has zero `OffsetX` and honest positive overflow. Parent
 `Overflow` is recomputed from the assembled aggregate bounds relative to the
-frame; line-local overflow is not treated as the parent value.
+frame and includes every logical line-width excess, even when trailing spaces
+have no ink. Line-local overflow is the maximum of local ink excess and line
+width beyond the frame; it is not copied directly as the parent value.
 
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.
@@ -276,10 +278,12 @@ signed OpenType MATH italic correction; it is not a nonnegative dimension.
 `display.Validate` checks finite values, nonnegative dimensions other than the
 italic correction, known item kinds and paint roles, valid path arity, and glyph
 reference placement. Explicit colors must use the ink role. For wrapped boxes,
-parent items and hits must be exact aggregates of their line boxes. `Validate`
-also checks hit ranges/areas and break positions. `MarshalCanonical` exists for
-deterministic tests and diagnostics; it is not yet a stable cross-language
-protocol.
+parent items and hits must be exact aggregates of their line boxes. Wrapped
+validation also performs bounded linear scans of item bounds and path extrema,
+requiring line and parent `Overflow` to cover both rendered ink excess and
+logical line-width excess. `Validate` also checks hit ranges/areas and break
+positions. `MarshalCanonical` exists for deterministic tests and diagnostics;
+it is not yet a stable cross-language protocol.
 
 ## Public Orchestration
 

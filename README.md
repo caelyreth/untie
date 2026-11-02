@@ -44,6 +44,13 @@ either the parent items or the per-line items, never both. `Style.Align`
 positions each line in the frame with start, center, or end alignment. Inline
 layout ignores `MaxWidth` and `Align`.
 
+`formula-preview` exposes the contract directly:
+
+```sh
+go run ./cmd/formula-preview -font NewCMMath-Book.otf \
+  -display -max-width 480 -align center 'a+b+c'
+```
+
 `NewEngine` is the caller-owned lifecycle API for repeated layouts. The
 package-level `Layout` and `LayoutContext` helpers use a bounded process-wide
 engine cache that can be released with `ClearLayoutEngineCache`.
