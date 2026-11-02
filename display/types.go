@@ -141,6 +141,10 @@ const (
 )
 
 // Break is an inline wrapping opportunity relative to the box baseline origin.
+// Generated penalties currently use zero for relation, binary, and explicit
+// opportunities. The pinned TeX and Typst paths define eligibility, not a
+// relative numeric cost, so Penalty stays a deterministic host hint rather
+// than a dialect-specific TeX \penalty value. Lower values are preferable.
 type Break struct {
 	X       float32
 	Penalty int
