@@ -144,19 +144,12 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 	if !ok {
 		return layout.Glyph{}, fmt.Errorf("%w: metrics for %q", layout.ErrMissingGlyph, text)
 	}
-	outline, ok := a.fonts.Outline(mapped)
-	if !ok {
-		return layout.Glyph{}, fmt.Errorf("%w: outline for %q", layout.ErrMissingGlyph, text)
-	}
-	if len(outline.Segments) > a.limits.MaxPathSegments {
-		return layout.Glyph{}, fmt.Errorf("%w: path segment count %d", layout.ErrLimit, len(outline.Segments))
-	}
 	advance, err := a.emFromUnits(int64(metrics.Advance), info.UnitsPerEm)
 	if err != nil {
 		return layout.Glyph{}, err
 	}
 	ascent, descent := geometry.Em(0), geometry.Em(0)
-	if bounds := outline.Bounds; !bounds.Empty() {
+	if bounds := metrics.Bounds; !bounds.Empty() {
 		if bounds.YMin < 0 {
 			ascent, err = a.emFromUnits(-int64(bounds.YMin), info.UnitsPerEm)
 			if err != nil {
@@ -194,7 +187,7 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 			return layout.Glyph{}, err
 		}
 	}
-	path, err := a.designPath(outline.Segments, info.UnitsPerEm)
+	path, err := a.cachedDesignPath(mapped, info.UnitsPerEm)
 	if err != nil {
 		return layout.Glyph{}, err
 	}

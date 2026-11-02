@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/caelyreth/untie/font"
 	"github.com/caelyreth/untie/geometry"
@@ -14,11 +15,12 @@ import (
 )
 
 type adapter struct {
-	fonts     *font.FontSet
-	limits    source.Limits
-	metrics   layout.MathMetrics
-	mathFaces []font.FaceRef
-	textFaces []font.FaceRef
+	fonts       *font.FontSet
+	limits      source.Limits
+	metrics     layout.MathMetrics
+	mathFaces   []font.FaceRef
+	textFaces   []font.FaceRef
+	designPaths sync.Map // map[font.Glyph]layout.Path
 }
 
 func newAdapter(fonts *font.FontSet, limits source.Limits) (*adapter, error) {

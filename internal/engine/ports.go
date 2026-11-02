@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/caelyreth/untie/font"
@@ -29,6 +30,25 @@ func (a *adapter) designPath(segments []font.Segment, upem uint16) (layout.Path,
 	return path, nil
 }
 
+func (a *adapter) cachedDesignPath(glyph font.Glyph, upem uint16) (layout.Path, error) {
+	if cached, ok := a.designPaths.Load(glyph); ok {
+		return cached.(layout.Path), nil
+	}
+	outline, ok := a.fonts.Outline(glyph)
+	if !ok {
+		return nil, fmt.Errorf("%w: outline", layout.ErrMissingGlyph)
+	}
+	if len(outline.Segments) > a.limits.MaxPathSegments {
+		return nil, fmt.Errorf("%w: path segment count %d", layout.ErrLimit, len(outline.Segments))
+	}
+	path, err := a.designPath(outline.Segments, upem)
+	if err != nil {
+		return nil, err
+	}
+	actual, _ := a.designPaths.LoadOrStore(glyph, path)
+	return actual.(layout.Path), nil
+}
+
 func (a *adapter) centerOnAxis(glyph layout.Glyph) (layout.Glyph, error) {
 	height, err := glyph.Ascent.Add(glyph.Descent)
 	if err != nil {
@@ -47,6 +67,7 @@ func (a *adapter) centerOnAxis(glyph layout.Glyph) (layout.Glyph, error) {
 		return layout.Glyph{}, err
 	}
 	if shift != 0 {
+		glyph.Outline = append(layout.Path(nil), glyph.Outline...)
 		for i := range glyph.Outline {
 			for j := range glyph.Outline[i].Points {
 				glyph.Outline[i].Points[j].Y, err = glyph.Outline[i].Points[j].Y.Add(shift)
