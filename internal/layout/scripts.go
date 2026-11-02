@@ -13,15 +13,11 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	subEnv := env
 	subEnv.Style = env.Style.Subscript()
 
-	base, err := s.layoutNode(node.BaseItem, env, depth)
-	if err != nil {
-		return nil, err
-	}
-
 	var topNode, bottomNode ir.Node
 	topLeftNode, bottomLeftNode := node.TopLeft, node.BottomLeft
 	topRightNode, bottomRightNode := node.TopRight, node.BottomRight
-	if s.usesLimits(node, env) {
+	limits := s.usesLimits(node, env)
+	if limits {
 		topNode, bottomNode = node.Top, node.Bottom
 	} else {
 		if node.Top != nil {
@@ -38,13 +34,28 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		}
 	}
 
-	top, err := s.optionalChild(topNode, supEnv, depth)
-	if err != nil {
-		return nil, err
-	}
-	bottom, err := s.optionalChild(bottomNode, subEnv, depth)
-	if err != nil {
-		return nil, err
+	var top, bottom, base *Fragment
+	var err error
+	if limits {
+		// Limit widths are known before the base is measured so a large
+		// operator can be stretched horizontally over its widest limit.
+		top, err = s.optionalChild(topNode, supEnv, depth)
+		if err != nil {
+			return nil, err
+		}
+		bottom, err = s.optionalChild(bottomNode, subEnv, depth)
+		if err != nil {
+			return nil, err
+		}
+		base, err = s.layoutScriptBase(node.BaseItem, env, depth, max(widthOf(top), widthOf(bottom)))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		base, err = s.layoutNode(node.BaseItem, env, depth)
+		if err != nil {
+			return nil, err
+		}
 	}
 	topLeft, err := s.optionalChild(topLeftNode, supEnv, depth)
 	if err != nil {
@@ -257,6 +268,41 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		}
 	}
 	return withClass(fragment, node.Class), nil
+}
+
+func (s *layoutState) layoutScriptBase(node ir.Node, env environment, depth int, target geometry.Em) (*Fragment, error) {
+	item, ok := node.(*ir.Glyph)
+	if !ok || target == 0 || item.Class != ir.ClassLarge {
+		return s.layoutNode(node, env, depth)
+	}
+	if err := s.check(depth); err != nil {
+		return nil, err
+	}
+	if err := s.checkTextLimit(node); err != nil {
+		return nil, err
+	}
+	nodeEnv := s.nodeEnvironment(node, env)
+	if s.renderer.fonts.Stretch == nil {
+		// Keep a non-stretched fallback when the operator already covers the
+		// limit width. Otherwise fail visibly rather than silently undersizing.
+		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, nil)
+		if err != nil {
+			return nil, err
+		}
+		fragment = withClass(fragment, item.Class)
+		if fragment.Width < target {
+			return nil, fmt.Errorf("%w: %w: horizontal operator stretch to %d is not configured", ErrUnsupported, ErrInsufficientStretch, target)
+		}
+		return fragment, nil
+	}
+	fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{
+		axis:   Horizontal,
+		target: target,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return withClass(fragment, item.Class), nil
 }
 
 func (s *layoutState) usesLimits(node *ir.Scripts, env environment) bool {

@@ -102,20 +102,28 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 	if err != nil {
 		return nil, err
 	}
-	return state.flatten(rootFragment)
+	box, err := state.flatten(rootFragment)
+	if err != nil {
+		return nil, err
+	}
+	if err := box.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	return box, nil
 }
 
 type layoutState struct {
-	ctx          context.Context
-	renderer     *Renderer
-	request      display.Style
-	mode         ir.Mode
-	rootStyle    Style
-	metrics      MathMetrics
-	hostSize     int64
-	limits       source.Limits
-	nodes        int
-	pathSegments int
+	ctx           context.Context
+	renderer      *Renderer
+	request       display.Style
+	mode          ir.Mode
+	rootStyle     Style
+	metrics       MathMetrics
+	hostSize      int64
+	limits        source.Limits
+	nodes         int
+	pathSegments  int
+	plannedOutput int
 }
 
 type environment struct {
@@ -201,13 +209,16 @@ func validateConfiguredLimits(ctx context.Context, root ir.Node, limits source.L
 		if depth > limits.MaxNesting {
 			return fmt.Errorf("%w: nesting depth %d", ErrLimit, depth)
 		}
+		if err := checkConfiguredNodeLimits(node, limits); err != nil {
+			return err
+		}
 		if table, ok := node.(*ir.Table); ok {
 			cells := 0
 			for _, row := range table.Rows {
+				if len(row.Cells) > limits.MaxTableCells-cells {
+					return fmt.Errorf("%w: table cell count exceeds %d", ErrLimit, limits.MaxTableCells)
+				}
 				cells += len(row.Cells)
-			}
-			if cells > limits.MaxTableCells {
-				return fmt.Errorf("%w: table cell count %d", ErrLimit, cells)
 			}
 		}
 		for _, child := range ir.Children(node) {
@@ -218,6 +229,94 @@ func validateConfiguredLimits(ctx context.Context, root ir.Node, limits source.L
 		return nil
 	}
 	return visit(root, 0)
+}
+
+func checkConfiguredNodeLimits(node ir.Node, limits source.Limits) error {
+	base := node.NodeBase()
+	if base != nil {
+		if exceedsLength(base.LeftSpacing, limits.MaxDimension) || exceedsLength(base.RightSpacing, limits.MaxDimension) {
+			return fmt.Errorf("%w: node spacing exceeds %d", ErrLimit, limits.MaxDimension)
+		}
+	}
+	checkText := func(text string) error {
+		if len(text) > limits.MaxTextBytes {
+			return fmt.Errorf("%w: text byte count %d", ErrLimit, len(text))
+		}
+		return nil
+	}
+	checkLength := func(length ir.Length) error {
+		if exceedsLength(length, limits.MaxDimension) {
+			return fmt.Errorf("%w: length exceeds %d", ErrLimit, limits.MaxDimension)
+		}
+		return nil
+	}
+
+	switch value := node.(type) {
+	case *ir.Glyph:
+		return checkText(value.Text)
+	case *ir.Text:
+		if err := checkText(value.Text); err != nil {
+			return err
+		}
+		return checkLength(value.Tracking)
+	case *ir.Operator:
+		return checkText(value.Text)
+	case *ir.Space:
+		return checkLength(value.Amount)
+	case *ir.Fraction:
+		return checkLength(value.Padding)
+	case *ir.Line:
+		if err := checkLength(value.Thickness); err != nil {
+			return err
+		}
+		return checkLength(value.Gap)
+	case *ir.Cancel:
+		return checkLength(value.Thickness)
+	case *ir.Table:
+		if err := checkLength(value.RowGap); err != nil {
+			return err
+		}
+		if err := checkLength(value.ColumnGap); err != nil {
+			return err
+		}
+		for _, line := range value.Horizontal {
+			if err := checkLength(line.Thickness); err != nil {
+				return err
+			}
+		}
+		for _, line := range value.Vertical {
+			if err := checkLength(line.Thickness); err != nil {
+				return err
+			}
+		}
+	case *ir.Box:
+		for _, length := range value.Padding {
+			if err := checkLength(length); err != nil {
+				return err
+			}
+		}
+		if err := checkLength(value.BorderWidth); err != nil {
+			return err
+		}
+		return checkLength(value.Radius)
+	case *ir.ErrorNode:
+		return checkText(value.Text)
+	case *ir.Placeholder:
+		return checkText(value.Reason)
+	}
+	return nil
+}
+
+func exceedsLength(length ir.Length, maxDimension int64) bool {
+	if length.Unit == ir.LengthZero || maxDimension <= 0 {
+		return false
+	}
+	const lengthScale = int64(1_000_000)
+	if maxDimension > math.MaxInt64/lengthScale {
+		return false
+	}
+	maxValue := maxDimension * lengthScale
+	return length.Value > maxValue || length.Value < -maxValue
 }
 
 func structuralValidationLimits() source.Limits {
@@ -338,6 +437,8 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragme
 		return s.layoutPhantom(node, env, depth+1)
 	case *ir.Table:
 		return s.layoutTable(node, env, depth+1)
+	case *ir.Multiline:
+		return s.layoutMultiline(node, env, depth+1)
 	case *ir.Placeholder:
 		return s.layoutPlaceholder(node, env)
 	case *ir.Break, *ir.AlignMarker:
