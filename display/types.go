@@ -88,9 +88,11 @@ type Item struct {
 
 // Box is a flattened formula relative to the start of its baseline.
 type Box struct {
-	Width      float32
-	Ascent     float32
-	Descent    float32
+	Width   float32
+	Ascent  float32
+	Descent float32
+	// Italic is the signed OpenType MATH italic correction at the end of the
+	// box. It may be negative; hosts must not treat it as a nonnegative size.
 	Italic     float32
 	AxisHeight float32
 	Overflow   float32

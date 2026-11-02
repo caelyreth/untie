@@ -65,6 +65,7 @@ func TestMarshalCanonical(t *testing.T) {
 		Width:   1,
 		Ascent:  2,
 		Descent: 1,
+		Italic:  -0.5,
 		Items: []Item{{
 			Kind:  ItemRule,
 			Paint: Paint{Role: RoleInk},
@@ -81,11 +82,19 @@ func TestMarshalCanonical(t *testing.T) {
 		Lines: []LineBox{{
 			Baseline: 1,
 			Box: &Box{
-				Width: 1,
+				Width:  1,
+				Ascent: 1,
+				Italic: -0.25,
 				Items: []Item{{
 					Kind:  ItemRule,
 					Paint: Paint{Role: RoleInk},
 					Rect:  geometry.Rect{Width: 1, Height: 0.1},
+				}},
+				Hits: []Hit{{
+					Source: source.NewRange(0, 1),
+					Area:   geometry.Rect{Width: 1, Height: 1},
+					Depth:  1,
+					Kind:   HitAtom,
 				}},
 			},
 		}},
@@ -107,8 +116,10 @@ func TestMarshalCanonical(t *testing.T) {
 	if !strings.Contains(string(first), `"hits"`) ||
 		!strings.Contains(string(first), `"breaks"`) ||
 		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x","mathml":""}`) ||
+		!strings.Contains(string(first), `"italic":-0.5`) ||
+		!strings.Contains(string(first), `"italic":-0.25`) ||
 		!strings.Contains(string(first), `"lines":[{"baseline":1,"box":`) {
-		t.Fatalf("canonical output omitted hits, breaks, alt, or lines: %s", first)
+		t.Fatalf("canonical output omitted hits, breaks, alt, signed italic, or lines: %s", first)
 	}
 	if _, err := (*Box)(nil).MarshalCanonical(); err == nil {
 		t.Fatal("nil box MarshalCanonical() error = nil")
@@ -187,6 +198,80 @@ func TestValidateBox(t *testing.T) {
 	box.Items[0].Path[0].Op = geometry.SegOp(99)
 	if err := box.Validate(); err == nil {
 		t.Fatal("Validate() error = nil for invalid path")
+	}
+}
+
+func TestBoxItalicCorrectionIsSignedAndFinite(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{Italic: -0.75}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("negative italic Validate() error = %v", err)
+	}
+	canonical, err := box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("negative italic MarshalCanonical() error = %v", err)
+	}
+	if !strings.Contains(string(canonical), `"italic":-0.75`) {
+		t.Fatalf("canonical output lost signed italic correction: %s", canonical)
+	}
+
+	for _, value := range []float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1))} {
+		box.Italic = value
+		if err := box.Validate(); err == nil {
+			t.Fatalf("italic %v Validate() error = nil", value)
+		}
+		if _, err := box.MarshalCanonical(); err == nil {
+			t.Fatalf("italic %v MarshalCanonical() error = nil", value)
+		}
+	}
+}
+
+func TestValidateBoxRejectsUnknownAndAmbiguousPaint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		paint Paint
+	}{
+		{name: "unknown role", paint: Paint{Role: RolePlaceholder + 1}},
+		{
+			name: "explicit color with non-ink role",
+			paint: Paint{
+				Role:        RoleError,
+				Explicit:    RGBA{R: 1, G: 2, B: 3, A: 4},
+				HasExplicit: true,
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			box := &Box{Items: []Item{{
+				Kind:  ItemRule,
+				Paint: tc.paint,
+				Rect:  geometry.Rect{Width: 1},
+			}}}
+			if err := box.Validate(); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+			if _, err := box.MarshalCanonical(); err == nil {
+				t.Fatal("MarshalCanonical() error = nil")
+			}
+		})
+	}
+
+	box := &Box{Items: []Item{{
+		Kind: ItemRule,
+		Paint: Paint{
+			Role:        RoleInk,
+			Explicit:    RGBA{R: 1, G: 2, B: 3, A: 4},
+			HasExplicit: true,
+		},
+		Rect: geometry.Rect{Width: 1},
+	}}}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("explicit ink paint Validate() error = %v", err)
 	}
 }
 
@@ -323,6 +408,89 @@ func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
 			t.Parallel()
 			if err := tc.box.Validate(); err == nil {
 				t.Fatal("Validate() error = nil")
+			}
+		})
+	}
+}
+
+func TestValidateWrappedBoxAggregates(t *testing.T) {
+	t.Parallel()
+
+	item := Item{
+		Kind:  ItemRule,
+		Paint: Paint{Role: RoleInk},
+		Rect:  geometry.Rect{Width: 1},
+	}
+	hit := Hit{
+		Source: source.NewRange(0, 1),
+		Area:   geometry.Rect{Width: 1, Height: 1},
+		Kind:   HitAtom,
+	}
+	line := func() *Box {
+		return &Box{
+			Width:  1,
+			Ascent: 1,
+			Items:  []Item{item},
+			Hits:   []Hit{hit},
+		}
+	}
+	valid := &Box{
+		Width:  1,
+		Ascent: 1,
+		Items:  []Item{item},
+		Hits:   []Hit{hit},
+		Lines:  []LineBox{{Box: line()}},
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("aggregate Validate() error = %v", err)
+	}
+
+	emptyLine := &Box{Lines: []LineBox{{Box: &Box{}}}}
+	if err := emptyLine.Validate(); err != nil {
+		t.Fatalf("empty line Validate() error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		box  *Box
+	}{
+		{
+			name: "missing parent items",
+			box: &Box{
+				Width: 1, Ascent: 1, Hits: []Hit{hit},
+				Lines: []LineBox{{Box: line()}},
+			},
+		},
+		{
+			name: "missing parent hits",
+			box: &Box{
+				Width: 1, Ascent: 1, Items: []Item{item},
+				Lines: []LineBox{{Box: line()}},
+			},
+		},
+		{
+			name: "extra parent item",
+			box: &Box{
+				Width: 1, Ascent: 1, Items: []Item{item, item}, Hits: []Hit{hit},
+				Lines: []LineBox{{Box: line()}},
+			},
+		},
+		{
+			name: "extra parent hit",
+			box: &Box{
+				Width: 1, Ascent: 1, Items: []Item{item}, Hits: []Hit{hit, hit},
+				Lines: []LineBox{{Box: line()}},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if err := tc.box.Validate(); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+			if _, err := tc.box.MarshalCanonical(); err == nil {
+				t.Fatal("MarshalCanonical() error = nil")
 			}
 		})
 	}
