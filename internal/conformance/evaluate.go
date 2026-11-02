@@ -54,13 +54,11 @@ type IRSummary struct {
 	CanonicalJSON   []byte
 }
 
-// Request is the complete source observation passed to a frontend. Preamble is
-// separate from Source because both inputs have independent source ranges.
+// Request is the complete formula source observation passed to a frontend.
 type Request struct {
-	Source   string
-	Preamble string
-	Mode     ir.Mode
-	Limits   source.Limits
+	Source string
+	Mode   ir.Mode
+	Limits source.Limits
 }
 
 // FrontendFunc evaluates one request under the supplied limits. Frontends share
@@ -97,7 +95,7 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 		timeout = defaultFrontendTimeout
 	}
 	defaultRun, err := invokeFrontend(ctx, e.Frontend, Request{
-		Source: input.Source, Preamble: input.Preamble, Mode: input.Mode, Limits: source.DefaultLimits(),
+		Source: input.Source, Mode: input.Mode, Limits: source.DefaultLimits(),
 	}, timeout)
 	if err != nil {
 		return reportFromInput(input, StatusBug, "default-limit parse failed: "+err.Error()), nil
@@ -106,7 +104,7 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 		return CaseReport{}, err
 	}
 	repeatedDefaultRun, err := invokeFrontend(ctx, e.Frontend, Request{
-		Source: input.Source, Preamble: input.Preamble, Mode: input.Mode, Limits: source.DefaultLimits(),
+		Source: input.Source, Mode: input.Mode, Limits: source.DefaultLimits(),
 	}, timeout)
 	if err != nil {
 		return reportFromInput(input, StatusBug, "determinism parse failed: "+err.Error()), nil
@@ -115,7 +113,7 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 		return CaseReport{}, err
 	}
 	explicitRun, err := invokeFrontend(ctx, e.Frontend, Request{
-		Source: input.Source, Preamble: input.Preamble, Mode: input.Mode, Limits: explicitLimits,
+		Source: input.Source, Mode: input.Mode, Limits: explicitLimits,
 	}, timeout)
 	if err != nil {
 		return reportFromInput(input, StatusBug, "explicit-limit parse failed: "+err.Error()), nil

@@ -120,8 +120,7 @@ func ParseTypst(ctx context.Context, request Request) (FrontendResult, error) {
 		return FrontendResult{}, err
 	}
 	result := typst.Parse(request.Source, request.Mode, typst.Options{
-		Preamble: request.Preamble,
-		Limits:   request.Limits,
+		Limits: request.Limits,
 	})
 	return FrontendResult{Root: result.Root, Diagnostics: result.Diagnostics}, nil
 }

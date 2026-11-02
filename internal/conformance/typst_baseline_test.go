@@ -149,29 +149,6 @@ func TestTypstSupplementarySpansUseUTF8ByteOffsets(t *testing.T) {
 	}
 }
 
-func TestTypstPreambleDoesNotLeakIntoSourceSpans(t *testing.T) {
-	src := "x"
-	preamble := "#let Real = $bb(R)$"
-	result, err := ParseTypst(t.Context(), Request{
-		Source: src, Preamble: preamble, Mode: ir.Inline, Limits: ExplicitTypstLimits(),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if problem := validateDiagnostics(result.Diagnostics, src); problem != "" {
-		t.Fatal(problem)
-	}
-	found := false
-	for _, diagnostic := range result.Diagnostics {
-		if diagnostic.Code == source.CodeUnsupported {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("preamble diagnostics = %#v, want unsupported", result.Diagnostics)
-	}
-}
-
 func TestTypstSourceFamilies(t *testing.T) {
 	families, commands, environments := typstSourceFamilies(`frac(a, b) + P(A mid(|) B) + dots.c + x_i`)
 	for _, want := range []string{
