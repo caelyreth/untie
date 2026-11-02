@@ -153,6 +153,8 @@ available tags directly.
 A missing glyph is a layout error, not a parse diagnostic:
 
 - `errors.Is(err, untie.ErrMissingGlyph)` identifies it;
+- `errors.As(err, &layoutErr)` exposes the attributed source range when the
+  error is a `*untie.LayoutError`;
 - the host can retry with an additional fallback face;
 - the parse tree and its `Expr.Alt()` remain available even when layout fails.
 

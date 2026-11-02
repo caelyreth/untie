@@ -116,6 +116,17 @@ meaning. Match with `Diagnostic.Code`, not message text.
 Messages are human-readable and may improve. `Args` and `Hints` are supporting
 metadata, not a stable localization format.
 
+## Layout Error Kinds
+
+`LayoutErrorKind` values are stable semantic identifiers. Match with
+`LayoutError.Kind` or `LayoutError.Code()`, not the error message. New kinds may
+be added when a new failure category is introduced.
+
+`LayoutError.Range` is an attributable half-open source byte range or
+`source.Detached()`. Its exact node may improve as source attribution becomes
+more precise; hosts should treat it as editor guidance rather than a parser
+serialization format.
+
 ## Font IDs
 
 Host-supplied face IDs are part of the public cache and glyph-reference
@@ -140,7 +151,8 @@ version, migration, and validation layer.
 ## Compatibility Checklist
 
 - Import only root and documented public packages.
-- Use `errors.Is` for classified layout errors.
+- Use `errors.Is` for layout sentinels and `errors.As` for structured
+  `LayoutError` details.
 - Do not depend on diagnostic message spelling.
 - Do not parse canonical JSON as a long-lived external format.
 - Pin the Untie version used by persisted caches.

@@ -24,9 +24,64 @@ Layout functions return Go errors. Use `errors.Is`:
 | `ErrAltLimitExceeded` | Alternative-text traversal/output exceeded a limit. |
 | `ErrAltUnsupportedNode` | Alternative text cannot explain an IR node. |
 
+Layout failures that carry one of the five layout sentinels are also returned
+as `*untie.LayoutError`:
+
+```go
+type LayoutError struct {
+	Kind  LayoutErrorKind
+	Range source.Range
+	Err   error
+}
+```
+
+`Kind` (also available through `Code()`) is the stable machine-readable
+classification:
+
+| Kind | Sentinel |
+| --- | --- |
+| `LayoutErrorInvalidInput` | `ErrInvalidInput` |
+| `LayoutErrorMissingGlyph` | `ErrMissingGlyph` |
+| `LayoutErrorUnsupported` | `ErrUnsupported` |
+| `LayoutErrorInsufficientStretch` | `ErrInsufficientStretch` |
+| `LayoutErrorLimit` | `ErrLimit` |
+
+`LayoutError.Unwrap` returns the underlying failure, so both `errors.Is` and
+`errors.As` continue to work through host wrapping:
+
+```go
+box, err := engine.Layout(expr, style)
+if err != nil {
+	var layoutErr *untie.LayoutError
+	if errors.As(err, &layoutErr) {
+		switch layoutErr.Kind {
+		case untie.LayoutErrorMissingGlyph:
+			showFontProblem(layoutErr.Range)
+		case untie.LayoutErrorLimit:
+			showResourceProblem(layoutErr.Err)
+		}
+		if !layoutErr.Range.IsDetached() {
+			underlineSource(layoutErr.Range)
+		}
+	}
+	if errors.Is(err, untie.ErrMissingGlyph) {
+		// Existing sentinel-based handling remains supported.
+	}
+}
+```
+
+When a node-local failure can be attributed to canonical IR, `Range` is that
+node's `Origin` (falling back to `Span`). It is a half-open UTF-8 byte range in
+the original source. A failure in final output validation or another operation
+without a single owning node uses `source.Detached()`.
+
+An error may satisfy more than one sentinel. Insufficient stretch is also
+reported as unsupported for compatibility; `LayoutError.Kind` selects the more
+specific `LayoutErrorInsufficientStretch`.
+
 `context.Canceled` and `context.DeadlineExceeded` are returned directly when a
-call observes cancellation. A canceled `LayoutContext` does not return a
-partial box.
+call observes cancellation. Cancellation is never classified as a
+`LayoutError`, and a canceled `LayoutContext` does not return a partial box.
 
 ## Parse Diagnostics Versus Layout Errors
 
@@ -185,12 +240,19 @@ if err != nil {
 	switch {
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return err // stale request
-	case errors.Is(err, untie.ErrMissingGlyph):
-		showFontProblem(err)
-	case errors.Is(err, untie.ErrLimit):
-		showResourceProblem(err)
-	case errors.Is(err, untie.ErrUnsupported):
-		showCapabilityProblem(err)
+	}
+	var layoutErr *untie.LayoutError
+	if !errors.As(err, &layoutErr) {
+		showUnexpectedLayoutProblem(err)
+		return err
+	}
+	switch layoutErr.Kind {
+	case untie.LayoutErrorMissingGlyph:
+		showFontProblem(layoutErr.Range)
+	case untie.LayoutErrorLimit:
+		showResourceProblem(layoutErr.Err)
+	case untie.LayoutErrorUnsupported, untie.LayoutErrorInsufficientStretch:
+		showCapabilityProblem(layoutErr.Err)
 	default:
 		showUnexpectedLayoutProblem(err)
 	}
@@ -204,6 +266,8 @@ draw(diagnostics, box)
 
 - Public errors: [`errors.go`](../errors.go), [`layout.go`](../layout.go)
 - Sentinels used by layout: [`internal/layout/arithmetic.go`](../internal/layout/arithmetic.go)
+- Internal source attribution:
+  [`internal/layout/source_error.go`](../internal/layout/source_error.go)
 - Defaults and layer notes: [`source/limits.go`](../source/limits.go)
 - Limit propagation tests: [`api_test.go`](../api_test.go)
 - Engine validation: [`internal/engine/engine.go`](../internal/engine/engine.go)

@@ -15,7 +15,9 @@ Use this file as the short entry point for code assistants. Read
 - `Parse` returns diagnostics plus a valid recovery tree; it does not return a
   Go error for malformed source.
 - `Engine.Layout` returns a `display.Box`; layout errors are fatal and should
-  be classified with `errors.Is`.
+  be classified with `errors.Is` or `errors.As` on `*untie.LayoutError`.
+- `LayoutError.Kind` is a stable classification and `LayoutError.Range`
+  identifies the originating UTF-8 source bytes or is detached.
 - Box coordinates are y-down host units with the baseline origin at `(0, 0)`.
 - Draw `ItemGlyphPath` and `ItemRule`; `ItemGlyphRef` is optional cache metadata.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
@@ -93,6 +95,13 @@ func (e *Expr) HasErrors() bool
 func (e *Engine) Layout(expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mode Mode, style Style) (*Box, error)
+
+type LayoutErrorKind string
+type LayoutError struct {
+	Kind  LayoutErrorKind
+	Range source.Range
+	Err   error
+}
 ```
 
 ## Display Contract
@@ -125,11 +134,18 @@ errors.Is(err, untie.ErrMissingGlyph)
 errors.Is(err, untie.ErrLimit)
 errors.Is(err, untie.ErrUnsupported)
 errors.Is(err, untie.ErrInsufficientStretch)
+
+var layoutErr *untie.LayoutError
+errors.As(err, &layoutErr)
+layoutErr.Kind
+layoutErr.Range
+layoutErr.Unwrap()
 ```
 
 Parse diagnostics are not layout errors. `Parse` recovers malformed input; a
 layout error can still come from font coverage, limits, unsupported emitted
-shapes, cancellation, or an invalid host call.
+shapes, cancellation, or an invalid host call. Cancellation is returned
+directly and is never wrapped in `LayoutError`.
 
 ## Configuration Rules
 
