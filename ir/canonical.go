@@ -121,6 +121,8 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 			return nil, err
 		}
 		return map[string]any{"base": base, "open": open, "close": closeNode, "body": body, "balanced": n.Balanced}, nil
+	case *SizedDelimiter:
+		return map[string]any{"base": base, "text": n.Text, "delimiter-size": n.Size}, nil
 	case *Accent:
 		body, err := s.node(n.Body, depth+1)
 		if err != nil {

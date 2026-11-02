@@ -115,7 +115,6 @@ func TestUnsupportedConstructsAreExplicit(t *testing.T) {
 	t.Parallel()
 
 	tests := []string{
-		`\big(`,
 		`\vcenter{x}`,
 		`\mathclap{x}`,
 	}

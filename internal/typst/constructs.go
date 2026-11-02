@@ -186,8 +186,12 @@ func nodeUsesLimits(node ir.Node) bool {
 
 func (l *lowerer) lowerLR(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
+	// A default 100% asks lr() to fit its delimiters to the wrapped content,
+	// which Fenced already represents. Other values are relative factors or
+	// absolute lengths, not TeX's discrete delimiter tiers.
 	if size := namedArgument(call, "size"); size != nil && !isDefaultPercent(l, size.node, 100) {
-		l.warningAt(size.span, source.CodeUnsupported, "lr size is not represented by the neutral Fenced node")
+		l.warningAt(size.span, source.CodeUnsupported,
+			"non-default lr size has relative or absolute semantics and no lossless discrete neutral delimiter size")
 	}
 	if fenced, ok := body.(*ir.Fenced); ok {
 		fenced.Class = ir.ClassInner

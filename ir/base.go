@@ -37,6 +37,7 @@ const (
 	KindPlaceholder
 	KindBreak
 	KindAlignMarker
+	KindSizedDelimiter
 )
 
 // MathClass controls automatic spacing and operator behavior.
@@ -70,6 +71,23 @@ const (
 	SizeScript
 	SizeScriptScript
 )
+
+// DelimiterSize is an explicit source-requested delimiter size tier. The four
+// tiers correspond to the maximum heights 1.2em, 1.8em, 2.4em, and 3.0em in
+// layout and are independent of the current math style.
+type DelimiterSize uint8
+
+const (
+	DelimiterSize1 DelimiterSize = iota + 1
+	DelimiterSize2
+	DelimiterSize3
+	DelimiterSize4
+)
+
+// Valid reports whether the delimiter size is one of the four explicit tiers.
+func (s DelimiterSize) Valid() bool {
+	return s >= DelimiterSize1 && s <= DelimiterSize4
+}
 
 // LimitsPlacement controls visual placement only: whether scripts are rendered
 // beside a base or above/below it. It does not change ScriptRole semantics.

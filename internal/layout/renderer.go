@@ -257,6 +257,8 @@ func checkConfiguredNodeLimits(node ir.Node, limits source.Limits) error {
 	switch value := node.(type) {
 	case *ir.Glyph:
 		return checkText(value.Text)
+	case *ir.SizedDelimiter:
+		return checkText(value.Text)
 	case *ir.Text:
 		if err := checkText(value.Text); err != nil {
 			return err
@@ -426,6 +428,8 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 		return s.layoutScripts(node, env, depth+1)
 	case *ir.Fenced:
 		return s.layoutFenced(node, env, depth+1)
+	case *ir.SizedDelimiter:
+		return s.layoutSizedDelimiter(node, env)
 	case *ir.Style:
 		return s.layoutStyle(node, env, depth+1)
 	case *ir.Color:
@@ -467,6 +471,8 @@ func (s *layoutState) checkTextLimit(node ir.Node) error {
 	case *ir.Text:
 		text = node.Text
 	case *ir.Operator:
+		text = node.Text
+	case *ir.SizedDelimiter:
 		text = node.Text
 	case *ir.ErrorNode:
 		text = node.Text

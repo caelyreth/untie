@@ -215,6 +215,11 @@ func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 	tableCases := ir.NewTable(span, ir.TableRow{Cells: []ir.Node{glyph("x")}})
 	tableCases.Role = ir.TableRoleCases
 
+	sizedDefault := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize1)
+	sizedDefault.Class = ir.ClassOpening
+	sizedLarger := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize2)
+	sizedLarger.Class = ir.ClassOpening
+
 	tests := []struct {
 		name     string
 		original ir.Node
@@ -224,6 +229,7 @@ func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 		{"scripts", scriptsDefault, scriptsLimits},
 		{"cancel", cancelDefault, cancelNegation},
 		{"table", tableDefault, tableCases},
+		{"sized delimiter", sizedDefault, sizedLarger},
 	}
 	for _, tc := range tests {
 		tc := tc
@@ -241,6 +247,28 @@ func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 				t.Fatalf("%s semantic role difference normalized as equal", tc.name)
 			}
 		})
+	}
+}
+
+func TestSemanticNormalizationMatchesNeutralSizedDelimiterForms(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 7)
+	texForm := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize2)
+	texForm.Class = ir.ClassOpening
+	typstNeutralForm := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize2)
+	typstNeutralForm.Class = ir.ClassOpening
+
+	texValue, err := normalizeFormula(&ir.Formula{Root: texForm}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typstValue, err := normalizeFormula(&ir.Formula{Root: typstNeutralForm}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareSemantic(texValue, typstValue); difference != nil {
+		t.Fatalf("equivalent neutral sized delimiters differ: %v", difference)
 	}
 }
 

@@ -6,8 +6,8 @@ is not a compatibility claim.
 
 ## Snapshot
 
-- Repository state: post engine hardening, generated/fixture import, and
-  TeX/Typst conformance baselines
+- Repository state: post engine hardening, generated/fixture import, explicit
+  delimiter sizing, and TeX/Typst conformance baselines
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
@@ -61,6 +61,9 @@ The bounded TeX frontend currently includes:
 - core symbols, Greek letters, named operators, character classes, spacing,
   fractions, roots, scripts, limits, accents, fences, lines, cancel, text, and
   style commands represented by the current IR;
+- all 16 `\big`, `\Big`, `\bigg`, `\Bigg` opening, closing, relation, and
+  ordinary command variants, lowered as standalone neutral sized-delimiter
+  leaves with KaTeX-validated delimiter arguments and 1-4 source tiers;
 - matrix, array, cases, aligned, gathered, split, alignedat, and alignat parsing
   into table or multiline IR;
 - recovery diagnostics for malformed groups, missing arguments, invalid UTF-8,
@@ -69,8 +72,8 @@ The bounded TeX frontend currently includes:
   target.
 
 Unsupported TeX constructs are diagnosed. Current explicit limitations include
-`\edef`/`\xdef`, delimited macro parameters, optional macro defaults, explicit
-delimiter sizing commands, and some text-mode math constructs.
+`\edef`/`\xdef`, delimited macro parameters, optional macro defaults, and some
+text-mode math constructs.
 
 ### Shared Metadata
 
@@ -118,9 +121,9 @@ tables.
 
 - display, text, script, and script-script styles, normal and cramped;
 - neutral math classes and automatic class spacing;
-- rows, explicit spaces, glyphs, scripts, fractions, radicals, fences, accents,
-  cancel, lines, boxes, phantom, styles, colors, placeholders, and text through
-  narrow ports;
+- rows, explicit spaces, glyphs, standalone explicitly sized delimiters,
+  scripts, fractions, radicals, fences, accents, cancel, lines, boxes, phantom,
+  styles, colors, placeholders, and text through narrow ports;
 - baseline-origin placement verified with real NewCM outputs;
 - signed explicit spacing, binary lookahead/demotion, and MATH corner kerning;
 - optional table and stretch ports;

@@ -70,12 +70,14 @@ func (fakeStyleFont) MathMetrics(style Style, variant ir.Variant) MathMetrics {
 }
 
 type fakeStretcher struct {
-	base  *fakeGlyphSource
-	calls int
+	base    *fakeGlyphSource
+	calls   int
+	targets []geometry.Em
 }
 
 func (f *fakeStretcher) Stretch(req StretchRequest) (Glyph, error) {
 	f.calls++
+	f.targets = append(f.targets, req.Target)
 	glyph, err := f.base.Glyph(req.GlyphRequest)
 	if err != nil {
 		return Glyph{}, err

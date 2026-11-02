@@ -780,10 +780,29 @@ func (p *parser) parseDeclarativeVariant(command token, stop stopMode, variant i
 }
 
 func (p *parser) parseSizedDelimiter(command token) astNode {
+	sizedSpec, ok := sizedDelimiterCommands[command.text]
+	if !ok {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeInternal,
+			Message:  "unknown sized delimiter command '" + command.text + "'",
+		})
+		return astErr(command.span, command.text, source.CodeInternal)
+	}
 	p.exp.consumeSpaces()
+	if next := p.exp.peek(); next.isEOF() || next.is(tokEndGroup) {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "missing delimiter after '" + command.text + "'",
+		})
+		return astErr(command.span, command.text, source.CodeMissingArgument)
+	}
 	t := p.exp.next()
-	spec, ok := delimiterCommands[t.text]
-	if !ok || spec.text == "." {
+	text, ok := sizedDelimiterText[t.text]
+	if !ok {
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
@@ -792,13 +811,16 @@ func (p *parser) parseSizedDelimiter(command token) astNode {
 		})
 		return astErr(t.span, t.text, source.CodeInvalidValue)
 	}
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(source.Merge(command.span, t.span)),
-		Severity: source.SeverityError,
-		Code:     source.CodeUnsupported,
-		Message:  "explicit delimiter size command is not represented in the current neutral IR",
-	})
-	return astErr(source.Merge(command.span, t.span), command.text, source.CodeUnsupported)
+	origin := tokenOrigin(command)
+	if !t.origin.IsDetached() {
+		origin = source.Merge(origin, t.origin)
+	}
+	return &astSizedDelimiterNode{
+		astBase: newASTBaseAt(astSizedDelimiter, source.Merge(command.span, t.span), origin),
+		text:    text,
+		class:   sizedSpec.class,
+		size:    sizedSpec.size,
+	}
 }
 
 func fixedDelimiterClass(class ir.MathClass) ir.MathClass {
