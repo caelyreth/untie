@@ -58,7 +58,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 		{
 			name:   "pass",
 			expect: ExpectParse,
-			frontend: func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+			frontend: func(context.Context, Request) (FrontendResult, error) {
 				return FrontendResult{Root: validRoot()}, nil
 			},
 			want: StatusPass,
@@ -67,7 +67,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 			name:       "diagnostic",
 			expect:     ExpectDiagnostic,
 			expectCode: []source.Code{source.CodeMissingArgument},
-			frontend: func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+			frontend: func(context.Context, Request) (FrontendResult, error) {
 				return FrontendResult{Root: validRoot(), Diagnostics: []source.Diagnostic{{
 					Range: source.NewRange(0, 1), Severity: source.SeverityError,
 					Code: source.CodeMissingArgument, Message: "missing",
@@ -78,7 +78,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 		{
 			name:   "unsupported",
 			expect: ExpectParse,
-			frontend: func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+			frontend: func(context.Context, Request) (FrontendResult, error) {
 				return FrontendResult{Root: validRoot(), Diagnostics: []source.Diagnostic{{
 					Range: source.NewRange(0, 1), Severity: source.SeverityError,
 					Code: source.CodeUnsupported, Message: "unsupported",
@@ -89,7 +89,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 		{
 			name:   "unexpected diagnostic",
 			expect: ExpectParse,
-			frontend: func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+			frontend: func(context.Context, Request) (FrontendResult, error) {
 				return FrontendResult{Root: validRoot(), Diagnostics: []source.Diagnostic{{
 					Range: source.NewRange(0, 1), Severity: source.SeverityError,
 					Code: source.CodeUnknownCommand, Message: "unknown",
@@ -103,7 +103,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 			expectCode: []source.Code{
 				source.CodeInvalidValue,
 			},
-			frontend: func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+			frontend: func(context.Context, Request) (FrontendResult, error) {
 				return FrontendResult{Root: validRoot(), Diagnostics: []source.Diagnostic{{
 					Range: source.NewRange(0, 1), Severity: source.SeverityError,
 					Code: source.CodeUnknownCommand, Message: "unknown",
@@ -114,7 +114,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 		{
 			name:   "panic",
 			expect: ExpectParse,
-			frontend: func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+			frontend: func(context.Context, Request) (FrontendResult, error) {
 				panic("boom")
 			},
 			want: StatusBug,
@@ -143,7 +143,7 @@ func TestEvaluatorClassifications(t *testing.T) {
 func TestEvaluatorRejectsInvalidAndLimitDependentIR(t *testing.T) {
 	t.Parallel()
 
-	invalid := func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error) {
+	invalid := func(context.Context, Request) (FrontendResult, error) {
 		return FrontendResult{Root: ir.NewFraction(source.NewRange(0, 1), nil, nil)}, nil
 	}
 	report, err := (Evaluator{Frontend: invalid, ExplicitLimits: ExplicitTeXLimits()}).Evaluate(t.Context(), Input{
@@ -156,12 +156,12 @@ func TestEvaluatorRejectsInvalidAndLimitDependentIR(t *testing.T) {
 		t.Fatalf("report = %#v", report)
 	}
 
-	limitDependent := func(_ context.Context, src string, _ ir.Mode, limits source.Limits) (FrontendResult, error) {
+	limitDependent := func(_ context.Context, request Request) (FrontendResult, error) {
 		text := "a"
-		if limits.MaxSourceBytes != source.DefaultLimits().MaxSourceBytes {
+		if request.Limits.MaxSourceBytes != source.DefaultLimits().MaxSourceBytes {
 			text = "b"
 		}
-		return FrontendResult{Root: ir.NewRow(source.NewRange(0, len(src)), ir.NewGlyph(source.NewRange(0, 1), text))}, nil
+		return FrontendResult{Root: ir.NewRow(source.NewRange(0, len(request.Source)), ir.NewGlyph(source.NewRange(0, 1), text))}, nil
 	}
 	report, err = (Evaluator{Frontend: limitDependent, ExplicitLimits: ExplicitTeXLimits()}).Evaluate(t.Context(), Input{
 		Corpus: "test", ID: "limits", Index: 1, Source: "x", Mode: ir.Inline, Expect: ExpectParse,
@@ -170,6 +170,36 @@ func TestEvaluatorRejectsInvalidAndLimitDependentIR(t *testing.T) {
 		t.Fatal(err)
 	}
 	if report.Status != StatusBug || !strings.Contains(report.Detail, "IR differ") {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestEvaluatorRejectsWrongDiagnosticSpan(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	report, err := (Evaluator{
+		Frontend: func(context.Context, Request) (FrontendResult, error) {
+			return FrontendResult{
+				Root: ir.NewRow(source.NewRange(0, 3), ir.NewGlyph(source.NewRange(0, 1), "foo")),
+				Diagnostics: []source.Diagnostic{{
+					Range:    source.NewRange(0, 3),
+					Severity: source.SeverityError,
+					Code:     source.CodeUnknownVariable,
+					Message:  "unknown variable",
+				}},
+			}, nil
+		},
+		ExplicitLimits: ExplicitTypstLimits(),
+	}).Evaluate(t.Context(), Input{
+		Corpus: "test", ID: "span", Index: 1, Source: "foo", Mode: ir.Inline,
+		Dialect: DialectTypst, Expect: ExpectDiagnostic,
+		ExpectCode: []source.Code{source.CodeUnknownVariable}, ExpectSpan: &span,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Status != StatusBug || !strings.Contains(report.Detail, "source span") {
 		t.Fatalf("report = %#v", report)
 	}
 }
@@ -237,7 +267,9 @@ func TestLoadReportRejectsUnknownFields(t *testing.T) {
 func TestProcessFrontendAdapter(t *testing.T) {
 	t.Parallel()
 
-	result, err := testProcessFrontend()(t.Context(), `\frac{1}{2}`, ir.Inline, ExplicitTeXLimits())
+	result, err := testProcessFrontend()(t.Context(), Request{
+		Source: `\frac{1}{2}`, Mode: ir.Inline, Limits: ExplicitTeXLimits(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

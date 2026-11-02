@@ -6,7 +6,10 @@ import (
 	"testing"
 )
 
-const texWorkerEnv = "UNTIE_CONFORMANCE_TEX_WORKER"
+const (
+	texWorkerEnv   = "UNTIE_CONFORMANCE_TEX_WORKER"
+	typstWorkerEnv = "UNTIE_CONFORMANCE_TYPST_WORKER"
+)
 
 func TestMain(m *testing.M) {
 	if runTestWorkerIfRequested() {
@@ -26,11 +29,28 @@ func testProcessFrontend() FrontendFunc {
 	})
 }
 
+func testTypstProcessFrontend() FrontendFunc {
+	executable, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	return ProcessFrontend(ProcessConfig{
+		Path: executable,
+		Env:  []string{typstWorkerEnv + "=1"},
+	})
+}
+
 func runTestWorkerIfRequested() bool {
-	if os.Getenv(texWorkerEnv) != "1" {
+	var frontend FrontendFunc
+	switch {
+	case os.Getenv(texWorkerEnv) == "1":
+		frontend = ParseTeX
+	case os.Getenv(typstWorkerEnv) == "1":
+		frontend = ParseTypst
+	default:
 		return false
 	}
-	if err := RunWorker(ParseTeX, os.Stdin, os.Stdout); err != nil {
+	if err := RunWorker(frontend, os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "conformance worker:", err)
 		os.Exit(2)
 	}
