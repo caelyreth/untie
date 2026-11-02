@@ -1,0 +1,12 @@
+# go
+bin
+dist
+*.test
+*.out
+coverage.*
+
+# dev
+/.direnv
+
+# os
+.DS_Store
