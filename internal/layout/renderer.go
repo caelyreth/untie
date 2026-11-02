@@ -89,7 +89,7 @@ func (r *Renderer) layoutFormulaContext(
 	}
 	if validateStructure {
 		if err := ir.Validate(formula, structuralValidationLimits()); err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+			return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 		}
 	}
 	hostSize, err := hostSizeFromDisplay(style.Size)
@@ -146,7 +146,7 @@ func (r *Renderer) layoutFormulaContext(
 		return nil, err
 	}
 	if err := box.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
 	return box, nil
 }
@@ -245,19 +245,22 @@ func validateConfiguredLimits(ctx context.Context, formula *ir.Formula, limits s
 		}
 		nodes++
 		if nodes > limits.MaxNodes {
-			return fmt.Errorf("%w: node count %d", ErrLimit, nodes)
+			return withNodeSourceRange(node, fmt.Errorf("%w: node count %d", ErrLimit, nodes))
 		}
 		if depth > limits.MaxNesting {
-			return fmt.Errorf("%w: nesting depth %d", ErrLimit, depth)
+			return withNodeSourceRange(node, fmt.Errorf("%w: nesting depth %d", ErrLimit, depth))
 		}
 		if err := checkConfiguredNodeLimits(node, limits); err != nil {
-			return err
+			return withNodeSourceRange(node, err)
 		}
 		if table, ok := node.(*ir.Table); ok {
 			cells := 0
 			for _, row := range table.Rows {
 				if len(row.Cells) > limits.MaxTableCells-cells {
-					return fmt.Errorf("%w: table cell count exceeds %d", ErrLimit, limits.MaxTableCells)
+					return withNodeSourceRange(
+						node,
+						fmt.Errorf("%w: table cell count exceeds %d", ErrLimit, limits.MaxTableCells),
+					)
 				}
 				cells += len(row.Cells)
 			}
@@ -275,16 +278,29 @@ func validateConfiguredLimits(ctx context.Context, formula *ir.Formula, limits s
 	for i, tag := range formula.Tags {
 		nodes++
 		if nodes > limits.MaxNodes {
-			return fmt.Errorf("%w: tag %d metadata count %d", ErrLimit, i, nodes)
+			return withSourceRange(
+				fmt.Errorf("%w: tag %d metadata count %d", ErrLimit, i, nodes),
+				tagSourceRange(tag),
+			)
 		}
 		if tag.Body == nil {
 			continue
 		}
 		if err := visit(tag.Body, 0); err != nil {
-			return fmt.Errorf("tag %d: %w", i, err)
+			return err
 		}
 	}
 	return nil
+}
+
+func tagSourceRange(tag ir.EquationTag) source.Range {
+	if tag.Origin.IsValid() && !tag.Origin.IsDetached() {
+		return tag.Origin
+	}
+	if tag.Span.IsValid() {
+		return tag.Span
+	}
+	return source.Detached()
 }
 
 func checkConfiguredNodeLimits(node ir.Node, limits source.Limits) error {
@@ -435,6 +451,9 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 				fragment = nil
 				err = hitErr
 			}
+		}
+		if err != nil {
+			err = withNodeSourceRange(n, err)
 		}
 	}()
 	env = s.nodeEnvironment(n, env)

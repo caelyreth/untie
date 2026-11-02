@@ -3,6 +3,7 @@ package untie
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -545,6 +546,147 @@ func TestPublicLayoutErrorClassification(t *testing.T) {
 	}
 }
 
+func TestPublicLayoutErrorsCarryKindAndSourceRange(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	missing := ParseTeX("a中b", Inline, ParseOptions{})
+	_, err = engine.Layout(missing, Style{Size: 16})
+	requireLayoutError(t, err, ErrMissingGlyph, LayoutErrorMissingGlyph, source.NewRange(1, 4))
+	wrapped := fmt.Errorf("host layout: %w", err)
+	var layoutErr *LayoutError
+	if !errors.As(wrapped, &layoutErr) {
+		t.Fatalf("errors.As(wrapped) = %v, want *LayoutError", wrapped)
+	}
+	if !errors.Is(wrapped, ErrMissingGlyph) {
+		t.Fatalf("wrapped error = %v, want ErrMissingGlyph", wrapped)
+	}
+	if layoutErr.Unwrap() == nil {
+		t.Fatal("LayoutError.Unwrap() = nil, want underlying cause")
+	}
+	if got := layoutErr.Code(); got != LayoutErrorMissingGlyph {
+		t.Fatalf("LayoutError.Code() = %q, want %q", got, LayoutErrorMissingGlyph)
+	}
+
+	pathLimited, err := NewEngine(fonts, Limits{MaxPathSegments: 1})
+	if err != nil {
+		t.Fatalf("NewEngine(path-limited) error = %v", err)
+	}
+	_, err = pathLimited.Layout(ParseTeX("x+y", Inline, ParseOptions{}), Style{Size: 16})
+	requireLayoutError(t, err, ErrLimit, LayoutErrorLimit, source.NewRange(0, 1))
+}
+
+func TestPublicDetachedLayoutErrors(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	outputLimited, err := NewEngine(fonts, Limits{MaxOutputItems: 1})
+	if err != nil {
+		t.Fatalf("NewEngine(output-limited) error = %v", err)
+	}
+	_, err = outputLimited.Layout(ParseTeX("x+y", Inline, ParseOptions{}), Style{Size: 16})
+	requireLayoutError(t, err, ErrLimit, LayoutErrorLimit, source.Detached())
+
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	span := source.NewRange(0, 1)
+	tagged := &ir.Formula{
+		Root: ir.NewGlyph(span, "x"),
+		Tags: []ir.EquationTag{{
+			Body:   ir.NewGlyph(span, "1"),
+			Span:   span,
+			Origin: span,
+			Manual: true,
+			Line:   FormulaTagLine,
+		}},
+	}
+	_, err = engine.LayoutFormulaContext(context.Background(), tagged, Inline, Style{Size: 16})
+	requireLayoutError(t, err, ErrUnsupported, LayoutErrorUnsupported, source.Detached())
+}
+
+func TestPublicLayoutErrorRangeFallsBackToSpan(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	span := source.NewRange(0, 3)
+	glyph := ir.NewGlyph(span, "中")
+	glyph.NodeBase().Origin = source.Detached()
+	_, err = engine.LayoutFormulaContext(
+		context.Background(),
+		&ir.Formula{Root: glyph},
+		Inline,
+		Style{Size: 16},
+	)
+	requireLayoutError(t, err, ErrMissingGlyph, LayoutErrorMissingGlyph, span)
+}
+
+func TestPublicCancellationIsNotALayoutError(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = engine.LayoutContext(ctx, ParseTeX("x", Inline, ParseOptions{}), Style{Size: 16})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("LayoutContext() error = %v, want context.Canceled", err)
+	}
+	var layoutErr *LayoutError
+	if errors.As(err, &layoutErr) {
+		t.Fatalf("cancellation classified as LayoutError: %v", err)
+	}
+}
+
+func TestPublicLayoutErrorKindPrefersSpecificStretchFailure(t *testing.T) {
+	t.Parallel()
+
+	err := fmt.Errorf("%w: %w", ErrUnsupported, ErrInsufficientStretch)
+	kind, ok := publicLayoutErrorKind(err)
+	if !ok || kind != LayoutErrorInsufficientStretch {
+		t.Fatalf("publicLayoutErrorKind() = %q, %v, want %q, true",
+			kind, ok, LayoutErrorInsufficientStretch)
+	}
+}
+
+func requireLayoutError(
+	t *testing.T,
+	err error,
+	sentinel error,
+	kind LayoutErrorKind,
+	wantRange source.Range,
+) {
+	t.Helper()
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("Layout error = %v, want %v", err, sentinel)
+	}
+	var layoutErr *LayoutError
+	if !errors.As(err, &layoutErr) {
+		t.Fatalf("Layout error = %T %v, want *LayoutError", err, err)
+	}
+	if layoutErr.Kind != kind {
+		t.Fatalf("LayoutError.Kind = %q, want %q", layoutErr.Kind, kind)
+	}
+	if layoutErr.Range != wantRange {
+		t.Fatalf("LayoutError.Range = %+v, want %+v", layoutErr.Range, wantRange)
+	}
+	if layoutErr.Err == nil {
+		t.Fatal("LayoutError.Err = nil, want underlying cause")
+	}
+}
+
 func TestExprHasErrorsUsesRootDiagnosticFacade(t *testing.T) {
 	t.Parallel()
 
@@ -591,9 +733,8 @@ func TestLayoutFormulaContextAcceptsCanonicalIR(t *testing.T) {
 	if box.Alt != expr.Alt() {
 		t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, expr.Alt())
 	}
-	if _, err := engine.LayoutFormulaContext(context.Background(), nil, Inline, Style{Size: 16}); !errors.Is(err, ErrInvalidInput) {
-		t.Fatalf("nil formula error = %v, want ErrInvalidInput", err)
-	}
+	_, err = engine.LayoutFormulaContext(context.Background(), nil, Inline, Style{Size: 16})
+	requireLayoutError(t, err, ErrInvalidInput, LayoutErrorInvalidInput, source.Detached())
 }
 
 func TestFallbackIRValidates(t *testing.T) {

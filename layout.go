@@ -120,7 +120,7 @@ func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mod
 		return nil, err
 	}
 	if formula == nil || formula.Root == nil {
-		return nil, fmt.Errorf("%w: nil formula", ErrInvalidInput)
+		return nil, publicLayoutError(fmt.Errorf("%w: nil formula", ErrInvalidInput))
 	}
 	style, err := snapshotLayoutStyle(style)
 	if err != nil {
@@ -145,10 +145,10 @@ func (e *Engine) layoutRootContext(
 		box, err = e.inner.LayoutFormula(ctx, root, mode, style)
 	}
 	if err != nil {
-		return nil, err
+		return nil, publicLayoutError(err)
 	}
 	if box == nil {
-		return nil, fmt.Errorf("untie: layout returned a nil box")
+		return nil, publicLayoutError(fmt.Errorf("%w: layout returned a nil box", ErrInvalidInput))
 	}
 	alt, altErr := internalalt.GenerateFormulaContext(ctx, root, mode, altLimits)
 	if altErr != nil {
@@ -160,9 +160,60 @@ func (e *Engine) layoutRootContext(
 	}
 	box.Alt = alt
 	if err := box.Validate(); err != nil {
-		return nil, fmt.Errorf("untie: invalid layout output: %w", err)
+		return nil, publicLayoutError(fmt.Errorf("%w: invalid layout output: %w", ErrInvalidInput, err))
 	}
 	return box, nil
+}
+
+func publicLayoutError(err error) error {
+	if err == nil ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	var existing *LayoutError
+	if errors.As(err, &existing) {
+		return err
+	}
+	kind, ok := publicLayoutErrorKind(err)
+	if !ok {
+		return err
+	}
+	r := source.Detached()
+	var located interface {
+		SourceRange() source.Range
+	}
+	if errors.As(err, &located) {
+		candidate := located.SourceRange()
+		if candidate.IsValid() && !candidate.IsDetached() {
+			r = candidate
+		}
+	}
+	cause := err
+	if located, ok := err.(interface {
+		SourceRange() source.Range
+		Unwrap() error
+	}); ok {
+		cause = located.Unwrap()
+	}
+	return &LayoutError{Kind: kind, Range: r, Err: cause}
+}
+
+func publicLayoutErrorKind(err error) (LayoutErrorKind, bool) {
+	switch {
+	case errors.Is(err, ErrMissingGlyph):
+		return LayoutErrorMissingGlyph, true
+	case errors.Is(err, ErrInsufficientStretch):
+		return LayoutErrorInsufficientStretch, true
+	case errors.Is(err, ErrUnsupported):
+		return LayoutErrorUnsupported, true
+	case errors.Is(err, ErrLimit):
+		return LayoutErrorLimit, true
+	case errors.Is(err, ErrInvalidInput):
+		return LayoutErrorInvalidInput, true
+	default:
+		return "", false
+	}
 }
 
 // intersectLimits returns the stricter positive value for every resource

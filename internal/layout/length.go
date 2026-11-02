@@ -9,7 +9,7 @@ import (
 
 func (s *layoutState) length(value ir.Length, style Style, metrics MathMetrics) (geometry.Em, error) {
 	if err := value.Validate(); err != nil {
-		return 0, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		return 0, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
 	if value.Value < 0 {
 		return 0, fmt.Errorf("%w: negative structural length", ErrInvalidInput)
@@ -35,7 +35,7 @@ func (s *layoutState) convertLength(
 	scaleRelative bool,
 ) (geometry.Em, error) {
 	if err := value.Validate(); err != nil {
-		return 0, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		return 0, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
 	if value.Unit == ir.LengthZero || value.Value == 0 {
 		return 0, nil

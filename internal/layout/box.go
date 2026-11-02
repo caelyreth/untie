@@ -19,7 +19,7 @@ func (s *layoutState) layoutBox(node *ir.Box, env environment, depth int) (*Frag
 	for i, value := range node.Padding {
 		padding[i], err = s.length(value, env.Style, metrics)
 		if err != nil {
-			return nil, fmt.Errorf("%w: box padding %d: %v", ErrInvalidInput, i, err)
+			return nil, fmt.Errorf("%w: box padding %d: %w", ErrInvalidInput, i, err)
 		}
 	}
 	width, err := sum(body.Width, padding[1], padding[3])
@@ -40,7 +40,7 @@ func (s *layoutState) layoutBox(node *ir.Box, env environment, depth int) (*Frag
 	}
 	radius, err := s.length(node.Radius, env.Style, metrics)
 	if err != nil {
-		return nil, fmt.Errorf("%w: box radius: %v", ErrInvalidInput, err)
+		return nil, fmt.Errorf("%w: box radius: %w", ErrInvalidInput, err)
 	}
 
 	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
@@ -80,12 +80,12 @@ func (s *layoutState) layoutBox(node *ir.Box, env environment, depth int) (*Frag
 			var err error
 			borderWidth, err = ir.EmLength(float64(defaultBoxBorderWidth) / float64(geometry.EmScale))
 			if err != nil {
-				return nil, fmt.Errorf("%w: default box border width: %v", ErrInvalidInput, err)
+				return nil, fmt.Errorf("%w: default box border width: %w", ErrInvalidInput, err)
 			}
 		}
 		thickness, err := s.length(borderWidth, env.Style, metrics)
 		if err != nil {
-			return nil, fmt.Errorf("%w: box border width: %v", ErrInvalidInput, err)
+			return nil, fmt.Errorf("%w: box border width: %w", ErrInvalidInput, err)
 		}
 		if thickness > 0 {
 			path, err := roundedRectRingPath(0, top, width, height, radius, thickness)

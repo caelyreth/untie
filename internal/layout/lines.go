@@ -529,7 +529,7 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 	}
 	parent.Overflow = overflow
 	if err := parent.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
 	return parent, nil
 }
