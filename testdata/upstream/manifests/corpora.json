@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "name": "typlet-paired",
+      "format": "typlet-jsonl",
+      "corpusFile": "typlet-0.2.0/corpus/paired.jsonl",
+      "fixtureFile": "typlet-0.2.0/fixtures/typst-0.15.1/paired.jsonl",
+      "expectedCount": 81,
+      "expectedFixtureCount": 81,
+      "expectedFrameCount": 81
+    },
+    {
+      "name": "typlet-features",
+      "format": "typlet-jsonl",
+      "corpusFile": "typlet-0.2.0/corpus/features.selected.jsonl",
+      "fixtureFile": "typlet-0.2.0/fixtures/typst-0.15.1/features.selected.jsonl",
+      "selectionFile": "manifests/typlet-selection.json",
+      "selectionKey": "features",
+      "expectedCount": 29,
+      "expectedFixtureCount": 29,
+      "expectedFrameCount": 28
+    },
+    {
+      "name": "typlet-code",
+      "format": "typlet-jsonl",
+      "corpusFile": "typlet-0.2.0/corpus/code.selected.jsonl",
+      "fixtureFile": "typlet-0.2.0/fixtures/typst-0.15.1/code.selected.jsonl",
+      "selectionFile": "manifests/typlet-selection.json",
+      "selectionKey": "code",
+      "expectedCount": 16,
+      "expectedFixtureCount": 16,
+      "expectedFrameCount": 14
+    },
+    {
+      "name": "typlet-symbols",
+      "format": "typlet-jsonl",
+      "corpusFile": "typlet-0.2.0/corpus/symbols.selected.jsonl",
+      "fixtureFile": "typlet-0.2.0/fixtures/typst-0.15.1/symbols.selected.jsonl",
+      "selectionFile": "manifests/typlet-selection.json",
+      "selectionKey": "symbols",
+      "expectedCount": 30,
+      "expectedFixtureCount": 30,
+      "expectedFrameCount": 30
+    },
+    {
+      "name": "typlet-syntax",
+      "format": "typlet-jsonl",
+      "corpusFile": "typlet-0.2.0/corpus/syntax.selected.jsonl",
+      "fixtureFile": "typlet-0.2.0/fixtures/typst-0.15.1/syntax.selected.jsonl",
+      "selectionFile": "manifests/typlet-selection.json",
+      "selectionKey": "syntax",
+      "expectedCount": 15,
+      "expectedFixtureCount": 15,
+      "expectedFrameCount": 0
+    },
+    {
+      "name": "ratex-core",
+      "format": "raw-lines",
+      "corpusFile": "ratex-0.1.15/core-test-cases.txt",
+      "expectedCount": 1075
+    },
+    {
+      "name": "katex-cases",
+      "format": "katex-jsonl",
+      "corpusFile": "katex/cases.jsonl",
+      "expectedCount": 36
+    }
+  ]
+}

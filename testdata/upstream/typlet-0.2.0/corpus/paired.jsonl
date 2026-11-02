@@ -1,0 +1,81 @@
+{"cat":"basics","display":false,"id":"sup-sub","src":"a+b^2 - x_(i,j)^2","tex":"a+b^2 - x_{i,j}^{2}"}
+{"cat":"basics","display":false,"id":"euler","src":"e^(i pi)+1=0","tex":"e^{i\\pi}+1=0"}
+{"cat":"basics","display":false,"id":"primes","src":"f'(x) + f''(x) + g'''","tex":"f'(x) + f''(x) + g'''"}
+{"cat":"basics","display":true,"id":"quadratic","src":"x = (-b plus.minus sqrt(b^2-4a c))/(2a)","tex":"x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}"}
+{"cat":"basics","display":false,"id":"unicode-input","src":"α+β=γ","tex":"α+β=γ"}
+{"cat":"fractions","display":true,"id":"frac-nested","src":"1/(1+1/(1+1/x))","tex":"\\frac{1}{1+\\frac{1}{1+\\frac{1}{x}}}"}
+{"cat":"fractions","display":true,"id":"cfrac","src":"display(1/(1+display(1/(1+display(1/x)))))","tex":"\\cfrac{1}{1+\\cfrac{1}{1+\\cfrac{1}{x}}}"}
+{"cat":"fractions","display":false,"id":"binom","src":"binom(n, k) = (n!)/(k!(n-k)!)","tex":"\\binom{n}{k} = \\frac{n!}{k!(n-k)!}"}
+{"cat":"fractions","display":false,"id":"root-n","src":"root(3, x+1) + sqrt(sqrt(sqrt(x)))","tex":"\\sqrt[3]{x+1} + \\sqrt{\\sqrt{\\sqrt{x}}}"}
+{"cat":"fractions","display":true,"id":"pde","src":"(partial^2 u)/(partial t^2) = c^2 nabla^2 u","tex":"\\frac{\\partial^2 u}{\\partial t^2}=c^2\\nabla^2u"}
+{"cat":"big-ops","display":true,"id":"sum","src":"sum_(i=1)^n i^2 = (n(n+1)(2n+1))/6","tex":"\\sum_{i=1}^{n} i^2 = \\frac{n(n+1)(2n+1)}{6}"}
+{"cat":"big-ops","display":true,"id":"gauss","src":"integral_0^infinity e^(-x^2) dif x = sqrt(pi)/2","tex":"\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt\\pi}{2}"}
+{"cat":"big-ops","display":true,"id":"oint","src":"integral.cont_C arrow(F) dot dif arrow(r)","tex":"\\oint_C \\vec F\\cdot d\\vec r"}
+{"cat":"big-ops","display":true,"id":"iiint","src":"integral.triple_V f dif V","tex":"\\iiint_V f\\,dV"}
+{"cat":"big-ops","display":true,"id":"euler-product","src":"product_(p \"prime\") 1/(1-p^(-s))","tex":"\\prod_{p\\text{ prime}} \\frac{1}{1-p^{-s}}"}
+{"cat":"big-ops","display":true,"id":"lim","src":"lim_(n -> infinity) (1+1/n)^n = e","tex":"\\lim_{n\\to\\infty} \\left(1+\\frac1n\\right)^n = e"}
+{"cat":"big-ops","display":true,"id":"substack","src":"sum_(0<i<m \\ 0<j<n) P(i,j)","tex":"\\sum_{\\substack{0<i<m\\\\0<j<n}} P(i,j)"}
+{"cat":"big-ops","display":true,"id":"sideset","src":"attach(limits(sum), tl: b, bl: a, tr: d, br: c)","tex":"\\sideset{_a^b}{_c^d}\\sum"}
+{"cat":"big-ops","display":true,"id":"oiint","src":"integral.surf_S bold(E) dot dif bold(A)","tex":"\\oiint_S \\mathbf{E}\\cdot d\\mathbf{A}"}
+{"cat":"delimiters","display":true,"id":"auto-paren","src":"(a/b)^2 [sum_i x_i]","tex":"\\left(\\frac{a}{b}\\right)^2 \\left[\\sum_i x_i\\right]"}
+{"cat":"delimiters","display":true,"id":"middle","src":"lr(chevron.l psi/2 mid(|) H mid(|) phi chevron.r)","tex":"\\left\\langle \\frac{\\psi}{2} \\middle| H \\middle| \\phi \\right\\rangle"}
+{"cat":"delimiters","display":false,"id":"big-sizes","src":"lr(size: #120%, ( lr(size: #150%, ( lr(size: #190%, ( lr(size: #240%, (x)) )) )) ))","tex":"\\bigl( \\Bigl( \\biggl( \\Biggl( x \\Biggr) \\biggr) \\Bigr) \\bigr)"}
+{"cat":"delimiters","display":false,"id":"floor-ceil","src":"floor(x) + ceil(y)","tex":"\\lfloor x \\rfloor + \\lceil y \\rceil"}
+{"cat":"delimiters","display":false,"id":"norm-abs","src":"norm(bold(v)) <= abs(x) + abs(y)","tex":"\\|\\mathbf{v}\\| \\le |x| + |y|"}
+{"cat":"delimiters","display":false,"id":"braket","src":"chevron.l phi|psi chevron.r","tex":"\\langle\\phi|\\psi\\rangle"}
+{"cat":"delimiters","display":true,"id":"null-delim","src":"lr(zws (dif f)/(dif x) |)_(x=0)","tex":"\\left.\\frac{df}{dx}\\right|_{x=0}"}
+{"cat":"matrices","display":true,"id":"pmatrix","src":"mat(a, b; c, d)","tex":"\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}"}
+{"cat":"matrices","display":true,"id":"bmatrix-dots","src":"mat(delim: \"[\", 1,0,dots.c,0; 0,1,dots.c,0; dots.v,dots.v,dots.down,dots.v; 0,0,dots.c,1)","tex":"\\begin{bmatrix}1&0&\\cdots&0\\\\0&1&\\cdots&0\\\\\\vdots&\\vdots&\\ddots&\\vdots\\\\0&0&\\cdots&1\\end{bmatrix}"}
+{"cat":"matrices","display":true,"id":"vmatrix","src":"det mat(delim: \"|\", a, b; c, d) = a d - b c","tex":"\\det\\begin{vmatrix}a&b\\\\c&d\\end{vmatrix} = ad-bc"}
+{"cat":"matrices","display":true,"id":"vector","src":"vec(x, y, z)","tex":"\\begin{pmatrix}x\\\\y\\\\z\\end{pmatrix}"}
+{"cat":"matrices","display":true,"id":"array-rules","src":"mat(augment: #2, 1, 2, 3; 4, 5, 6)","tex":"\\left(\\begin{array}{cc|c} 1 & 2 & 3 \\\\ 4 & 5 & 6 \\end{array}\\right)"}
+{"cat":"matrices","display":true,"id":"array-hline","src":"mat(delim: #none, augment: #(hline: 1, vline: 1), a, b; c, d)","tex":"\\begin{array}{c|c} a & b \\\\ \\hline c & d \\end{array}"}
+{"cat":"matrices","display":false,"id":"smallmatrix","src":"script(mat(a, b; c, d))","tex":"\\left(\\begin{smallmatrix}a&b\\\\c&d\\end{smallmatrix}\\right)"}
+{"cat":"matrices","display":true,"id":"cases","src":"f(x) = cases(x^2 & x >= 0, -x & x < 0)","tex":"f(x)=\\begin{cases}x^2 & x\\ge0\\\\-x & x<0\\end{cases}"}
+{"cat":"matrices","display":true,"id":"rcases","src":"cases(reverse: #true, a & x>0, b & x<0) => c","tex":"\\begin{rcases}a & x>0\\\\b & x<0\\end{rcases} \\Rightarrow c"}
+{"cat":"alignment","display":true,"id":"aligned","src":"(a+b)^2 &= (a+b)(a+b) \\ &= a^2 + 2a b + b^2","tex":"\\begin{aligned}(a+b)^2&=(a+b)(a+b)\\\\&=a^2+2ab+b^2\\end{aligned}"}
+{"cat":"alignment","display":true,"id":"gathered","src":"a = b + c \\ d = e","tex":"\\begin{gathered}a=b+c\\\\ d=e\\end{gathered}"}
+{"cat":"alignment","display":true,"id":"alignat","src":"10 & x + & 3 & y = 2 \\ 3 & x + & 13 & y = 4","tex":"\\begin{alignedat}{2}10&x+&3&y=2\\\\3&x+&13&y=4\\end{alignedat}"}
+{"cat":"alignment","display":true,"id":"tag","preamble":"#set math.equation(numbering: \"(1)\")","src":"E = m c^2","tex":"E=mc^2 \\tag{1}"}
+{"cat":"accents","display":false,"id":"accents","src":"hat(x) thin tilde(y) thin macron(z) thin arrow(v) thin dot(a) thin dot.double(b) thin caron(c) thin breve(d) thin circle(A)","tex":"\\hat{x}\\,\\tilde{y}\\,\\bar{z}\\,\\vec{v}\\,\\dot{a}\\,\\ddot{b}\\,\\check{c}\\,\\breve{d}\\,\\mathring{A}"}
+{"cat":"accents","display":false,"id":"wide-accents","src":"hat(a b c) space tilde(x y z) space arrow(A B) space accent(C D, arrow.l.r)","tex":"\\widehat{abc}\\ \\widetilde{xyz}\\ \\overrightarrow{AB}\\ \\overleftrightarrow{CD}"}
+{"cat":"accents","display":false,"id":"over-under-line","src":"overline(A B) space underline(C D)","tex":"\\overline{AB}\\ \\underline{CD}"}
+{"cat":"accents","display":true,"id":"braces","src":"overbrace(a+dots.c+a, n) space underbrace(1+2+dots.c+100, 5050)","tex":"\\overbrace{a+\\cdots+a}^{n}\\ \\underbrace{1+2+\\cdots+100}_{5050}"}
+{"cat":"accents","display":false,"id":"overset","src":"a attach(limits(=), t: \"def\") b attach(limits(<=), t: ?) c","tex":"a \\overset{\\text{def}}{=} b \\stackrel{?}{\\le} c"}
+{"cat":"accents","display":false,"id":"dddot","src":"dot.triple(x)","tex":"\\dddot{x}"}
+{"cat":"fonts","display":false,"id":"bb","src":"RR thin NN thin ZZ thin bb(1)","tex":"\\mathbb{R}\\,\\mathbb{N}\\,\\mathbb{Z}\\,\\mathbb{1}"}
+{"cat":"fonts","display":false,"id":"cal-scr-frak","src":"cal(L) thin scr(F) thin frak(g)","tex":"\\mathcal{L}\\,\\mathscr{F}\\,\\mathfrak{g}"}
+{"cat":"fonts","display":false,"id":"bold-sym","src":"bold(x) dot bold(alpha)","tex":"\\mathbf{x}\\cdot\\boldsymbol{\\alpha}"}
+{"cat":"fonts","display":false,"id":"font-variants","src":"upright(d) thin italic(x) thin sans(A) thin mono(B)","tex":"\\mathrm{d}\\,\\mathit{x}\\,\\mathsf{A}\\,\\mathtt{B}"}
+{"cat":"fonts","display":false,"id":"text-in-math","src":"x = 1 \"if\" y > 0 \"and\" #strong[bold]","tex":"x = 1 \\text{ if } y > 0 \\text{ and } \\textbf{bold}"}
+{"cat":"fonts","display":true,"id":"operatorname","src":"op(\"argmax\", limits: #true)_x f(x) + op(\"tr\")(A)","tex":"\\operatorname*{argmax}_x f(x) + \\operatorname{tr}(A)"}
+{"cat":"symbols","display":false,"id":"greek","src":"alpha beta gamma Gamma epsilon.alt theta.alt phi Omega","tex":"\\alpha\\beta\\gamma\\Gamma\\varepsilon\\vartheta\\varphi\\Omega"}
+{"cat":"symbols","display":false,"id":"misc-symbols","src":"nabla thin partial thin infinity thin aleph_0 thin planck thin ell thin Re thin pee","tex":"\\nabla\\,\\partial\\,\\infty\\,\\aleph_0\\,\\hbar\\,\\ell\\,\\Re\\,\\wp"}
+{"cat":"symbols","display":false,"id":"arrows","src":"A => B <=> C <- D |-> E arrow.r.hook F arrow.r.squiggly G","tex":"A \\Rightarrow B \\iff C \\leftarrow D \\mapsto E \\hookrightarrow F \\leadsto G"}
+{"cat":"symbols","display":false,"id":"relations","src":"a <= b != c approx d equiv e (mod n)","tex":"a \\leq b \\neq c \\approx d \\equiv e \\pmod{n}"}
+{"cat":"symbols","display":false,"id":"sets","src":"A subset.eq B supset.neq C, space x in A without B, space y in.not A union B inter emptyset","tex":"A \\subseteq B \\supsetneq C,\\ x \\in A \\setminus B,\\ y\\notin A \\cup B \\cap \\emptyset"}
+{"cat":"symbols","display":false,"id":"logic","src":"forall x thin exists y space not(p and q) or r tack.r s models t","tex":"\\forall x\\,\\exists y\\ \\neg(p\\land q)\\lor r \\vdash s \\models t"}
+{"cat":"symbols","display":false,"id":"negations","src":"a equiv.not b, space c lt.eq.not d, space e subset.eq.not f","tex":"a \\not\\equiv b,\\ c \\nleq d,\\ e \\nsubseteq f"}
+{"cat":"symbols","display":false,"id":"xarrow","src":"A stretch(->)^\"over\"_\"under\" B stretch(<-)^f C","tex":"A \\xrightarrow[\\text{under}]{\\text{over}} B \\xleftarrow{f} C"}
+{"cat":"layout","display":false,"id":"spacing","src":"a thin b med c thick d quad e wide f #h(-1em/6) g","tex":"a\\,b\\:c\\;d\\quad e\\qquad f\\!g"}
+{"cat":"layout","display":false,"id":"phantom","src":"a + #hide[$x y z$] + b","tex":"a + \\phantom{xyz} + b"}
+{"cat":"layout","display":false,"id":"displaystyle","src":"display(sum_(i=1)^n) inline(sum_(i=1)^n) script(x)","tex":"\\displaystyle\\sum_{i=1}^n \\textstyle\\sum_{i=1}^n \\scriptstyle x"}
+{"cat":"layout","display":false,"id":"cancel","src":"cancel(x) + cancel(inverted: #true, y) + cancel(cross: #true, z)","tex":"\\cancel{x}+\\bcancel{y}+\\xcancel{z}"}
+{"cat":"layout","display":false,"id":"boxed","src":"#box(stroke: 0.5pt, inset: 3pt, $E=m c^2$)","tex":"\\boxed{E=mc^2}"}
+{"cat":"layout","display":false,"id":"color","src":"#text(fill: red, $x$) + #text(fill: blue, $y$) + #box(fill: yellow, $z$)","tex":"\\color{red}{x}+\\textcolor{blue}{y}+\\colorbox{yellow}{$z$}"}
+{"cat":"layout","display":true,"id":"clap","src":"sum_(1<=i<=j<=n) x_(i j)","tex":"\\sum_{\\mathclap{1\\le i\\le j\\le n}} x_{ij}"}
+{"cat":"realistic","display":true,"id":"maxwell","src":"nabla times arrow(E) = -(partial arrow(B))/(partial t)","tex":"\\nabla \\times \\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t}"}
+{"cat":"realistic","display":true,"id":"taylor","src":"f(x) = sum_(n=0)^infinity (f^((n))(a))/(n!) (x-a)^n","tex":"f(x)=\\sum_{n=0}^\\infty\\frac{f^{(n)}(a)}{n!}(x-a)^n"}
+{"cat":"realistic","display":true,"id":"schrodinger","src":"i planck partial/(partial t) Psi(bold(r),t) = [-planck^2/(2m) nabla^2 + V(bold(r),t)] Psi(bold(r),t)","tex":"i\\hbar\\frac{\\partial}{\\partial t}\\Psi(\\mathbf{r},t) = \\left[-\\frac{\\hbar^2}{2m}\\nabla^2 + V(\\mathbf{r},t)\\right]\\Psi(\\mathbf{r},t)"}
+{"cat":"realistic","display":true,"id":"fourier","src":"hat(f)(xi) = integral_(-infinity)^infinity f(x) e^(-2 pi i x xi) dif x","tex":"\\hat{f}(\\xi) = \\int_{-\\infty}^{\\infty} f(x)\\, e^{-2\\pi i x \\xi}\\,dx"}
+{"cat":"realistic","display":true,"id":"bayes","src":"P(A mid(|) B) = (P(B mid(|) A) P(A))/P(B)","tex":"P(A\\mid B)=\\frac{P(B\\mid A)\\,P(A)}{P(B)}"}
+{"cat":"realistic","display":true,"id":"einstein","src":"R_(mu nu) - inline(1/2) R g_(mu nu) + Lambda g_(mu nu) = (8 pi G)/c^4 T_(mu nu)","tex":"R_{\\mu\\nu}-\\tfrac{1}{2}Rg_{\\mu\\nu}+\\Lambda g_{\\mu\\nu}=\\frac{8\\pi G}{c^4}T_{\\mu\\nu}"}
+{"cat":"realistic","display":true,"id":"stirling","src":"n! tilde.op sqrt(2 pi n) (n/e)^n","tex":"n! \\sim \\sqrt{2\\pi n}\\left(\\frac{n}{e}\\right)^n"}
+{"cat":"extensions","display":true,"id":"cd","note":"Typst: hand-built approximation; real CD needs the fletcher package","src":"mat(delim: #none, A, stretch(->)^f, B; stretch(arrow.b) g, , stretch(arrow.b) h; C, stretch(->)_k, D)","tex":"\\begin{CD} A @>f>> B \\\\ @VgVV @VVhV \\\\ C @>>k> D \\end{CD}"}
+{"cat":"extensions","display":false,"id":"mhchem","note":"KaTeX: mhchem contrib extension; Typst: hand-written (typsium/whalogen packages exist)","src":"2\"H\"_2 + \"O\"_2 -> 2\"H\"_2\"O\"","tex":"\\ce{2H2 + O2 -> 2H2O}"}
+{"cat":"extensions","display":false,"id":"macros","preamble":"#let Real = $bb(R)$","src":"f: Real^n -> Real","tex":"\\newcommand{\\RR}{\\mathbb{R}} f: \\RR^n \\to \\RR"}
+{"cat":"extensions","display":false,"id":"href","src":"#link(\"https://typst.app\", $x^2$)","tex":"\\href{https://typst.app}{x^2}"}
+{"cat":"typst-only","display":true,"id":"loop-matrix","note":"Matrix generated by a loop","preamble":"#let m = range(1, 5).map(i => range(1, 5).map(j => $a_(#i #j)$))","src":"mat(..#m)"}
+{"cat":"typst-only","display":false,"id":"computed","note":"Value computed at compile time","preamble":"#let fib(n) = if n < 2 { n } else { fib(n - 1) + fib(n - 2) }","src":"F_20 = #fib(20)"}
+{"cat":"typst-only","display":false,"id":"show-rule","note":"Show/set rules restyle math","preamble":"#show math.equation: set text(fill: blue)\n#show \"x\": $xi$","src":"x + y"}
+{"cat":"typst-only","display":false,"id":"math-font","note":"Switch OpenType math font","preamble":"#show math.equation: set text(font: \"Cambria Math\")","src":"sum_(i=1)^n x_i^2"}
