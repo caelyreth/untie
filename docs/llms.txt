@@ -21,7 +21,7 @@ Use this file as the short entry point for code assistants. Read
 - Box coordinates are y-down host units with the baseline origin at `(0, 0)`.
 - Draw `ItemGlyphPath` and `ItemRule`; `ItemGlyphRef` is optional cache metadata.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
-- Draw either parent `Box.Items` or line-local items, never both.
+- Draw `Box.Items` once; line/tag ranges select subsets of the same storage.
 - Use `Box.Bounds()` to include certified overflow.
 - Use `Expr.Alt()` or `Style.GenerateAlt` plus `Box.Alt` for accessibility.
 - Do not import any `internal/` package from a host.
@@ -120,9 +120,8 @@ type Box struct {
 
 - `Inline` ignores `MaxWidth`/`Align` and emits no `Lines`.
 - `Display` with positive `MaxWidth` always emits at least one `LineBox`.
-- Parent items/hits are translated aggregates. Line items/hits are line-local.
-- Parent tag items/hits are already translated. Line-level drawing draws
-  `LineBox.Tag` separately.
+- Items and hits are always in parent-frame coordinates. Lines and tags carry
+  ranges into `Box.Items`/`Box.Hits`, not nested drawable boxes.
 - `Overflow` is the certified allowance outside nominal geometry.
 - `Bounds()` returns the baseline-relative fit rectangle including overflow.
 - `Alt` is populated only when `Style.GenerateAlt` is true.

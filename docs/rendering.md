@@ -134,21 +134,18 @@ box:
 
 - `Box.Width` equals the requested `MaxWidth`, including when the formula fits;
 - `Box.Lines` has at least one line;
-- each line has a line-local `Box`;
-- line items are in line-local coordinates;
-- line hits are in line-local coordinates;
-- `Box.Items` and `Box.Hits` are the translated aggregate in frame
-  coordinates;
+- `Box.Items` and `Box.Hits` are the only stored item and hit slices and use
+  parent-frame coordinates;
+- each `LineBox.Items` and `LineBox.Hits` is a contiguous range into those
+  parent slices;
+- each line has explicit `Width`, `Ascent`, `Descent`, `Overflow`, `Baseline`,
+  and `OffsetX` metadata;
 - `Box.Overflow` covers the assembled frame and logical width excesses.
 
-This is a two-level contract. A host must choose one level:
-
-1. Draw parent `Box.Items` only.
-2. Draw every `LineBox.Box.Items` at
-   `(line.OffsetX, line.Baseline)`.
-
-Never draw both, because the parent already contains translated copies of the
-line items. The same applies to hits.
+Draw `Box.Items` once. Use a line's ranges when the host needs clipping,
+line-local interaction, or per-line metadata; do not apply another coordinate
+translation. This single-source contract prevents duplicate path storage and
+double drawing.
 
 ### Line Baselines
 
@@ -190,8 +187,10 @@ Typst input does not produce equation-tag metadata in this release.
 An unconstrained tagged display box has:
 
 - `Box.Tag != nil`;
-- translated tag path and hit records in `Box.Items` and `Box.Hits`;
-- `Box.Tag.Box` with tag-local geometry;
+- tag path and hit records in the suffix of `Box.Items` and `Box.Hits` selected
+  by `Box.Tag.Items` and `Box.Tag.Hits`;
+- explicit tag width, ascent, descent, italic correction, and parent-frame
+  `X`/`Y`;
 - no `Box.Lines`.
 
 A constrained tagged box uses one complete line so the tag has unambiguous
@@ -200,16 +199,13 @@ ownership:
 - `len(Box.Lines) == 1`;
 - both `Box.Tag` and `Box.Lines[0].Tag` are present;
 - the line is aligned in the reduced formula frame
-  `MaxWidth - Tag.Box.Width`;
+  `MaxWidth - Tag.Width`;
 - if the line is overfull, it begins at zero offset and the tag follows it;
 - logical or ink excess contributes to `Box.Overflow`.
 
-Parent `Box.Items` already contains the translated tag. If drawing per-line
-items, draw `LineBox.Tag` separately. `TagBox.X` and `TagBox.Y` remain
-parent-frame coordinates and do not move with `LineBox.OffsetX`.
-
-The tag's body uses tag-local coordinates. Draw it at `(TagBox.X, TagBox.Y)` in
-the owning box frame. A `\tag*` value has no automatic parentheses.
+The tag body is already positioned in parent-frame coordinates. Draw the tag
+range once as part of `Box.Items`; use `TagBox.Items` and `TagBox.Hits` only to
+identify that subset. A `\tag*` value has no automatic parentheses.
 
 Tag source metadata is available through `Expr.Tags()` and `TagBox.Source`.
 `Box.Tag.Manual` is true for the rendered formula-level tag. See the TeX
@@ -255,9 +251,8 @@ invocation origin while retaining their expanded source spans.
 2. then smallest area;
 3. then earliest source range.
 
-The point and hit areas must be in the same coordinate level. For aggregate
-boxes, use aggregate hits with aggregate coordinates. For line-local boxes, use
-line-local hits with line-local coordinates.
+Hits use the same parent-frame coordinates as items. A line's hit range selects
+the hits belonging to that line without changing their coordinates.
 
 ### Range Highlighting
 
@@ -289,20 +284,19 @@ absolute screen rectangle.
 
 For constrained display:
 
-- each line has line-local overflow;
-- the parent overflow is the global allowance for the aligned aggregate;
+- each line records its own overflow;
+- the parent overflow is the global allowance for the aligned shared list;
 - a line's logical width excess can create overflow even when its ink fits.
 
 ## Drawing Checklist
 
 - Apply the host's box translation once.
-- Choose parent items or line-local items, never both.
+- Draw `Box.Items` once; line and tag ranges select subsets of that list.
 - Fill glyph paths and rules with resolved paints.
 - Treat `ItemGlyphRef` as either a cache substitute or metadata, not an extra
   shape.
-- Draw the tag separately only when drawing line-local items.
 - Use `Bounds()` for fitting.
-- Use source hits in the same coordinate space as the chosen item level.
+- Use source hits in the same parent-frame coordinate space.
 - Do not mutate a shared `Box`.
 
 ## Evidence
