@@ -12,7 +12,13 @@
   implement their own policy without Untie fabricating one.
 - Links are text-only. TeX `\href`/`\url` and Typst `link` preserve visible body
   text and source spans, but destinations are intentionally discarded with an
-  unsupported warning. There is no neutral link metadata.
+  unsupported warning after argument validation. Braced TeX URL groups preserve
+  raw characters such as `%20`, `~`, `#`, whitespace, and balanced braces;
+  `\url` also accepts one token, and unclosed groups report
+  `unclosed-group`. Empty `\url{}` and `\href{}{body}` remain valid. Typst
+  destinations in the bounded evaluator must be non-empty strings; labels,
+  references, and document-level resolution are outside scope. There is no
+  neutral link metadata.
 - Width-constrained display layout now uses the requested `Style.MaxWidth` as
   `Box.Width`, not the widest intrinsic line width. `AlignStart` with a positive
   `MaxWidth` therefore returns a frame-width box whose parent items and hits use
@@ -30,3 +36,6 @@
 
 - `\nobreak` remains outside the neutral break contract and produces an
   unsupported diagnostic. Untie does not implement a cost-based line breaker.
+- Full LaTeX `hyperref` behavior, Typst labels/references as destinations,
+  destination metadata, and clickable output are outside the neutral formula
+  IR.

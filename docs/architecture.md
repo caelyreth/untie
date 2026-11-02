@@ -295,9 +295,16 @@ positions. `MarshalCanonical` exists for deterministic tests and diagnostics;
 it is not yet a stable cross-language protocol.
 
 Links are a deliberate text-only boundary. TeX `\href`/`\url` and Typst `link`
-retain rendered body content and its source spans, discard the destination with
-an unsupported warning, and create no neutral link metadata. Hyperlink
-interaction belongs to a future backend rather than the math IR.
+retain rendered body content and its source spans, discard the destination, and
+create no neutral link metadata. A warning is emitted only when the destination
+and body pass the frontend's bounded argument checks. The TeX lexer switches its
+URL group to catcode-neutral scanning, preserving `%`, `~`, `#`, whitespace, and
+balanced braces without leaking destination tokens into the formula. `\url`
+accepts a braced group or one token; an empty group is valid; an
+unclosed group reports `unclosed-group`. Typst destinations are non-empty string
+values; labels, references, and document-level resolution are outside the
+current evaluator. Full `hyperref` behavior and clickable output belong to a
+future backend rather than the math IR.
 
 ## Public Orchestration
 
