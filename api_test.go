@@ -417,3 +417,32 @@ func TestExprAltContextCancellationAndNil(t *testing.T) {
 		t.Fatalf("nil Expr.AltContext() error = %v, want ErrInvalidExpr", err)
 	}
 }
+
+func TestTinyTextLimitStillReturnsValidExpression(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{"é", "😀", "abc"} {
+		expr := Parse(src, Typst, Inline, ParseOptions{Limits: source.Limits{
+			MaxSourceBytes: len(src),
+			MaxTextBytes:   1,
+		}})
+		root, err := expr.RootSnapshot()
+		if err != nil {
+			t.Fatalf("RootSnapshot(%q) error = %v", src, err)
+		}
+		if err := ir.ValidateSource(root, src, source.Limits{MaxTextBytes: 1}); err != nil {
+			t.Fatalf("fallback IR for %q is invalid: %v", src, err)
+		}
+		for _, diagnostic := range expr.Diagnostics() {
+			if diagnostic.Code == source.CodeInternal {
+				t.Fatalf("tiny text limit for %q leaked an internal diagnostic: %+v", src, diagnostic)
+			}
+		}
+	}
+	if got := truncateUTF8("é", 1); got != "?" {
+		t.Fatalf("truncateUTF8(é,1) = %q, want ?", got)
+	}
+	if got := truncateUTF8("😀", 2); got != "?" {
+		t.Fatalf("truncateUTF8(😀,2) = %q, want ?", got)
+	}
+}

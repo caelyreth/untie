@@ -429,6 +429,9 @@ func isBuiltinCommand(name string) bool {
 	if _, ok := fontCommands[name]; ok {
 		return true
 	}
+	if _, ok := sizingCommands[name]; ok {
+		return true
+	}
 	if _, ok := infixCommands[name]; ok {
 		return true
 	}
@@ -448,6 +451,7 @@ func isBuiltinCommand(name string) bool {
 		"\\kern", "\\mkern", "\\hspace", "\\hskip", "\\mspace", "\\nobreak", "\\allowbreak",
 		"\\relax", "\\def", "\\gdef", "\\edef", "\\xdef", "\\newcommand", "\\renewcommand",
 		"\\providecommand", "\\let", "\\global", "\\begin", "\\end", "\\limits", "\\nolimits",
+		"\\mathstrut", "\\textcircled",
 		"\\big", "\\Big", "\\bigg", "\\Bigg", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl",
 		"\\bigr", "\\Bigr", "\\biggr", "\\Biggr", "\\bigm", "\\Bigm", "\\biggm", "\\Biggm":
 		return true

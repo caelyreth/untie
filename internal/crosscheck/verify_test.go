@@ -440,6 +440,36 @@ func TestCompareOutputsComparesRulesPathsAndPaint(t *testing.T) {
 	}
 }
 
+func TestFixtureComparisonIgnoresOptionalAndNonGlyphFields(t *testing.T) {
+	t.Parallel()
+
+	width, ascent, descent := 7.5, 3.0, 0.75
+	frame := fixture.Frame{
+		Box: &fixture.FrameBox{
+			Anchor: "baseline", Width: &width, Ascent: &ascent, Descent: &descent,
+		},
+		FontSize: 16,
+	}
+	box := &display.Box{
+		Width: 10, Ascent: 4, Descent: 1,
+		AxisHeight: 3.6,
+		Items: []display.Item{{
+			Kind:  display.ItemGlyphPath,
+			Paint: display.Paint{Role: display.RoleInk},
+			Bound: geometry.Rect{Width: 1, Height: 1},
+			Path: geometry.Path{{
+				Op: geometry.SegMoveTo,
+				Points: [3]geometry.Point{
+					{X: 1, Y: 1},
+				},
+			}},
+		}},
+	}
+	if difference := CompareOutputToFixture(box, frame); difference != "" {
+		t.Fatalf("CompareOutputToFixture() = %q", difference)
+	}
+}
+
 func TestTypstTableAugmentMatchesPinnedFixture(t *testing.T) {
 	root, _ := crosscheckPaths(t)
 	corpus, err := LoadPairedCorpus(root)

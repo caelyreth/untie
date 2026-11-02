@@ -75,6 +75,5 @@ func (s *layoutState) addCancelLine(fragment, body *Fragment, thickness geometry
 	if len(path) == 0 {
 		return nil
 	}
-	fragment.includePathBounds(path)
 	return fragment.pushPath(0, 0, &pathDraw{path: path, paint: paint})
 }

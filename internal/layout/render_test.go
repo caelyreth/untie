@@ -40,10 +40,10 @@ func TestRowAssemblyAndSpacing(t *testing.T) {
 	if diff := wantWidth - box.Width; diff > 1.0/1024 || diff < -1.0/1024 {
 		t.Fatalf("Width = %v, want %v", box.Width, wantWidth)
 	}
-	if got, want := box.Ascent, float32(11.2); !closeHost(got, want) {
+	if got, want := box.Ascent, float32(10.9279785); !closeHost(got, want) {
 		t.Fatalf("Ascent = %v, want %v", got, want)
 	}
-	if got, want := box.Descent, float32(3.2); !closeHost(got, want) {
+	if got, want := box.Descent, float32(0); !closeHost(got, want) {
 		t.Fatalf("Descent = %v, want %v", got, want)
 	}
 	if len(box.Items) != 3 {
@@ -64,7 +64,7 @@ func TestRowAssemblyAndSpacing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Layout(unary) error = %v", err)
 	}
-	if unaryBox.Width != 16 {
+	if !closeHost(unaryBox.Width, 16) {
 		t.Fatalf("unary width = %v, want 16", unaryBox.Width)
 	}
 }
@@ -105,10 +105,10 @@ func TestScriptsUseDerivedStyles(t *testing.T) {
 	if len(box.Items) < 2 {
 		t.Fatalf("items = %d, want base and superscript", len(box.Items))
 	}
-	if got, want := box.Items[0].Em, float32(16); got != want {
+	if got, want := box.Items[0].Em, float32(16); !closeHost(got, want) {
 		t.Fatalf("base Em = %v, want %v", got, want)
 	}
-	if got, want := box.Items[1].Em, float32(12.8); !closeHost(got, want) {
+	if got, want := box.Items[1].Em, float32(12.799805); !closeHost(got, want) {
 		t.Fatalf("superscript Em = %v, want %v", got, want)
 	}
 }
@@ -128,7 +128,7 @@ func TestFractionProducesRuleAndNestedStyles(t *testing.T) {
 	if len(box.Items) != 3 {
 		t.Fatalf("items = %d, want numerator, denominator, and rule", len(box.Items))
 	}
-	if box.Items[0].Em != 16 || box.Items[1].Em != 16 {
+	if !closeHost(box.Items[0].Em, 16) || !closeHost(box.Items[1].Em, 16) {
 		t.Fatalf("fraction child sizes = %v, %v, want 16, 16", box.Items[0].Em, box.Items[1].Em)
 	}
 	if box.Items[2].Kind != display.ItemRule {
@@ -303,6 +303,73 @@ func TestGlyphRefsAndMissingGlyph(t *testing.T) {
 	}
 	if _, err := renderer.Layout(glyph("missing", ir.ClassNormal), ir.Inline, testStyle(16)); !errors.Is(err, ErrMissingGlyph) {
 		t.Fatalf("missing glyph error = %v", err)
+	}
+}
+
+type assemblyGlyphSource struct{}
+
+func glyphPart(id uint16, x geometry.Em) PositionedGlyph {
+	advance := geometry.Em(geometry.EmScale / 2)
+	return PositionedGlyph{
+		At: Point{X: x},
+		Glyph: Glyph{
+			ID:            id,
+			FontID:        "assembly-test",
+			Advance:       advance,
+			Ascent:        geometry.Em(geometry.EmScale * 7 / 10),
+			Descent:       geometry.Em(geometry.EmScale / 5),
+			ExactGlyphRef: true,
+			Outline: Path{
+				{Op: geometry.SegMoveTo, Points: [3]Point{{X: 0, Y: -geometry.Em(geometry.EmScale / 5)}}},
+				{Op: geometry.SegLineTo, Points: [3]Point{{X: advance, Y: geometry.Em(geometry.EmScale * 7 / 10)}}},
+				{Op: geometry.SegClose},
+			},
+		},
+	}
+}
+
+func (assemblyGlyphSource) Glyph(req GlyphRequest) (Glyph, error) {
+	return Glyph{
+		ID:            99,
+		FontID:        "assembly-test",
+		Text:          req.Text,
+		Advance:       geometry.Em(geometry.EmScale),
+		Ascent:        geometry.Em(geometry.EmScale * 7 / 10),
+		Descent:       geometry.Em(geometry.EmScale / 5),
+		ExactGlyphRef: false,
+		Parts: []PositionedGlyph{
+			glyphPart(1, 0),
+			glyphPart(2, geometry.Em(geometry.EmScale/2)),
+		},
+	}, nil
+}
+
+func TestAssembledGlyphsSuppressInexactReferences(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := New(Fonts{
+		Glyphs:  assemblyGlyphSource{},
+		Metrics: fakeStyleFont{},
+	}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	style := testStyle(16)
+	style.GlyphRefs = true
+	box, err := renderer.Layout(glyph("assembly", ir.ClassNormal), ir.Inline, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(box.Items) != 2 {
+		t.Fatalf("items = %+v, want two assembly-part paths", box.Items)
+	}
+	for i, item := range box.Items {
+		if item.Kind != display.ItemGlyphPath {
+			t.Fatalf("item %d kind = %d, want path only", i, item.Kind)
+		}
+		if item.Glyph != uint16(i+1) {
+			t.Fatalf("item %d glyph = %d, want %d", i, item.Glyph, i+1)
+		}
 	}
 }
 

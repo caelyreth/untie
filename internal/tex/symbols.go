@@ -38,6 +38,7 @@ var (
 	limitOperators    = map[string]bool{}
 	fontCommands      = map[string]ir.Variant{}
 	infixCommands     = map[string]fractionInfix{}
+	sizingCommands    = map[string]uint8{}
 )
 
 type fractionInfix struct {
@@ -313,7 +314,7 @@ bigsqcup ⨆
 smallint ∫`)
 
 	for _, name := range []string{"sum", "prod", "coprod", "bigcap", "bigcup", "bigvee", "bigwedge",
-		"biguplus", "bigotimes", "bigoplus", "bigodot", "bigsqcup"} {
+		"biguplus", "bigotimes", "bigoplus", "bigodot", "bigsqcup", "intop", "smallint"} {
 		spec := symbolCommands["\\"+name]
 		spec.limits = ir.LimitsAuto
 		symbolCommands["\\"+name] = spec
@@ -324,6 +325,7 @@ smallint ∫`)
 	addSpaces()
 	addOperators()
 	addFonts()
+	addSizing()
 	addInfixes()
 	addEscapedSymbols()
 	addTeXAliases()
@@ -367,6 +369,7 @@ func addEscapedSymbols() {
 			variant: ir.VariantAuto,
 		}
 	}
+	symbolCommands["\\colon"] = symbolSpec{text: ":", class: ir.ClassPunctuation, variant: ir.VariantAuto}
 	delimiterCommands["\\|"] = delimiterSpec{text: "‖", class: ir.ClassFence}
 }
 
@@ -580,19 +583,13 @@ func addAccents() {
 		{"overlinesegment", "‾", true},
 		{"overleftharpoon", "↼", true},
 		{"overrightharpoon", "⇀", true},
+		{"textcircled", "◯", false},
 	} {
 		accentCommands["\\"+entry.name] = accentSpec{text: entry.text, stretchy: entry.stretch}
 	}
 }
 
 func addSpaces() {
-	mustMuLength := func(value float64) ir.Length {
-		length, err := ir.MuLength(value)
-		if err != nil {
-			panic("invalid built-in TeX math-unit space: " + err.Error())
-		}
-		return length
-	}
 	mustEmLength := func(value float64) ir.Length {
 		length, err := ir.EmLength(value)
 		if err != nil {
@@ -600,17 +597,17 @@ func addSpaces() {
 		}
 		return length
 	}
-	spacingCommands["\\,"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(3)}
+	spacingCommands["\\,"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(1.0 / 6.0)}
 	spacingCommands["\\thinspace"] = spacingCommands["\\,"]
-	spacingCommands["\\:"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(4)}
+	spacingCommands["\\:"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(2.0 / 9.0)}
 	spacingCommands["\\>"] = spacingCommands["\\:"]
 	spacingCommands["\\medspace"] = spacingCommands["\\:"]
-	spacingCommands["\\;"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(5)}
+	spacingCommands["\\;"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(5.0 / 18.0)}
 	spacingCommands["\\thickspace"] = spacingCommands["\\;"]
-	spacingCommands["\\!"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(-3)}
+	spacingCommands["\\!"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(-1.0 / 6.0)}
 	spacingCommands["\\negthinspace"] = spacingCommands["\\!"]
-	spacingCommands["\\negmedspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(-4)}
-	spacingCommands["\\negthickspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(-5)}
+	spacingCommands["\\negmedspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(-2.0 / 9.0)}
+	spacingCommands["\\negthickspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(-5.0 / 18.0)}
 	spacingCommands["\\enspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(0.5)}
 	spacingCommands["\\enskip"] = spacingCommands["\\enspace"]
 	spacingCommands["\\quad"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(1)}
@@ -659,6 +656,18 @@ func addFonts() {
 		"\\mathsfit":   ir.VariantSans,
 		"\\mathtt":     ir.VariantMonospace,
 		"\\bold":       ir.VariantBold,
+	}
+}
+
+func addSizing() {
+	// KaTeX size indices in src/functions/sizing.ts. The neutral IR currently
+	// has no font-size-index field, so these are recognized but cannot be
+	// lowered without an explicit diagnostic.
+	for i, name := range []string{
+		"tiny", "sixptsize", "scriptsize", "footnotesize", "small",
+		"normalsize", "large", "Large", "LARGE", "huge", "Huge",
+	} {
+		sizingCommands["\\"+name] = uint8(i + 1)
 	}
 }
 

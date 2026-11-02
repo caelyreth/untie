@@ -67,8 +67,17 @@ type Glyph struct {
 	InkBottom    geometry.Em
 	HasInkBottom bool
 	Kerns        MathKernInfo
-	TextLike     bool
-	Outline      Path
+	// StretchableHorizontal reports a MATH horizontal construction. Script
+	// layout uses it to select the stretch-stack limit constants.
+	StretchableHorizontal bool
+	// ExactGlyphRef reports that ID, FontID, Advance, ascent, and descent
+	// describe the complete drawn glyph, so hosts may cache and draw it by ID.
+	ExactGlyphRef bool
+	TextLike      bool
+	Outline       Path
+	// Parts carries the individual glyphs of a MATH assembly. Positions are
+	// baseline-relative local ems. Outline is empty for a part-backed glyph.
+	Parts []PositionedGlyph
 }
 
 // KernCorner identifies one of the four corners in an OpenType MATH

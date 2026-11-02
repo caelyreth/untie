@@ -111,6 +111,7 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 			if err != nil {
 				return nil, err
 			}
+			setOwnHitKind(fragment, display.HitTableCell)
 			rows[rowIndex].Cells[columnIndex] = *fragment
 		}
 		if row.Tag != nil {
@@ -118,6 +119,7 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 			if err != nil {
 				return nil, err
 			}
+			setOwnHitKind(tag, display.HitTableCell)
 			rows[rowIndex].Tag = tag
 		}
 	}
@@ -184,6 +186,8 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 		fragment.Class = node.Class
 		return fragment, nil
 	}
+	cellEnv := env
+	cellEnv.Style = env.Style.Denominator()
 	rows := make([]measuredTableRow, len(node.Rows))
 	for rowIndex, row := range node.Rows {
 		if rowIndex%64 == 0 {
@@ -196,7 +200,7 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			if err := s.ctx.Err(); err != nil {
 				return nil, err
 			}
-			parts, err := s.layoutAlignedParts(cell, env, depth)
+			parts, err := s.layoutAlignedParts(cell, cellEnv, depth)
 			if err != nil {
 				return nil, err
 			}
@@ -213,7 +217,7 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			rows[rowIndex].descent = max(rows[rowIndex].descent, measured.descent)
 		}
 		if row.Tag != nil {
-			tag, err := s.layoutNode(row.Tag, env, depth)
+			tag, err := s.layoutNode(row.Tag, cellEnv, depth)
 			if err != nil {
 				return nil, err
 			}
@@ -223,9 +227,7 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			rows[rowIndex].descent = max(rows[rowIndex].descent, tag.Descent)
 		}
 	}
-	parenEnv := env
-	parenEnv.Style = env.Style.Denominator()
-	paren, err := s.layoutClassGlyphText("(", ir.ClassOpening, parenEnv, nil)
+	paren, err := s.layoutClassGlyphText("(", ir.ClassOpening, cellEnv, nil)
 	if err != nil {
 		return nil, fmt.Errorf("layout table baseline parenthesis: %w", err)
 	}

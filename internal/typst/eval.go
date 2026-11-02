@@ -50,18 +50,25 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 	case astGlyph, astShorthand:
 		return symbolValue(n.text), true
 	case astIdentifier, astField:
-		if v, ok := codeKeywordValue(n.text); ok {
+		resolved := resolveIdent(n)
+		if resolved.unknownRoot != "" {
+			return value{}, false
+		}
+		if v, ok := codeKeywordValue(resolved.name); ok {
 			return v, true
 		}
-		if v, ok := namedColor(n.text); ok {
+		if v, ok := namedColor(resolved.name); ok {
 			return v, true
 		}
-		switch n.text {
+		switch resolved.name {
 		case "left", "right", "center", "start", "end", "top", "bottom", "horizon":
-			return symbolValue(n.text), true
+			return symbolValue(resolved.name), true
 		}
-		if def, ok := symbol(n.text); ok {
+		if def, ok := symbol(resolved.name); ok {
 			return symbolValue(def.text), true
+		}
+		if n.inCode {
+			return value{}, false
 		}
 		return contentValue(n), true
 	case astCode:
@@ -122,7 +129,8 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 		}
 		return divideValues(left, right)
 	case astCall:
-		switch callName(n) {
+		name := callName(n.base)
+		switch name {
 		case "rgb":
 			return l.evalRGB(n)
 		case "luma":

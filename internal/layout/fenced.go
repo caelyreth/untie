@@ -11,11 +11,19 @@ func (s *layoutState) layoutFenced(node *ir.Fenced, env environment, depth int) 
 	if err != nil {
 		return nil, err
 	}
-	target, err := body.Height()
+	bodyHeight, err := body.Height()
 	if err != nil {
 		return nil, err
 	}
-	if node.Balanced {
+	target := bodyHeight
+	if matrixFenceBody(node) {
+		// Matrix constructors stretch their delimiters relative to 1.1 times
+		// the table body height, independently of \left...\right balancing.
+		target, err = mulDiv(bodyHeight, 11, 10)
+		if err != nil {
+			return nil, err
+		}
+	} else if node.Balanced {
 		metrics := s.fontMetrics(env.Style, env.Variant)
 		axis, err := s.metricAt(metrics.AxisHeight, env.Style)
 		if err != nil {
@@ -79,11 +87,24 @@ func (s *layoutState) layoutFenced(node *ir.Fenced, env environment, depth int) 
 	return withClass(fragment, node.Class), nil
 }
 
+func matrixFenceBody(node *ir.Fenced) bool {
+	if node == nil || len(node.Body) != 1 {
+		return false
+	}
+	_, ok := node.Body[0].(*ir.Table)
+	return ok
+}
+
 func (s *layoutState) fenceDelimiter(node ir.Node, env environment, depth int, target geometry.Em) (*Fragment, error) {
 	if node == nil {
 		return nil, nil
 	}
 	nodeEnv := s.nodeEnvironment(node, env)
+	shortFall, err := s.metricAt(geometry.Em(geometry.EmScale/10), nodeEnv.Style)
+	if err != nil {
+		return nil, err
+	}
+	stretch := &stretchSpec{axis: Vertical, target: target, shortFall: shortFall}
 	switch item := node.(type) {
 	case *ir.Glyph:
 		if err := s.check(depth); err != nil {
@@ -92,7 +113,7 @@ func (s *layoutState) fenceDelimiter(node ir.Node, env environment, depth int, t
 		if err := s.checkTextLimit(node); err != nil {
 			return nil, err
 		}
-		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{axis: Vertical, target: target})
+		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, stretch)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +128,7 @@ func (s *layoutState) fenceDelimiter(node ir.Node, env environment, depth int, t
 		if err := s.checkTextLimit(node); err != nil {
 			return nil, err
 		}
-		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{axis: Vertical, target: target})
+		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, stretch)
 		if err != nil {
 			return nil, err
 		}

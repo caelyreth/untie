@@ -34,6 +34,9 @@ const (
 type astNode struct {
 	kind astKind
 	span source.Range
+	// inCode distinguishes a code-mode expression from math-mode content.
+	// Typst exposes modules such as sym and math only through code mode.
+	inCode bool
 
 	// text is source text for glyphs, identifiers, and fields; it is the
 	// decoded value for strings.

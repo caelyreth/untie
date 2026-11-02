@@ -45,10 +45,10 @@
   },
   "summary": {
     "total": 1111,
-    "pass": 1028,
+    "pass": 1029,
     "diagnostic": 26,
-    "unsupported": 46,
-    "bug": 11,
+    "unsupported": 56,
+    "bug": 0,
     "unexplained": 0
   },
   "families": [
@@ -4813,9 +4813,7 @@
       "id": "line:000008",
       "corpus": "ratex-core",
       "index": 8,
-      "status": "unsupported",
-      "review": "known-gap",
-      "reason": "Inline math delimiters inside text mode are not yet lowered without a diagnostic.",
+      "status": "pass",
       "families": [
         "command:\\(",
         "command:\\)",
@@ -4828,34 +4826,7 @@
         "\\)",
         "\\frac",
         "\\text"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 6,
-          "end": 8,
-          "message": "command '\\(' is not supported in text mode"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 8,
-          "end": 13,
-          "message": "command '\\frac' is not supported in text mode"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 17,
-          "end": 19,
-          "message": "command '\\)' is not supported in text mode"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000009",
@@ -5108,6 +5079,18 @@
       ],
       "commands": [
         "\\above"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 3,
+          "end": 9,
+          "message": "custom \\above rule thickness is not represented in the neutral IR"
+        }
       ]
     },
     {
@@ -7162,6 +7145,32 @@
       ],
       "commands": [
         "\\cfrac"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 0,
+          "end": 6,
+          "message": "continued-fraction strut semantics are not represented in the neutral IR"
+        },
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 12,
+          "end": 18,
+          "message": "continued-fraction strut semantics are not represented in the neutral IR"
+        },
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 24,
+          "end": 30,
+          "message": "continued-fraction strut semantics are not represented in the neutral IR"
+        }
       ]
     },
     {
@@ -9058,9 +9067,9 @@
       "id": "line:000307",
       "corpus": "ratex-core",
       "index": 307,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\footnotesize"
       ],
@@ -9068,18 +9077,18 @@
         "\\footnotesize"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 13,
-          "message": "undefined control sequence: \\footnotesize"
+          "message": "math font-size declaration '\\footnotesize' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000308",
@@ -9282,6 +9291,18 @@
       ],
       "commands": [
         "\\genfrac"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 0,
+          "end": 8,
+          "message": "custom \\genfrac rule thickness is not represented in the neutral IR"
+        }
       ]
     },
     {
@@ -9937,9 +9958,9 @@
       "id": "line:000367",
       "corpus": "ratex-core",
       "index": 367,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\huge"
       ],
@@ -9947,26 +9968,26 @@
         "\\huge"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 5,
-          "message": "undefined control sequence: \\huge"
+          "message": "math font-size declaration '\\huge' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000368",
       "corpus": "ratex-core",
       "index": 368,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\Huge"
       ],
@@ -9974,18 +9995,18 @@
         "\\Huge"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 5,
-          "message": "undefined control sequence: \\Huge"
+          "message": "math font-size declaration '\\Huge' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000369",
@@ -10516,9 +10537,9 @@
       "id": "line:000410",
       "corpus": "ratex-core",
       "index": 410,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\large"
       ],
@@ -10526,26 +10547,26 @@
         "\\large"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 6,
-          "message": "undefined control sequence: \\large"
+          "message": "math font-size declaration '\\large' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000411",
       "corpus": "ratex-core",
       "index": 411,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\Large"
       ],
@@ -10553,26 +10574,26 @@
         "\\Large"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 6,
-          "message": "undefined control sequence: \\Large"
+          "message": "math font-size declaration '\\Large' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000412",
       "corpus": "ratex-core",
       "index": 412,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\LARGE"
       ],
@@ -10580,18 +10601,18 @@
         "\\LARGE"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 6,
-          "message": "undefined control sequence: \\LARGE"
+          "message": "math font-size declaration '\\LARGE' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000413",
@@ -11633,6 +11654,18 @@
       "commands": [
         "\\,",
         "\\mathchoice"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 1,
+          "end": 12,
+          "message": "\\mathchoice is resolved from the root mode because the neutral IR has no style-conditional node"
+        }
       ]
     },
     {
@@ -12383,9 +12416,9 @@
       "id": "line:000552",
       "corpus": "ratex-core",
       "index": 552,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\normalsize"
       ],
@@ -12393,18 +12426,18 @@
         "\\normalsize"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 11,
-          "message": "undefined control sequence: \\normalsize"
+          "message": "math font-size declaration '\\normalsize' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000553",
@@ -14355,6 +14388,18 @@
       ],
       "commands": [
         "\\rule"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 1,
+          "end": 6,
+          "message": "vertical \\rule shift is not represented in the neutral IR"
+        }
       ]
     },
     {
@@ -14414,9 +14459,9 @@
       "id": "line:000704",
       "corpus": "ratex-core",
       "index": 704,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\scriptsize"
       ],
@@ -14424,18 +14469,18 @@
         "\\scriptsize"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 11,
-          "message": "undefined control sequence: \\scriptsize"
+          "message": "math font-size declaration '\\scriptsize' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000705",
@@ -14691,9 +14736,9 @@
       "id": "line:000725",
       "corpus": "ratex-core",
       "index": 725,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\sixptsize"
       ],
@@ -14701,18 +14746,18 @@
         "\\sixptsize"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 10,
-          "message": "undefined control sequence: \\sixptsize"
+          "message": "math font-size declaration '\\sixptsize' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000726",
@@ -14730,9 +14775,9 @@
       "id": "line:000727",
       "corpus": "ratex-core",
       "index": 727,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\small"
       ],
@@ -14740,18 +14785,18 @@
         "\\small"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 6,
-          "message": "undefined control sequence: \\small"
+          "message": "math font-size declaration '\\small' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000728",
@@ -15597,9 +15642,9 @@
       "id": "line:000791",
       "corpus": "ratex-core",
       "index": 791,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work.",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
       "families": [
         "command:\\tiny"
       ],
@@ -15607,18 +15652,18 @@
         "\\tiny"
       ],
       "codes": [
-        "unknown-command"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-command",
+          "code": "unsupported",
           "severity": 0,
           "start": 0,
           "end": 5,
-          "message": "undefined control sequence: \\tiny"
+          "message": "math font-size declaration '\\tiny' requires a neutral font-size field"
         }
       ],
-      "detail": "upstream case expects successful parsing"
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000792",

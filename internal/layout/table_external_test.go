@@ -14,13 +14,14 @@ type externalGlyphSource struct{}
 
 func (externalGlyphSource) Glyph(req layout.GlyphRequest) (layout.Glyph, error) {
 	return layout.Glyph{
-		ID:       1,
-		FontID:   "external-test",
-		Text:     req.Text,
-		Advance:  geometry.Em(geometry.EmScale / 2),
-		Ascent:   geometry.Em(geometry.EmScale * 7 / 10),
-		Descent:  geometry.Em(geometry.EmScale / 5),
-		TextLike: true,
+		ID:            1,
+		FontID:        "external-test",
+		Text:          req.Text,
+		Advance:       geometry.Em(geometry.EmScale / 2),
+		Ascent:        geometry.Em(geometry.EmScale * 7 / 10),
+		Descent:       geometry.Em(geometry.EmScale / 5),
+		ExactGlyphRef: true,
+		TextLike:      true,
 	}, nil
 }
 

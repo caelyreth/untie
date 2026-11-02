@@ -206,11 +206,17 @@ func parseRecovered(
 			})
 		} else if err := ir.ValidateSource(candidate, src, limits); err != nil {
 			diagnostics = append(diagnostics, result.diagnostics...)
+			code := source.CodeInternal
+			message := fmt.Sprintf("frontend returned invalid IR: %v", err)
+			if len(src) > limits.MaxTextBytes {
+				code = source.CodeLimitExceeded
+				message = fmt.Sprintf("frontend output exceeds text byte limit: %v", err)
+			}
 			diagnostics = append(diagnostics, source.Diagnostic{
 				Range:    source.NewRange(0, len(src)),
 				Severity: source.SeverityError,
-				Code:     source.CodeInternal,
-				Message:  fmt.Sprintf("frontend returned invalid IR: %v", err),
+				Code:     code,
+				Message:  message,
 			})
 		} else {
 			root = candidate
@@ -360,14 +366,18 @@ func fallbackRoot(src string, limits source.Limits) ir.Node {
 	span := source.NewRange(0, len(src))
 	row := &ir.Row{Base: ir.NewBase(ir.KindRow, span)}
 	if src != "" {
-		row.Items = []ir.Node{ir.NewError(span, truncateUTF8(src, limits.MaxTextBytes), source.CodeUnsupported)}
+		text := truncateUTF8(src, limits.MaxTextBytes)
+		if text == "" {
+			text = "?"
+		}
+		row.Items = []ir.Node{ir.NewError(span, text, source.CodeUnsupported)}
 	}
 	return row
 }
 
 func truncateUTF8(text string, limit int) string {
 	if limit <= 0 {
-		return ""
+		limit = 1
 	}
 	if len(text) <= limit {
 		return text
@@ -375,6 +385,9 @@ func truncateUTF8(text string, limit int) string {
 	text = text[:limit]
 	for !utf8.ValidString(text) {
 		text = text[:len(text)-1]
+	}
+	if text == "" {
+		return "?"
 	}
 	return text
 }

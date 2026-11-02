@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
@@ -52,8 +53,16 @@ func TestTableRequestPreservesStyleLinesTagsAndCellStyle(t *testing.T) {
 	if tables.req.Rows[0].Cells[0].Size != Script {
 		t.Fatalf("cell size = %v, want script", tables.req.Rows[0].Cells[0].Size)
 	}
+	cell := tables.req.Rows[0].Cells[0]
+	if cell.ownHit < 0 || cell.hits[cell.ownHit].kind != display.HitTableCell {
+		t.Fatalf("cell own hit = %+v, want table-cell kind", cell.hits)
+	}
 	if tables.req.Rows[0].Tag == nil || tables.req.Rows[0].Tag.Size != Script {
 		t.Fatalf("tag = %+v, want measured tag in inherited style", tables.req.Rows[0].Tag)
+	}
+	tag := tables.req.Rows[0].Tag
+	if tag.ownHit < 0 || tag.hits[tag.ownHit].kind != display.HitTableCell {
+		t.Fatalf("tag own hit = %+v, want table-cell kind", tag.hits)
 	}
 	if len(tables.req.Horizontal) != 1 || !tables.req.Horizontal[0].Dashed || tables.req.Horizontal[0].Thickness <= 0 {
 		t.Fatalf("horizontal lines = %+v", tables.req.Horizontal)
@@ -130,5 +139,63 @@ func TestTableExtensionCycleIsRejected(t *testing.T) {
 	})
 	if _, err := renderer.Layout(table, ir.Inline, testStyle(16)); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("Layout() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+type repeatedReferenceTableLayouter struct{}
+
+func (repeatedReferenceTableLayouter) LayoutTable(req TableRequest) (Fragment, bool) {
+	child, err := NewFragment(
+		Metrics{
+			Width:   geometry.Em(geometry.EmScale),
+			Ascent:  geometry.Em(geometry.EmScale / 2),
+			Descent: geometry.Em(geometry.EmScale / 2),
+		},
+		ir.ClassInner,
+		req.Style.Size,
+		geometry.Em(geometry.EmScale),
+	)
+	if err != nil {
+		return Fragment{}, false
+	}
+	root, err := NewFragment(
+		Metrics{
+			Width:   geometry.Em(geometry.EmScale),
+			Ascent:  geometry.Em(geometry.EmScale / 2),
+			Descent: geometry.Em(geometry.EmScale / 2),
+		},
+		ir.ClassInner,
+		req.Style.Size,
+		geometry.Em(geometry.EmScale),
+	)
+	if err != nil {
+		return Fragment{}, false
+	}
+	for range 10 {
+		if err := root.AddGroup(0, 0, child); err != nil {
+			return Fragment{}, false
+		}
+	}
+	return *root, true
+}
+
+func TestTableExtensionRepeatedReferencesUseVisitBudget(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := New(Fonts{
+		Glyphs:  &fakeGlyphSource{glyphs: map[string]Glyph{}},
+		Metrics: fakeStyleFont{},
+	}, Options{
+		Tables: repeatedReferenceTableLayouter{},
+		Limits: source.Limits{MaxNodes: 4, MaxNesting: 10, MaxTableCells: 10},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	table := ir.NewTable(source.NewRange(0, 1), ir.TableRow{
+		Cells: []ir.Node{glyph("x", ir.ClassNormal)},
+	})
+	if _, err := renderer.Layout(table, ir.Inline, testStyle(16)); !errors.Is(err, ErrLimit) {
+		t.Fatalf("Layout() error = %v, want ErrLimit", err)
 	}
 }

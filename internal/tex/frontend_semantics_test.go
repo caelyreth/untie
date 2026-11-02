@@ -1,0 +1,272 @@
+package tex
+
+import (
+	"testing"
+	"time"
+
+	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
+)
+
+func TestMathClassCommandsDoNotCreateImplicitLimits(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		source string
+		class  ir.MathClass
+	}{
+		{`\mathop{x}_i`, ir.ClassLarge},
+		{`\mathbin{+}_i`, ir.ClassBinary},
+		{`\mathrel{=}_i`, ir.ClassRelation},
+		{`\mathord{x}_i`, ir.ClassNormal},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
+			scripts := requireKind[*ir.Scripts](t, rowItems(t, parseTest(t, tc.source, Options{}).Root)[0])
+			if scripts.Limits != ir.LimitsNever || scripts.Class != tc.class {
+				t.Fatalf("scripts class/limits = %v/%v, want %v/%v",
+					scripts.Class, scripts.Limits, tc.class, ir.LimitsNever)
+			}
+		})
+	}
+
+	scripts := requireKind[*ir.Scripts](t, rowItems(t, parseTest(t, `\mathop{x}\limits_i`, Options{}).Root)[0])
+	if scripts.Limits != ir.LimitsAlways || scripts.Class != ir.ClassLarge {
+		t.Fatalf("mathop limits class/limits = %v/%v, want large/always", scripts.Class, scripts.Limits)
+	}
+}
+
+func TestNamedOperatorLimitContracts(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{
+		`\liminf_x`, `\limsup_x`, `\argmax_x`, `\argmin_x`,
+		`\injlim_x`, `\projlim_x`, `\plim_x`,
+		`\varlimsup_x`, `\varliminf_x`, `\varinjlim_x`, `\varprojlim_x`,
+	} {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			scripts := requireKind[*ir.Scripts](t, rowItems(t, parseTest(t, src, Options{}).Root)[0])
+			if scripts.Class != ir.ClassLarge || scripts.Limits != ir.LimitsAlways {
+				t.Fatalf("class/limits = %v/%v, want large/always", scripts.Class, scripts.Limits)
+			}
+		})
+	}
+
+	root := parseTest(t, `\liminf`, Options{}).Root
+	var operatorTexts []string
+	var thinSpace ir.Length
+	ir.Walk(root, func(node ir.Node) bool {
+		switch node := node.(type) {
+		case *ir.Operator:
+			operatorTexts = append(operatorTexts, node.Text)
+		case *ir.Space:
+			thinSpace = node.Amount
+		}
+		return true
+	})
+	if len(operatorTexts) != 2 || operatorTexts[0] != "lim" || operatorTexts[1] != "inf" {
+		t.Fatalf("operator parts = %v, want [lim inf]", operatorTexts)
+	}
+	wantThin, _ := ir.EmLength(1.0 / 6.0)
+	if thinSpace != wantThin {
+		t.Fatalf("operator separator = %v, want %v", thinSpace, wantThin)
+	}
+}
+
+func TestStackrelNotAndStructuralBracesUseKaTeXClasses(t *testing.T) {
+	t.Parallel()
+
+	stackrel := requireKind[*ir.Scripts](t, rowItems(t, parseTest(t, `\stackrel{?}{x}`, Options{}).Root)[0])
+	if stackrel.Class != ir.ClassRelation || stackrel.Limits != ir.LimitsAlways {
+		t.Fatalf("stackrel class/limits = %v/%v, want relation/always", stackrel.Class, stackrel.Limits)
+	}
+
+	not := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\not=`, Options{}).Root)[0])
+	if not.Class != ir.ClassRelation || not.Body.NodeBase().Class != ir.ClassRelation {
+		t.Fatalf("not classes = %v/%v, want relation/relation", not.Class, not.Body.NodeBase().Class)
+	}
+
+	for _, source := range []string{`\overbrace{x}`, `\underbrace{x}`, `\overbracket{x}`, `\underbracket{x}`} {
+		node := rowItems(t, parseTest(t, source, Options{}).Root)[0]
+		if node.NodeBase().Class != ir.ClassInner || node.NodeBase().Limits != ir.LimitsAlways {
+			t.Errorf("%s class/limits = %v/%v, want inner/always", source, node.NodeBase().Class, node.NodeBase().Limits)
+		}
+	}
+
+	utilde := rowItems(t, parseTest(t, `\utilde{x}`, Options{}).Root)[0].(*ir.Accent)
+	if !utilde.Stretchy {
+		t.Fatal("utilde is not stretchy")
+	}
+}
+
+func TestGenfracStyleInheritance(t *testing.T) {
+	t.Parallel()
+
+	inherit := requireKind[*ir.Fraction](t, rowItems(t, parseTest(t, `\genfrac{}{}{}{}{a}{b}`, Options{}).Root)[0])
+	if inherit.Size != ir.SizeInherit {
+		t.Fatalf("empty genfrac style = %v, want inherit", inherit.Size)
+	}
+	text := requireKind[*ir.Fraction](t, rowItems(t, parseTest(t, `\genfrac{}{}{}{1}{a}{b}`, Options{}).Root)[0])
+	if text.Size != ir.SizeText {
+		t.Fatalf("text genfrac style = %v, want text", text.Size)
+	}
+}
+
+func TestInlineMathInTextTerminatesAndPreservesStructure(t *testing.T) {
+	t.Parallel()
+
+	sources := []string{
+		`\text{graph: \(y = mx + b\)}`,
+		`\text{hello \(x + \text{world $y$} + z\)}`,
+		`\text{hello $x + \text{world \(y\)} + z$}`,
+	}
+	for _, src := range sources {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			result := parseWithin(t, src, 2*time.Second)
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Severity == source.SeverityError {
+					t.Fatalf("diagnostics: %v", result.Diagnostics)
+				}
+			}
+			var styles int
+			ir.Walk(result.Root, func(node ir.Node) bool {
+				if node.Kind() == ir.KindStyle {
+					styles++
+				}
+				return true
+			})
+			if styles == 0 {
+				t.Fatal("inline math content was not parsed")
+			}
+		})
+	}
+
+	for _, src := range []string{`\text{\(x$}`, `\text{\)}`, `\(x\)`} {
+		result := parseTest(t, src, Options{})
+		if len(result.Diagnostics) == 0 {
+			t.Errorf("%s parsed without an error diagnostic", src)
+		}
+	}
+}
+
+func TestTextRunsAreCoalescedAndSpacesContracted(t *testing.T) {
+	t.Parallel()
+
+	result := parseTest(t, `\text{  if   x }`, Options{})
+	var runs []string
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		if text, ok := node.(*ir.Text); ok {
+			runs = append(runs, text.Text)
+		}
+		return true
+	})
+	if len(runs) != 1 || runs[0] != " if x " {
+		t.Fatalf("text runs = %q, want [%q]", runs, " if x ")
+	}
+}
+
+func TestSizeDeclarationsAreBoundedAndExplicit(t *testing.T) {
+	t.Parallel()
+
+	for _, command := range []string{
+		`\tiny`, `\sixptsize`, `\scriptsize`, `\footnotesize`, `\small`,
+		`\normalsize`, `\large`, `\Large`, `\LARGE`, `\huge`, `\Huge`,
+	} {
+		command := command
+		t.Run(command, func(t *testing.T) {
+			t.Parallel()
+			src := command + " label"
+			result := parseWithin(t, src, 2*time.Second)
+			if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+				t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+			}
+			if hasDiagnostic(result.Diagnostics, source.CodeUnknownCommand) {
+				t.Fatalf("diagnostics = %v, size command was not recognized", diagnosticCodes(result.Diagnostics))
+			}
+			diagnostic := result.Diagnostics[0]
+			if diagnostic.Range.Start != 0 || diagnostic.Range.End != len(command) {
+				t.Fatalf("size diagnostic range = %v, want [0,%d)", diagnostic.Range, len(command))
+			}
+		})
+	}
+
+	result := parseWithin(t, `\text{\small text}`, 2*time.Second)
+	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+		t.Fatalf("text sizing diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+	}
+}
+
+func TestExplicitAlphabetLoweringKeepsGroupsTransparent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		source  string
+		variant ir.Variant
+	}{
+		{`\mathbb{R}`, ir.VariantDoubleStruck},
+		{`\mathcal{L}`, ir.VariantScript},
+		{`\mathbf{x}`, ir.VariantBold},
+		{`\boldsymbol{\alpha}`, ir.VariantBoldItalic},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
+			group := requireKind[*ir.Row](t, rowItems(t, parseTest(t, tc.source, Options{}).Root)[0])
+			if group.Variant != ir.VariantAuto {
+				t.Errorf("group variant = %v, want auto", group.Variant)
+			}
+			glyph := requireKind[*ir.Glyph](t, group.Items[0])
+			if glyph.Class != ir.ClassNormal || glyph.Variant != tc.variant {
+				t.Errorf("glyph class/variant = %v/%v, want normal/%v", glyph.Class, glyph.Variant, tc.variant)
+			}
+		})
+	}
+}
+
+func TestCommonKaTeXCommandsAndUnrepresentableOptions(t *testing.T) {
+	t.Parallel()
+
+	strut := requireKind[*ir.Phantom](t, rowItems(t, parseTest(t, `\mathstrut`, Options{}).Root)[0])
+	if strut.Width || !strut.Height || !strut.Depth {
+		t.Fatalf("mathstrut phantom extents = %v/%v/%v, want false/true/true",
+			strut.Width, strut.Height, strut.Depth)
+	}
+
+	if node := rowItems(t, parseTest(t, `\textcircled{1}`, Options{}).Root)[0]; node.Kind() != ir.KindAccent {
+		t.Fatalf("textcircled kind = %v, want accent", node.Kind())
+	}
+	if got := collectText(parseTest(t, `\text{a\textdagger b\textdaggerdbl c}`, Options{}).Root); got != "a†b‡c" {
+		t.Fatalf("text symbols = %q, want %q", got, "a†b‡c")
+	}
+	for source, want := range map[string]string{`\char` + "`a": "a", `\char` + "`\\#": "#"} {
+		glyph := requireKind[*ir.Glyph](t, rowItems(t, parseTest(t, source, Options{}).Root)[0])
+		if glyph.Text != want {
+			t.Errorf("%s glyph = %q, want %q", source, glyph.Text, want)
+		}
+	}
+	smash := requireKind[*ir.Phantom](t, rowItems(t, parseTest(t, `\smash[t]{x}`, Options{}).Root)[0])
+	if !smash.Width || smash.Height || !smash.Depth {
+		t.Fatalf("smash[t] extents = %v/%v/%v, want true/false/true",
+			smash.Width, smash.Height, smash.Depth)
+	}
+
+	for _, src := range []string{
+		`\cfrac{1}{2}`,
+		`\genfrac(){1pt}{0}{a}{b}`,
+		`a\above 1pt b`,
+		`\rule[1pt]{1em}{1em}`,
+		`\mathchoice{a}{b}{c}{d}`,
+	} {
+		result := parseTest(t, src, Options{})
+		if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+			t.Errorf("%s diagnostics = %v, want explicit unsupported", src, diagnosticCodes(result.Diagnostics))
+		}
+	}
+}

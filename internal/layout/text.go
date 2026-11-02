@@ -15,6 +15,12 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 	if err != nil {
 		return nil, err
 	}
+	if absoluteTracking(node.Tracking.Unit) {
+		tracking, err = unscale(tracking, s.scale(env.Style))
+		if err != nil {
+			return nil, err
+		}
+	}
 	run, err := s.renderer.fonts.Text.ShapeText(TextRequest{
 		Context:  s.ctx,
 		Text:     node.Text,
@@ -28,6 +34,10 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 		return nil, err
 	}
 	return s.layoutTextRun(run, env, true)
+}
+
+func absoluteTracking(unit ir.LengthUnit) bool {
+	return unit == ir.LengthDip || unit == ir.LengthPt
 }
 
 func (s *layoutState) layoutOperator(node *ir.Operator, env environment) (*Fragment, error) {

@@ -224,18 +224,25 @@
       ],
       "codes": ["unsupported"],
       "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion."
-    }
-  ],
-  "knownGaps": [
-    {
-      "corpus": "ratex-core",
-      "codes": ["unknown-command", "invalid-environment", "unexpected-token", "invalid-value"],
-      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work."
     },
     {
       "corpus": "ratex-core",
-      "ids": ["line:000008"],
-      "reason": "Inline math delimiters inside text mode are not yet lowered without a diagnostic."
+      "families": [
+        "command:\\tiny",
+        "command:\\sixptsize",
+        "command:\\scriptsize",
+        "command:\\footnotesize",
+        "command:\\small",
+        "command:\\normalsize",
+        "command:\\large",
+        "command:\\Large",
+        "command:\\LARGE",
+        "command:\\huge",
+        "command:\\Huge"
+      ],
+      "codes": ["unsupported"],
+      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR."
     }
-  ]
+  ],
+  "knownGaps": []
 }

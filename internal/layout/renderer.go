@@ -10,7 +10,9 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
-const hostSubunits int64 = 1024
+// hostSubunits matches geometry.EmScale so font metrics and host conversion do
+// not introduce a coarser rounding step before flattening.
+const hostSubunits int64 = 1 << 16
 
 // Options configures a Renderer. Zero limits use source.DefaultLimits.
 type Options struct {
@@ -127,11 +129,12 @@ type layoutState struct {
 }
 
 type environment struct {
-	Style    Style
-	Variant  ir.Variant
-	Font     ir.FontRole
-	Paint    ir.Paint
-	Features []string
+	Style               Style
+	Variant             ir.Variant
+	Font                ir.FontRole
+	Paint               ir.Paint
+	Features            []string
+	SkipLeadingExplicit bool
 }
 
 func rootStyle(mode ir.Mode, scriptLevel int) (Style, error) {
