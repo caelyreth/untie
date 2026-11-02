@@ -144,7 +144,8 @@ type Accent struct {
 	Body            Node
 	Accent          Node
 	Position        Position
-	Stretchy        bool
+	Stretchy        bool // Source explicitly requests a stretchable accent.
+	NaturalFit      bool // Layout must select an accent fitting the base width.
 	Dotless         bool
 	ExactFrameWidth bool
 }

@@ -77,6 +77,34 @@ func TestValidateRejectsInvalidSemanticRoles(t *testing.T) {
 	}
 }
 
+func TestDisplayOnlyLimitsAndNaturalFitContract(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 3)
+	scripts := NewScripts(span, NewGlyph(source.NewRange(0, 1), "x"))
+	scripts.Top = NewGlyph(source.NewRange(2, 3), "2")
+	scripts.Limits = LimitsDisplay
+	if err := Validate(&Formula{Root: scripts}, source.Limits{}); err != nil {
+		t.Fatalf("LimitsDisplay validation error = %v", err)
+	}
+	scripts.Limits = LimitsDisplay + 1
+	if err := Validate(&Formula{Root: scripts}, source.Limits{}); err == nil {
+		t.Fatal("invalid limits placement was accepted")
+	}
+
+	scripts.Limits = LimitsDisplay
+	accent := NewAccent(span, NewGlyph(source.NewRange(0, 1), "x"), NewGlyph(source.NewRange(1, 2), "^"), PositionAbove)
+	accent.Stretchy = false
+	accent.NaturalFit = true
+	data, err := MarshalCanonical(&Formula{Root: accent})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"natural-fit":true`) {
+		t.Fatalf("canonical accent = %s, want natural-fit", data)
+	}
+}
+
 func TestMarshalCanonicalIsStable(t *testing.T) {
 	t.Parallel()
 

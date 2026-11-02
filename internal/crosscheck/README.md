@@ -54,6 +54,9 @@ The semantic comparison removes source evidence only:
 - Semantic roles on fractions, scripts, cancellation overlays, and tables are
   compared explicitly. Two otherwise-identical trees with different quotient,
   limit, negation, or table-role semantics are not equivalent.
+- Display-only script placement is distinct from class-dependent `auto`.
+- Accent source-stretch intent and natural width fitting are compared
+  separately, so Typst and TeX policy differences are visible before layout.
 
 Everything else remains strict, including atom class, math variant, paint, math
 limits, explicit spacing, fraction padding/style/bar state, fence balance,
@@ -96,8 +99,8 @@ changed failure path, not merely a changed pass/fail bit, visible in review.
 Current reviewed baseline:
 
 ```text
-pass                        17
-semantic-ir-mismatch        60
+pass                        21
+semantic-ir-mismatch        56
 layout-mismatch              0
 fixture-mismatch             2
 documented-pair-difference   2

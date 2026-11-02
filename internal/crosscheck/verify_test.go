@@ -142,6 +142,25 @@ func TestSemanticNormalizationRejectsMaterialDifference(t *testing.T) {
 	}
 }
 
+func TestFirstDifferenceReportsKeyPresence(t *testing.T) {
+	t.Parallel()
+
+	path, want, got := firstDifference("root",
+		map[string]any{"amount": nil},
+		map[string]any{},
+	)
+	if path != "root.amount" || want != nil || got != (missingValue{}) {
+		t.Fatalf("missing field difference = %q, %#v, %#v", path, want, got)
+	}
+	path, want, got = firstDifference("root",
+		map[string]any{},
+		map[string]any{"amount": nil},
+	)
+	if path != "root.amount" || want != (missingValue{}) || got != nil {
+		t.Fatalf("added field difference = %q, %#v, %#v", path, want, got)
+	}
+}
+
 func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 	t.Parallel()
 
@@ -436,6 +455,18 @@ func TestSemanticNormalizationPreservesExplicitLimitOverrides(t *testing.T) {
 	}
 	if CompareSemantic(left, right) == nil {
 		t.Fatal("explicit integral limits normalized as the default")
+	}
+}
+
+func TestSemanticDifferenceDistinguishesAbsentFields(t *testing.T) {
+	t.Parallel()
+
+	difference := CompareSemantic(
+		map[string]any{"space": map[string]any{"type": "interword"}},
+		map[string]any{"space": map[string]any{"type": "interword", "amount": nil}},
+	)
+	if difference == nil || !strings.Contains(difference.String(), `expected <absent>, got null`) {
+		t.Fatalf("semantic difference = %v, want absent field", difference)
 	}
 }
 

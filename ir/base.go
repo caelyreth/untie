@@ -79,6 +79,9 @@ const (
 	LimitsAuto LimitsPlacement = iota
 	LimitsAlways
 	LimitsNever
+	// LimitsDisplay places scripts above/below only in display style. Unlike
+	// Auto, it does not depend on the base atom's class.
+	LimitsDisplay
 )
 
 // Position is above or below for accents and lines.
