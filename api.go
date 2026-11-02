@@ -410,12 +410,18 @@ func fallbackFormula(src string, limits source.Limits) *ir.Formula {
 
 func fallbackRoot(src string, limits source.Limits) ir.Node {
 	span := source.NewRange(0, len(src))
-	row := &ir.Row{Base: ir.NewBase(ir.KindRow, span)}
+	text := ""
 	if src != "" {
-		text := truncateUTF8(src, limits.MaxTextBytes)
+		text = truncateUTF8(src, limits.MaxTextBytes)
 		if text == "" {
 			text = "?"
 		}
+	}
+	if text != "" && limits.MaxNodes <= 1 {
+		return ir.NewError(span, text, source.CodeUnsupported)
+	}
+	row := &ir.Row{Base: ir.NewBase(ir.KindRow, span)}
+	if text != "" {
 		row.Items = []ir.Node{ir.NewError(span, text, source.CodeUnsupported)}
 	}
 	return row

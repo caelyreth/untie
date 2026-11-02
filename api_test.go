@@ -425,6 +425,43 @@ func TestNodeLimitAffectsParse(t *testing.T) {
 	if !foundLimit {
 		t.Fatalf("diagnostics = %+v, want limit diagnostic", expr.Diagnostics())
 	}
+	if _, err := expr.RootSnapshot(); err != nil {
+		t.Fatalf("fallback RootSnapshot() error = %v", err)
+	}
+}
+
+func TestFallbackHonorsExactOneNodeBudget(t *testing.T) {
+	t.Parallel()
+
+	limits := source.Limits{MaxNodes: 1}
+	recovered := parseRecovered(
+		"xy",
+		TeX,
+		Inline,
+		ParseOptions{},
+		limits.WithDefaults(),
+		func(source.Limits) frontendResult {
+			panic("frontend failure")
+		},
+	)
+	tests := []struct {
+		name string
+		expr *Expr
+	}{
+		{name: "byte limit", expr: Parse("xy", TeX, Inline, ParseOptions{Limits: source.Limits{MaxSourceBytes: 1, MaxNodes: 1}})},
+		{name: "unknown dialect", expr: Parse("xy", Dialect(255), Inline, ParseOptions{Limits: limits})},
+		{name: "recovered panic", expr: recovered},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if len(test.expr.Diagnostics()) == 0 {
+				t.Fatal("expected a diagnostic")
+			}
+			if _, err := test.expr.RootSnapshot(); err != nil {
+				t.Fatalf("RootSnapshot() error = %v", err)
+			}
+		})
+	}
 }
 
 func TestParseBoundaryRejectsOutOfSourceFrontendIR(t *testing.T) {
