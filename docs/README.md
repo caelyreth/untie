@@ -14,6 +14,7 @@ package or claiming feature support.
 |---|---|
 | [architecture.md](architecture.md) | Actual package boundaries, dependency direction, data contracts, and architectural regression rules |
 | [status.md](status.md) | Implemented behavior, current gaps, and scope boundary |
+| [performance.md](performance.md) | Measured benchmarks, methodology, observations, and provisional regression policy |
 | [upstream.md](upstream.md) | Pinned source map, confirmation status, imported fixture locations, and update procedure |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Development commands, fixture policy, commit style, worktree coordination, and review gates |
 | [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) | Third-party licenses, notices, generated data provenance, and owner actions |
