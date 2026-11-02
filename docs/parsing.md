@@ -98,6 +98,11 @@ new codes in future releases.
 The normalization is deterministic. Do not use slice position as a substitute
 for the range and code when correlating diagnostics to a document.
 
+`Expr.HasErrors()` is a convenience check for at least one error-severity
+diagnostic. The root package also exports the stable diagnostic code
+vocabulary as `untie.Code` and `untie.Code*` constants, so ordinary hosts do
+not need to import `source` just to classify a diagnostic.
+
 ## Recoverable Fallback
 
 Malformed input produces diagnostics plus a valid, drawable tree. Examples:

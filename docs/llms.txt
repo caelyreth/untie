@@ -86,6 +86,7 @@ func NewEngine(fonts *FontSet, limits Limits) (*Engine, error)
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr
 func ParseTeX(src string, mode Mode, opts ParseOptions) *Expr
 func ParseTypst(src string, mode Mode, opts ParseOptions) *Expr
+func (e *Expr) HasErrors() bool
 
 func (e *Engine) Layout(expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*Box, error)

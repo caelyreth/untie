@@ -35,6 +35,9 @@ source problems:
 
 ```go
 expr := untie.ParseTeX(`\frac{1}`, untie.Inline, untie.ParseOptions{})
+if expr.HasErrors() {
+	reportEditorState(expr.Diagnostics())
+}
 for _, d := range expr.Diagnostics() {
 	if d.Severity == untie.SeverityError {
 		reportEditorProblem(d)

@@ -58,7 +58,8 @@ Use `Root()` when you need an independent IR snapshot. It clones and validates
 the formula. Use `RootSnapshot()` when you need the clone error.
 
 `Expr.Diagnostics()` returns an independent copy. Changing that slice cannot
-change the expression.
+change the expression. `Expr.HasErrors()` provides the common
+error-severity check without allocating a diagnostic copy.
 
 ### `Engine`
 
