@@ -63,8 +63,8 @@ func (d FixtureDiagnostic) MarshalJSON() ([]byte, error) {
 	return append([]byte(nil), d.Raw...), nil
 }
 
-// Fixture is one Typlet fixture record. Semantic payloads other than ID,
-// diagnostics, and the flattened frame are intentionally not decoded.
+// Fixture is one Typlet fixture record. ID, CST, diagnostics, and the flattened
+// frame are decoded; unrelated semantic payloads remain opaque.
 type Fixture struct {
 	ID          string              `json:"id"`
 	CST         *CSTNode            `json:"cst,omitempty"`

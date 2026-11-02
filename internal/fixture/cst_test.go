@@ -155,3 +155,13 @@ func findCase(corpus *Corpus, id string) (Case, bool) {
 	}
 	return Case{}, false
 }
+
+func FuzzCSTNodeUnmarshal(f *testing.F) {
+	f.Add(`["Math",0,1]`)
+	f.Add(`["Math",0,3,[["MathText",0,2],["MathText",2,3]]]`)
+	f.Add(`["Error",0,1,"bad syntax",["try again"]]`)
+	f.Fuzz(func(t *testing.T, data string) {
+		var node CSTNode
+		_ = json.Unmarshal([]byte(data), &node)
+	})
+}
