@@ -63,3 +63,14 @@ CGO_ENABLED=0 go test ./internal/quality \
 One benchmark operation is one complete pass over every corpus case. Item, hit,
 and path totals cover successful layouts only. Their `/case` metrics divide by
 all parse attempts; `/success` metrics divide by layouts that produced a box.
+
+Parser scaling uses every tracked upstream corpus through the public parse
+boundary:
+
+```sh
+CGO_ENABLED=0 go test ./internal/quality \
+  -run '^$' -bench '^BenchmarkParseTrackedCorpora$' -benchmem
+```
+
+Each sub-benchmark reports its exact case and source-byte counts plus reviewed
+diagnostic totals so parser work is not confused with an all-clean workload.
