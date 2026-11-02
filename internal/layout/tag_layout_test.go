@@ -263,6 +263,64 @@ func TestEquationTagLayoutHonorsOutputLimit(t *testing.T) {
 	}
 }
 
+func TestEquationTagLimitsCountCanonicalStorageOnce(t *testing.T) {
+	t.Parallel()
+
+	formula := taggedTestFormula(glyph("x", ir.ClassNormal), tagGlyph("1"))
+	fonts := Fonts{Glyphs: &fakeGlyphSource{glyphs: map[string]Glyph{}}, Metrics: fakeStyleFont{}}
+	style := testStyle(16)
+	style.MaxWidth = 64
+	style.Align = display.AlignCenter
+	baselineRenderer, err := New(fonts, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline, err := baselineRenderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(baseline.Lines) != 1 || baseline.Tag == nil {
+		t.Fatalf("baseline tagged layout = lines:%d tag:%+v", len(baseline.Lines), baseline.Tag)
+	}
+	pathSegments := 0
+	for _, item := range baseline.Items {
+		pathSegments += len(item.Path)
+	}
+
+	tests := []struct {
+		name    string
+		limits  source.Limits
+		wantErr bool
+	}{
+		{name: "items exact", limits: source.Limits{MaxOutputItems: len(baseline.Items)}},
+		{name: "items below", limits: source.Limits{MaxOutputItems: len(baseline.Items) - 1}, wantErr: true},
+		{name: "paths exact", limits: source.Limits{MaxPathSegments: pathSegments}},
+		{name: "paths below", limits: source.Limits{MaxPathSegments: pathSegments - 1}, wantErr: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			renderer, err := New(fonts, Options{Limits: test.limits})
+			if err != nil {
+				t.Fatal(err)
+			}
+			box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+			if test.wantErr {
+				if !errors.Is(err, ErrLimit) || box != nil {
+					t.Fatalf("LayoutFormulaContext() = %v, %v, want ErrLimit", box, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("LayoutFormulaContext() error = %v", err)
+			}
+			if len(box.Items) != len(baseline.Items) {
+				t.Fatalf("items = %d, want %d", len(box.Items), len(baseline.Items))
+			}
+		})
+	}
+}
+
 func tagGlyph(text string) *ir.Glyph {
 	node := ir.NewGlyph(source.NewRange(1, 2), text)
 	node.Class = ir.ClassNormal
