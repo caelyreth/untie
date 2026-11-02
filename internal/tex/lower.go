@@ -259,6 +259,75 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
+	case *astColorNode:
+		body := l.lower(n.body, ctx)
+		if l.exhausted {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		if body == nil {
+			return l.placeholder(n.span, "missing color body")
+		}
+		out := ir.NewColor(n.span, body, n.paint)
+		out.Size = ctx.size
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		return out
+	case *astBoxNode:
+		body := l.lower(n.body, ctx)
+		if l.exhausted {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		if body == nil {
+			return l.placeholder(n.span, "missing box body")
+		}
+		out := ir.NewBox(n.span, body)
+		out.Fill = n.fill
+		out.HasFill = n.hasFill
+		out.Border = n.border
+		out.HasBorder = n.hasBorder
+		out.BorderWidth = n.borderSize
+		out.Radius = n.radius
+		out.Size = ctx.size
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		return out
+	case *astPhantomNode:
+		body := l.lower(n.body, ctx)
+		if l.exhausted {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		if body == nil {
+			return l.placeholder(n.span, "missing phantom body")
+		}
+		out := ir.NewPhantom(n.span, body)
+		out.Width = n.width
+		out.Height = n.height
+		out.Depth = n.depth
+		out.Size = ctx.size
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
+		return out
+	case *astClassNode:
+		body := l.lower(n.body, ctx)
+		if l.exhausted {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		if body == nil {
+			return l.placeholder(n.span, "missing math-class body")
+		}
+		body.NodeBase().Class = n.class
+		body.NodeBase().Limits = n.limits
+		return body
+	case *astRuleNode:
+		if !l.reserve(n.span) {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		body := ir.NewRow(n.span)
+		out := ir.NewBox(n.span, body)
+		out.Padding[0] = n.height
+		out.Padding[3] = n.width
+		out.Fill = ir.Paint{Role: ir.PaintInk}
+		out.HasFill = true
+		out.Size = ctx.size
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
+		return out
 	case *astStyleNode:
 		childCtx := ctx
 		if n.size != ir.SizeInherit {

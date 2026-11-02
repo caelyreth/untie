@@ -116,8 +116,8 @@ func TestUnsupportedConstructsAreExplicit(t *testing.T) {
 
 	tests := []string{
 		`\big(`,
-		`\text{a $x$}`,
-		`\edef\foo{x}\foo`,
+		`\vcenter{x}`,
+		`\mathclap{x}`,
 	}
 	for _, src := range tests {
 		src := src

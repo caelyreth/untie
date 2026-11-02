@@ -20,7 +20,7 @@ func (p *parser) parseTextCommand(command token) astNode {
 		variant = ir.VariantBold
 	case "\\textmd", "\\textup":
 		variant = ir.VariantNormal
-	case "\\textit", "\\emph":
+	case "\\textit", "\\textsl", "\\emph":
 		variant = ir.VariantItalic
 	}
 	body := p.parseTextArgument(command)
@@ -39,6 +39,9 @@ func (p *parser) parseTextCommand(command token) astNode {
 
 func (p *parser) parseOperatorName(command token) astNode {
 	limits := ir.LimitsNever
+	if command.text == "\\operatornamewithlimits" {
+		limits = ir.LimitsAlways
+	}
 	p.exp.consumeSpaces()
 	if star := p.exp.peek(); star.is(tokChar) && star.text == "*" {
 		p.exp.next()
@@ -117,7 +120,14 @@ func (p *parser) parseTextSequence() astNode {
 	}
 
 	var items []astNode
+	iterations := 0
 	for {
+		iterations++
+		if iterations > p.limits.MaxTokens*2 {
+			p.limit(source.Detached(), "TeX text parser iteration limit exceeded")
+			return textRow(items)
+		}
+
 		t := p.exp.peek()
 		switch {
 		case t.isEOF(), t.is(tokEndGroup):
@@ -132,13 +142,7 @@ func (p *parser) parseTextSequence() astNode {
 			p.exp.next()
 			text := t.text
 			if text == "$" {
-				p.report(source.Diagnostic{
-					Range:    normalizeRange(t.span),
-					Severity: source.SeverityError,
-					Code:     source.CodeUnsupported,
-					Message:  "embedded math inside \\text is not supported",
-				})
-				items = append(items, astErr(t.span, "$", source.CodeUnsupported))
+				items = append(items, p.parseDollarMath(t))
 				continue
 			}
 			if text == "~" {
@@ -152,6 +156,10 @@ func (p *parser) parseTextSequence() astNode {
 			p.exp.next()
 			items = append(items, astErr(t.span, t.text, source.CodeSyntax))
 		case t.isControl():
+			// parseTextCommandToken expects the command to have already been
+			// consumed. Peeking without consuming here made every command in
+			// text mode loop forever.
+			p.exp.next()
 			node := p.parseTextCommandToken(t)
 			if node != nil {
 				items = append(items, node)
@@ -188,8 +196,26 @@ func (p *parser) parseTextNucleus(t token) astNode {
 }
 
 func (p *parser) parseTextCommandToken(t token) astNode {
+	if text, ok := textSymbolCommands[t.text]; ok {
+		return astLiteralText(t, text)
+	}
+	if mark, ok := textAccentCommands[t.text]; ok {
+		body := p.parseTextArgument(t)
+		position := ir.PositionAbove
+		switch t.text {
+		case "\\c", "\\k", "\\b", "\\d":
+			position = ir.PositionBelow
+		}
+		return &astAccentNode{
+			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
+			body:     body,
+			mark:     newGlyphAST(t.span, mark, ir.ClassDiacritic),
+			position: position,
+		}
+	}
+
 	switch t.text {
-	case "\\ ", "\\space", "\\nobreakspace", "\\\\":
+	case "\\ ", "\\space", "\\nobreakspace":
 		return astLiteralText(t, " ")
 	case "\\relax":
 		return nil
@@ -202,8 +228,17 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 	case "\\textasciicircum":
 		return astLiteralText(t, "^")
 	case "\\text", "\\textrm", "\\textnormal", "\\textsf", "\\texttt",
-		"\\textbf", "\\textmd", "\\textit", "\\textup", "\\emph":
+		"\\textbf", "\\textmd", "\\textit", "\\textup", "\\textsl", "\\emph",
+		"\\mbox", "\\hbox":
 		return p.parseTextCommand(t)
+	case "\\textcolor":
+		return p.parseTextColorCommand(t, true)
+	case "\\sout":
+		body := p.parseTextArgument(t)
+		return &astCancelNode{
+			astBase: newASTBaseAt(astCancel, source.Merge(t.span, body.base().span), tokenOrigin(t)),
+			body:    body,
+		}
 	case "\\def", "\\gdef", "\\edef", "\\xdef":
 		p.parseDefinition(t, definitionKindFor(t.text), t.text == "\\gdef" || t.text == "\\xdef")
 		return nil
@@ -217,17 +252,6 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		p.parseGlobal(t)
 		return nil
 	}
-	if spec, ok := accentCommands[t.text]; ok {
-		body := p.parseTextArgument(t)
-		p.unsupportedLayout(source.Merge(t.span, body.base().span), "accent")
-		return &astAccentNode{
-			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
-			body:     body,
-			mark:     newGlyphAST(t.span, spec.text, ir.ClassDiacritic),
-			position: ir.PositionAbove,
-			stretchy: false,
-		}
-	}
 	p.report(source.Diagnostic{
 		Range:    normalizeRange(t.span),
 		Severity: source.SeverityError,
@@ -235,6 +259,66 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		Message:  "command '" + t.text + "' is not supported in text mode",
 	})
 	return astErr(t.span, t.text, source.CodeUnsupported)
+}
+
+var textSymbolCommands = map[string]string{
+	"\\AA":                "Å",
+	"\\aa":                "å",
+	"\\AE":                "Æ",
+	"\\ae":                "æ",
+	"\\O":                 "Ø",
+	"\\o":                 "ø",
+	"\\OE":                "Œ",
+	"\\oe":                "œ",
+	"\\i":                 "ı",
+	"\\j":                 "ȷ",
+	"\\P":                 "¶",
+	"\\S":                 "§",
+	"\\sect":              "§",
+	"\\ss":                "ß",
+	"\\textcopyright":     "©",
+	"\\textregistered":    "®",
+	"\\texttrademark":     "™",
+	"\\textdollar":        "$",
+	"\\textsterling":      "£",
+	"\\texteuro":          "€",
+	"\\textyen":           "¥",
+	"\\textgreater":       ">",
+	"\\textless":          "<",
+	"\\textquotedblleft":  "“",
+	"\\textquotedblright": "”",
+	"\\textquoteleft":     "‘",
+	"\\textquoteright":    "’",
+	"\\textunderscore":    "_",
+	"\\textbar":           "|",
+	"\\textbraceleft":     "{",
+	"\\textbraceright":    "}",
+	"\\textendash":        "–",
+	"\\textemdash":        "—",
+	"\\textellipsis":      "…",
+	"\\textdegree":        "°",
+	"\\textmu":            "µ",
+	"\\texttimes":         "×",
+	"\\textdiv":           "÷",
+	"\\textpm":            "±",
+}
+
+var textAccentCommands = map[string]string{
+	"\\'":  "´",
+	"\\`":  "ˋ",
+	"\\\"": "¨",
+	"\\.":  "˙",
+	"\\=":  "¯",
+	"\\~":  "˜",
+	"\\^":  "ˆ",
+	"\\H":  "˝",
+	"\\r":  "˚",
+	"\\u":  "˘",
+	"\\v":  "ˇ",
+	"\\c":  "¸",
+	"\\k":  "˛",
+	"\\b":  "̱",
+	"\\d":  "̣",
 }
 
 func textRow(items []astNode) astNode {

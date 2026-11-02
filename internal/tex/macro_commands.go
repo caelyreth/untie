@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/caelyreth/untie/internal/mathdata"
 	"github.com/caelyreth/untie/source"
 )
 
@@ -30,15 +31,7 @@ func definitionKindFor(command string) definitionKind {
 }
 
 func (p *parser) parseDefinition(command token, kind definitionKind, global bool) {
-	unsupported := command.text == "\\edef" || command.text == "\\xdef"
-	if unsupported {
-		p.report(source.Diagnostic{
-			Range:    normalizeRange(command.span),
-			Severity: source.SeverityError,
-			Code:     source.CodeUnsupported,
-			Message:  "expanding macro definitions are not supported; definition is ignored",
-		})
-	}
+	expanding := command.text == "\\edef" || command.text == "\\xdef"
 	name, nameSpan, ok := p.consumeDefinitionName()
 	if !ok {
 		return
@@ -47,8 +40,18 @@ func (p *parser) parseDefinition(command token, kind definitionKind, global bool
 	if !ok {
 		return
 	}
-	if unsupported {
-		return
+	if expanding {
+		var expanded bool
+		body, expanded = p.exp.expandAll(body, nameSpan)
+		if !expanded {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(source.Merge(command.span, bodySpan)),
+				Severity: source.SeverityError,
+				Code:     source.CodeLimitExceeded,
+				Message:  "expanding macro definition exceeded configured limits",
+			})
+			return
+		}
 	}
 	macro := &macroDef{args: args, body: body}
 	if !p.exp.define(name, macro, global) {
@@ -427,6 +430,12 @@ func isBuiltinCommand(name string) bool {
 		return true
 	}
 	if _, ok := infixCommands[name]; ok {
+		return true
+	}
+	if symbol, ok := mathdata.LookupTeXSymbol(name); ok && symbol.Kind == mathdata.TeXSymbolPublic {
+		return true
+	}
+	if _, ok := mathdata.LookupTeXOperator(name); ok {
 		return true
 	}
 	switch name {

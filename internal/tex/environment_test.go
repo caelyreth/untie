@@ -41,20 +41,23 @@ func TestFencedMatrixAndArray(t *testing.T) {
 	}
 }
 
-func TestAlignedEnvironmentKeepsAlignmentMarkers(t *testing.T) {
+func TestAlignedEnvironmentLowersToAlignedTable(t *testing.T) {
 	t.Parallel()
 
 	result := parseTest(t, `\begin{aligned}x&=1\\y&=2\end{aligned}`, Options{})
-	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-		t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("diagnostics: %v", result.Diagnostics)
 	}
-	multiline := requireKind[*ir.Multiline](t, rowItems(t, result.Root)[0])
-	if len(multiline.Rows) != 2 {
-		t.Fatalf("rows = %d, want 2", len(multiline.Rows))
+	table := requireKind[*ir.Table](t, rowItems(t, result.Root)[0])
+	if len(table.Rows) != 2 {
+		t.Fatalf("rows = %d, want 2", len(table.Rows))
 	}
-	for _, row := range multiline.Rows {
-		if len(row) != 3 || row[1].NodeBase().Kind() != ir.KindAlignMarker {
-			t.Errorf("row did not retain its alignment marker: %T", row)
+	if len(table.Columns) != 2 || table.Columns[0] != ir.AlignRight || table.Columns[1] != ir.AlignLeft {
+		t.Errorf("columns = %v, want right/left", table.Columns)
+	}
+	for _, row := range table.Rows {
+		if len(row.Cells) != 2 {
+			t.Errorf("row has %d cells, want 2", len(row.Cells))
 		}
 	}
 }

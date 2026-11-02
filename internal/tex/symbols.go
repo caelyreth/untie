@@ -41,8 +41,11 @@ var (
 )
 
 type fractionInfix struct {
-	bar   bool
-	style ir.FractionStyle
+	bar       bool
+	style     ir.FractionStyle
+	open      string
+	close     string
+	dimension bool
 }
 
 func init() {
@@ -323,6 +326,7 @@ smallint ∫`)
 	addFonts()
 	addInfixes()
 	addEscapedSymbols()
+	addTeXAliases()
 }
 
 func addSymbols(class ir.MathClass, table string) {
@@ -364,6 +368,128 @@ func addEscapedSymbols() {
 		}
 	}
 	delimiterCommands["\\|"] = delimiterSpec{text: "‖", class: ir.ClassFence}
+}
+
+func addTeXAliases() {
+	aliases := map[string]symbolSpec{
+		"\\Alpha":          {text: "A", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\angln":          {text: "∠n", class: ir.ClassNormal},
+		"\\Bbbk":           {text: "𝕜", class: ir.ClassAlphabetic, variant: ir.VariantDoubleStruck},
+		"\\Beta":           {text: "B", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Chi":            {text: "X", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Epsilon":        {text: "E", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Eta":            {text: "H", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Iota":           {text: "I", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Kappa":          {text: "K", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Mu":             {text: "M", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Nu":             {text: "N", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Omicron":        {text: "O", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Rho":            {text: "P", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Tau":            {text: "T", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\Zeta":           {text: "Z", class: ir.ClassNormal, variant: ir.VariantNormal},
+		"\\alef":           {text: "ℵ", class: ir.ClassNormal},
+		"\\alefsym":        {text: "ℵ", class: ir.ClassNormal},
+		"\\bull":           {text: "•", class: ir.ClassBinary},
+		"\\clubs":          {text: "♣", class: ir.ClassNormal},
+		"\\Dagger":         {text: "‡", class: ir.ClassNormal},
+		"\\diamonds":       {text: "♢", class: ir.ClassNormal},
+		"\\empty":          {text: "∅", class: ir.ClassNormal},
+		"\\exist":          {text: "∃", class: ir.ClassNormal},
+		"\\hearts":         {text: "♡", class: ir.ClassNormal},
+		"\\image":          {text: "ℑ", class: ir.ClassNormal},
+		"\\infin":          {text: "∞", class: ir.ClassNormal},
+		"\\isin":           {text: "∈", class: ir.ClassRelation},
+		"\\gvertneqq":      {text: "≩", class: ir.ClassRelation},
+		"\\lvertneqq":      {text: "≨", class: ir.ClassRelation},
+		"\\ngeqq":          {text: "≱", class: ir.ClassRelation},
+		"\\ngeqslant":      {text: "≱", class: ir.ClassRelation},
+		"\\nleqq":          {text: "≰", class: ir.ClassRelation},
+		"\\nleqslant":      {text: "≰", class: ir.ClassRelation},
+		"\\nshortmid":      {text: "∤", class: ir.ClassRelation},
+		"\\nshortparallel": {text: "∦", class: ir.ClassRelation},
+		"\\nsubseteqq":     {text: "⊈", class: ir.ClassRelation},
+		"\\nsupseteqq":     {text: "⊉", class: ir.ClassRelation},
+		"\\notni":          {text: "∌", class: ir.ClassRelation},
+		"\\plusmn":         {text: "±", class: ir.ClassBinary},
+		"\\ratio":          {text: ":", class: ir.ClassRelation},
+		"\\real":           {text: "ℜ", class: ir.ClassNormal},
+		"\\sdot":           {text: "⋅", class: ir.ClassBinary},
+		"\\spades":         {text: "♠", class: ir.ClassNormal},
+		"\\sub":            {text: "⊂", class: ir.ClassRelation},
+		"\\sube":           {text: "⊆", class: ir.ClassRelation},
+		"\\supe":           {text: "⊇", class: ir.ClassRelation},
+		"\\thetasym":       {text: "ϑ", class: ir.ClassAlphabetic},
+		"\\varDelta":       {text: "Δ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varGamma":       {text: "Γ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varLambda":      {text: "Λ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varOmega":       {text: "Ω", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varPhi":         {text: "Φ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varPi":          {text: "Π", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varPsi":         {text: "Ψ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varSigma":       {text: "Σ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varTheta":       {text: "Θ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varUpsilon":     {text: "Υ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varXi":          {text: "Ξ", class: ir.ClassNormal, variant: ir.VariantItalic},
+		"\\varsubsetneq":   {text: "⊊", class: ir.ClassRelation},
+		"\\varsubsetneqq":  {text: "⫋", class: ir.ClassRelation},
+		"\\varsupsetneq":   {text: "⊋", class: ir.ClassRelation},
+		"\\varsupsetneqq":  {text: "⫌", class: ir.ClassRelation},
+		"\\weierp":         {text: "℘", class: ir.ClassNormal},
+		"\\N":              {text: "ℕ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\natnums":        {text: "ℕ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\Z":              {text: "ℤ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\R":              {text: "ℝ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\reals":          {text: "ℝ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\Reals":          {text: "ℝ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\cnums":          {text: "ℂ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\Complex":        {text: "ℂ", class: ir.ClassNormal, variant: ir.VariantDoubleStruck},
+		"\\lq":             {text: "‘", class: ir.ClassNormal},
+		"\\rq":             {text: "’", class: ir.ClassNormal},
+		"\\AA":             {text: "Å", class: ir.ClassNormal},
+		"\\aa":             {text: "å", class: ir.ClassNormal},
+		"\\AE":             {text: "Æ", class: ir.ClassNormal},
+		"\\ae":             {text: "æ", class: ir.ClassNormal},
+		"\\O":              {text: "Ø", class: ir.ClassNormal},
+		"\\o":              {text: "ø", class: ir.ClassNormal},
+		"\\OE":             {text: "Œ", class: ir.ClassNormal},
+		"\\oe":             {text: "œ", class: ir.ClassNormal},
+		"\\ss":             {text: "ß", class: ir.ClassNormal},
+		"\\copyright":      {text: "©", class: ir.ClassNormal},
+		"\\textcopyright":  {text: "©", class: ir.ClassNormal},
+		"\\minuso":         {text: "⦵", class: ir.ClassBinary},
+	}
+	for name, spec := range aliases {
+		symbolCommands[name] = spec
+	}
+
+	alias := func(names []string, text string, class ir.MathClass) {
+		for _, name := range names {
+			symbolCommands[name] = symbolSpec{text: text, class: class, variant: ir.VariantAuto}
+		}
+	}
+	alias([]string{"\\larr"}, "←", ir.ClassRelation)
+	alias([]string{"\\Larr", "\\lArr"}, "⇐", ir.ClassRelation)
+	alias([]string{"\\rarr"}, "→", ir.ClassRelation)
+	alias([]string{"\\Rarr", "\\rArr"}, "⇒", ir.ClassRelation)
+	alias([]string{"\\harr", "\\lrarr"}, "↔", ir.ClassRelation)
+	alias([]string{"\\Harr", "\\hArr", "\\Lrarr", "\\lrArr"}, "⇔", ir.ClassRelation)
+	alias([]string{"\\uarr", "\\Uarr"}, "↑", ir.ClassRelation)
+	alias([]string{"\\uArr"}, "⇑", ir.ClassRelation)
+	alias([]string{"\\darr", "\\Darr"}, "↓", ir.ClassRelation)
+	alias([]string{"\\dArr"}, "⇓", ir.ClassRelation)
+	alias([]string{"\\lang"}, "⟨", ir.ClassOpening)
+	alias([]string{"\\rang"}, "⟩", ir.ClassClosing)
+	alias([]string{"\\llbracket"}, "⟦", ir.ClassOpening)
+	alias([]string{"\\rrbracket"}, "⟧", ir.ClassClosing)
+	alias([]string{"\\llcorner"}, "⌞", ir.ClassOpening)
+	alias([]string{"\\lrcorner"}, "⌟", ir.ClassClosing)
+	alias([]string{"\\ulcorner"}, "⌜", ir.ClassOpening)
+	alias([]string{"\\urcorner"}, "⌝", ir.ClassClosing)
+	alias([]string{"\\lBrace"}, "⦃", ir.ClassOpening)
+	alias([]string{"\\rBrace"}, "⦄", ir.ClassClosing)
+	alias([]string{"\\VERT"}, "⦀", ir.ClassFence)
+	alias([]string{"\\dots", "\\dotsc", "\\dotso"}, "…", ir.ClassNormal)
+	alias([]string{"\\dotsb", "\\dotsi", "\\dotsm"}, "⋯", ir.ClassNormal)
 }
 
 func addDelimiters() {
@@ -499,11 +625,17 @@ func addOperators() {
 		"arccos", "arcsin", "arctan", "arg", "cos", "cosh", "cot", "coth", "csc",
 		"deg", "det", "dim", "exp", "gcd", "hom", "inf", "ker", "lg", "lim",
 		"liminf", "limsup", "ln", "log", "max", "min", "Pr", "sec", "sin",
-		"sinh", "sup", "tan", "tanh",
+		"sinh", "sup", "tan", "tanh", "arcctg", "arctg", "argmax", "argmin",
+		"ch", "cosec", "cotg", "ctg", "cth", "injlim", "plim", "projlim",
+		"sh", "tg", "th", "varinjlim", "varliminf", "varlimsup", "varprojlim",
 	} {
 		namedOperators["\\"+name] = name
 	}
-	for _, name := range []string{"det", "gcd", "inf", "lim", "liminf", "limsup", "max", "min", "Pr", "sup"} {
+	for _, name := range []string{
+		"det", "gcd", "inf", "lim", "liminf", "limsup", "max", "min", "Pr", "sup",
+		"argmax", "argmin", "injlim", "plim", "projlim", "varinjlim", "varliminf",
+		"varlimsup", "varprojlim",
+	} {
 		limitOperators["\\"+name] = true
 	}
 }
@@ -516,6 +648,7 @@ func addFonts() {
 		"\\mathbf":     ir.VariantBold,
 		"\\boldsymbol": ir.VariantBoldItalic,
 		"\\bm":         ir.VariantBoldItalic,
+		"\\pmb":        ir.VariantBold,
 		"\\mathbb":     ir.VariantDoubleStruck,
 		"\\Bbb":        ir.VariantDoubleStruck,
 		"\\mathcal":    ir.VariantScript,
@@ -532,7 +665,10 @@ func addFonts() {
 func addInfixes() {
 	infixCommands["\\over"] = fractionInfix{bar: true, style: ir.FractionVertical}
 	infixCommands["\\atop"] = fractionInfix{bar: false, style: ir.FractionVertical}
-	infixCommands["\\choose"] = fractionInfix{bar: false, style: ir.FractionVertical}
+	infixCommands["\\choose"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "(", close: ")"}
+	infixCommands["\\brace"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "{", close: "}"}
+	infixCommands["\\brack"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "[", close: "]"}
+	infixCommands["\\above"] = fractionInfix{bar: true, style: ir.FractionVertical, dimension: true}
 }
 
 func symbolForChar(text string) symbolSpec {

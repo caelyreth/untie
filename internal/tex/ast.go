@@ -20,6 +20,11 @@ const (
 	astAccent
 	astLine
 	astCancel
+	astColor
+	astBox
+	astPhantom
+	astClass
+	astRule
 	astStyle
 	astVariant
 	astTable
@@ -129,6 +134,44 @@ type astCancelNode struct {
 	body     astNode
 	cross    bool
 	inverted bool
+}
+
+type astColorNode struct {
+	astBase
+	body  astNode
+	paint ir.Paint
+}
+
+type astBoxNode struct {
+	astBase
+	body       astNode
+	fill       ir.Paint
+	hasFill    bool
+	border     ir.Paint
+	hasBorder  bool
+	borderSize ir.Length
+	radius     ir.Length
+}
+
+type astPhantomNode struct {
+	astBase
+	body   astNode
+	width  bool
+	height bool
+	depth  bool
+}
+
+type astClassNode struct {
+	astBase
+	body   astNode
+	class  ir.MathClass
+	limits ir.LimitsPlacement
+}
+
+type astRuleNode struct {
+	astBase
+	width  ir.Length
+	height ir.Length
 }
 
 type astStyleNode struct {

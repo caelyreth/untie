@@ -130,6 +130,30 @@ func (e *expander) push(tokens ...token) {
 	}
 }
 
+// expandAll expands a definition replacement while preserving the parser's
+// pending token stream. It is used by \edef and \xdef, whose replacement text
+// is frozen at definition time.
+func (e *expander) expandAll(tokens []token, endSpan source.Range) ([]token, bool) {
+	saved := e.tokens
+	defer func() { e.tokens = saved }()
+
+	e.tokens = make([]token, 0, len(tokens)+1)
+	e.tokens = append(e.tokens, token{kind: tokEOF, span: endSpan, origin: endSpan})
+	e.push(tokens...)
+
+	expanded := make([]token, 0, len(tokens))
+	for {
+		t := e.next()
+		if t.isEOF() {
+			return expanded, !e.disabled
+		}
+		expanded = append(expanded, t)
+		if e.disabled {
+			return nil, false
+		}
+	}
+}
+
 func (e *expander) consumeSpaces() {
 	for {
 		t := e.popRaw()

@@ -7,7 +7,7 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
-func TestLayoutUnsupportedConstructsAreDiagnosedAndPreserved(t *testing.T) {
+func TestImplementedLayoutConstructsAreAccepted(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -16,16 +16,20 @@ func TestLayoutUnsupportedConstructsAreDiagnosedAndPreserved(t *testing.T) {
 	}{
 		{source: `\hat{x}`, kind: ir.KindAccent},
 		{source: `\cancel{x}`, kind: ir.KindCancel},
-		{source: `\begin{aligned}x&=1\end{aligned}`, kind: ir.KindMultiline},
+		{source: `\begin{aligned}x&=1\end{aligned}`, kind: ir.KindTable},
 		{source: `\begin{array}{|l|}x\end{array}`, kind: ir.KindTable},
+		{source: `\boxed{x}`, kind: ir.KindBox},
+		{source: `\phantom{x}`, kind: ir.KindPhantom},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
 			result := parseTest(t, tc.source, Options{})
-			if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-				t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Severity == source.SeverityError {
+					t.Fatalf("unexpected error diagnostics: %v", result.Diagnostics)
+				}
 			}
 			first := rowItems(t, result.Root)[0]
 			if first.NodeBase().Kind() != tc.kind {
@@ -35,13 +39,13 @@ func TestLayoutUnsupportedConstructsAreDiagnosedAndPreserved(t *testing.T) {
 	}
 }
 
-func TestUnimplementedBoxAndPhantomAreNotSilentlyAccepted(t *testing.T) {
+func TestUnsupportedLayoutConstructsAreExplicit(t *testing.T) {
 	t.Parallel()
 
-	for _, src := range []string{`\boxed{x}`, `\phantom{x}`} {
+	for _, src := range []string{`\vcenter{x}`, `\mathclap{x}`, `\ce{H2O}`} {
 		result := parseTest(t, src, Options{})
-		if !hasDiagnostic(result.Diagnostics, source.CodeUnknownCommand) {
-			t.Errorf("%s diagnostics = %v, want unknown-command", src, diagnosticCodes(result.Diagnostics))
+		if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+			t.Errorf("%s diagnostics = %v, want unsupported", src, diagnosticCodes(result.Diagnostics))
 		}
 	}
 

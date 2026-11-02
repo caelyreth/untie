@@ -233,14 +233,18 @@ func TestNewCommandRejectsExistingBuiltin(t *testing.T) {
 	}
 }
 
-func TestUnsupportedMacroDefinitionsDoNotBecomeApproximations(t *testing.T) {
+func TestExpandingMacroDefinitionsFreezeReplacement(t *testing.T) {
 	t.Parallel()
 
 	result := parseTest(t, `\edef\foo{x}\foo`, Options{})
-	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-		t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("diagnostics = %v, want none", diagnosticCodes(result.Diagnostics))
 	}
-	if !hasDiagnostic(result.Diagnostics, source.CodeUnknownCommand) {
-		t.Fatalf("diagnostics = %v, want ignored definition to leave the command undefined", diagnosticCodes(result.Diagnostics))
+	items := rowItems(t, result.Root)
+	if len(items) != 1 {
+		t.Fatalf("items = %d, want 1", len(items))
+	}
+	if glyph := requireKind[*ir.Glyph](t, items[0]); glyph.Text != "x" {
+		t.Fatalf("glyph = %q, want x", glyph.Text)
 	}
 }

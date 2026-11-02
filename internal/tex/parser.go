@@ -4,6 +4,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
@@ -18,9 +19,32 @@ type parser struct {
 	depth       int
 	iterations  int
 	limitHit    bool
+	leftDepth   int
 }
 
 type stopMode uint8
+
+type combiningAccentSpec struct {
+	mark     string
+	position ir.Position
+}
+
+var combiningAccents = map[rune]combiningAccentSpec{
+	'\u0300': {mark: "ˋ", position: ir.PositionAbove},
+	'\u0301': {mark: "ˊ", position: ir.PositionAbove},
+	'\u0302': {mark: "ˆ", position: ir.PositionAbove},
+	'\u0303': {mark: "˜", position: ir.PositionAbove},
+	'\u0304': {mark: "¯", position: ir.PositionAbove},
+	'\u0306': {mark: "˘", position: ir.PositionAbove},
+	'\u0307': {mark: "˙", position: ir.PositionAbove},
+	'\u0308': {mark: "¨", position: ir.PositionAbove},
+	'\u030A': {mark: "˚", position: ir.PositionAbove},
+	'\u030B': {mark: "˝", position: ir.PositionAbove},
+	'\u030C': {mark: "ˇ", position: ir.PositionAbove},
+	'\u0327': {mark: "¸", position: ir.PositionBelow},
+	'\u0332': {mark: "_", position: ir.PositionBelow},
+	'\u20D7': {mark: "⃗", position: ir.PositionAbove},
+}
 
 const (
 	stopEOF stopMode = iota
@@ -28,6 +52,8 @@ const (
 	stopRight
 	stopBracket
 	stopCell
+	stopDollar
+	stopEndgroup
 )
 
 func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.Limits) *parser {
@@ -54,6 +80,10 @@ func (p *parser) parse() ir.Node {
 }
 
 func (p *parser) parseSequence(stop stopMode) astNode {
+	return p.parseSequenceWithInfix(stop, false)
+}
+
+func (p *parser) parseSequenceWithInfix(stop stopMode, infixSeen bool) astNode {
 	p.depth++
 	defer func() { p.depth-- }()
 
@@ -96,6 +126,15 @@ func (p *parser) parseSequence(stop stopMode) astNode {
 		if t.isControl() {
 			if infix, ok := infixCommands[t.text]; ok {
 				p.exp.next()
+				if infixSeen {
+					p.report(source.Diagnostic{
+						Range:    normalizeRange(t.span),
+						Severity: source.SeverityError,
+						Code:     source.CodeUnexpectedToken,
+						Message:  "only one infix fraction operator is allowed per group",
+					})
+					continue
+				}
 				items = []astNode{p.applyInfix(items, start, infix, t, stop)}
 				break
 			}
@@ -128,6 +167,33 @@ func (p *parser) parseSequence(stop stopMode) astNode {
 		if node == nil {
 			continue
 		}
+		if glyph, ok := node.(*astGlyphNode); ok {
+			if mark, position, combining, supported := combiningAccent(glyph.text); combining {
+				if !supported || len(items) == 0 {
+					p.report(source.Diagnostic{
+						Range:    normalizeRange(glyph.span),
+						Severity: source.SeverityError,
+						Code:     source.CodeUnsupported,
+						Message:  "unsupported combining character",
+					})
+					items = append(items, astErr(glyph.span, glyph.text, source.CodeUnsupported))
+					continue
+				}
+				body := items[len(items)-1]
+				items[len(items)-1] = &astAccentNode{
+					astBase: newASTBaseAt(
+						astAccent,
+						source.Merge(body.base().span, glyph.span),
+						source.Merge(body.base().origin, glyph.origin),
+					),
+					body:     body,
+					mark:     newGlyphAST(glyph.span, mark, ir.ClassDiacritic),
+					position: position,
+					dotless:  true,
+				}
+				continue
+			}
+		}
 		if first {
 			start = node.base().span
 			first = false
@@ -149,24 +215,43 @@ func (p *parser) parseSequence(stop stopMode) astNode {
 	return row
 }
 
+func combiningAccent(text string) (mark string, position ir.Position, combining, supported bool) {
+	r, size := utf8.DecodeRuneInString(text)
+	if size != len(text) {
+		return "", ir.PositionAbove, false, false
+	}
+	if entry, ok := combiningAccents[r]; ok {
+		return entry.mark, entry.position, true, true
+	}
+	return "", ir.PositionAbove, r >= 0x0300 && r <= 0x036f, false
+}
+
 func (p *parser) shouldStop(t token, stop stopMode) bool {
 	if stop == stopCell && t.is(tokAlignment) {
 		return true
 	}
 	if t.is(tokEndGroup) {
-		return stop == stopGroup || stop == stopRight || stop == stopBracket || stop == stopCell
+		return stop == stopGroup || stop == stopRight || stop == stopBracket || stop == stopCell || stop == stopDollar
 	}
 	if !t.isControl() {
-		if stop == stopBracket && t.is(tokChar) && t.text == "]" {
-			return true
+		if t.is(tokChar) {
+			if stop == stopBracket && t.text == "]" {
+				return true
+			}
+			if stop == stopDollar && t.text == "$" {
+				return true
+			}
 		}
 		return false
 	}
 	switch stop {
+	case stopEndgroup:
+		return t.text == "\\endgroup"
 	case stopRight:
 		return t.text == "\\right" || t.text == "\\middle"
 	case stopCell:
-		return t.is(tokAlignment) || t.text == "\\\\" || t.text == "\\end"
+		return t.is(tokAlignment) || isRowBreak(t.text) || t.text == "\\end" ||
+			t.text == "\\hline" || t.text == "\\hdashline"
 	default:
 		return false
 	}
@@ -174,7 +259,7 @@ func (p *parser) shouldStop(t token, stop stopMode) bool {
 
 func (p *parser) stopAtEOF(stop stopMode, t token) {
 	switch stop {
-	case stopGroup, stopBracket:
+	case stopGroup, stopBracket, stopDollar, stopEndgroup:
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
@@ -199,23 +284,15 @@ func (p *parser) stopAtEOF(stop stopMode, t token) {
 }
 
 func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionInfix, command token, stop stopMode) astNode {
-	for _, item := range items {
-		if f, ok := item.(*astFractionNode); ok && f.infix {
-			p.report(source.Diagnostic{
-				Range:    normalizeRange(command.span),
-				Severity: source.SeverityError,
-				Code:     source.CodeInvalidValue,
-				Message:  "only one infix fraction operator is allowed per group",
-			})
-		}
-	}
-
 	left := &astRowNode{astBase: newASTBase(astRow, start), items: items}
 	if len(items) > 0 {
 		left.span = astSpan(items...)
 		left.origin = astOrigin(items...)
 	}
-	right := p.parseSequence(stop)
+	if infix.dimension {
+		_ = p.parseRequiredArgument(command)
+	}
+	right := p.parseSequenceWithInfix(stop, true)
 	fraction := &astFractionNode{
 		astBase:     newASTBaseAt(astFraction, source.Merge(command.span, right.base().span), tokenOrigin(command)),
 		numerator:   left,
@@ -225,15 +302,14 @@ func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionI
 		size:        ir.SizeInherit,
 		infix:       true,
 	}
-	if command.text == "\\choose" {
-		fenced := &astFencedNode{
+	if infix.open != "" || infix.close != "" {
+		return &astFencedNode{
 			astBase:  newASTBase(astFenced, fraction.span),
-			open:     newGlyphAST(command.span, "(", ir.ClassOpening),
-			close:    newGlyphAST(command.span, ")", ir.ClassClosing),
+			open:     newGlyphAST(command.span, infix.open, ir.ClassOpening),
+			close:    newGlyphAST(command.span, infix.close, ir.ClassClosing),
 			body:     []astNode{fraction},
 			balanced: true,
 		}
-		return fenced
 	}
 	return fraction
 }
@@ -373,6 +449,8 @@ func scriptLimits(base astNode, explicit ir.LimitsPlacement) ir.LimitsPlacement 
 		return n.limits
 	case *astGlyphNode:
 		return n.limits
+	case *astClassNode:
+		return n.limits
 	default:
 		return ir.LimitsAuto
 	}
@@ -398,7 +476,7 @@ func (p *parser) parseNucleus(stop stopMode) astNode {
 				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnsupported,
-				Message:  "nested math delimiters are not supported",
+				Message:  "nested math delimiters are not supported in math mode",
 			})
 			return astErr(t.span, t.text, source.CodeUnsupported)
 		}
@@ -420,6 +498,25 @@ func (p *parser) parseNucleus(stop stopMode) astNode {
 	default:
 		return &astRowNode{astBase: newASTBase(astRow, source.Detached())}
 	}
+}
+
+func (p *parser) parseDollarMath(open token) astNode {
+	body := p.parseSequence(stopDollar)
+	span := source.Merge(open.span, body.base().span)
+	if close := p.exp.peek(); close.is(tokChar) && close.text == "$" {
+		p.exp.next()
+		span = source.Merge(span, close.span)
+	} else {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(open.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnclosedGroup,
+			Message:  "unclosed '$' math delimiter",
+		})
+	}
+	body.base().span = span
+	body.base().origin = containerOrigin(open, body, span)
+	return body
 }
 
 func (p *parser) parseGroup(open token) astNode {
@@ -459,12 +556,30 @@ func (p *parser) parseScriptArgument(name string, marker token) (astNode, source
 		span := normalizeRange(marker.span)
 		return newPlaceholderAST(span, "missing "+name), source.Merge(marker.span, t.span)
 	}
+	if t.isControl() && commandTakesRequiredArgument(t.text) {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "function requires a braced argument in script position",
+		})
+	}
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
 		span := normalizeRange(marker.span)
 		return newPlaceholderAST(span, "missing "+name), span
 	}
 	return node, source.Merge(marker.span, node.base().span)
+}
+
+func commandTakesRequiredArgument(command string) bool {
+	switch command {
+	case "\\sqrt", "\\frac", "\\dfrac", "\\tfrac", "\\cfrac", "\\binom",
+		"\\dbinom", "\\tbinom", "\\operatorname", "\\operatornamewithlimits":
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *parser) parseRequiredArgument(owner token) astNode {
@@ -580,6 +695,11 @@ func (p *parser) parseDimension(t token, braced bool) ir.Length {
 			}
 			text += next.text
 			span = source.Merge(span, next.span)
+			if hasExplicitLengthUnit(text) {
+				if _, ok := parseLengthString(strings.TrimSpace(text)); ok {
+					break
+				}
+			}
 		}
 	}
 	length, ok := parseLengthString(strings.TrimSpace(text))
@@ -602,6 +722,15 @@ func (p *parser) parseDimension(t token, braced bool) ir.Length {
 		return ir.Length{}
 	}
 	return length
+}
+
+func hasExplicitLengthUnit(text string) bool {
+	for _, unit := range []string{"em", "ex", "mu", "pt", "dip"} {
+		if strings.HasSuffix(strings.TrimSpace(text), unit) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseLengthString(text string) (ir.Length, bool) {
