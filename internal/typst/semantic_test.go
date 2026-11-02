@@ -141,7 +141,10 @@ func TestSemanticRolesComeFromTypstSyntax(t *testing.T) {
 		{`sum_(i=1)^n`, ir.ScriptRoleLimits},
 		{`integral_0^1`, ir.ScriptRoleLimits},
 		{`limits(sum)_(i=1)^n`, ir.ScriptRoleLimits},
-		{`attach(x, t: a)`, ir.ScriptRoleOverlay},
+		{`scripts(sum)_(i=1)^n`, ir.ScriptRoleLimits},
+		{`attach(x, t: a)`, ir.ScriptRoleOrdinary},
+		{`attach(x, tr: a)`, ir.ScriptRoleOrdinary},
+		{`attach(=, t: "definition")`, ir.ScriptRoleOverlay},
 		{`overbrace(x+y, n)`, ir.ScriptRoleBraceLabel},
 		{`underbrace(x+y, n)`, ir.ScriptRoleBraceLabel},
 	}
@@ -170,6 +173,7 @@ func TestSemanticRolesComeFromTypstSyntax(t *testing.T) {
 		role ir.TableRole
 	}{
 		{`mat(1, 2; 3, 4)`, ir.TableRoleMatrix},
+		{`mat(augment: #1, 1, 2; 3, 4)`, ir.TableRoleArray},
 		{`vec(1, 2, 3)`, ir.TableRoleVector},
 		{`cases(a, b)`, ir.TableRoleCases},
 	}

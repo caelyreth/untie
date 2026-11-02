@@ -114,6 +114,7 @@ func TestSemanticRolesComeFromTeXSyntax(t *testing.T) {
 		{`\sin^2 x`, ir.ScriptRoleOrdinary},
 		{`\sum_{i=1}^n`, ir.ScriptRoleLimits},
 		{`\int_0^1`, ir.ScriptRoleLimits},
+		{`\sum\nolimits_{i=1}^n`, ir.ScriptRoleLimits},
 		{`\overset{a}{b}`, ir.ScriptRoleOverlay},
 		{`\underset{a}{b}`, ir.ScriptRoleOverlay},
 		{`\stackrel{a}{=}`, ir.ScriptRoleOverlay},

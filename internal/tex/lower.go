@@ -198,9 +198,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		out.Limits = n.limits
 		out.Role = n.role
-		if out.Role == ir.ScriptRoleOrdinary {
-			out.Role = scriptSemanticRole(n.main)
-		}
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		out.Class = base.NodeBase().Class
 		base.NodeBase().Limits = n.limits

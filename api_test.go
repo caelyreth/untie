@@ -435,6 +435,41 @@ func TestExprAltSemanticRoleRegressions(t *testing.T) {
 			wantSpeech: "integral from 0 to 1",
 		},
 		{
+			name:       "TeX nolimits keeps sum bounds",
+			source:     `\sum\nolimits_{i=1}^n`,
+			dialect:    TeX,
+			wantText:   "∑_{i=1}ⁿ",
+			wantSpeech: "sum from i equals 1 to n",
+		},
+		{
+			name:       "Typst scripts keeps sum bounds",
+			source:     `scripts(sum)_(i=1)^n`,
+			dialect:    Typst,
+			wantText:   "∑_{i=1}ⁿ",
+			wantSpeech: "sum from i equals 1 to n",
+		},
+		{
+			name:       "ordinary Typst attach is a right script",
+			source:     `attach(x, t: a)`,
+			dialect:    Typst,
+			wantText:   "x^a",
+			wantSpeech: "x to the power a",
+		},
+		{
+			name:       "Typst corner attachment",
+			source:     `attach(x, tr: a)`,
+			dialect:    Typst,
+			wantText:   "x^a",
+			wantSpeech: "x to the power a",
+		},
+		{
+			name:       "Typst full attachment example",
+			source:     `attach(Pi, t: alpha, b: beta, tl: 1, tr: 2+3, bl: 4+5, br: 6)`,
+			dialect:    Typst,
+			wantText:   "attach(Π, t: α, b: β, tl: 1, bl: 4+5, tr: 2+3, br: 6)",
+			wantSpeech: "Π with top attachment α, bottom attachment β, top-left attachment 1, bottom-left attachment 4 plus 5, top-right attachment 2 plus 3, bottom-right attachment 6",
+		},
+		{
 			name:       "overset",
 			source:     `\overset{a}{b}`,
 			dialect:    TeX,
@@ -537,7 +572,13 @@ func TestExprAltSemanticRoleRegressions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			alt := Parse(tc.source, tc.dialect, Display, ParseOptions{}).Alt()
+			expr := Parse(tc.source, tc.dialect, Display, ParseOptions{})
+			for _, diagnostic := range expr.Diagnostics() {
+				if diagnostic.Severity == SeverityError {
+					t.Fatalf("parse diagnostic: %v", diagnostic)
+				}
+			}
+			alt := expr.Alt()
 			if tc.wantText != "" && alt.Text != tc.wantText {
 				t.Fatalf("Text = %q, want %q", alt.Text, tc.wantText)
 			}

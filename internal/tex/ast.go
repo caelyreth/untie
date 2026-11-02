@@ -70,9 +70,10 @@ type astTextNode struct {
 
 type astOperatorNode struct {
 	astBase
-	text    string
-	variant ir.Variant
-	limits  ir.LimitsPlacement
+	text           string
+	variant        ir.Variant
+	limits         ir.LimitsPlacement
+	semanticLimits bool
 }
 
 type astSpaceNode struct {

@@ -121,6 +121,7 @@ func (p *parser) parseSideSet(command token, stop stopMode) astNode {
 		astBase: newASTBaseAt(astScripts, base.base().span, tokenOrigin(command)),
 		main:    base,
 		limits:  ir.LimitsAlways,
+		role:    ir.ScriptRoleLimits,
 	}
 	return &astScriptsNode{
 		astBase:     newASTBaseAt(astScripts, span, tokenOrigin(command)),
@@ -130,6 +131,7 @@ func (p *parser) parseSideSet(command token, stop stopMode) astNode {
 		topRight:    rightTop,
 		bottomRight: rightBottom,
 		limits:      ir.LimitsAuto,
+		role:        ir.ScriptRoleLimits,
 	}
 }
 

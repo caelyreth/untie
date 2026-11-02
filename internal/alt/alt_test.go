@@ -67,6 +67,56 @@ func TestGenerateLimitRolesArePlacementIndependent(t *testing.T) {
 	}
 }
 
+func TestGeneratePreservesPositionedAttachmentFields(t *testing.T) {
+	t.Parallel()
+
+	fields := []struct {
+		name string
+		set  func(*ir.Scripts, ir.Node)
+	}{
+		{"t", func(scripts *ir.Scripts, node ir.Node) { scripts.Top = node }},
+		{"b", func(scripts *ir.Scripts, node ir.Node) { scripts.Bottom = node }},
+		{"tl", func(scripts *ir.Scripts, node ir.Node) { scripts.TopLeft = node }},
+		{"bl", func(scripts *ir.Scripts, node ir.Node) { scripts.BottomLeft = node }},
+		{"tr", func(scripts *ir.Scripts, node ir.Node) { scripts.TopRight = node }},
+		{"br", func(scripts *ir.Scripts, node ir.Node) { scripts.BottomRight = node }},
+	}
+	for role := ir.ScriptRoleOrdinary; role <= ir.ScriptRoleBraceLabel; role++ {
+		role := role
+		t.Run(scriptRoleNameForTest(role), func(t *testing.T) {
+			t.Parallel()
+			scripts := ir.NewScripts(testSpan, glyph("x"))
+			scripts.Role = role
+			for i, field := range fields {
+				field.set(scripts, glyph(string(rune('A'+i))))
+			}
+			got := Generate(scripts, ir.Inline, source.Limits{})
+			for i, field := range fields {
+				value := string(rune('A' + i))
+				if !strings.Contains(got.Text, value) && !strings.Contains(got.Speech, value) {
+					t.Fatalf("%s field %q was silently lost: %#v", scriptRoleNameForTest(role), field.name, got)
+				}
+			}
+			if err := got.Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
+	}
+}
+
+func scriptRoleNameForTest(role ir.ScriptRole) string {
+	switch role {
+	case ir.ScriptRoleLimits:
+		return "limits"
+	case ir.ScriptRoleOverlay:
+		return "overlay"
+	case ir.ScriptRoleBraceLabel:
+		return "brace-label"
+	default:
+		return "ordinary"
+	}
+}
+
 func TestGenerateStructuralConstructs(t *testing.T) {
 	t.Parallel()
 

@@ -341,6 +341,8 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 	var top astNode
 	var bottom astNode
 	var limits ir.LimitsPlacement
+	// Capture meaning before \limits or \nolimits changes visual placement.
+	role := scriptSemanticRole(base)
 	var scriptSpan source.Range
 	hasScriptSpan := false
 	setScriptSpan := func(span source.Range) {
@@ -450,7 +452,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 				top:     top,
 				bottom:  bottom,
 				limits:  scriptLimits(base, limits),
-				role:    scriptSemanticRole(base),
+				role:    role,
 			}
 			return scripts
 		}
@@ -497,15 +499,13 @@ func hasBraceDecoration(node astNode) bool {
 func hasLimitScriptBase(node astNode) bool {
 	switch n := node.(type) {
 	case *astClassNode:
-		return n.class == ir.ClassLarge &&
-			(n.limits != ir.LimitsNever || containsIntegral(n.body))
+		return n.class == ir.ClassLarge || containsIntegral(n.body)
 	case *astVariantNode:
 		return hasLimitScriptBase(n.body)
 	case *astOperatorNode:
-		return n.limits != ir.LimitsNever || containsIntegralText(n.text)
+		return n.semanticLimits || containsIntegralText(n.text)
 	case *astGlyphNode:
-		return n.class == ir.ClassLarge &&
-			(n.limits != ir.LimitsNever || containsIntegralText(n.text))
+		return n.class == ir.ClassLarge || containsIntegralText(n.text)
 	default:
 		return false
 	}

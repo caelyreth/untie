@@ -360,6 +360,10 @@ func (r *renderer) scripts(n *ir.Scripts, env renderEnv, depth int) (piece, erro
 		}
 	}
 
+	if needsPositionedAttachment(role, top, bottom, topLeft, bottomLeft, topRight, bottomRight) {
+		return positionedAttachmentPiece(role, base, top, bottom, topLeft, bottomLeft, topRight, bottomRight), nil
+	}
+
 	if role == ir.ScriptRoleOrdinary {
 		topRight = appendScriptPiece(top, topRight)
 		bottomRight = appendScriptPiece(bottom, bottomRight)
@@ -435,6 +439,9 @@ func overlayPiece(base, top, bottom piece) piece {
 }
 
 func braceLabelPiece(base, top, bottom piece) piece {
+	if trimmedPieceText(top) != "" && trimmedPieceText(bottom) != "" {
+		return positionedAttachmentPiece(ir.ScriptRoleBraceLabel, base, top, bottom, piece{}, piece{}, piece{}, piece{})
+	}
 	label := top
 	if trimmedPieceText(label) == "" {
 		label = bottom
@@ -446,6 +453,82 @@ func braceLabelPiece(base, top, bottom piece) piece {
 		text:   "labeled(" + base.text + ", " + label.text + ")",
 		speech: base.speech + " labeled " + label.speech,
 		atomic: true,
+	}
+}
+
+func positionedAttachmentPiece(
+	role ir.ScriptRole,
+	base, top, bottom, topLeft, bottomLeft, topRight, bottomRight piece,
+) piece {
+	fields := []struct {
+		label  string
+		speech string
+		value  piece
+	}{
+		{"t", "top attachment", top},
+		{"b", "bottom attachment", bottom},
+		{"tl", "top-left attachment", topLeft},
+		{"bl", "bottom-left attachment", bottomLeft},
+		{"tr", "top-right attachment", topRight},
+		{"br", "bottom-right attachment", bottomRight},
+	}
+
+	var text strings.Builder
+	text.WriteString(positionedAttachmentName(role))
+	text.WriteByte('(')
+	text.WriteString(scriptBaseText(base))
+	speechParts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if trimmedPieceText(field.value) == "" {
+			continue
+		}
+		text.WriteString(", ")
+		text.WriteString(field.label)
+		text.WriteString(": ")
+		text.WriteString(field.value.text)
+		if trimmed := strings.TrimSpace(field.value.speech); trimmed != "" {
+			speechParts = append(speechParts, field.speech+" "+trimmed)
+		}
+	}
+	text.WriteByte(')')
+	speech := strings.TrimSpace(base.speech)
+	if len(speechParts) != 0 {
+		if speech != "" {
+			speech += " with "
+		}
+		speech += strings.Join(speechParts, ", ")
+	}
+	return piece{text: text.String(), speech: speech, atomic: true, word: base.word}
+}
+
+func positionedAttachmentName(role ir.ScriptRole) string {
+	switch role {
+	case ir.ScriptRoleLimits:
+		return "limits"
+	case ir.ScriptRoleOverlay:
+		return "overlay"
+	case ir.ScriptRoleBraceLabel:
+		return "labeled"
+	default:
+		return "attach"
+	}
+}
+
+func needsPositionedAttachment(
+	role ir.ScriptRole,
+	top, bottom, topLeft, bottomLeft, topRight, bottomRight piece,
+) bool {
+	switch role {
+	case ir.ScriptRoleOrdinary:
+		return (trimmedPieceText(top) != "" && trimmedPieceText(topRight) != "") ||
+			(trimmedPieceText(bottom) != "" && trimmedPieceText(bottomRight) != "")
+	case ir.ScriptRoleLimits:
+		return false
+	default:
+		return trimmedPieceText(topLeft) != "" ||
+			trimmedPieceText(bottomLeft) != "" ||
+			trimmedPieceText(topRight) != "" ||
+			trimmedPieceText(bottomRight) != ""
 	}
 }
 

@@ -427,9 +427,8 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	scripts.BottomLeft = l.lowerOptional(n.bottomLeft)
 	scripts.TopRight = l.lowerOptional(n.topRight)
 	scripts.BottomRight = l.lowerOptional(n.bottomRight)
-	if scripts.Role == ir.ScriptRoleOrdinary && scripts.Limits != ir.LimitsNever &&
-		hasLimitSemantics(scripts.BaseItem) {
-		scripts.Role = ir.ScriptRoleLimits
+	if scripts.Role == ir.ScriptRoleOrdinary {
+		scripts.Role = attachmentScriptRole(scripts.BaseItem, scripts.Top != nil || scripts.Bottom != nil)
 	}
 	inheritScriptMetadata(scripts)
 	return scripts

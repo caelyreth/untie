@@ -133,6 +133,9 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 	}
 	if kind == "mat" {
 		l.applyAugment(call, table, maxColumns, len(grid))
+		if len(table.Horizontal) != 0 || len(table.Vertical) != 0 {
+			table.Role = ir.TableRoleArray
+		}
 	}
 
 	openText, closeText := "(", ")"

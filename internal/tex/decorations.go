@@ -60,6 +60,7 @@ func (p *parser) parseStacked(command token, position ir.Position, forceRelation
 			astBase: newASTBaseAt(astScripts, body.base().span, tokenOrigin(command)),
 			main:    body,
 			limits:  ir.LimitsAlways,
+			role:    ir.ScriptRoleOrdinary,
 		},
 		limits: ir.LimitsAlways,
 		role:   ir.ScriptRoleOverlay,

@@ -71,8 +71,8 @@ const (
 	SizeScriptScript
 )
 
-// LimitsPlacement controls whether scripts are placed beside or above/below a
-// base operator.
+// LimitsPlacement controls visual placement only: whether scripts are rendered
+// beside a base or above/below it. It does not change ScriptRole semantics.
 type LimitsPlacement uint8
 
 const (
@@ -181,7 +181,8 @@ const (
 )
 
 // ScriptRole identifies the semantic purpose of attached scripts independently
-// of whether layout places them beside or above/below the base.
+// of visual placement. For example, explicit \nolimits or Typst scripts() may
+// place operator bounds beside the base without changing them from limits.
 type ScriptRole uint8
 
 const (
