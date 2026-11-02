@@ -5,8 +5,9 @@ import (
 	"github.com/caelyreth/untie/ir"
 )
 
-// MathMetrics contains the font constants used by this layout layer. Values
-// are in ems of the style passed to StyleFont.MathMetrics.
+// MathMetrics contains the font constants used by this layout layer. All
+// values are base ems, independent of the math style. Layout applies the
+// style scale exactly once; adapters must not pre-scale values by style.
 //
 // This is intentionally a data port, not a font representation. A FontSet
 // adapter extracts these constants from the OpenType MATH table once.

@@ -15,18 +15,55 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 	if err != nil {
 		return nil, err
 	}
-	run, ok := s.renderer.fonts.Text.ShapeText(TextRequest{
+	run, err := s.renderer.fonts.Text.ShapeText(TextRequest{
+		Context:  s.ctx,
 		Text:     node.Text,
 		Style:    env.Style,
 		Variant:  env.Variant,
+		Font:     node.Font,
 		Tracking: tracking,
 		Features: env.Features,
 	})
-	if !ok {
-		return nil, fmt.Errorf("%w: text %q", ErrMissingGlyph, node.Text)
+	if err != nil {
+		return nil, err
 	}
+	return s.layoutTextRun(run, env, true)
+}
+
+func (s *layoutState) layoutOperator(node *ir.Operator, env environment) (*Fragment, error) {
+	if s.renderer.fonts.Operators == nil {
+		if len([]rune(node.Text)) == 1 {
+			fragment, err := s.layoutGlyphText(node.Text, env, nil)
+			if err != nil {
+				return nil, err
+			}
+			return withClass(fragment, node.Class), nil
+		}
+		return nil, fmt.Errorf("%w: multi-glyph operator %q", ErrUnsupported, node.Text)
+	}
+	run, err := s.renderer.fonts.Operators.ShapeOperator(OperatorRequest{
+		Context:  s.ctx,
+		Text:     node.Text,
+		Style:    env.Style,
+		Variant:  env.Variant,
+		Features: env.Features,
+	})
+	if err != nil {
+		return nil, err
+	}
+	fragment, err := s.layoutTextRun(run, env, len([]rune(node.Text)) > 1)
+	if err != nil {
+		return nil, err
+	}
+	return withClass(fragment, node.Class), nil
+}
+
+func (s *layoutState) layoutTextRun(run TextRun, env environment, textLike bool) (*Fragment, error) {
 	if run.Width < 0 || run.Ascent < 0 || run.Descent < 0 {
-		return nil, fmt.Errorf("%w: text run has negative metrics", ErrInvalidInput)
+		return nil, fmt.Errorf("%w: run has negative metrics", ErrInvalidInput)
+	}
+	if len(run.Glyphs) == 0 {
+		return nil, fmt.Errorf("%w: empty shaped run", ErrMissingGlyph)
 	}
 	factor := s.scale(env.Style)
 	width, err := scale(run.Width, factor)
@@ -52,8 +89,11 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 	fragment.Italic = italic
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
-	fragment.TextLike = true
+	fragment.TextLike = textLike
 	for _, positioned := range run.Glyphs {
+		if positioned.Glyph.Advance < 0 || positioned.Glyph.Ascent < 0 || positioned.Glyph.Descent < 0 {
+			return nil, fmt.Errorf("%w: shaped run glyph has negative metrics", ErrInvalidInput)
+		}
 		draw, err := s.scaleGlyph(positioned.Glyph, env.Style, env.Paint)
 		if err != nil {
 			return nil, err

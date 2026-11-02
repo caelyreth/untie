@@ -12,7 +12,7 @@ import (
 
 type externalGlyphSource struct{}
 
-func (externalGlyphSource) Glyph(req layout.GlyphRequest) (layout.Glyph, bool) {
+func (externalGlyphSource) Glyph(req layout.GlyphRequest) (layout.Glyph, error) {
 	return layout.Glyph{
 		ID:       1,
 		FontID:   "external-test",
@@ -21,7 +21,7 @@ func (externalGlyphSource) Glyph(req layout.GlyphRequest) (layout.Glyph, bool) {
 		Ascent:   geometry.Em(geometry.EmScale * 7 / 10),
 		Descent:  geometry.Em(geometry.EmScale / 5),
 		TextLike: true,
-	}, true
+	}, nil
 }
 
 type externalStyleFont struct{}
