@@ -158,10 +158,10 @@ func (e *Engine) layoutRootContext(
 		// Accessibility failure never invalidates otherwise correct geometry.
 		// GenerateContext returns a bounded visible fallback for this case.
 	}
-	box.Alt = alt
-	if err := box.Validate(); err != nil {
-		return nil, publicLayoutError(fmt.Errorf("%w: invalid layout output: %w", ErrInvalidInput, err))
+	if err := alt.Validate(); err != nil {
+		return nil, publicLayoutError(fmt.Errorf("%w: invalid alternative text: %w", ErrInvalidInput, err))
 	}
+	box.Alt = alt
 	return box, nil
 }
 

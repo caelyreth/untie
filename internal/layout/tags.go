@@ -65,9 +65,6 @@ func (s *layoutState) attachSingleLineTag(
 	if err != nil {
 		return nil, err
 	}
-	if err := tagBox.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: equation tag: %w", ErrInvalidInput, err)
-	}
 	if len(base.Items)+len(tagBox.Items) > s.limits.MaxOutputItems {
 		return nil, fmt.Errorf("%w: equation tag output item count", ErrLimit)
 	}
@@ -145,9 +142,6 @@ func (s *layoutState) attachSingleLineTag(
 		Line:    manual.Line,
 		X:       x,
 		Y:       y,
-	}
-	if err := tag.Box.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: equation tag: %w", ErrInvalidInput, err)
 	}
 
 	for _, item := range tagBox.Items {
