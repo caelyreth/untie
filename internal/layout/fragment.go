@@ -198,6 +198,30 @@ func (f *Fragment) pushPath(x, y geometry.Em, path *pathDraw) error {
 	return nil
 }
 
+func (f *Fragment) includePathBounds(path Path) {
+	if f == nil || len(path) == 0 {
+		return
+	}
+	minY, maxY := geometry.Em(0), geometry.Em(0)
+	have := false
+	for _, segment := range path {
+		for _, point := range segment.Points {
+			if !have {
+				minY, maxY = point.Y, point.Y
+				have = true
+				continue
+			}
+			minY = min(minY, point.Y)
+			maxY = max(maxY, point.Y)
+		}
+	}
+	if !have {
+		return
+	}
+	f.Ascent = max(f.Ascent, -minY)
+	f.Descent = max(f.Descent, maxY)
+}
+
 func withClass(f *Fragment, class ir.MathClass) *Fragment {
 	if f != nil && class != ir.ClassNormal {
 		f.Class = class
