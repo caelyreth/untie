@@ -1,0 +1,128 @@
+[
+  {
+    "name": "single letter",
+    "source": "x",
+    "provenance": "KaTeX test/katex-spec.ts, ordinary math symbols",
+    "diagnostic": ""
+  },
+  {
+    "name": "script precedence",
+    "source": "x^2_i",
+    "provenance": "KaTeX test/katex-spec.ts, superscripts and subscripts",
+    "diagnostic": ""
+  },
+  {
+    "name": "fraction",
+    "source": "\\frac{1}{2}",
+    "provenance": "KaTeX test/katex-spec.ts, fractions",
+    "diagnostic": ""
+  },
+  {
+    "name": "root with index",
+    "source": "\\sqrt[3]{2}",
+    "provenance": "KaTeX test/katex-spec.ts:3132",
+    "diagnostic": ""
+  },
+  {
+    "name": "stretchy fence",
+    "source": "\\left( \\dfrac{x}{y} \\right)",
+    "provenance": "KaTeX test/katex-spec.ts:1283",
+    "diagnostic": ""
+  },
+  {
+    "name": "middle delimiter",
+    "source": "\\left( \\frac{x}{y} \\middle| z \\right)",
+    "provenance": "KaTeX test/katex-spec.ts:1327",
+    "diagnostic": ""
+  },
+  {
+    "name": "operator name",
+    "source": "\\operatorname{sin} x",
+    "provenance": "KaTeX test/katex-spec.ts, operatorname",
+    "diagnostic": ""
+  },
+  {
+    "name": "text mode",
+    "source": "\\text{hello world}",
+    "provenance": "KaTeX test/katex-spec.ts, text mode",
+    "diagnostic": ""
+  },
+  {
+    "name": "font variant",
+    "source": "\\mathbf{x}",
+    "provenance": "KaTeX test/katex-spec.ts, math fonts",
+    "diagnostic": ""
+  },
+  {
+    "name": "matrix",
+    "source": "\\begin{matrix}a&b\\\\c&d\\end{matrix}",
+    "provenance": "KaTeX test/katex-spec.ts, matrix environment",
+    "diagnostic": ""
+  },
+  {
+    "name": "newcommand",
+    "source": "\\newcommand\\foo[1]{#1^2}\\foo x",
+    "provenance": "KaTeX test/katex-spec.ts:4165",
+    "diagnostic": ""
+  },
+  {
+    "name": "primitive def",
+    "source": "\\def\\foo#1{#1^2}\\foo{x}",
+    "provenance": "KaTeX test/katex-spec.ts, macro expander",
+    "diagnostic": ""
+  },
+  {
+    "name": "comment in macro body",
+    "source": "\\def\\foo{1 %}\n2}\n\\foo",
+    "provenance": "KaTeX test/katex-spec.ts:1954",
+    "diagnostic": ""
+  },
+  {
+    "name": "greek symbols",
+    "source": "\\alpha+\\beta=\\gamma",
+    "provenance": "KaTeX src/symbols.ts, main Greek table",
+    "diagnostic": ""
+  },
+  {
+    "name": "large operator with limits",
+    "source": "\\sum_{i=1}^n i",
+    "provenance": "KaTeX test/katex-spec.ts, operators and limits",
+    "diagnostic": ""
+  },
+  {
+    "name": "accent",
+    "source": "\\hat{x}",
+    "provenance": "KaTeX src/functions/accent.ts",
+    "diagnostic": ""
+  },
+  {
+    "name": "overline",
+    "source": "\\overline{x}",
+    "provenance": "KaTeX src/functions/overline.ts",
+    "diagnostic": ""
+  },
+  {
+    "name": "double subscript",
+    "source": "1_2_3",
+    "provenance": "KaTeX test/errors-spec.ts, double subscripts",
+    "diagnostic": "unexpected-token"
+  },
+  {
+    "name": "missing right",
+    "source": "\\left(1+2)",
+    "provenance": "KaTeX test/errors-spec.ts, parseImplicitGroup expecting right",
+    "diagnostic": "unclosed-group"
+  },
+  {
+    "name": "missing sqrt argument",
+    "source": "2\\sqrt",
+    "provenance": "KaTeX test/errors-spec.ts, parseArguments",
+    "diagnostic": "missing-argument"
+  },
+  {
+    "name": "undefined control sequence",
+    "source": "\\xyz",
+    "provenance": "KaTeX test/errors-spec.ts, parseGroup",
+    "diagnostic": "unknown-command"
+  }
+]
