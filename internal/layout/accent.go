@@ -184,6 +184,9 @@ func (s *layoutState) layoutAccentMark(node ir.Node, env environment, depth int,
 		if err != nil {
 			return nil, err
 		}
+		if err := s.attachNodeHit(fragment, node, depth); err != nil {
+			return nil, err
+		}
 		return withClass(fragment, item.Class), nil
 	case *ir.Operator:
 		if err := s.check(depth); err != nil {
@@ -194,6 +197,9 @@ func (s *layoutState) layoutAccentMark(node ir.Node, env environment, depth int,
 		}
 		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, stretch)
 		if err != nil {
+			return nil, err
+		}
+		if err := s.attachNodeHit(fragment, node, depth); err != nil {
 			return nil, err
 		}
 		return withClass(fragment, item.Class), nil

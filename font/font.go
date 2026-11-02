@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // FontData is one face from a host-provided SFNT or TTC file.
@@ -48,6 +49,9 @@ func Load(fonts Fonts) (set *FontSet, err error) {
 	}
 	if len(fonts.Fallbacks) > maxFallbackFaces {
 		return nil, fmt.Errorf("font: %d fallback faces exceed limit %d", len(fonts.Fallbacks), maxFallbackFaces)
+	}
+	if err := validateFontIDs(fonts); err != nil {
+		return nil, err
 	}
 
 	owned := Fonts{Math: copyFontData(fonts.Math)}
@@ -92,6 +96,34 @@ func Load(fonts Fonts) (set *FontSet, err error) {
 	}
 	set.key = canonicalFontKey(owned)
 	return set, nil
+}
+
+func validateFontIDs(fonts Fonts) error {
+	ids := make(map[string]struct{}, 1+len(fonts.Fallbacks)+boolInt(fonts.Text != nil))
+	check := func(role string, face FontData) error {
+		if strings.TrimSpace(face.ID) == "" {
+			return fmt.Errorf("font: %s face has empty ID", role)
+		}
+		if _, exists := ids[face.ID]; exists {
+			return fmt.Errorf("font: duplicate face ID %q", face.ID)
+		}
+		ids[face.ID] = struct{}{}
+		return nil
+	}
+	if err := check("math", fonts.Math); err != nil {
+		return err
+	}
+	if fonts.Text != nil {
+		if err := check("text", *fonts.Text); err != nil {
+			return err
+		}
+	}
+	for i, face := range fonts.Fallbacks {
+		if err := check(fmt.Sprintf("fallback %d", i), face); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Key returns a stable 64-bit cache key. Use KeySHA256 when collision-resistant

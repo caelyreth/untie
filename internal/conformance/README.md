@@ -54,8 +54,8 @@ Current TeX baseline:
 | RaTeX 0.1.15 core | 1,075 |
 | Selected KaTeX 0.19.1 errors and parses | 36 |
 
-The TeX baseline currently records 535 passes, 18 expected diagnostics, 19
-unsupported cases, and 539 reviewed parser gaps. The large gap count is
+The TeX baseline currently records 1,028 passes, 26 expected diagnostics, 46
+unsupported cases, and 11 reviewed parser gaps. The remaining gap count is
 intentional: the report exposes incomplete TeX command and environment
 coverage rather than relabeling in-scope omissions as unsupported.
 
@@ -69,12 +69,11 @@ Current Typst baseline:
 | Selected Typlet symbols | 30 |
 | Selected Typlet syntax cases | 15 |
 
-The Typst baseline records 114 passes, 1 expected upstream diagnostic, 4
-explicit depth-limit scope exclusions, and 52 reviewed known gaps. Known gaps
-include unresolved Typst symbol aliases, restricted evaluator constructs,
-combining-mark handling, a diagnostic-precision mismatch, and one invalid-IR
-matrix-delimiter defect. None are
-silently skipped; each has an exact case rule and reason in `typst-policy.json`.
+The Typst baseline records 156 passes, 2 expected upstream diagnostics, 4
+explicit depth-limit scope exclusions, and 9 reviewed known gaps. Known gaps are
+limited to unrestricted Typst code evaluation and parser-only syntax probes
+outside the evaluable math subset. None are silently skipped; each has an exact
+case rule and reason in `typst-policy.json`.
 
 ## Isolation
 

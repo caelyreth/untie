@@ -89,5 +89,15 @@ func (e *Engine) Layout(ctx context.Context, root ir.Node, mode ir.Mode, style d
 	if e == nil || e.renderer == nil {
 		return nil, fmt.Errorf("%w: nil engine", ErrInvalidInput)
 	}
+	if ctx == nil {
+		return nil, fmt.Errorf("%w: nil context", ErrInvalidInput)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := ValidateStyle(style); err != nil {
+		return nil, err
+	}
+	style.Features = append([]string(nil), style.Features...)
 	return e.renderer.LayoutContext(ctx, root, mode, style)
 }

@@ -31,6 +31,42 @@ func (b *Box) Validate() error {
 			return fmt.Errorf("%w: item %d: %v", ErrInvalidBox, i, err)
 		}
 	}
+	for i, hit := range b.Hits {
+		if err := validateHit(hit); err != nil {
+			return fmt.Errorf("%w: hit %d: %v", ErrInvalidBox, i, err)
+		}
+	}
+	for i, breakPoint := range b.Breaks {
+		if err := validateBreak(breakPoint); err != nil {
+			return fmt.Errorf("%w: break %d: %v", ErrInvalidBox, i, err)
+		}
+	}
+	return nil
+}
+
+func validateHit(hit Hit) error {
+	if !hit.Source.IsValid() {
+		return errors.New("invalid source range")
+	}
+	if err := validateRect(hit.Area); err != nil {
+		return fmt.Errorf("area: %v", err)
+	}
+	if hit.Depth < 0 {
+		return errors.New("negative depth")
+	}
+	if hit.Kind > HitOther {
+		return fmt.Errorf("unknown kind %d", hit.Kind)
+	}
+	return nil
+}
+
+func validateBreak(breakPoint Break) error {
+	if !finite(breakPoint.X) || breakPoint.X < 0 {
+		return errors.New("invalid x position")
+	}
+	if breakPoint.Kind > BreakExplicit {
+		return fmt.Errorf("unknown kind %d", breakPoint.Kind)
+	}
 	return nil
 }
 

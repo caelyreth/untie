@@ -24,81 +24,13 @@
   "knownGaps": [
     {
       "corpus": "typlet-paired",
-      "ids": [
-        "pde",
-        "oiint",
-        "null-delim",
-        "bmatrix-dots",
-        "braces",
-        "dddot",
-        "bb",
-        "text-in-math",
-        "misc-symbols",
-        "arrows",
-        "sets",
-        "logic",
-        "negations",
-        "phantom",
-        "maxwell",
-        "schrodinger",
-        "cd"
-      ],
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names."
-    },
-    {
-      "corpus": "typlet-paired",
-      "ids": ["spacing", "boxed"],
-      "reason": "These formulas use evaluated length and box expressions that the restricted Typst evaluator does not yet represent losslessly."
-    },
-    {
-      "corpus": "typlet-paired",
-      "ids": ["macros", "href", "loop-matrix", "computed"],
-      "reason": "Preamble definitions, links, loops, and user-function execution are explicitly outside the restricted math frontend."
+      "ids": ["macros", "loop-matrix", "computed"],
+      "reason": "Preamble definitions, loops, and user-function execution are explicitly outside the restricted math frontend."
     },
     {
       "corpus": "typlet-features",
       "ids": ["frac-skewed"],
       "reason": "The fixture expects an upstream unknown-variable error, but this frontend accepts the namespace form. The upstream expectation remains visible rather than being rewritten."
-    },
-    {
-      "corpus": "typlet-features",
-      "ids": ["mat-delims"],
-      "reason": "The frontend currently lowers the nullable delimiter matrix into IR that validation rejects. This is a reviewed frontend defect and must be fixed before the case can pass."
-    },
-    {
-      "corpus": "typlet-features",
-      "ids": ["combining"],
-      "reason": "Combining-mark sequences are emitted as unknown identifiers rather than composed glyphs."
-    },
-    {
-      "corpus": "typlet-code",
-      "ids": ["display-length", "display-array", "display-color", "spacing-h", "sym-module"],
-      "reason": "These code-mode display expressions exercise values or symbols not yet represented by the math IR frontend."
-    },
-    {
-      "corpus": "typlet-code",
-      "ids": ["call-unknown"],
-      "reason": "The reviewed upstream diagnostic underlines only the unknown callee, while the frontend reports the complete call span. The code is correct, but the source precision gap remains visible."
-    },
-    {
-      "corpus": "typlet-symbols",
-      "ids": [
-        "NN",
-        "RR",
-        "angle",
-        "ast.op",
-        "complement",
-        "dot.op",
-        "ell",
-        "eq.not",
-        "exists",
-        "forall",
-        "inter",
-        "lt.eq",
-        "nabla",
-        "partial"
-      ],
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend."
     },
     {
       "corpus": "typlet-syntax",

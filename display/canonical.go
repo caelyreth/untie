@@ -28,13 +28,15 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		}
 	}
 	type boxSnapshot struct {
-		Width      float32         `json:"width"`
-		Ascent     float32         `json:"ascent"`
-		Descent    float32         `json:"descent"`
-		Italic     float32         `json:"italic"`
-		AxisHeight float32         `json:"axisHeight"`
-		Overflow   float32         `json:"overflow"`
-		Items      []canonicalItem `json:"items"`
+		Width      float32          `json:"width"`
+		Ascent     float32          `json:"ascent"`
+		Descent    float32          `json:"descent"`
+		Italic     float32          `json:"italic"`
+		AxisHeight float32          `json:"axisHeight"`
+		Overflow   float32          `json:"overflow"`
+		Items      []canonicalItem  `json:"items"`
+		Hits       []canonicalHit   `json:"hits,omitempty"`
+		Breaks     []canonicalBreak `json:"breaks,omitempty"`
 	}
 	return json.Marshal(boxSnapshot{
 		Width:      b.Width,
@@ -44,7 +46,57 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		AxisHeight: b.AxisHeight,
 		Overflow:   b.Overflow,
 		Items:      items,
+		Hits:       canonicalHits(b.Hits),
+		Breaks:     canonicalBreaks(b.Breaks),
 	})
+}
+
+type canonicalHit struct {
+	Source [2]int    `json:"source"`
+	Area   []float32 `json:"area"`
+	Depth  int       `json:"depth"`
+	Kind   string    `json:"kind"`
+}
+
+type canonicalBreak struct {
+	X       float32 `json:"x"`
+	Penalty int     `json:"penalty"`
+	Kind    string  `json:"kind"`
+}
+
+func canonicalHits(hits []Hit) []canonicalHit {
+	if len(hits) == 0 {
+		return nil
+	}
+	out := make([]canonicalHit, len(hits))
+	for i, hit := range hits {
+		out[i] = canonicalHit{
+			Source: [2]int{hit.Source.Start, hit.Source.End},
+			Area:   rectValues(hit.Area),
+			Depth:  hit.Depth,
+			Kind:   hitKindName(hit.Kind),
+		}
+	}
+	return out
+}
+
+func canonicalBreaks(breaks []Break) []canonicalBreak {
+	if len(breaks) == 0 {
+		return nil
+	}
+	out := make([]canonicalBreak, len(breaks))
+	for i, breakPoint := range breaks {
+		out[i] = canonicalBreak{
+			X:       breakPoint.X,
+			Penalty: breakPoint.Penalty,
+			Kind:    breakKindName(breakPoint.Kind),
+		}
+	}
+	return out
+}
+
+func rectValues(rect geometry.Rect) []float32 {
+	return []float32{rect.X, rect.Y, rect.Width, rect.Height}
 }
 
 type canonicalItem struct {
@@ -90,6 +142,46 @@ func itemKindName(kind ItemKind) string {
 		return "rule"
 	case ItemGlyphRef:
 		return "glyph-ref"
+	default:
+		return "unknown"
+	}
+}
+
+func hitKindName(kind HitKind) string {
+	switch kind {
+	case HitAtom:
+		return "atom"
+	case HitGroup:
+		return "group"
+	case HitScript:
+		return "script"
+	case HitFractionNumerator:
+		return "fraction-numerator"
+	case HitFractionDenominator:
+		return "fraction-denominator"
+	case HitRadical:
+		return "radical"
+	case HitFence:
+		return "fence"
+	case HitTableCell:
+		return "table-cell"
+	case HitRow:
+		return "row"
+	case HitOther:
+		return "other"
+	default:
+		return "unknown"
+	}
+}
+
+func breakKindName(kind BreakKind) string {
+	switch kind {
+	case BreakRelation:
+		return "relation"
+	case BreakBinary:
+		return "binary"
+	case BreakExplicit:
+		return "explicit"
 	default:
 		return "unknown"
 	}

@@ -55,6 +55,7 @@ func (l *lowerer) lowerAlphabet(call *astNode, name string) ir.Node {
 		variant = ir.VariantFraktur
 	}
 	applyVariant(body, variant)
+	applyClass(body, ir.ClassNormal)
 	return body
 }
 
@@ -159,7 +160,7 @@ func (l *lowerer) lowerOperator(call *astNode) ir.Node {
 	text := l.contentArg(call, "text", 0, true)
 	operator := ir.NewOperator(call.span, nodeText(text))
 	operator.Variant = ir.VariantNormal
-	operator.Class = ir.ClassNormal
+	operator.Class = ir.ClassLarge
 	if arg := namedArgument(call, "limits"); arg != nil {
 		limit, _ := l.valueBool(arg.node)
 		if limit {
@@ -186,6 +187,14 @@ func nodeText(n ir.Node) string {
 		for _, item := range n.Items {
 			b.WriteString(nodeText(item))
 		}
+		return b.String()
+	case *ir.Fenced:
+		var b strings.Builder
+		b.WriteString(nodeText(n.Open))
+		for _, item := range n.Body {
+			b.WriteString(nodeText(item))
+		}
+		b.WriteString(nodeText(n.Close))
 		return b.String()
 	default:
 		return ""

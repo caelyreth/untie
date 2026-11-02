@@ -29,6 +29,7 @@ func (l *lowerer) lowerAccentCall(call *astNode) ir.Node {
 	}
 	body := l.contentArg(call, "base", 0, true)
 	accent := l.glyph(accentNodeSpan(accentNode, call.span), normalizeAccent(mark))
+	accent.Class = ir.ClassDiacritic
 	position := ir.PositionAbove
 	if accentIsBelow(normalizeAccent(mark)) {
 		position = ir.PositionBelow
@@ -53,6 +54,7 @@ func accentNodeSpan(n *astNode, fallback source.Range) source.Range {
 func (l *lowerer) lowerAccentWithMark(call *astNode, mark string) ir.Node {
 	body := l.contentArg(call, "base", 0, true)
 	accent := l.glyph(call.span, mark)
+	accent.Class = ir.ClassDiacritic
 	position := ir.PositionAbove
 	if accentIsBelow(mark) {
 		position = ir.PositionBelow

@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -19,10 +20,12 @@ func (s *layoutState) layoutFraction(node *ir.Fraction, env environment, depth i
 	if err != nil {
 		return nil, err
 	}
+	setOwnHitKind(numerator, display.HitFractionNumerator)
 	denominator, err := s.layoutNode(node.Denominator, denEnv, depth)
 	if err != nil {
 		return nil, err
 	}
+	setOwnHitKind(denominator, display.HitFractionDenominator)
 
 	switch node.Style {
 	case ir.FractionVertical, ir.FractionNoBar:

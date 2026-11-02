@@ -72,6 +72,12 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	if fragment == nil {
 		return fmt.Errorf("%w: nil fragment in flatten", ErrInvalidInput)
 	}
+	if err := f.layout.appendFragmentHits(f, fragment, x, y); err != nil {
+		return err
+	}
+	if len(f.box.Hits) > f.layout.limits.MaxNodes {
+		return fmt.Errorf("%w: source hit count %d", ErrLimit, len(f.box.Hits))
+	}
 	for _, draw := range fragment.items {
 		if err := f.tick(); err != nil {
 			return err

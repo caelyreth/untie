@@ -33,14 +33,14 @@ generated nodes retain an origin span where the frontend can identify one.
 
 | Package | Responsibility | Public |
 |---|---|---|
-| `github.com/caelyreth/untie` | Stable facade, dialect selection, parse orchestration, API cache keys | Yes |
+| `github.com/caelyreth/untie` | Stable facade, dialect selection, parse orchestration, reusable layout engines, bounded engine cache | Yes |
 | `source` | Byte ranges, diagnostics, stable diagnostic codes, resource limits | Yes |
 | `geometry` | Fixed-point em/DIP values and public path primitives | Yes |
 | `ir` | Sealed neutral math node interface, constructors, validation, canonical test encoding | Yes |
-| `font` | Host font inputs and immutable font-set ownership; OpenType parsing is planned | Yes |
-| `display` | Flattened box, items, paint, paths, validation, canonical test encoding | Yes |
+| `font` | Host font inputs, immutable font-set ownership, OpenType MATH/GSUB/cmap/outline parsing | Yes |
+| `display` | Flattened box, items, paint, paths, source hits, break metadata, validation, canonical test encoding | Yes |
 | `internal/tex` | Bounded TeX lexer, macro expansion, parser, and AST-to-IR lowering | No |
-| `internal/typst` | Reserved Typst frontend boundary; currently a diagnostic stub | No |
+| `internal/typst` | Bounded Typst lexer/parser/evaluator and AST-to-IR lowering | No |
 | `internal/layout` | Fixed-point math layout and flattening behind narrow font ports | No |
 | `internal/mathdata` | Generated symbol, class, variant, shorthand, and operator tables | No |
 | `internal/fixture` | Decoders, corpus runners, unit and span adapters, golden helpers | No |
@@ -56,13 +56,16 @@ The current import graph follows these rules:
 
 ```text
 untie
-  -> display, font, ir, source, internal/tex, internal/typst
+  -> display, font, internal/engine, internal/tex, internal/typst, ir, source
 
 internal/tex, internal/typst
   -> ir, source
 
 internal/layout
   -> display, geometry, ir, source
+
+internal/engine
+  -> display, font, geometry, internal/layout, internal/mathdata, ir, source
 
 internal/fixture
   -> geometry, source
@@ -74,7 +77,7 @@ ir
   -> source
 
 display
-  -> geometry
+  -> geometry, source
 
 font, internal/mathdata
   -> standard library only
@@ -90,7 +93,8 @@ The forbidden edges are more important than the diagram:
 - `font` must not import `ir`, `layout`, `display`, or a frontend.
 - A frontend must not import `font`, `layout`, or `display`.
 - `internal/layout` must not import `internal/tex` or `internal/typst`.
-- `display` must not import `font` or an internal package.
+- `display` may import `geometry` and the low-level immutable `source` range
+  types. It must not import `font`, a frontend, or an internal package.
 - No core package may import a UI toolkit, DOM, GPU, platform text, image
   rasterizer, system font lookup, or native rendering library.
 
@@ -172,10 +176,11 @@ These ports keep font-file parsing, glyph selection, shaping, and layout
 separable. The layout engine requires glyph and metric ports. Optional ports
 must reject unsupported requests explicitly; they must not invent metrics.
 
-The public `font` package currently provides immutable byte ownership and a
-stable font-set key. It does not yet parse SFNT, CFF, GSUB, GPOS, cmap, or the
-OpenType MATH table. The eventual adapter is responsible for converting design
-units to fixed-point ems before passing data to layout.
+The public `font` package parses SFNT/TTC faces, cmap and variation mappings,
+MATH constants and constructions, math GSUB features, and CFF/TrueType outlines.
+`internal/engine` adapts those design-unit results to the narrow layout ports,
+including deterministic glyph selection, stretching, text shaping, and fallback
+order.
 
 ## Display Contract
 
@@ -187,13 +192,20 @@ ordered list of positioned items:
 - `ItemGlyphRef`: a host glyph-cache reference with font ID, glyph ID, scale,
   and position.
 
+It also owns the public source-hit and inline-break types. A hit maps a UTF-8
+byte range to one placed rectangle and carries depth/kind for deterministic
+lookup. The layout engine emits hits from the placed fragment tree rather than
+reconstructing geometry from a flattened item list. Break metadata is
+baseline-relative and does not yet imply that layout populates split pieces.
+
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.
 
 `display.Box.Clone` owns copied path slices. `display.Validate` checks finite
 values, nonnegative dimensions, known item kinds, valid path arity, and glyph
-reference placement. `MarshalCanonical` exists for deterministic tests and
-diagnostics; it is not yet a stable cross-language protocol.
+reference placement. It also validates hit ranges/areas and break positions.
+`MarshalCanonical` exists for deterministic tests and diagnostics; it is not yet
+a stable cross-language protocol.
 
 ## Public Orchestration
 
@@ -205,7 +217,14 @@ The root package is a coordinator:
 - `Expr.Key` hashes source, dialect, mode, limits, Typst preamble, and sorted TeX
   macro definitions. It is a convenience identity, not a font or layout key.
 - `LoadFonts` delegates font-set ownership.
-- `LayoutContext` is the future public layout boundary.
+- `NewEngine` prepares a caller-owned, concurrency-safe layout environment.
+- `Engine.Layout` and `Engine.LayoutContext` are the explicit lifecycle API.
+- Package-level `Layout` and `LayoutContext` use a bounded eight-entry cache of
+  prepared engines, keyed by full font identity, effective limits, layout
+  revision, and cache schema. Layout results are not cached.
+- `ClearLayoutEngineCache` releases engines retained by the convenience path.
+- `Style.Align` is currently validated but inactive and must not be documented
+  as changing geometry.
 
 The root package must not grow construct-specific algorithms or duplicate
 frontend and layout logic.
@@ -226,9 +245,10 @@ The intended concurrency contract is:
   flattening;
 - identical inputs and versions produce identical canonical output.
 
-Determinism does not promise cross-version output stability. Font bytes, face
-index, font-set identity, style, layout revision, and parse identity must all be
-included in future layout cache keys.
+Determinism does not promise cross-version output stability. The engine-cache
+identity includes full font bytes, face IDs and indices, effective limits,
+layout revision, and cache schema. Style and parse identity remain per-call
+inputs because layout results are not cached.
 
 ## Architectural Regressions
 

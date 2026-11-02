@@ -57,10 +57,10 @@
   },
   "summary": {
     "total": 171,
-    "pass": 114,
-    "diagnostic": 1,
+    "pass": 156,
+    "diagnostic": 2,
     "unsupported": 4,
-    "bug": 52,
+    "bug": 9,
     "unexplained": 0
   },
   "families": [
@@ -598,74 +598,29 @@
       "id": "display-length",
       "corpus": "typlet-code",
       "index": 4,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These code-mode display expressions exercise values or symbols not yet represented by the math IR frontend.",
+      "status": "pass",
       "families": [
         "feature:code"
-      ],
-      "codes": [
-        "invalid-value"
-      ],
-      "diagnostics": [
-        {
-          "code": "invalid-value",
-          "severity": 0,
-          "start": 1,
-          "end": 4,
-          "message": "length used where content was expected"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "display-array",
       "corpus": "typlet-code",
       "index": 5,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These code-mode display expressions exercise values or symbols not yet represented by the math IR frontend.",
+      "status": "pass",
       "families": [
         "feature:code",
         "feature:group"
-      ],
-      "codes": [
-        "invalid-value"
-      ],
-      "diagnostics": [
-        {
-          "code": "invalid-value",
-          "severity": 0,
-          "start": 1,
-          "end": 7,
-          "message": "array used where content was expected"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "display-color",
       "corpus": "typlet-code",
       "index": 6,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These code-mode display expressions exercise values or symbols not yet represented by the math IR frontend.",
+      "status": "pass",
       "families": [
         "feature:code"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 1,
-          "end": 4,
-          "message": "unknown variable: red"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "display-symbol",
@@ -691,9 +646,7 @@
       "id": "spacing-h",
       "corpus": "typlet-code",
       "index": 9,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These code-mode display expressions exercise values or symbols not yet represented by the math IR frontend.",
+      "status": "pass",
       "families": [
         "feature:code",
         "feature:group",
@@ -701,20 +654,7 @@
       ],
       "commands": [
         "h"
-      ],
-      "codes": [
-        "invalid-value"
-      ],
-      "diagnostics": [
-        {
-          "code": "invalid-value",
-          "severity": 0,
-          "start": 5,
-          "end": 8,
-          "message": "expected length, found content"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "named-int",
@@ -750,9 +690,9 @@
       "id": "call-unknown",
       "corpus": "typlet-code",
       "index": 12,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The reviewed upstream diagnostic underlines only the unknown callee, while the frontend reports the complete call span. The code is correct, but the source precision gap remains visible.",
+      "status": "diagnostic",
+      "review": "upstream-diagnostic",
+      "reason": "selected upstream case expects a recoverable diagnostic",
       "families": [
         "call:foo",
         "feature:group"
@@ -765,11 +705,10 @@
           "code": "unknown-variable",
           "severity": 0,
           "start": 0,
-          "end": 6,
+          "end": 3,
           "message": "unknown variable: foo"
         }
-      ],
-      "detail": "diagnostics do not include an expected code and source span"
+      ]
     },
     {
       "id": "unknown-variable",
@@ -822,27 +761,12 @@
       "id": "sym-module",
       "corpus": "typlet-code",
       "index": 16,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These code-mode display expressions exercise values or symbols not yet represented by the math IR frontend.",
+      "status": "pass",
       "families": [
         "feature:code",
         "field:sym.RR",
         "field:sym.alpha"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 14,
-          "end": 20,
-          "message": "unknown variable: sym.RR"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "number-decimal",
@@ -1113,9 +1037,7 @@
       "id": "mat-delims",
       "corpus": "typlet-features",
       "index": 21,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The frontend currently lowers the nullable delimiter matrix into IR that validation rejects. This is a reviewed frontend defect and must be fixed before the case can pass.",
+      "status": "pass",
       "families": [
         "feature:code",
         "feature:group",
@@ -1125,8 +1047,7 @@
       ],
       "commands": [
         "mat"
-      ],
-      "detail": "default-limit result violates IR contract: ir: invalid: root.row[2]: balanced fence has a missing delimiter"
+      ]
     },
     {
       "id": "cases-align",
@@ -1212,25 +1133,10 @@
       "id": "combining",
       "corpus": "typlet-features",
       "index": 27,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "Combining-mark sequences are emitted as unknown identifiers rather than composed glyphs.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 3,
-          "message": "unknown variable: x̂"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "display-large-block",
@@ -1378,42 +1284,13 @@
       "id": "pde",
       "corpus": "typlet-paired",
       "index": 10,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:fractions",
         "feature:fraction",
         "feature:group",
         "feature:scripts"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 1,
-          "end": 8,
-          "message": "unknown variable: partial"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 15,
-          "end": 22,
-          "message": "unknown variable: partial"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 34,
-          "end": 39,
-          "message": "unknown variable: nabla"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "sum",
@@ -1531,9 +1408,7 @@
       "id": "oiint",
       "corpus": "typlet-paired",
       "index": 19,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:big-ops",
         "feature:group",
@@ -1543,20 +1418,7 @@
       ],
       "commands": [
         "bold"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 13,
-          "message": "unknown variable: integral.surf"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "auto-paren",
@@ -1690,9 +1552,7 @@
       "id": "null-delim",
       "corpus": "typlet-paired",
       "index": 26,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "call:zws",
         "category:delimiters",
@@ -1704,20 +1564,7 @@
       ],
       "commands": [
         "lr"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 3,
-          "end": 6,
-          "message": "unknown variable: zws"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "pmatrix",
@@ -1738,9 +1585,7 @@
       "id": "bmatrix-dots",
       "corpus": "typlet-paired",
       "index": 28,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:matrices",
         "feature:group",
@@ -1753,34 +1598,7 @@
       ],
       "commands": [
         "mat"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 20,
-          "end": 26,
-          "message": "unknown variable: dots.c"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 34,
-          "end": 40,
-          "message": "unknown variable: dots.c"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 80,
-          "end": 86,
-          "message": "unknown variable: dots.c"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "vmatrix",
@@ -2037,9 +1855,7 @@
       "id": "braces",
       "corpus": "typlet-paired",
       "index": 43,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:accents",
         "feature:group",
@@ -2050,27 +1866,7 @@
       "commands": [
         "overbrace",
         "underbrace"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 12,
-          "end": 18,
-          "message": "unknown variable: dots.c"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 46,
-          "end": 52,
-          "message": "unknown variable: dots.c"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "overset",
@@ -2094,9 +1890,7 @@
       "id": "dddot",
       "corpus": "typlet-paired",
       "index": 45,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:accents",
         "feature:group",
@@ -2104,28 +1898,13 @@
       ],
       "commands": [
         "dot.triple"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 13,
-          "message": "unknown variable: dot.triple"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "bb",
       "corpus": "typlet-paired",
       "index": 46,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:fonts",
         "feature:group",
@@ -2133,34 +1912,7 @@
       ],
       "commands": [
         "bb"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 2,
-          "message": "unknown variable: RR"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 8,
-          "end": 10,
-          "message": "unknown variable: NN"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 16,
-          "end": 18,
-          "message": "unknown variable: ZZ"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "cal-scr-frak",
@@ -2218,35 +1970,13 @@
       "id": "text-in-math",
       "corpus": "typlet-paired",
       "index": 50,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:fonts",
         "feature:code",
         "feature:group",
         "feature:text"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 24,
-          "end": 30,
-          "message": "unknown variable: strong"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 31,
-          "end": 35,
-          "message": "unknown variable: bold"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "operatorname",
@@ -2281,94 +2011,22 @@
       "id": "misc-symbols",
       "corpus": "typlet-paired",
       "index": 53,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:symbols",
         "feature:scripts"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "unknown variable: nabla"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 11,
-          "end": 18,
-          "message": "unknown variable: partial"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 51,
-          "end": 57,
-          "message": "unknown variable: planck"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 63,
-          "end": 66,
-          "message": "unknown variable: ell"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 72,
-          "end": 74,
-          "message": "unknown variable: Re"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 80,
-          "end": 83,
-          "message": "unknown variable: pee"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "arrows",
       "corpus": "typlet-paired",
       "index": 54,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:symbols",
         "field:arrow.r.hook",
         "field:arrow.r.squiggly"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 24,
-          "end": 36,
-          "message": "unknown variable: arrow.r.hook"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 39,
-          "end": 55,
-          "message": "unknown variable: arrow.r.squiggly"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "relations",
@@ -2385,50 +2043,19 @@
       "id": "sets",
       "corpus": "typlet-paired",
       "index": 56,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:symbols",
         "field:in.not",
         "field:subset.eq",
         "field:supset.neq"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 14,
-          "end": 24,
-          "message": "unknown variable: supset.neq"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 41,
-          "end": 48,
-          "message": "unknown variable: without"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 77,
-          "end": 82,
-          "message": "unknown variable: inter"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "logic",
       "corpus": "typlet-paired",
       "index": 57,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:symbols",
         "feature:group",
@@ -2437,82 +2064,19 @@
       ],
       "commands": [
         "not"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "unknown variable: forall"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 14,
-          "end": 20,
-          "message": "unknown variable: exists"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 29,
-          "end": 41,
-          "message": "unknown variable: not"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 47,
-          "end": 53,
-          "message": "unknown variable: tack.r"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "negations",
       "corpus": "typlet-paired",
       "index": 58,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:symbols",
         "field:equiv.not",
         "field:lt.eq.not",
         "field:subset.eq.not"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 2,
-          "end": 11,
-          "message": "unknown variable: equiv.not"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 23,
-          "end": 32,
-          "message": "unknown variable: lt.eq.not"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 44,
-          "end": 57,
-          "message": "unknown variable: subset.eq.not"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "xarrow",
@@ -2534,9 +2098,7 @@
       "id": "spacing",
       "corpus": "typlet-paired",
       "index": 60,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These formulas use evaluated length and box expressions that the restricted Typst evaluator does not yet represent losslessly.",
+      "status": "pass",
       "families": [
         "category:layout",
         "feature:code",
@@ -2546,46 +2108,18 @@
       ],
       "commands": [
         "h"
-      ],
-      "codes": [
-        "invalid-value"
-      ],
-      "diagnostics": [
-        {
-          "code": "invalid-value",
-          "severity": 0,
-          "start": 40,
-          "end": 46,
-          "message": "expected length, found content"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "phantom",
       "corpus": "typlet-paired",
       "index": 61,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:layout",
         "feature:code",
         "feature:group"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 5,
-          "end": 9,
-          "message": "unknown variable: hide"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "displaystyle",
@@ -2625,9 +2159,7 @@
       "id": "boxed",
       "corpus": "typlet-paired",
       "index": 64,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These formulas use evaluated length and box expressions that the restricted Typst evaluator does not yet represent losslessly.",
+      "status": "pass",
       "families": [
         "category:layout",
         "feature:code",
@@ -2638,27 +2170,7 @@
       ],
       "commands": [
         "box"
-      ],
-      "codes": [
-        "invalid-value"
-      ],
-      "diagnostics": [
-        {
-          "code": "invalid-value",
-          "severity": 0,
-          "start": 5,
-          "end": 18,
-          "message": "expected color or stroke"
-        },
-        {
-          "code": "invalid-value",
-          "severity": 0,
-          "start": 20,
-          "end": 30,
-          "message": "expected length, found content"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "color",
@@ -2693,9 +2205,7 @@
       "id": "maxwell",
       "corpus": "typlet-paired",
       "index": 67,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:realistic",
         "feature:fraction",
@@ -2704,34 +2214,7 @@
       ],
       "commands": [
         "arrow"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "unknown variable: nabla"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 25,
-          "end": 32,
-          "message": "unknown variable: partial"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 44,
-          "end": 51,
-          "message": "unknown variable: partial"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "taylor",
@@ -2751,9 +2234,7 @@
       "id": "schrodinger",
       "corpus": "typlet-paired",
       "index": 69,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "call:Psi",
         "call:V",
@@ -2765,62 +2246,7 @@
       ],
       "commands": [
         "bold"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 2,
-          "end": 8,
-          "message": "unknown variable: planck"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 9,
-          "end": 16,
-          "message": "unknown variable: partial"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 18,
-          "end": 25,
-          "message": "unknown variable: partial"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 29,
-          "end": 43,
-          "message": "unknown variable: Psi"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 48,
-          "end": 54,
-          "message": "unknown variable: planck"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 62,
-          "end": 67,
-          "message": "unknown variable: nabla"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 86,
-          "end": 100,
-          "message": "unknown variable: Psi"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "fourier",
@@ -2892,9 +2318,7 @@
       "id": "cd",
       "corpus": "typlet-paired",
       "index": 74,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The P1 symbol registry does not yet cover these Typst 0.15.1 symbol, field, accent, and delimiter names.",
+      "status": "pass",
       "families": [
         "category:extensions",
         "feature:code",
@@ -2908,27 +2332,7 @@
       "commands": [
         "mat",
         "stretch"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 47,
-          "end": 54,
-          "message": "unknown variable: arrow.b"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 69,
-          "end": 76,
-          "message": "unknown variable: arrow.b"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "mhchem",
@@ -2947,7 +2351,7 @@
       "index": 76,
       "status": "bug",
       "review": "known-gap",
-      "reason": "Preamble definitions, links, loops, and user-function execution are explicitly outside the restricted math frontend.",
+      "reason": "Preamble definitions, loops, and user-function execution are explicitly outside the restricted math frontend.",
       "families": [
         "category:extensions",
         "feature:preamble",
@@ -2986,9 +2390,7 @@
       "id": "href",
       "corpus": "typlet-paired",
       "index": 77,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "Preamble definitions, links, loops, and user-function execution are explicitly outside the restricted math frontend.",
+      "status": "pass",
       "families": [
         "call:link",
         "category:extensions",
@@ -2998,18 +2400,17 @@
         "feature:text"
       ],
       "codes": [
-        "unknown-variable"
+        "unsupported"
       ],
       "diagnostics": [
         {
-          "code": "unknown-variable",
-          "severity": 0,
+          "code": "unsupported",
+          "severity": 1,
           "start": 1,
           "end": 33,
-          "message": "unknown variable: link"
+          "message": "link destination is not represented by the neutral math IR"
         }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "loop-matrix",
@@ -3017,7 +2418,7 @@
       "index": 78,
       "status": "bug",
       "review": "known-gap",
-      "reason": "Preamble definitions, links, loops, and user-function execution are explicitly outside the restricted math frontend.",
+      "reason": "Preamble definitions, loops, and user-function execution are explicitly outside the restricted math frontend.",
       "families": [
         "category:typst-only",
         "feature:code",
@@ -3057,7 +2458,7 @@
       "index": 79,
       "status": "bug",
       "review": "known-gap",
-      "reason": "Preamble definitions, links, loops, and user-function execution are explicitly outside the restricted math frontend.",
+      "reason": "Preamble definitions, loops, and user-function execution are explicitly outside the restricted math frontend.",
       "families": [
         "call:fib",
         "category:typst-only",
@@ -3082,7 +2483,7 @@
           "code": "unknown-variable",
           "severity": 0,
           "start": 8,
-          "end": 15,
+          "end": 11,
           "message": "unknown variable: fib"
         }
       ],
@@ -3148,49 +2549,19 @@
       "id": "NN",
       "corpus": "typlet-symbols",
       "index": 2,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 2,
-          "message": "unknown variable: NN"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "RR",
       "corpus": "typlet-symbols",
       "index": 3,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 2,
-          "message": "unknown variable: RR"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "aleph",
@@ -3214,25 +2585,10 @@
       "id": "angle",
       "corpus": "typlet-symbols",
       "index": 6,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "unknown variable: angle"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "approx",
@@ -3265,25 +2621,10 @@
       "id": "ast.op",
       "corpus": "typlet-symbols",
       "index": 10,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "field:ast.op"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "unknown variable: ast.op"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "bar.v",
@@ -3298,73 +2639,28 @@
       "id": "complement",
       "corpus": "typlet-symbols",
       "index": 12,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 10,
-          "message": "unknown variable: complement"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "dot.op",
       "corpus": "typlet-symbols",
       "index": 13,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "field:dot.op"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "unknown variable: dot.op"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "ell",
       "corpus": "typlet-symbols",
       "index": 14,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 3,
-          "message": "unknown variable: ell"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "emptyset",
@@ -3379,73 +2675,28 @@
       "id": "eq.not",
       "corpus": "typlet-symbols",
       "index": 16,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "field:eq.not"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "unknown variable: eq.not"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "exists",
       "corpus": "typlet-symbols",
       "index": 17,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "unknown variable: exists"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "forall",
       "corpus": "typlet-symbols",
       "index": 18,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "unknown variable: forall"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "in",
@@ -3478,97 +2729,37 @@
       "id": "inter",
       "corpus": "typlet-symbols",
       "index": 22,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "unknown variable: inter"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "lt.eq",
       "corpus": "typlet-symbols",
       "index": 23,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "field:lt.eq"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "unknown variable: lt.eq"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "nabla",
       "corpus": "typlet-symbols",
       "index": 24,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "unknown variable: nabla"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "partial",
       "corpus": "typlet-symbols",
       "index": 25,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "These imported symbol aliases are present in Typst's symbol catalogue but are not yet resolved by the P1 frontend.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 7,
-          "message": "unknown variable: partial"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "plus.minus",
@@ -13108,39 +12299,10 @@
       "id": "combining-marks",
       "corpus": "typlet-syntax",
       "index": 6,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "Typlet imported these as parser/CST syntax probes rather than evaluable math. The current frontend emits reviewed syntax or identifier diagnostics and a valid recovery tree.",
+      "status": "pass",
       "families": [
         "literal"
-      ],
-      "codes": [
-        "unknown-variable"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 0,
-          "end": 3,
-          "message": "unknown variable: é"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 6,
-          "end": 11,
-          "message": "unknown variable: x̂̃"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 14,
-          "end": 19,
-          "message": "unknown variable: abć"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "zwj-sequence",
@@ -13306,13 +12468,6 @@
         {
           "code": "unknown-variable",
           "severity": 0,
-          "start": 61,
-          "end": 63,
-          "message": "unknown variable: em"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
           "start": 66,
           "end": 70,
           "message": "unknown variable: e5em"
@@ -13337,37 +12492,9 @@
         {
           "code": "unknown-variable",
           "severity": 0,
-          "start": 2,
-          "end": 4,
-          "message": "unknown variable: pt"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 7,
-          "end": 9,
-          "message": "unknown variable: mm"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 12,
-          "end": 14,
-          "message": "unknown variable: cm"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
           "start": 28,
           "end": 31,
           "message": "unknown variable: rad"
-        },
-        {
-          "code": "unknown-variable",
-          "severity": 0,
-          "start": 34,
-          "end": 36,
-          "message": "unknown variable: em"
         },
         {
           "code": "unknown-variable",

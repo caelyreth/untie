@@ -19,111 +19,125 @@ type listedPackage struct {
 	XTestImports []string
 }
 
+type packageRules struct {
+	Production []string
+	Tests      []string
+}
+
 // This is an exact allowlist for every project package. Standard-library
 // imports are permitted by convention; every non-standard import must appear
-// here. Keep the table small and make dependency changes visible in review.
-var allowedProjectImports = map[string][]string{
+// here. Test-only edges are additional to Production and never grant the same
+// edge to production code. Keep the table small and make dependency changes
+// visible in review.
+var allowedProjectImports = map[string]packageRules{
 	modulePath: {
-		modulePath + "/display",
-		modulePath + "/font",
-		modulePath + "/internal/engine",
-		modulePath + "/internal/tex",
-		modulePath + "/internal/typst",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath + "/display",
+			modulePath + "/font",
+			modulePath + "/internal/engine",
+			modulePath + "/internal/tex",
+			modulePath + "/internal/typst",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/cmd/formula-check": {
-		modulePath,
-		modulePath + "/ir",
+		Production: []string{modulePath, modulePath + "/ir"},
 	},
 	modulePath + "/cmd/formula-preview": {
-		modulePath,
-		modulePath + "/internal/testrender",
+		Production: []string{modulePath, modulePath + "/internal/testrender"},
 	},
 	modulePath + "/cmd/crosscheck": {
-		modulePath + "/internal/crosscheck",
-		modulePath + "/internal/fixture",
+		Production: []string{modulePath + "/internal/crosscheck", modulePath + "/internal/fixture"},
 	},
 	modulePath + "/display": {
-		modulePath + "/geometry",
+		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
 	modulePath + "/font": {
-		"github.com/go-opentype/opentype",
-		"github.com/go-text/typesetting/font",
-		"github.com/go-text/typesetting/font/opentype",
-		modulePath + "/geometry",
-		modulePath + "/internal/mathdata",
-		modulePath + "/source",
+		Production: []string{
+			"github.com/go-opentype/opentype",
+			"github.com/go-text/typesetting/font",
+			"github.com/go-text/typesetting/font/opentype",
+			modulePath + "/geometry",
+		},
+		Tests: []string{"github.com/go-text/typesetting/font/opentype"},
 	},
-	modulePath + "/geometry": nil,
+	modulePath + "/geometry": {},
 	modulePath + "/internal/engine": {
-		modulePath + "/display",
-		modulePath + "/font",
-		modulePath + "/geometry",
-		modulePath + "/internal/layout",
-		modulePath + "/internal/mathdata",
-		modulePath + "/internal/tex",
-		modulePath + "/internal/typst",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath + "/display",
+			modulePath + "/font",
+			modulePath + "/geometry",
+			modulePath + "/internal/layout",
+			modulePath + "/internal/mathdata",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
+		Tests: []string{modulePath + "/internal/tex", modulePath + "/internal/typst"},
 	},
 	modulePath + "/internal/conformance": {
-		modulePath + "/internal/fixture",
-		modulePath + "/internal/tex",
-		modulePath + "/internal/typst",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath + "/internal/fixture",
+			modulePath + "/internal/tex",
+			modulePath + "/internal/typst",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/internal/conformance/cmd/texreport": {
-		modulePath + "/internal/conformance",
-		modulePath + "/internal/fixture",
+		Production: []string{modulePath + "/internal/conformance", modulePath + "/internal/fixture"},
 	},
 	modulePath + "/internal/conformance/cmd/typstreport": {
-		modulePath + "/internal/conformance",
-		modulePath + "/internal/fixture",
+		Production: []string{modulePath + "/internal/conformance", modulePath + "/internal/fixture"},
 	},
 	modulePath + "/internal/crosscheck": {
-		modulePath,
-		modulePath + "/display",
-		modulePath + "/font",
-		modulePath + "/internal/engine",
-		modulePath + "/internal/fixture",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath,
+			modulePath + "/display",
+			modulePath + "/font",
+			modulePath + "/internal/engine",
+			modulePath + "/internal/fixture",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/internal/fixture": {
-		modulePath + "/geometry",
-		modulePath + "/source",
+		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
 	modulePath + "/internal/layout": {
-		modulePath + "/internal/layout",
-		modulePath + "/display",
-		modulePath + "/geometry",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath + "/display",
+			modulePath + "/geometry",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
+		Tests: []string{modulePath + "/internal/layout"},
 	},
-	modulePath + "/internal/mathdata":     nil,
-	modulePath + "/internal/mathdata/gen": nil,
+	modulePath + "/internal/mathdata":     {},
+	modulePath + "/internal/mathdata/gen": {},
 	modulePath + "/internal/testrender": {
-		modulePath + "/display",
-		modulePath + "/geometry",
+		Production: []string{modulePath + "/display", modulePath + "/geometry"},
 	},
 	modulePath + "/internal/tex": {
-		modulePath + "/geometry",
-		modulePath + "/internal/mathdata",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath + "/geometry",
+			modulePath + "/internal/mathdata",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/internal/typst": {
-		modulePath + "/geometry",
-		modulePath + "/internal/mathdata",
-		modulePath + "/ir",
-		modulePath + "/source",
+		Production: []string{
+			modulePath + "/geometry",
+			modulePath + "/internal/mathdata",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/ir": {
-		modulePath + "/source",
+		Production: []string{modulePath + "/source"},
 	},
-	modulePath + "/source": nil,
+	modulePath + "/source": {},
 }
 
 func TestArchitectureImportRules(t *testing.T) {
@@ -147,10 +161,12 @@ func TestArchitectureImportRules(t *testing.T) {
 			continue
 		}
 		seen[pkg.ImportPath] = true
-		imports := append([]string(nil), pkg.Imports...)
-		imports = append(imports, pkg.TestImports...)
-		imports = append(imports, pkg.XTestImports...)
-		for _, violation := range packageImportViolations(pkg.ImportPath, imports, allowedProjectImports) {
+		for _, violation := range packageImportViolations(pkg.ImportPath, pkg.Imports, false, allowedProjectImports) {
+			t.Error(violation)
+		}
+		testImports := append([]string(nil), pkg.TestImports...)
+		testImports = append(testImports, pkg.XTestImports...)
+		for _, violation := range packageImportViolations(pkg.ImportPath, testImports, true, allowedProjectImports) {
 			t.Error(violation)
 		}
 	}
@@ -167,19 +183,32 @@ func TestArchitectureRuleDetectsViolation(t *testing.T) {
 	violations := packageImportViolations(modulePath+"/font", []string{
 		modulePath + "/ir",
 		"github.com/example/ui-toolkit",
-	}, allowedProjectImports)
+	}, false, allowedProjectImports)
 	if len(violations) != 2 {
 		t.Fatalf("violations = %v, want two", violations)
 	}
-	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, allowedProjectImports); len(got) != 0 {
-		t.Fatalf("font -> internal/mathdata rejected: %v", got)
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/geometry"}, false, allowedProjectImports); len(got) != 0 {
+		t.Fatalf("font -> geometry rejected: %v", got)
+	}
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, false, allowedProjectImports); len(got) == 0 {
+		t.Fatal("production-only import rule accepted internal/mathdata")
+	}
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, true, allowedProjectImports); len(got) == 0 {
+		t.Fatal("test rule accepted an unused font -> internal/mathdata edge")
+	}
+	if got := packageImportViolations(modulePath+"/internal/engine", []string{modulePath + "/internal/tex"}, false, allowedProjectImports); len(got) == 0 {
+		t.Fatal("test-only engine -> tex edge leaked into production rules")
 	}
 }
 
-func packageImportViolations(pkg string, imports []string, allow map[string][]string) []string {
-	allowed, known := allow[pkg]
+func packageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules) []string {
+	rules, known := allow[pkg]
 	if !known {
 		return []string{fmt.Sprintf("%s is not in the architecture allowlist", pkg)}
+	}
+	allowed := rules.Production
+	if test {
+		allowed = append(append([]string(nil), allowed...), rules.Tests...)
 	}
 	allowedSet := make(map[string]bool, len(allowed))
 	for _, imp := range allowed {

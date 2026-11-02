@@ -59,6 +59,9 @@ var functionSignatures = map[string]signature{
 		"historical-ligatures", "number-type", "number-width", "slashed-zero",
 		"fractions", "features", "variations", "body", "text",
 	)},
+	"strong": {maxPositional: 1, named: setOf("body", "delta")},
+	"emph":   {maxPositional: 1, named: setOf("body")},
+	"link":   {maxPositional: 2, named: setOf("dest", "body")},
 	"box": {maxPositional: 1, named: setOf(
 		"width", "height", "baseline", "fill", "stroke", "border", "radius",
 		"inset", "outset", "clip", "body",

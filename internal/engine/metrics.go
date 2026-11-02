@@ -53,6 +53,7 @@ func (a *adapter) extractMathMetrics() (layout.MathMetrics, error) {
 
 	values := make(map[font.MathConstant]geometry.Em)
 	constants := []font.MathConstant{
+		font.DisplayOperatorMinHeight,
 		font.SuperscriptShiftUp,
 		font.SuperscriptShiftUpCramped,
 		font.SuperscriptBottomMin,
@@ -118,6 +119,7 @@ func (a *adapter) extractMathMetrics() (layout.MathMetrics, error) {
 		XHeight:                       xHeight,
 		AccentBaseHeight:              values[font.AccentBaseHeight],
 		FlattenedAccentBaseHeight:     values[font.FlattenedAccentBaseHeight],
+		DisplayOperatorMinHeight:      values[font.DisplayOperatorMinHeight],
 		AxisHeight:                    axis,
 		SuperscriptShiftUp:            values[font.SuperscriptShiftUp],
 		SuperscriptShiftUpCramped:     values[font.SuperscriptShiftUpCramped],

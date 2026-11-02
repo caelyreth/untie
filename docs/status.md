@@ -26,13 +26,19 @@ tests and migration notes.
 - Fixed-point em and DIP arithmetic in `geometry`.
 - Sealed neutral IR nodes, constructors, walking, canonical test encoding, and
   structural validation in `ir`.
-- Immutable display-list types, validation, cloning, paint variants, and
-  canonical test encoding in `display`.
+- Immutable display-list types, validation, cloning, paint variants, source
+  hit and break contracts, and canonical test encoding in `display`.
+- Layout emits source-linked hit regions for atoms, groups, scripts, fraction
+  parts, fences, and table cells from their actual placed fragment extents.
 - Parsing facade with dialect selection, TeX macro options, Typst preamble
   options, diagnostics, stable parse keys, cancellation checks, and a panic
   containment boundary.
 - Public end-to-end layout through `internal/engine`, with real font, IR,
   layout, and display-list validation.
+- Caller-owned reusable `Engine` values and a bounded eight-entry convenience
+  cache keyed by complete font identity, effective limits, version, and cache
+  schema. `ClearLayoutEngineCache` releases convenience-path retention without
+  affecting caller-owned engines.
 
 ### TeX Frontend
 
@@ -135,7 +141,9 @@ The bounded Typst math frontend includes:
 
 - 1,111 TeX cases from RaTeX and selected KaTeX inputs are classified with zero
   unexplained cases.
-- 171 selected Typst cases are classified with zero unexplained cases.
+- 171 selected Typst cases are classified with zero unexplained cases; the
+  current split is 156 pass, 2 expected diagnostic, 4 unsupported, and 9
+  reviewed gaps.
 - All 81 paired Typst/TeX formulas are classified with zero unexplained cases.
 - The committed paired baseline currently records zero full passes, showing
   the remaining cross-dialect semantic differences rather than hiding them.
@@ -151,14 +159,16 @@ The following are genuine gaps, not hidden behavior:
   reviewed gaps.
 - TeX conformance still records hundreds of reviewed parser coverage gaps,
   especially text-mode commands, environments, groups, rows, and alignment.
-- Typst conformance still records reviewed symbol/evaluator and matrix gaps.
+- Typst conformance still records reviewed evaluator and parser-only syntax
+  gaps.
 - Some MATH assemblies and metric differences remain within documented fixture
   tolerances; comparison against every static Typlet frame is not yet green.
-- Public renderer instances are currently constructed per layout call; a
-  renderer cache keyed by FontSet and limits remains a performance follow-up.
-- Break placement, display wrapping, inline source hits, accessibility output,
-  equation numbering, tags, links, MathML, rasterization, and SVG export are not
-  product features. SVG support is test-only.
+- Package-level convenience layout uses a bounded process-wide engine cache;
+  callers that need explicit lifetime control should use `NewEngine`.
+- Break output types exist, but layout does not yet populate legal break
+  metadata. Display wrapping, split pieces, accessibility output, equation
+  numbering, tags, links, MathML, rasterization, and SVG export are not product
+  features. SVG support is test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary

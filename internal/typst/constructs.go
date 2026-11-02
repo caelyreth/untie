@@ -132,12 +132,16 @@ func (l *lowerer) lowerLR(call *astNode) ir.Node {
 		}
 	}
 	if row, ok := body.(*ir.Row); ok && len(row.Items) >= 2 {
-		first, firstOK := row.Items[0].(*ir.Glyph)
-		last, lastOK := row.Items[len(row.Items)-1].(*ir.Glyph)
-		if firstOK && lastOK && isFenceGlyph(first) && isFenceGlyph(last) {
+		first, firstOK := delimiterNode(row.Items[0])
+		last, lastOK := delimiterNode(row.Items[len(row.Items)-1])
+		if firstOK && lastOK {
 			fenced := ir.NewFenced(call.span, row.Items[1:len(row.Items)-1]...)
-			first.Class = ir.ClassOpening
-			last.Class = ir.ClassClosing
+			if glyph, ok := first.(*ir.Glyph); ok {
+				glyph.Class = ir.ClassOpening
+			}
+			if glyph, ok := last.(*ir.Glyph); ok {
+				glyph.Class = ir.ClassClosing
+			}
 			fenced.Open = first
 			fenced.Close = last
 			fenced.Balanced = true
@@ -153,6 +157,16 @@ func (l *lowerer) lowerLR(call *astNode) ir.Node {
 	// lr() makes delimiters already present in its body stretch. If no fence is
 	// present, the body itself is the complete result.
 	return body
+}
+
+func delimiterNode(n ir.Node) (ir.Node, bool) {
+	if glyph, ok := n.(*ir.Glyph); ok {
+		return glyph, isFenceGlyph(glyph)
+	}
+	if row, ok := n.(*ir.Row); ok && len(row.Items) == 0 {
+		return row, true
+	}
+	return nil, false
 }
 
 func isFenceGlyph(g *ir.Glyph) bool {

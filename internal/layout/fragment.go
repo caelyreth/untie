@@ -3,8 +3,10 @@ package layout
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
 )
 
 // Metrics are baseline-relative dimensions in root ems.
@@ -37,7 +39,19 @@ type Fragment struct {
 	Kerns        MathKernInfo
 	TextLike     bool
 
-	items []placedDraw
+	items  []placedDraw
+	hits   []sourceHit
+	ownHit int
+}
+
+type sourceHit struct {
+	source source.Range
+	x      geometry.Em
+	y      geometry.Em
+	width  geometry.Em
+	height geometry.Em
+	depth  int
+	kind   display.HitKind
 }
 
 type drawKind uint8
@@ -93,6 +107,7 @@ func newFragment(metrics Metrics, class ir.MathClass, size MathSize, scale geome
 		BaseDescent:  metrics.Descent,
 		AccentTop:    metrics.Width / 2,
 		AccentBottom: metrics.Width / 2,
+		ownHit:       -1,
 	}, nil
 }
 
@@ -103,7 +118,7 @@ func NewFragment(metrics Metrics, class ir.MathClass, size MathSize, scale geome
 }
 
 func emptyFragment(size MathSize, scale geometry.Em) *Fragment {
-	return &Fragment{Size: size, Scale: scale}
+	return &Fragment{Size: size, Scale: scale, ownHit: -1}
 }
 
 func (f *Fragment) push(x, y geometry.Em, kind drawKind, glyph *GlyphFragment, rule *ruleDraw, group *Fragment) error {
