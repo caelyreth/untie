@@ -144,11 +144,13 @@ type GlyphStretcher interface {
 
 // TextRequest identifies a shaped text run.
 type TextRequest struct {
-	Context  context.Context
-	Text     string
-	Style    Style
-	Variant  ir.Variant
-	Font     ir.FontRole
+	Context context.Context
+	Text    string
+	Style   Style
+	Variant ir.Variant
+	Font    ir.FontRole
+	// Tracking is unscaled base ems, independent of Style.Size. Shaping
+	// produces base-em glyph positions; layout applies the style scale once.
 	Tracking geometry.Em
 	Features []string
 }

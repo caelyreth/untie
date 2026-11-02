@@ -11,7 +11,7 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 		return nil, fmt.Errorf("%w: text source is not configured", ErrUnsupported)
 	}
 	metrics := s.fontMetrics(env.Style, env.Variant)
-	tracking, err := s.length(node.Tracking, env.Style, metrics)
+	tracking, err := s.baseLength(node.Tracking, env.Style, metrics)
 	if err != nil {
 		return nil, err
 	}
