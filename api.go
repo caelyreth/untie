@@ -41,6 +41,7 @@ type (
 	Diagnostic = source.Diagnostic
 	Severity   = source.Severity
 	Box        = display.Box
+	LineBox    = display.LineBox
 	Alt        = display.Alt
 	Item       = display.Item
 	ItemKind   = display.ItemKind
@@ -59,6 +60,8 @@ type (
 
 // Style is a display.Style layout request. Style.Align is currently inactive:
 // it is validated for forward compatibility but does not change output geometry.
+// Display layout with a positive MaxWidth emits wrapped Box.Lines; inline layout
+// ignores MaxWidth. Wrapped lines use start-origin coordinates.
 type Style = display.Style
 
 const (

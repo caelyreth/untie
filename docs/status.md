@@ -123,7 +123,9 @@ tables.
 - optional table and stretch ports;
 - fragment bounds, output quantization, overflow measurement, cancellation, and
   resource limits;
-- flattening to `display.Box` using real and mocked font ports.
+- flattening to `display.Box` using real and mocked font ports;
+- deterministic greedy display wrapping at top-level neutral break boundaries,
+  with independently flattened, baseline-offset `LineBox` results.
 
 `internal/engine` adapts `font.FontSet` to layout, performs rune/class-aware
 variant selection, multi-glyph operator shaping, text tracking and fallback,
@@ -171,10 +173,10 @@ The following are genuine gaps, not hidden behavior:
   tolerances; comparison against every static Typlet frame is not yet green.
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
-- Inline break metadata and alternative text are implemented, but display
-  wrapping, split pieces, equation numbering, tags, links, MathML,
-  rasterization, and SVG export are not product features. SVG support is
-  test-only.
+- Inline break metadata, alternative text, and width-constrained display line
+  boxes are implemented. Re-layout split pieces, equation numbering, tags,
+  links, MathML, rasterization, and SVG export are not product features. SVG
+  support is test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary
