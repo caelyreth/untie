@@ -82,12 +82,10 @@ func (s *layoutState) attachPreparedSingleLineTag(
 		return nil, fmt.Errorf("%w: tagged layout produced multiple lines", ErrInvalidInput)
 	}
 
-	formulaFrame := base.Width
 	x := base.Width
 	if len(base.Lines) == 1 {
 		line := &base.Lines[0]
-		var err error
-		formulaFrame, err = s.subHost(base.Width, prepared.width)
+		formulaFrame, err := s.subHost(base.Width, prepared.width)
 		if err != nil {
 			return nil, err
 		}
@@ -135,8 +133,9 @@ func (s *layoutState) attachPreparedSingleLineTag(
 	base.Tag = tag
 	if len(base.Lines) == 1 {
 		base.Lines[0].Tag = tag
+	} else {
+		base.Width = maxFloat(base.Width, tag.X+tag.Width)
 	}
-	base.Width = maxFloat(base.Width, tag.X+tag.Width)
 	base.Ascent = maxFloat(base.Ascent, tag.Ascent)
 	base.Descent = maxFloat(base.Descent, tag.Descent)
 	base.Italic = tag.Italic
