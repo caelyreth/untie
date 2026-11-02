@@ -351,7 +351,7 @@ func TestNewCMGlyphMetricsConformance(t *testing.T) {
 			}
 			expected := Bounds{XMin: want.BBox[0], YMin: -want.BBox[3], XMax: want.BBox[2], YMax: -want.BBox[1]}
 			if got.Bounds != expected {
-				if !knownCFFBoundsRounding(id, got.Bounds, expected) {
+				if !knownCFFComponentDifference(id, got.Bounds, expected) {
 					failures = reportMetric(t, failures, "glyph %d bounds = %#v, want %#v", id, got.Bounds, expected)
 				}
 			}
@@ -440,7 +440,11 @@ func TestNewCMMappingConformance(t *testing.T) {
 	}
 }
 
-func knownCFFBoundsRounding(id GlyphID, got, want Bounds) bool {
+// The pinned ttf-parser oracle composes four CFF endchar-seac glyphs. The Go
+// outline parser exposes the same glyphs but without that legacy composition,
+// so their bounds differ by one design unit. Keep this list exhaustive and
+// fail closed for every other glyph.
+func knownCFFComponentDifference(id GlyphID, got, want Bounds) bool {
 	switch id {
 	case 8465, 8480, 8481, 8483:
 		return boundsWithinOne(got, want)
