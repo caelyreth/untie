@@ -139,6 +139,8 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 		return nil, err
 	}
 	fragment, ok := s.renderer.tables.LayoutTable(TableRequest{
+		Context:    s.ctx,
+		Limits:     s.limits,
 		Style:      env.Style,
 		Rows:       rows,
 		Columns:    append([]ir.ColumnAlign(nil), node.Columns...),
@@ -149,6 +151,9 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 	})
 	if !ok {
 		return nil, fmt.Errorf("%w: table extension rejected input", ErrUnsupported)
+	}
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
 	}
 	return withClass(&fragment, node.Class), nil
 }
@@ -217,6 +222,16 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			rows[rowIndex].ascent = max(rows[rowIndex].ascent, tag.Ascent)
 			rows[rowIndex].descent = max(rows[rowIndex].descent, tag.Descent)
 		}
+	}
+	parenEnv := env
+	parenEnv.Style = env.Style.Denominator()
+	paren, err := s.layoutClassGlyphText("(", ir.ClassOpening, parenEnv, nil)
+	if err != nil {
+		return nil, fmt.Errorf("layout table baseline parenthesis: %w", err)
+	}
+	for i := range rows {
+		rows[i].ascent = max(rows[i].ascent, paren.Ascent)
+		rows[i].descent = max(rows[i].descent, paren.Descent)
 	}
 
 	metrics := s.fontMetrics(env.Style, env.Variant)

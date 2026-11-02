@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
 )
 
 // Axis is a glyph stretch axis.
@@ -144,11 +145,13 @@ type GlyphStretcher interface {
 
 // TextRequest identifies a shaped text run.
 type TextRequest struct {
-	Context  context.Context
-	Text     string
-	Style    Style
-	Variant  ir.Variant
-	Font     ir.FontRole
+	Context context.Context
+	Text    string
+	Style   Style
+	Variant ir.Variant
+	Font    ir.FontRole
+	// Tracking is unscaled base ems, independent of Style.Size. Shaping
+	// produces base-em glyph positions; layout applies the style scale once.
 	Tracking geometry.Em
 	Features []string
 }
@@ -207,7 +210,10 @@ type TableRow struct {
 
 // TableRequest is the measured-cell extension point for table layout. Row
 // metrics and cell fragments are already deterministic when this is called.
+// Context cancellation and Limits are part of the provider contract.
 type TableRequest struct {
+	Context    context.Context
+	Limits     source.Limits
 	Style      Style
 	Rows       []TableRow
 	Columns    []ir.ColumnAlign
@@ -218,6 +224,8 @@ type TableRequest struct {
 }
 
 // TableLayouter is an optional extension port for table and matrix layout.
+// Implementations must be deterministic, bounded by req.Limits, and honor
+// req.Context. Returned fragment graphs must be acyclic.
 type TableLayouter interface {
 	LayoutTable(req TableRequest) (Fragment, bool)
 }

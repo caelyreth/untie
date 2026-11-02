@@ -75,7 +75,7 @@ func TestBuiltInTableExactBaselines(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !closeHost(box.Width, 16) || !closeHost(box.Ascent, 11.2) || !closeHost(box.Descent, 3.2) {
+		if !closeHost(box.Width, 16) || !closeHost(box.Ascent, 18.4) || !closeHost(box.Descent, 10.4) {
 			t.Fatalf("ragged box = %+v", box)
 		}
 		if refs := glyphItems(box); len(refs) != 2 {
@@ -418,6 +418,38 @@ func TestLargeOperatorStretchesToWideLimit(t *testing.T) {
 	}
 	if _, err := withoutStretch.Layout(scripts, ir.Display, style); !errors.Is(err, ErrInsufficientStretch) {
 		t.Fatalf("unstretched operator error = %v", err)
+	}
+}
+
+func TestBuiltInTableRowsHaveParenthesisHeightFloor(t *testing.T) {
+	t.Parallel()
+
+	glyphs := &fakeGlyphSource{glyphs: map[string]Glyph{
+		"tiny": {
+			ID:      7,
+			FontID:  "test-math",
+			Advance: em(1, 5),
+			Ascent:  em(1, 10),
+			Descent: em(1, 10),
+			Outline: Path{
+				{Op: geometry.SegMoveTo, Points: [3]Point{{X: 0, Y: -em(1, 10)}}},
+				{Op: geometry.SegLineTo, Points: [3]Point{{X: em(1, 5), Y: em(1, 10)}}},
+				{Op: geometry.SegClose},
+			},
+		},
+	}}
+	renderer, err := New(Fonts{Glyphs: glyphs, Metrics: fakeStyleFont{}}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tiny := ir.NewGlyph(source.NewRange(0, 1), "tiny")
+	table := ir.NewTable(source.NewRange(0, 1), ir.TableRow{Cells: []ir.Node{tiny}})
+	box, err := renderer.Layout(table, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := box.Ascent+box.Descent, float32(11.52); !closeHost(got, want) {
+		t.Fatalf("table height = %v, want parenthesis-floor height %v", got, want)
 	}
 }
 

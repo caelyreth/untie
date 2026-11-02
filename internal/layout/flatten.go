@@ -40,6 +40,7 @@ func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
 
 	state := flattenState{
 		layout: s,
+		stack:  make(map[*Fragment]struct{}),
 		box: &display.Box{
 			Width:      width,
 			Ascent:     ascent,
@@ -65,6 +66,7 @@ func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
 type flattenState struct {
 	layout     *layoutState
 	box        *display.Box
+	stack      map[*Fragment]struct{}
 	operations int
 }
 
@@ -72,6 +74,14 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	if fragment == nil {
 		return fmt.Errorf("%w: nil fragment in flatten", ErrInvalidInput)
 	}
+	if _, exists := f.stack[fragment]; exists {
+		return fmt.Errorf("%w: cyclic fragment graph", ErrInvalidInput)
+	}
+	if len(f.stack) >= f.layout.limits.MaxNesting {
+		return fmt.Errorf("%w: fragment nesting depth", ErrLimit)
+	}
+	f.stack[fragment] = struct{}{}
+	defer delete(f.stack, fragment)
 	if err := f.layout.appendFragmentHits(f, fragment, x, y); err != nil {
 		return err
 	}
