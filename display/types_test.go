@@ -54,3 +54,23 @@ func TestMarshalCanonical(t *testing.T) {
 		t.Fatal("nil box MarshalCanonical() error = nil")
 	}
 }
+
+func TestValidateBox(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{
+		Width: 10,
+		Items: []Item{{
+			Kind:  ItemGlyphPath,
+			Bound: geometry.Rect{Width: 1, Height: 1},
+			Path:  geometry.Path{{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: 1, Y: 2}}}},
+		}},
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	box.Items[0].Path[0].Op = geometry.SegOp(99)
+	if err := box.Validate(); err == nil {
+		t.Fatal("Validate() error = nil for invalid path")
+	}
+}
