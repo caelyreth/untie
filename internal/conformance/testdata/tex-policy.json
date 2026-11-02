@@ -161,6 +161,49 @@
   "exclusions": [
     {
       "corpus": "ratex-core",
+      "families": ["command:\\ce", "command:\\pu"],
+      "codes": ["unsupported"],
+      "reason": "Chemistry and unit markup are outside the neutral math IR and are explicitly rejected."
+    },
+    {
+      "corpus": "ratex-core",
+      "families": [
+        "command:\\includegraphics",
+        "command:\\htmlClass",
+        "command:\\htmlData",
+        "command:\\htmlId",
+        "command:\\htmlStyle",
+        "command:\\html@mathml"
+      ],
+      "codes": ["unsupported", "unknown-command"],
+      "reason": "DOM, trust, raw HTML, and external image extensions are outside the neutral drawing IR."
+    },
+    {
+      "corpus": "ratex-core",
+      "families": [
+        "command:\\llap",
+        "command:\\rlap",
+        "command:\\clap",
+        "command:\\mathllap",
+        "command:\\mathrlap",
+        "command:\\mathclap",
+        "command:\\raisebox",
+        "command:\\vcenter",
+        "command:\\smash",
+        "command:\\phase",
+        "command:\\enclose"
+      ],
+      "codes": ["unsupported", "unknown-command"],
+      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet."
+    },
+    {
+      "corpus": "ratex-core",
+      "families": ["environment:CD"],
+      "codes": ["unsupported"],
+      "reason": "Commutative-diagram environments are outside the neutral math IR and are explicitly rejected."
+    },
+    {
+      "corpus": "ratex-core",
       "families": [
         "command:\\big",
         "command:\\Big",
@@ -191,53 +234,8 @@
     },
     {
       "corpus": "ratex-core",
-      "ids": ["line:000980"],
-      "reason": "Unicode mathematical letters inside text are explicitly reported as unsupported pending text-shaping coverage."
-    },
-    {
-      "corpus": "ratex-core",
-      "families": ["command:\\text"],
-      "reason": "Text-mode parsing can enter a nonterminating loop for this case; process isolation turns it into a reviewed frontend timeout."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/limits-at-start"],
-      "reason": "The frontend reports an unknown-command diagnostic rather than rejecting the limit control itself."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/missing-color-brace"],
-      "reason": "The frontend reports token and command diagnostics instead of the expected invalid color value."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/invalid-size-unit"],
-      "reason": "The frontend does not yet parse \\rule dimensions and reports the command as unknown instead."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/repeated-infix"],
-      "reason": "The frontend currently recovers silently from repeated infix operators instead of rejecting them."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/conflicting-infix"],
-      "reason": "The frontend currently recovers silently from conflicting infix operators instead of rejecting them."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/sqrt-as-superscript"],
-      "reason": "The frontend currently recovers silently when a root function appears in a script slot."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/math-function-in-text"],
-      "reason": "The frontend nonterminates on a math function inside text before it can emit the expected unsupported diagnostic."
-    },
-    {
-      "corpus": "katex-cases",
-      "ids": ["errors/invalid-combining"],
-      "reason": "The frontend currently accepts an unrecognized combining mark without a diagnostic."
+      "ids": ["line:000008"],
+      "reason": "Inline math delimiters inside text mode are not yet lowered without a diagnostic."
     }
   ]
 }

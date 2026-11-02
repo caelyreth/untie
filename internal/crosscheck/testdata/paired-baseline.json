@@ -4,9 +4,9 @@
   "toleranceDIP": 0.002,
   "total": 81,
   "pass": 0,
-  "semanticIRMismatch": 74,
+  "semanticIRMismatch": 73,
   "layoutMismatch": 0,
-  "fixtureMismatch": 5,
+  "fixtureMismatch": 6,
   "documentedPairDifference": 2,
   "unexplained": 0,
   "cases": [
@@ -143,7 +143,7 @@
       "index": 17,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\substack; unexpected-token: line break is only valid in a math environment",
+      "detail": "root[0].limit-bottom.centered: expected null, got true",
       "reason": "The TeX frontend does not implement substack and diagnoses its row break outside a supported environment."
     },
     {
@@ -263,7 +263,7 @@
       "index": 32,
       "category": "matrices",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\hline",
+      "detail": "root.class: expected \"inner\", got \"normal\"",
       "reason": "The TeX frontend does not implement array hline."
     },
     {
@@ -287,7 +287,7 @@
       "index": 35,
       "category": "matrices",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\Rightarrow",
+      "detail": "root[0].body[0].class: expected \"inner\", got \"normal\"",
       "reason": "The TeX frontend does not implement Rightarrow as used in this row."
     },
     {
@@ -295,7 +295,7 @@
       "index": 36,
       "category": "alignment",
       "kind": "semantic-ir-mismatch",
-      "detail": "root.centered: expected false, got true",
+      "detail": "root.centered: expected null, got true",
       "reason": "TeX and Typst disagree on the multiline centered flag."
     },
     {
@@ -303,7 +303,7 @@
       "index": 37,
       "category": "alignment",
       "kind": "semantic-ir-mismatch",
-      "detail": "root.class: expected \"inner\", got \"normal\"",
+      "detail": "root.centered: expected null, got true",
       "reason": "The frontends assign different atom classes to the multiline root."
     },
     {
@@ -311,16 +311,16 @@
       "index": 38,
       "category": "alignment",
       "kind": "semantic-ir-mismatch",
-      "detail": "root.centered: expected false, got true",
+      "detail": "root.centered: expected null, got true",
       "reason": "TeX and Typst disagree on the multiline centered flag."
     },
     {
       "id": "tag",
       "index": 39,
       "category": "alignment",
-      "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\tag",
-      "reason": "The TeX frontend does not implement equation tags."
+      "kind": "fixture-mismatch",
+      "detail": "Typst: fixture.width: expected 109.586667, got 57.433594",
+      "reason": "Rendered equation/tag geometry differs from the static Typlet frame beyond fixture tolerance."
     },
     {
       "id": "accents",
@@ -359,7 +359,7 @@
       "index": 44,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\overset; unknown-command: undefined control sequence: \\stackrel",
+      "detail": "root[1].accent: expected [{\"class\":\"normal\",\"cramped\":false,\"font\":\"text\",\"ignore-as-space\":false,\"kind\":\"text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"d\",\"tracking\":null,\"variant\":\"auto\"},{\"class\":\"norm...\u003csha256:0ef8d07c802215e7\u003e, got null",
       "reason": "The TeX frontend does not implement overset or stackrel."
     },
     {
@@ -447,7 +447,7 @@
       "index": 55,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\pmod",
+      "detail": "root[9].amount: expected [\"mu\",12000000], got null",
       "reason": "The TeX frontend does not implement pmod."
     },
     {
@@ -479,7 +479,7 @@
       "index": 59,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\xrightarrow; unknown-command: undefined control sequence: \\xleftarrow",
+      "detail": "root[1].accent: expected [{\"class\":\"normal\",\"cramped\":false,\"font\":\"text\",\"ignore-as-space\":false,\"kind\":\"text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"u\",\"tracking\":null,\"variant\":\"auto\"},{\"class\":\"norm...\u003csha256:90a8d81bf38186c4\u003e, got null",
       "reason": "The TeX frontend does not implement xrightarrow or xleftarrow."
     },
     {
@@ -527,7 +527,7 @@
       "index": 65,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\color; unknown-command: undefined control sequence: \\textcolor; unknown-command: undefined control sequence: \\colorbox; unsupported: nested math delimiters are not supported; unsupported: nested math delimiters are not supported",
+      "detail": "root: expected {\"body\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},{\"class\":\"binary\",\"cramped\":fals...\u003csha256:0ca8140b8f096e3c\u003e, got [{\"body\":{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},\"class\":\"normal\",\"cramped\":false...\u003csha256:5594450ee848d729\u003e",
       "reason": "TeX color commands are unimplemented and its nested text-color forms are diagnosed unsupported."
     },
     {
@@ -535,7 +535,7 @@
       "index": 66,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\mathclap",
+      "detail": "TeX diagnostics: unsupported: overlapping boxes are not represented in the neutral math IR",
       "reason": "The TeX frontend does not implement mathclap."
     },
     {
@@ -607,7 +607,7 @@
       "index": 75,
       "category": "extensions",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unknown-command: undefined control sequence: \\ce",
+      "detail": "TeX diagnostics: unsupported: chemistry markup is outside the neutral math IR",
       "reason": "The TeX frontend does not implement the mhchem extension."
     },
     {
