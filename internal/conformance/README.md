@@ -4,6 +4,11 @@ This package evaluates the tracked TeX and Typst corpora against their frontend
 adapters. It is test infrastructure and is not imported by the runtime rendering
 pipeline.
 
+The product-priority acceptance source is `testdata/daily-stem`, evaluated by
+`internal/daily` and `cmd/dailyreport`. Upstream conformance is evidence for
+syntax, diagnostics, and fidelity; it does not require implementing every rare
+reference-project construct when the daily-STEM corpus does not need it.
+
 ## What A Run Checks
 
 Every case is evaluated three times:
