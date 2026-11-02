@@ -52,6 +52,9 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/cmd/crosscheck": {
 		Production: []string{modulePath + "/internal/crosscheck", modulePath + "/internal/fixture"},
 	},
+	modulePath + "/cmd/dailyreport": {
+		Production: []string{modulePath + "/internal/daily"},
+	},
 	modulePath + "/display": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
@@ -110,6 +113,9 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
+	},
+	modulePath + "/internal/daily": {
+		Production: []string{modulePath},
 	},
 	modulePath + "/internal/fixture": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
