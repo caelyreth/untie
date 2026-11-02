@@ -77,6 +77,7 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/internal/quality": {
 		Tests: []string{
+			modulePath,
 			modulePath + "/internal/quality/conformance",
 			modulePath + "/internal/quality/crosscheck",
 			modulePath + "/internal/quality/daily",
