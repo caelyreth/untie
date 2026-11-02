@@ -83,11 +83,30 @@ func TestMathSpacingMatrix(t *testing.T) {
 		{Size: ScriptScript},
 		{Size: ScriptScript, Cramped: true},
 	} {
-		for left := ir.ClassNormal; left <= ir.ClassSpecial; left++ {
-			for right := ir.ClassNormal; right <= ir.ClassSpecial; right++ {
-				if got := MathSpacing(left, right, style); got != 0 {
-					t.Fatalf("%s: MathSpacing(%d, %d) = %d, want 0", style, left, right, got)
-				}
+		for _, pair := range []struct {
+			left, right ir.MathClass
+		}{
+			{ir.ClassNormal, ir.ClassLarge},
+			{ir.ClassLarge, ir.ClassNormal},
+			{ir.ClassLarge, ir.ClassLarge},
+			{ir.ClassClosing, ir.ClassLarge},
+			{ir.ClassInner, ir.ClassLarge},
+		} {
+			if got := MathSpacing(pair.left, pair.right, style); got != ThinSpace {
+				t.Fatalf("%s: tight operator spacing = %d, want %d", style, got, ThinSpace)
+			}
+		}
+		for _, pair := range []struct {
+			left, right ir.MathClass
+		}{
+			{ir.ClassNormal, ir.ClassBinary},
+			{ir.ClassRelation, ir.ClassNormal},
+			{ir.ClassPunctuation, ir.ClassNormal},
+			{ir.ClassOpening, ir.ClassLarge},
+			{ir.ClassLarge, ir.ClassClosing},
+		} {
+			if got := MathSpacing(pair.left, pair.right, style); got != 0 {
+				t.Fatalf("%s: unexpected tight spacing = %d", style, got)
 			}
 		}
 	}

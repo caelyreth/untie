@@ -178,6 +178,24 @@ func TestRadicalAndFences(t *testing.T) {
 	}
 }
 
+func TestOperatorOrdinarySpacing(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	root := ir.NewRow(source.NewRange(0, 2),
+		glyph("O", ir.ClassLarge),
+		glyph("M", ir.ClassNormal),
+	)
+	box, err := renderer.Layout(root, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := float32(16 * (1 + float64(ThinSpace)/float64(geometry.EmScale)))
+	if !closeHost(box.Width, want) {
+		t.Fatalf("width = %v, want %v", box.Width, want)
+	}
+}
+
 func TestRuleLayoutAndExplicitStyle(t *testing.T) {
 	t.Parallel()
 

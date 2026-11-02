@@ -43,6 +43,15 @@ var classSpacing = [groupCount][groupCount]spaceCode{
 	groupInner: {groupOrd: spaceThin, groupOp: spaceThin, groupBin: spaceMedium, groupRel: spaceThick, groupOpen: spaceThin, groupClose: spaceNone, groupPunct: spaceThin, groupInner: spaceThin, groupNone: spaceNone},
 }
 
+// KaTeX's tightSpacings table. Script and script-script styles suppress
+// ordinary text-style spacing but retain thin spacing around operators.
+var tightClassSpacing = [groupCount][groupCount]spaceCode{
+	groupOrd:   {groupOp: spaceThin},
+	groupOp:    {groupOrd: spaceThin, groupOp: spaceThin},
+	groupClose: {groupOp: spaceThin},
+	groupInner: {groupOp: spaceThin},
+}
+
 // NormalizeClass resolves context-sensitive atom classes the way TeX does:
 // a varying operator becomes binary after an operand, while a binary operator
 // in an operator position becomes ordinary.
@@ -145,17 +154,17 @@ func binaryRightAllowed(next *ir.MathClass) bool {
 }
 
 // MathSpacing returns the automatic neutral inter-atom space in local ems.
-// Script and script-script styles suppress all automatic spacing. Cramped
-// affects constructions, not inter-atom spacing.
+// Cramped affects constructions, not inter-atom spacing.
 func MathSpacing(left, right ir.MathClass, style Style) geometry.Em {
-	if style.Size == Script || style.Size == ScriptScript {
-		return 0
-	}
 	lg, rg := classOf(left), classOf(right)
 	if lg == groupNone || rg == groupNone {
 		return 0
 	}
-	switch classSpacing[lg][rg] {
+	table := classSpacing
+	if style.Size == Script || style.Size == ScriptScript {
+		table = tightClassSpacing
+	}
+	switch table[lg][rg] {
 	case spaceThin:
 		return ThinSpace
 	case spaceMedium:
