@@ -54,3 +54,22 @@ func TestFitMathIncludesOverflow(t *testing.T) {
 		t.Fatalf("vertical fit = [%v,%v], content = [%v,%v]", top, bottom, content.Y, content.Y+content.H)
 	}
 }
+
+func TestParseDiagnosticsRemainVisibleWithPreview(t *testing.T) {
+	model, err := newApp(mathFont)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model.texSource = `x^`
+	model.compile()
+	if model.box == nil {
+		t.Fatalf("preview unexpectedly missing: %s", model.message)
+	}
+	if !model.hasDiagnosticErrors() {
+		t.Fatalf("diagnostics = %+v", model.diagnostics)
+	}
+	tester := ui.NewTester(model.view, 960, 720)
+	if !tester.HasText("1 error") {
+		t.Fatalf("texts = %q, want diagnostic badge", tester.Texts())
+	}
+}

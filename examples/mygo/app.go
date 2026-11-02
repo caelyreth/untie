@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/caelyreth/untie"
@@ -30,6 +31,7 @@ type app struct {
 
 	editorHeight float32
 	box          *untie.Box
+	diagnostics  []untie.Diagnostic
 	message      string
 }
 
@@ -90,6 +92,13 @@ func (a *app) preview(c *ui.Context) {
 		ui.Row(c).Height(48).Padding(12, 16).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "Preview").Bold()
 			ui.Text(c, a.dialectName()).FontSize(12).TextColor(t.Accent)
+			if summary := a.diagnosticSummary(); summary != "" {
+				color := t.TextMuted
+				if a.hasDiagnosticErrors() {
+					color = t.Danger
+				}
+				ui.Text(c, summary).FontSize(12).TextColor(color)
+			}
 			ui.Text(c, "Display").FontSize(12).Grow(1).
 				TextAlign(ui.End).TextColor(t.TextMuted)
 		})
@@ -126,7 +135,8 @@ func (a *app) compile() {
 		expr = untie.ParseTeX(*a.source(), untie.Display, untie.ParseOptions{})
 	}
 
-	a.message = diagnosticMessage(expr.Diagnostics())
+	a.diagnostics = expr.Diagnostics()
+	a.message = diagnosticMessage(a.diagnostics)
 	box, err := a.engine.Layout(expr, untie.Style{Size: 32})
 	if err != nil {
 		a.box = nil
@@ -134,6 +144,39 @@ func (a *app) compile() {
 		return
 	}
 	a.box = box
+}
+
+func (a *app) diagnosticSummary() string {
+	errors, warnings := 0, 0
+	for _, diagnostic := range a.diagnostics {
+		switch diagnostic.Severity {
+		case untie.SeverityError:
+			errors++
+		case untie.SeverityWarning:
+			warnings++
+		}
+	}
+	switch {
+	case errors == 1:
+		return "1 error"
+	case errors > 1:
+		return fmt.Sprintf("%d errors", errors)
+	case warnings == 1:
+		return "1 warning"
+	case warnings > 1:
+		return fmt.Sprintf("%d warnings", warnings)
+	default:
+		return ""
+	}
+}
+
+func (a *app) hasDiagnosticErrors() bool {
+	for _, diagnostic := range a.diagnostics {
+		if diagnostic.Severity == untie.SeverityError {
+			return true
+		}
+	}
+	return false
 }
 
 func diagnosticMessage(diagnostics []untie.Diagnostic) string {
