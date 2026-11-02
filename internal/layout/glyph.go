@@ -13,6 +13,29 @@ type stretchSpec struct {
 	shortFall geometry.Em
 }
 
+func (s *layoutState) automaticDisplayStretch(class ir.MathClass, env environment) *stretchSpec {
+	if env.Style.Size != Display || class != ir.ClassLarge {
+		return nil
+	}
+	target := s.fontMetrics(env.Style, env.Variant).DisplayOperatorMinHeight
+	if target <= 0 {
+		return nil
+	}
+	return &stretchSpec{axis: Vertical, target: target}
+}
+
+func (s *layoutState) layoutClassGlyphText(
+	text string,
+	class ir.MathClass,
+	env environment,
+	stretch *stretchSpec,
+) (*Fragment, error) {
+	if stretch == nil {
+		stretch = s.automaticDisplayStretch(class, env)
+	}
+	return s.layoutGlyphText(text, env, stretch)
+}
+
 func (s *layoutState) layoutGlyphText(text string, env environment, stretch *stretchSpec) (*Fragment, error) {
 	if text == "" {
 		return nil, fmt.Errorf("%w: empty glyph text", ErrInvalidInput)

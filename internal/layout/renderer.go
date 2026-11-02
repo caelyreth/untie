@@ -389,7 +389,7 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 		}
 		return withClass(fragment, node.Class), nil
 	case *ir.Glyph:
-		fragment, err = s.layoutGlyphText(node.Text, env, nil)
+		fragment, err = s.layoutClassGlyphText(node.Text, node.Class, env, nil)
 		if err != nil {
 			return nil, err
 		}

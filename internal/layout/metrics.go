@@ -22,6 +22,9 @@ type MathMetrics struct {
 	// fallbacks in normalized.
 	AccentBaseHeight          geometry.Em
 	FlattenedAccentBaseHeight geometry.Em
+	// DisplayOperatorMinHeight is the minimum vertical extent for large
+	// operators in display style.
+	DisplayOperatorMinHeight geometry.Em
 
 	AxisHeight geometry.Em
 

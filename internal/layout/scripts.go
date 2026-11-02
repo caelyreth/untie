@@ -289,26 +289,11 @@ func (s *layoutState) layoutScriptBase(node ir.Node, env environment, depth int,
 		return nil, err
 	}
 	nodeEnv := s.nodeEnvironment(node, env)
-	if s.renderer.fonts.Stretch == nil {
-		// Keep a non-stretched fallback when the operator already covers the
-		// limit width. Otherwise fail visibly rather than silently undersizing.
-		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, nil)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.attachNodeHit(fragment, node, depth); err != nil {
-			return nil, err
-		}
-		fragment = withClass(fragment, item.Class)
-		if fragment.Width < target {
-			return nil, fmt.Errorf("%w: %w: horizontal operator stretch to %d is not configured", ErrUnsupported, ErrInsufficientStretch, target)
-		}
-		return fragment, nil
+	stretch := s.automaticDisplayStretch(item.Class, nodeEnv)
+	if stretch == nil && target > 0 {
+		stretch = &stretchSpec{axis: Horizontal, target: target}
 	}
-	fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{
-		axis:   Horizontal,
-		target: target,
-	})
+	fragment, err := s.layoutClassGlyphText(item.Text, item.Class, nodeEnv, stretch)
 	if err != nil {
 		return nil, err
 	}

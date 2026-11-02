@@ -31,14 +31,14 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 }
 
 func (s *layoutState) layoutOperator(node *ir.Operator, env environment) (*Fragment, error) {
-	if s.renderer.fonts.Operators == nil {
-		if len([]rune(node.Text)) == 1 {
-			fragment, err := s.layoutGlyphText(node.Text, env, nil)
-			if err != nil {
-				return nil, err
-			}
-			return withClass(fragment, node.Class), nil
+	if len([]rune(node.Text)) == 1 {
+		fragment, err := s.layoutClassGlyphText(node.Text, node.Class, env, nil)
+		if err != nil {
+			return nil, err
 		}
+		return withClass(fragment, node.Class), nil
+	}
+	if s.renderer.fonts.Operators == nil {
 		return nil, fmt.Errorf("%w: multi-glyph operator %q", ErrUnsupported, node.Text)
 	}
 	run, err := s.renderer.fonts.Operators.ShapeOperator(OperatorRequest{

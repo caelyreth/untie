@@ -61,13 +61,13 @@ func TestNewCMExactBaselinePlacement(t *testing.T) {
 		},
 		{
 			name: "sum limits", source: `\sum_{i=1}^{n}`,
-			width: 19.611328, ascent: 20.250977, descent: 14.220703,
+			width: 23.104492, ascent: 23.451172, descent: 17.420898,
 			refs: []glyphPosition{
-				{992, 1.3574219, 0},
-				{5826, 5.852539, -15.311523},
-				{5821, 0, 14.109375},
-				{30, 4.5253906, 14.109375},
-				{5430, 13.238281, 14.109375},
+				{6816, 0, 0},
+				{5826, 7.598633, -18.511719},
+				{5821, 1.7460938, 17.308594},
+				{30, 6.2714844, 17.308594},
+				{5430, 14.985352, 17.308594},
 			},
 			mode: ir.Display,
 		},
@@ -154,6 +154,21 @@ func TestNewCMVariantsTextAndOperators(t *testing.T) {
 		assertRefs(t, box, []glyphPosition{{66, 0, 0}, {67, 9.6, 0}})
 
 	})
+}
+
+func TestNewCMMetricsIncludeDisplayOperatorMinHeight(t *testing.T) {
+	t.Parallel()
+
+	set, _ := newNewCMEngine(t, source.Limits{})
+	adapter, err := newAdapter(set, source.Limits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metrics := adapter.MathMetrics(layout.Style{Size: layout.Display}, ir.VariantAuto)
+	want := geometry.Em(13 * geometry.EmScale / 10)
+	if !closeEm(metrics.DisplayOperatorMinHeight, want) {
+		t.Fatalf("DisplayOperatorMinHeight = %d, want %d", metrics.DisplayOperatorMinHeight, want)
+	}
 }
 
 func TestAdapterStretchShortfallAssemblyAndLimits(t *testing.T) {
