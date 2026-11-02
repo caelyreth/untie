@@ -134,6 +134,31 @@ func randomBox(data []byte) *Box {
 			Hits:   HitRange{Start: hitStart, Count: 1},
 		}
 		box.Width += 1
+	case 2:
+		lineCount := int(next()%3) + 1
+		itemStart, hitStart := 0, 0
+		box.Ascent = float32(lineCount)
+		box.Descent = 0
+		box.Overflow = 1_000
+		box.Lines = make([]LineBox, lineCount)
+		for i := range box.Lines {
+			itemCount := len(box.Items) - itemStart
+			hitCount := len(box.Hits) - hitStart
+			if i < lineCount-1 {
+				itemCount = int(next() % byte(itemCount+1))
+				hitCount = int(next() % byte(hitCount+1))
+			}
+			box.Lines[i] = LineBox{
+				Baseline: float32(i),
+				Width:    box.Width,
+				Ascent:   1,
+				Overflow: 1_000,
+				Items:    ItemRange{Start: itemStart, Count: itemCount},
+				Hits:     HitRange{Start: hitStart, Count: hitCount},
+			}
+			itemStart += itemCount
+			hitStart += hitCount
+		}
 	}
 	return box
 }

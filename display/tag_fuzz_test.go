@@ -46,9 +46,11 @@ func FuzzTaggedLineGraph(f *testing.F) {
 		}{
 			{name: "missing line tag", mutate: func(box *Box) { box.Lines[0].Tag = nil }},
 			{name: "line range overlaps tag", mutate: func(box *Box) { box.Lines[0].Items.Count = 2 }},
+			{name: "negative line start", mutate: func(box *Box) { box.Lines[0].Hits.Start = -1 }},
 			{name: "zero formula line", mutate: func(box *Box) { box.Tag.Line = 0 }},
 			{name: "non-manual tag", mutate: func(box *Box) { box.Tag.Manual = false }},
 			{name: "detached range", mutate: func(box *Box) { box.Tag.Items.Start = len(box.Items) }},
+			{name: "tag not suffix", mutate: func(box *Box) { box.Tag.Hits.Start = 0 }},
 		}
 		selected := malformed[len(data)%len(malformed)]
 		bad := box.Clone()
