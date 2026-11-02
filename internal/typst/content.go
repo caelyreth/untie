@@ -86,24 +86,98 @@ func (l *lowerer) lowerContentEmphasis(call *astNode, name string) ir.Node {
 }
 
 func (l *lowerer) lowerLink(call *astNode) ir.Node {
-	positional := l.positionalArguments(call)
-	var body ir.Node
-	if named := l.contentNamed(call, "body"); named != nil {
-		body = named
-	} else if len(positional) >= 2 {
-		body = l.lowerArgument(positional[len(positional)-1].node)
-	} else if len(positional) == 1 {
-		// Typst displays the URL itself when a URL link has no explicit body.
-		if text, ok := l.valueString(positional[0].node); ok {
-			body = l.text(positional[0].span, text)
-		}
+	destinationArg, bodyArg, valid := l.linkArguments(call)
+	if !valid {
+		return l.placeholder(call.span, "invalid link arguments")
 	}
-	if body == nil {
-		l.errorAt(call.span, source.CodeMissingArgument, "missing argument: body")
-		return l.placeholder(call.span, "missing link body")
+	if destinationArg == nil {
+		l.errorAt(call.span, source.CodeMissingArgument, "missing argument: dest")
+		return l.placeholder(call.span, "missing link destination")
+	}
+
+	destination, ok := l.evalValue(destinationArg.node)
+	if !ok || destination.kind != valueString {
+		l.errorAt(destinationArg.span, source.CodeInvalidValue,
+			"link destination expects a non-empty string in the bounded evaluator, found %s",
+			l.valueType(destinationArg.node))
+		return l.placeholder(call.span, "invalid link destination")
+	}
+	if destination.text == "" {
+		l.errorAt(destinationArg.span, source.CodeInvalidValue, "link URL must not be empty")
+		return l.placeholder(call.span, "invalid link destination")
+	}
+	if len(destination.text) > 8000 {
+		l.errorAt(destinationArg.span, source.CodeInvalidValue, "link URL exceeds 8000 bytes")
+		return l.placeholder(call.span, "invalid link destination")
+	}
+
+	var body ir.Node
+	if bodyArg == nil {
+		// Typst displays a URL string when the body parameter is omitted.
+		body = l.text(destinationArg.span, destination.text)
+	} else {
+		if emptyAST(bodyArg.node) {
+			return l.placeholder(call.span, "missing link body")
+		}
+		if isNoneAST(bodyArg.node) {
+			l.errorAt(bodyArg.span, source.CodeInvalidValue, "link body expects content, found none")
+			return l.placeholder(call.span, "invalid link body")
+		}
+		if value, ok := l.evalValue(bodyArg.node); ok && value.kind != valueContent {
+			l.errorAt(bodyArg.span, source.CodeInvalidValue,
+				"link body expects content, found %s", value.typeName())
+			return l.placeholder(call.span, "invalid link body")
+		}
+		body = l.lowerArgument(bodyArg.node)
+		if body == nil {
+			l.errorAt(bodyArg.span, source.CodeInvalidValue, "link body expects content")
+			return l.placeholder(call.span, "invalid link body")
+		}
 	}
 	l.warningAt(call.span, source.CodeUnsupported, "link destination is not represented by the neutral math IR")
 	return body
+}
+
+func emptyAST(node *astNode) bool {
+	return node == nil || node.kind == astRow && len(node.items) == 0
+}
+
+func (l *lowerer) linkArguments(call *astNode) (destination, body *astArg, valid bool) {
+	seenNamed := make(map[string]bool)
+	for i := range call.args {
+		arg := &call.args[i]
+		if arg.kind != argNamed {
+			continue
+		}
+		if (arg.name != "dest" && arg.name != "body") || seenNamed[arg.name] {
+			return nil, nil, false
+		}
+		seenNamed[arg.name] = true
+		switch arg.name {
+		case "dest":
+			destination = arg
+		case "body":
+			body = arg
+		}
+	}
+
+	positional := l.positionalArguments(call)
+	position := 0
+	if destination == nil {
+		if position >= len(positional) {
+			return destination, body, true
+		}
+		destination = &positional[position]
+		position++
+	}
+	if body == nil {
+		if position >= len(positional) {
+			return destination, body, true
+		}
+		body = &positional[position]
+		position++
+	}
+	return destination, body, position == len(positional)
 }
 
 func boldWeight(l *lowerer, n *astNode) bool {
