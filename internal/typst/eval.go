@@ -13,8 +13,27 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 	if n == nil {
 		return value{}, false
 	}
-	if n.kind == astRow && len(n.items) == 1 {
-		return l.evalValue(n.items[0])
+	if n.kind == astRow {
+		if len(n.items) == 1 {
+			return l.evalValue(n.items[0])
+		}
+		if len(n.items) == 2 && isMinusNode(n.items[0]) {
+			operand, ok := l.evalValue(n.items[1])
+			if !ok {
+				return value{}, false
+			}
+			switch operand.kind {
+			case valueInteger:
+				operand.integer = -operand.integer
+			case valueFloat:
+				operand.float = -operand.float
+			case valueLength:
+				operand.length.Value = -operand.length.Value
+			default:
+				return value{}, false
+			}
+			return operand, true
+		}
 	}
 	switch n.kind {
 	case astLiteral:
@@ -92,6 +111,16 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 		default:
 			return value{}, false
 		}
+	case astFraction:
+		if len(n.items) != 2 {
+			return value{}, false
+		}
+		left, leftOK := l.evalValue(n.items[0])
+		right, rightOK := l.evalValue(n.items[1])
+		if !leftOK || !rightOK {
+			return value{}, false
+		}
+		return divideValues(left, right)
 	case astCall:
 		switch callName(n) {
 		case "rgb":
@@ -105,6 +134,70 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 		return contentValue(n), true
 	}
 	return value{}, false
+}
+
+func isMinusNode(n *astNode) bool {
+	if n == nil {
+		return false
+	}
+	return (n.kind == astGlyph || n.kind == astShorthand) &&
+		(n.text == "-" || n.text == "−")
+}
+
+func divideValues(left, right value) (value, bool) {
+	var divisor float64
+	switch right.kind {
+	case valueInteger:
+		divisor = float64(right.integer)
+	case valueFloat:
+		divisor = right.float
+	default:
+		return value{}, false
+	}
+	if divisor == 0 || math.IsNaN(divisor) || math.IsInf(divisor, 0) {
+		return value{}, false
+	}
+	switch left.kind {
+	case valueInteger:
+		return floatValue(float64(left.integer) / divisor), true
+	case valueFloat:
+		return floatValue(left.float / divisor), true
+	case valueLength:
+		return scaleLength(left.length, 1/divisor)
+	default:
+		return value{}, false
+	}
+}
+
+func scaleLength(length ir.Length, factor float64) (value, bool) {
+	if math.IsNaN(factor) || math.IsInf(factor, 0) {
+		return value{}, false
+	}
+	scaledFloat := length.Float() * factor
+	var scaled ir.Length
+	var err error
+	switch length.Unit {
+	case ir.LengthEm:
+		scaled, err = ir.EmLength(scaledFloat)
+	case ir.LengthEx:
+		scaled, err = ir.ExLength(scaledFloat)
+	case ir.LengthMu:
+		scaled, err = ir.MuLength(scaledFloat)
+	case ir.LengthPt:
+		scaled, err = ir.PtLength(scaledFloat)
+	case ir.LengthDip:
+		scaled, err = ir.DipLength(scaledFloat)
+	case ir.LengthPercent:
+		scaled, err = ir.PercentLength(scaledFloat)
+	case ir.LengthZero:
+		return lengthValue(ir.Length{}), true
+	default:
+		return value{}, false
+	}
+	if err != nil {
+		return value{}, false
+	}
+	return lengthValue(scaled), true
 }
 
 func (l *lowerer) valueType(n *astNode) string {

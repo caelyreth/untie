@@ -300,6 +300,17 @@ func (l *lexer) numberToken(start int, space bool) token {
 			l.pos++
 		}
 	}
+	for _, unit := range []string{"em", "ex", "pt", "mm", "cm", "in"} {
+		if !strings.HasPrefix(l.src[l.pos:], unit) {
+			continue
+		}
+		end := l.pos + len(unit)
+		next, _ := utf8.DecodeRuneInString(l.src[end:])
+		if end == len(l.src) || !isIdentContinue(next) {
+			l.pos = end
+			break
+		}
+	}
 	return l.tok(tokNumber, start, space)
 }
 

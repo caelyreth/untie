@@ -80,7 +80,13 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 		if len(n.items) == 0 {
 			return l.errNode(n.span, "#", source.CodeMissingArgument)
 		}
-		return l.lower(n.items[0])
+		inner := n.items[0]
+		if (inner.kind == astIdentifier || inner.kind == astField) && !strings.Contains(inner.text, ".") {
+			if v, ok := namedColor(inner.text); ok {
+				return l.lowerValueContent(inner.span, v)
+			}
+		}
+		return l.lower(inner)
 	case astArray, astDict, astLiteral, astUnary:
 		v, ok := l.evalValue(n)
 		if !ok {
@@ -254,11 +260,17 @@ func (l *lowerer) lowerItems(items []*astNode) []ir.Node {
 
 func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 	name := n.text
+	if name == "zws" || name == "sym.zws" {
+		return ir.NewRow(n.span)
+	}
+	if hasCombiningMark(name) {
+		return l.lowerCombinedIdentifier(n)
+	}
 	if def, ok := symbol(name); ok {
 		g := l.glyph(n.span, def.text)
 		g.Class = def.class
 		if def.class == ir.ClassLarge {
-			g.Limits = ir.LimitsAuto
+			g.Limits = limitsForSymbol(name, def.class)
 		}
 		return g
 	}
@@ -374,19 +386,20 @@ func (l *lowerer) lowerDelimited(n *astNode) ir.Node {
 	if n.open == "{" && n.close == "}" {
 		return body
 	}
-	fenced := ir.NewFenced(n.span, l.flattenFenceBody(body)...)
+	items := make([]ir.Node, 0, len(l.flattenFenceBody(body))+2)
 	open := l.glyph(source.NewRange(n.span.Start, n.span.Start+len(n.open)), n.open)
 	open.Class = ir.ClassOpening
-	fenced.Open = open
+	items = append(items, open)
+	items = append(items, l.flattenFenceBody(body)...)
 	if n.close != "" {
 		end := n.span.End
 		closeGlyph := l.glyph(source.NewRange(max(end-len(n.close), end), end), n.close)
 		closeGlyph.Class = ir.ClassClosing
-		fenced.Close = closeGlyph
+		items = append(items, closeGlyph)
 	}
-	fenced.Balanced = true
-	fenced.Class = ir.ClassInner
-	return fenced
+	row := ir.NewRow(n.span, items...)
+	row.Class = ir.ClassInner
+	return row
 }
 
 func (l *lowerer) flattenFenceBody(body ir.Node) []ir.Node {
@@ -447,6 +460,10 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 		return l.lowerHSpace(call)
 	case "text":
 		return l.lowerText(call)
+	case "strong", "emph":
+		return l.lowerContentEmphasis(call, name)
+	case "link":
+		return l.lowerLink(call)
 	case "box":
 		return l.lowerBox(call)
 	case "hide":
@@ -475,6 +492,10 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 		if def.class == ir.ClassOpening || def.class == ir.ClassClosing || def.class == ir.ClassFence {
 			return l.lowerDelimiterFunction(call, def)
 		}
+		if def.class == ir.ClassDiacritic {
+			return l.lowerAccentWithMark(call, def.text)
+		}
+		return l.lowerContentCall(call)
 	}
 	if name == "rgb" || name == "luma" {
 		if v, ok := l.evalValue(call); ok {
@@ -485,7 +506,7 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 		return l.lowerContentCall(call)
 	}
 	l.diags = append(l.diags, source.Diagnostic{
-		Range:    call.span,
+		Range:    call.base.span,
 		Severity: source.SeverityError,
 		Code:     source.CodeUnknownVariable,
 		Message:  "unknown variable: " + name,
