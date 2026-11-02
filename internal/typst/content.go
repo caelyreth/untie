@@ -397,12 +397,12 @@ func (l *lowerer) lowerValueContent(span source.Range, v value) ir.Node {
 	case valueNone:
 		return l.placeholder(span, "none has no visual content")
 	case valueAuto:
-		return l.glyph(span, "auto")
+		return l.monospaceValueText(span, "auto")
 	case valueBool:
 		if v.boolean {
-			return l.glyph(span, "true")
+			return l.monospaceValueText(span, "true")
 		}
-		return l.glyph(span, "false")
+		return l.monospaceValueText(span, "false")
 	case valueInteger:
 		return l.glyph(span, strconv.FormatInt(v.integer, 10))
 	case valueFloat:

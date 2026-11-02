@@ -227,15 +227,15 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	empty := parse(t, `mat(1, , 3; , 5, )`)
 	requireNoDiagnostics(t, "empty matrix cells", empty)
 	emptyTable := find[*ir.Table](t, empty.Root)
-	if len(emptyTable.Rows) != 2 || len(emptyTable.Rows[0].Cells) != 3 || len(emptyTable.Rows[1].Cells) != 2 {
+	if len(emptyTable.Rows) != 2 || len(emptyTable.Rows[0].Cells) != 3 || len(emptyTable.Rows[1].Cells) != 3 {
 		t.Fatalf("empty matrix shape = %#v", emptyTable.Rows)
 	}
 
 	cases := parse(t, `cases(reverse: #true, a, b)`)
 	requireNoDiagnostics(t, "cases", cases)
 	casesFence := find[*ir.Fenced](t, cases.Root)
-	if got := nodeText(casesFence.Open); got != "}" {
-		t.Fatalf("reversed open delimiter = %q", got)
+	if nodeText(casesFence.Open) != "" || nodeText(casesFence.Close) != "}" {
+		t.Fatalf("reversed cases delimiters = %q/%q", nodeText(casesFence.Open), nodeText(casesFence.Close))
 	}
 
 	caseTable := find[*ir.Table](t, cases.Root)
@@ -278,7 +278,7 @@ func TestSyntaxGroupingRowsStayNeutral(t *testing.T) {
 func TestEvaluatorValuesSpreadAndHSpace(t *testing.T) {
 	t.Parallel()
 
-	result := parse(t, `frac(..#(a, b), style: "skewed") + h(#1.5em, weak: #true)`)
+	result := parse(t, `frac(..#("a", "b"), style: "skewed") + h(#1.5em, weak: #true)`)
 	requireNoDiagnostics(t, "spread and h", result)
 	fraction := find[*ir.Fraction](t, result.Root)
 	if fraction.Style != ir.FractionSkewed || fraction.Bar {
@@ -314,7 +314,9 @@ func TestNonFunctionContentCallPreservesArguments(t *testing.T) {
 	t.Parallel()
 
 	result := parse(t, `f(x, key: #1)`)
-	requireNoDiagnostics(t, "content call", result)
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != source.CodeSyntax {
+		t.Fatalf("content call diagnostics = %#v, want named-argument syntax error", result.Diagnostics)
+	}
 	var glyphs []string
 	ir.Walk(result.Root, func(n ir.Node) bool {
 		if glyph, ok := n.(*ir.Glyph); ok {
@@ -519,7 +521,7 @@ func TestStaticTypstFeatureCorpus(t *testing.T) {
 		`op("rank", limits: #true) + attach(Pi, t: alpha, b: beta, tl: 1, tr: 2)`,
 		`scripts(sum)_1^2 + limits(A)_1^2`,
 		`frac(a, b, style: "skewed") + binom(n, k)`,
-		`math.frac(a, b) + #math.frac($x$, $y$) + sym.arrow.r`,
+		`#math.frac($a$, $b$) + #sym.arrow.r`,
 		`mat(delim: "[", augment: #1, 1, 2; 3, 4)`,
 		`vec(1, 2, 3) + cases(reverse: #true, a, b)`,
 		`overbrace(a+b, n) + underbrace(c, m) + overparen(d) + underbracket(e, k)`,

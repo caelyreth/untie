@@ -11,12 +11,13 @@ import (
 )
 
 type lowerer struct {
-	src       string
-	limits    source.Limits
-	diags     []source.Diagnostic
-	nodes     int
-	depth     int
-	callDepth int
+	src        string
+	limits     source.Limits
+	diags      []source.Diagnostic
+	nodes      int
+	depth      int
+	callDepth  int
+	tableLimit bool
 }
 
 func lower(root *astNode, src string, limits source.Limits) Result {
@@ -148,6 +149,14 @@ func (l *lowerer) errorAt(span source.Range, code source.Code, format string, ar
 	})
 }
 
+func (l *lowerer) tableLimitError(span source.Range) {
+	if l.tableLimit {
+		return
+	}
+	l.tableLimit = true
+	l.errorAt(span, source.CodeLimitExceeded, "table cell limit exceeded")
+}
+
 func (l *lowerer) warningAt(span source.Range, code source.Code, format string, args ...any) {
 	if span.IsDetached() {
 		span = source.NewRange(0, 0)
@@ -219,26 +228,29 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 	}
 
 	rows := make([][]ir.Node, 0, 4)
-	current := make([]ir.Node, 0, 4)
+	current := make([]*astNode, 0, 4)
 	flush := func() {
-		rows = append(rows, current)
-		current = make([]ir.Node, 0, 4)
+		rows = append(rows, l.lowerMultilineRow(current, n.span))
+		current = make([]*astNode, 0, 4)
 	}
 	for _, item := range n.items {
 		if item.kind == astLinebreak {
 			flush()
 			continue
 		}
-		current = append(current, l.lower(item))
+		current = append(current, item)
 	}
 	// Typst ignores a trailing linebreak in a multiline sequence.
 	if len(current) > 0 {
-		rows = append(rows, current)
+		flush()
 	}
 	if len(rows) == 0 {
 		return ir.NewRow(n.span)
 	}
 	if len(rows) == 1 && !hasAlign {
+		if len(rows[0]) == 1 {
+			return rows[0][0]
+		}
 		row := ir.NewRow(n.span)
 		row.Items = rows[0]
 		return row
@@ -246,6 +258,32 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 	multiline := ir.NewMultiline(n.span, rows...)
 	multiline.Centered = true
 	return multiline
+}
+
+func (l *lowerer) lowerMultilineRow(items []*astNode, fallback source.Range) []ir.Node {
+	parts := make([]ir.Node, 0, 3)
+	segment := make([]*astNode, 0, len(items))
+	flush := func() {
+		start, end := fallback.Start, fallback.Start
+		if len(segment) > 0 {
+			start = segment[0].span.Start
+			end = segment[len(segment)-1].span.End
+		}
+		row := ir.NewRow(source.NewRange(start, end))
+		row.Items = l.lowerItems(segment)
+		parts = append(parts, row)
+		segment = make([]*astNode, 0, len(items))
+	}
+	for _, item := range items {
+		if item.kind == astAlign {
+			flush()
+			parts = append(parts, l.lower(item))
+			continue
+		}
+		segment = append(segment, item)
+	}
+	flush()
+	return parts
 }
 
 func (l *lowerer) lowerItems(items []*astNode) []ir.Node {
@@ -260,9 +298,16 @@ func (l *lowerer) lowerItems(items []*astNode) []ir.Node {
 }
 
 func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
-	name := n.text
-	if name == "zws" || name == "sym.zws" {
+	resolved := resolveIdent(n)
+	if resolved.unknownRoot != "" {
+		return l.unknownVariable(resolved.rootSpan, resolved.unknownRoot)
+	}
+	name := resolved.name
+	if name == "zws" {
 		return ir.NewRow(n.span)
+	}
+	if name == "dif" || name == "Dif" {
+		return l.lowerDifferential(n.span, strings.ToUpper(name[:1]))
 	}
 	if hasCombiningMark(name) {
 		return l.lowerCombinedIdentifier(n)
@@ -290,19 +335,65 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 		space.Class = ir.ClassSpace
 		return space
 	}
-	if kind, ok := codeKeywordValue(name); ok {
-		return l.lowerValueContent(n.span, kind)
+	if n.inCode {
+		if kind, ok := codeKeywordValue(name); ok {
+			return l.lowerValueContent(n.span, kind)
+		}
 	}
-	if utf8.RuneCountInString(name) == 1 {
+	if resolved.module != "" {
+		l.errorAt(resolved.fieldSpan, source.CodeUnknownVariable,
+			"module `%s` does not contain `%s`", resolved.module, name)
+		return l.errNode(n.span, name, source.CodeUnknownVariable)
+	}
+	if !n.inCode && utf8.RuneCountInString(name) == 1 {
 		return l.glyph(n.span, name)
 	}
+	if strings.Contains(name, ".") {
+		return l.unknownSymbolField(n, name)
+	}
+	return l.unknownVariable(n.span, name)
+}
+
+func (l *lowerer) lowerDifferential(span source.Range, letter string) ir.Node {
+	space := ir.NewSpace(span, ir.SpaceExplicit, builtinMuLength(3))
+	space.Class = ir.ClassSpace
+	space.Weak = true
+	d := l.glyph(span, letter)
+	d.Class = ir.ClassUnary
+	d.Variant = ir.VariantNormal
+	return ir.NewRow(span, space, d)
+}
+
+func (l *lowerer) unknownVariable(span source.Range, name string) *ir.ErrorNode {
+	if span.IsDetached() || !span.IsValid() {
+		span = source.NewRange(0, 0)
+	}
 	l.diags = append(l.diags, source.Diagnostic{
-		Range:    n.span,
+		Range:    span,
 		Severity: source.SeverityError,
 		Code:     source.CodeUnknownVariable,
 		Message:  "unknown variable: " + name,
 		Hints:    []string{"if you meant to display this as text, put it in quotes"},
 	})
+	return l.errNode(span, name, source.CodeUnknownVariable)
+}
+
+func (l *lowerer) unknownSymbolField(n *astNode, name string) *ir.ErrorNode {
+	root := name
+	if dot := strings.IndexByte(name, '.'); dot >= 0 {
+		root = name[:dot]
+	}
+	if _, ok := symbol(root); !ok {
+		return l.unknownVariable(resolveIdent(n).rootSpan, root)
+	}
+	field := name
+	fieldSpan := n.span
+	if dot := strings.LastIndexByte(name, '.'); dot >= 0 && dot+1 < len(name) {
+		field = name[dot+1:]
+		fieldSpan = source.NewRange(n.span.Start+dot+1, n.span.End)
+	}
+	l.errorAt(fieldSpan, source.CodeUnknownVariable,
+		"symbol `%s` does not contain `%s`", root, field)
 	return l.errNode(n.span, name, source.CodeUnknownVariable)
 }
 
@@ -335,15 +426,22 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	scripts.BottomLeft = l.lowerOptional(n.bottomLeft)
 	scripts.TopRight = l.lowerOptional(n.topRight)
 	scripts.BottomRight = l.lowerOptional(n.bottomRight)
-	if g, ok := scripts.BaseItem.(*ir.Glyph); ok {
-		if scripts.Limits == ir.LimitsAuto {
-			scripts.Limits = g.Limits
-		}
-		if scripts.Limits == ir.LimitsAuto && g.Class == ir.ClassRelation {
-			scripts.Limits = ir.LimitsAlways
-		}
-	}
+	inheritScriptMetadata(scripts)
 	return scripts
+}
+
+func inheritScriptMetadata(scripts *ir.Scripts) {
+	if scripts == nil || scripts.BaseItem == nil {
+		return
+	}
+	base := scripts.BaseItem.NodeBase()
+	scripts.Class = base.Class
+	if scripts.Limits == ir.LimitsAuto {
+		scripts.Limits = base.Limits
+	}
+	if scripts.Limits == ir.LimitsAuto && base.Class == ir.ClassRelation {
+		scripts.Limits = ir.LimitsAlways
+	}
 }
 
 func (l *lowerer) lowerOptional(n *astNode) ir.Node {
@@ -416,7 +514,11 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 	if call.base == nil {
 		return l.errNode(call.span, l.sourceText(call.span), source.CodeInternal)
 	}
-	name := callName(call.base)
+	resolved := resolveIdent(call.base)
+	if resolved.unknownRoot != "" {
+		return l.unknownVariable(resolved.rootSpan, resolved.unknownRoot)
+	}
+	name := resolved.name
 	if name == "" {
 		return l.errNode(call.span, l.sourceText(call.span), source.CodeUnsupported)
 	}
@@ -492,7 +594,7 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 		return l.lowerAccentWithMark(call, mark)
 	}
 	if def, ok := symbol(name); ok {
-		if def.class == ir.ClassOpening || def.class == ir.ClassClosing || def.class == ir.ClassFence {
+		if def.class == ir.ClassOpening || def.class == ir.ClassFence {
 			return l.lowerDelimiterFunction(call, def)
 		}
 		if def.class == ir.ClassDiacritic {
@@ -500,13 +602,21 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 		}
 		return l.lowerContentCall(call)
 	}
-	if name == "rgb" || name == "luma" {
+	if call.base.inCode && (name == "rgb" || name == "luma") {
 		if v, ok := l.evalValue(call); ok {
 			return l.lowerValueContent(call.span, v)
 		}
 	}
-	if call.base.kind == astIdentifier && utf8.RuneCountInString(call.base.text) == 1 {
+	if !call.base.inCode && call.base.kind == astIdentifier && utf8.RuneCountInString(name) == 1 {
 		return l.lowerContentCall(call)
+	}
+	if resolved.module != "" {
+		l.errorAt(resolved.fieldSpan, source.CodeUnknownVariable,
+			"module `%s` does not contain `%s`", resolved.module, name)
+		return l.errNode(call.span, l.sourceText(call.span), source.CodeUnknownVariable)
+	}
+	if strings.Contains(name, ".") {
+		return l.unknownSymbolField(call.base, name)
 	}
 	l.diags = append(l.diags, source.Diagnostic{
 		Range:    call.base.span,
@@ -535,6 +645,8 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 		}
 		switch arg.kind {
 		case argNamed:
+			l.errorAt(arg.span, source.CodeSyntax,
+				"named-argument syntax can only be used with functions")
 			name := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), arg.name)
 			colon := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), ":")
 			colon.Class = ir.ClassRelation
@@ -543,6 +655,8 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 				body = append(body, l.lowerArgument(arg.node))
 			}
 		case argSpread:
+			l.errorAt(arg.span, source.CodeSyntax,
+				"spread-argument syntax can only be used with functions")
 			dots := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), "..")
 			body = append(body, dots)
 			if arg.node != nil {
@@ -573,9 +687,7 @@ func callName(n *astNode) string {
 	}
 	switch n.kind {
 	case astIdentifier, astField:
-		name := n.text
-		name = strings.TrimPrefix(name, "math.")
-		return name
+		return resolveIdent(n).name
 	default:
 		return ""
 	}
