@@ -150,9 +150,6 @@ func applyClass(n ir.Node, class ir.MathClass) {
 		return
 	}
 	n.NodeBase().Class = class
-	for _, child := range ir.Children(n) {
-		applyClass(child, class)
-	}
 }
 
 func (l *lowerer) lowerOperator(call *astNode) ir.Node {

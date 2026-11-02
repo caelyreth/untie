@@ -164,7 +164,7 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 			fenced.Open = open
 			fenced.Close = ir.NewRow(source.NewRange(call.span.End, call.span.End))
 		}
-		fenced.Balanced = true
+		fenced.Balanced = false
 		fenced.Class = ir.ClassInner
 		body = fenced
 	} else if openText != "" || closeText != "" {

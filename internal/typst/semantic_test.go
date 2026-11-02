@@ -122,10 +122,57 @@ func TestAttachAndCasesPreserveNeutralMetadata(t *testing.T) {
 		result := parse(t, test.src)
 		requireNoDiagnostics(t, test.src, result)
 		fenced := find[*ir.Fenced](t, result.Root)
-		if nodeText(fenced.Open) != test.open || nodeText(fenced.Close) != test.close || !fenced.Balanced {
+		if nodeText(fenced.Open) != test.open || nodeText(fenced.Close) != test.close || fenced.Balanced {
 			t.Fatalf("%s delimiters = %q/%q balanced=%v", test.src,
 				nodeText(fenced.Open), nodeText(fenced.Close), fenced.Balanced)
 		}
+	}
+}
+
+func TestClassAndAlphabetStylesDoNotRewriteDescendants(t *testing.T) {
+	t.Parallel()
+
+	classed := parse(t, `class("relation", a+b)`)
+	requireNoDiagnostics(t, "compound class", classed)
+	row := findCompoundRow(t, classed.Root, ir.ClassRelation)
+	assertSpacingClasses(t, row, ir.ClassRelation)
+
+	styled := parse(t, `bold(a+b)`)
+	requireNoDiagnostics(t, "compound alphabet style", styled)
+	row = findCompoundRow(t, styled.Root, ir.ClassNormal)
+	assertSpacingClasses(t, row, ir.ClassNormal)
+}
+
+func findCompoundRow(t *testing.T, root ir.Node, class ir.MathClass) *ir.Row {
+	t.Helper()
+	var found *ir.Row
+	ir.Walk(root, func(node ir.Node) bool {
+		row, ok := node.(*ir.Row)
+		if ok && len(row.Items) == 3 && row.Class == class {
+			found = row
+			return false
+		}
+		return true
+	})
+	if found == nil {
+		t.Fatalf("did not find compound row with class %v in %T", class, root)
+	}
+	return found
+}
+
+func assertSpacingClasses(t *testing.T, row *ir.Row, wrapper ir.MathClass) {
+	t.Helper()
+	if len(row.Items) != 3 {
+		t.Fatalf("compound row has %d items, want 3", len(row.Items))
+	}
+	if row.Items[0].NodeBase().Class != ir.ClassAlphabetic ||
+		row.Items[1].NodeBase().Class != ir.ClassBinary ||
+		row.Items[2].NodeBase().Class != ir.ClassAlphabetic {
+		t.Fatalf("compound child classes = %v/%v/%v",
+			row.Items[0].NodeBase().Class, row.Items[1].NodeBase().Class, row.Items[2].NodeBase().Class)
+	}
+	if row.Class != wrapper {
+		t.Fatalf("compound wrapper class = %v, want %v", row.Class, wrapper)
 	}
 }
 
