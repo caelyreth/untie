@@ -227,7 +227,7 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	empty := parse(t, `mat(1, , 3; , 5, )`)
 	requireNoDiagnostics(t, "empty matrix cells", empty)
 	emptyTable := find[*ir.Table](t, empty.Root)
-	if len(emptyTable.Rows) != 2 || len(emptyTable.Rows[0].Cells) != 3 || len(emptyTable.Rows[1].Cells) != 2 {
+	if len(emptyTable.Rows) != 2 || len(emptyTable.Rows[0].Cells) != 3 || len(emptyTable.Rows[1].Cells) != 3 {
 		t.Fatalf("empty matrix shape = %#v", emptyTable.Rows)
 	}
 

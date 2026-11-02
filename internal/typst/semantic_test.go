@@ -170,3 +170,50 @@ func TestDifferentialAndBuiltinSpacingUseExactMathUnits(t *testing.T) {
 		}
 	}
 }
+
+func TestMatrixArrayRowsPadAndRemainBounded(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{
+		`mat(#(1, 2), #(3, 4))`,
+		`mat(..#((1, 2), (3, 4)))`,
+	} {
+		result := parse(t, src)
+		requireNoDiagnostics(t, src, result)
+		table := find[*ir.Table](t, result.Root)
+		if len(table.Rows) != 2 || len(table.Columns) != 2 {
+			t.Fatalf("%s shape = %dx%d", src, len(table.Rows), len(table.Columns))
+		}
+		for rowIndex, row := range table.Rows {
+			if len(row.Cells) != 2 {
+				t.Fatalf("%s row %d has %d cells", src, rowIndex, len(row.Cells))
+			}
+		}
+	}
+
+	ragged := parse(t, `mat(#(1,), #(2, 3))`)
+	requireNoDiagnostics(t, "ragged matrix rows", ragged)
+	table := find[*ir.Table](t, ragged.Root)
+	if len(table.Rows) != 2 || len(table.Rows[0].Cells) != 2 || len(table.Rows[1].Cells) != 2 {
+		t.Fatalf("ragged matrix shape = %#v", table.Rows)
+	}
+
+	limits := source.DefaultLimits()
+	limits.MaxTableCells = 3
+	bounded := Parse(`mat(#(1, 2), #(3, 4))`, ir.Inline, Options{Limits: limits})
+	if bounded.Root == nil {
+		t.Fatal("bounded matrix returned nil root")
+	}
+	if err := ir.Validate(&ir.Formula{Root: bounded.Root}, limits); err != nil {
+		t.Fatalf("bounded matrix produced invalid IR: %v", err)
+	}
+	var tableLimited bool
+	for _, diagnostic := range bounded.Diagnostics {
+		if diagnostic.Code == source.CodeLimitExceeded {
+			tableLimited = true
+		}
+	}
+	if !tableLimited {
+		t.Fatalf("bounded matrix diagnostics = %#v, want limit", bounded.Diagnostics)
+	}
+}

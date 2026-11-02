@@ -11,12 +11,13 @@ import (
 )
 
 type lowerer struct {
-	src       string
-	limits    source.Limits
-	diags     []source.Diagnostic
-	nodes     int
-	depth     int
-	callDepth int
+	src        string
+	limits     source.Limits
+	diags      []source.Diagnostic
+	nodes      int
+	depth      int
+	callDepth  int
+	tableLimit bool
 }
 
 func lower(root *astNode, src string, limits source.Limits) Result {
@@ -146,6 +147,14 @@ func (l *lowerer) errorAt(span source.Range, code source.Code, format string, ar
 		Code:     code,
 		Message:  fmt.Sprintf(format, args...),
 	})
+}
+
+func (l *lowerer) tableLimitError(span source.Range) {
+	if l.tableLimit {
+		return
+	}
+	l.tableLimit = true
+	l.errorAt(span, source.CodeLimitExceeded, "table cell limit exceeded")
 }
 
 func (l *lowerer) warningAt(span source.Range, code source.Code, format string, args ...any) {

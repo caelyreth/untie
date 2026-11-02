@@ -13,13 +13,17 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		return l.errNode(call.span, l.sourceText(call.span), source.CodeUnsupported)
 	}
 	if len(positional) > l.limits.MaxTableCells {
-		l.errorAt(call.span, source.CodeLimitExceeded, "table cell limit exceeded")
+		l.tableLimitError(call.span)
 		positional = positional[:l.limits.MaxTableCells]
 	}
 
 	grid := make([][]ir.Node, 0, 2)
 	switch kind {
 	case "mat":
+		if l.matrixHasArrayRows(positional) {
+			grid = l.lowerArrayMatrixRows(call, positional)
+			break
+		}
 		current := make([]ir.Node, 0, len(positional))
 		for _, arg := range positional {
 			for _, segment := range splitAlign(arg.node) {
@@ -57,6 +61,7 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 	for _, row := range grid {
 		maxColumns = max(maxColumns, len(row))
 	}
+	l.boundAndPadMatrix(call.span, grid, maxColumns)
 	align := ir.AlignCenter
 	if arg := namedArgument(call, "align"); arg != nil {
 		if text, ok := l.valueString(arg.node); ok {
@@ -179,6 +184,75 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		body = fenced
 	}
 	return body
+}
+
+func (l *lowerer) matrixHasArrayRows(positional []astArg) bool {
+	for _, arg := range positional {
+		if value, ok := l.evalValue(arg.node); ok && value.kind == valueArray {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *lowerer) lowerArrayMatrixRows(call *astNode, positional []astArg) [][]ir.Node {
+	grid := make([][]ir.Node, 0, len(positional))
+	cellCount := 0
+	for _, arg := range positional {
+		value, ok := l.evalValue(arg.node)
+		if !ok || value.kind != valueArray {
+			l.errorAt(arg.span, source.CodeInvalidValue,
+				"expected array for matrix row, found %s", l.valueType(arg.node))
+			continue
+		}
+		row := make([]ir.Node, 0, len(value.array))
+		for _, cellValue := range value.array {
+			if cellCount >= l.limits.MaxTableCells {
+				l.tableLimitError(arg.span)
+				break
+			}
+			cellCount++
+			row = append(row, l.lowerValueContent(arg.span, cellValue))
+		}
+		grid = append(grid, row)
+		if cellCount >= l.limits.MaxTableCells {
+			break
+		}
+	}
+	if len(grid) == 0 {
+		grid = append(grid, nil)
+	}
+	return grid
+}
+
+func (l *lowerer) boundAndPadMatrix(span source.Range, grid [][]ir.Node, columns int) {
+	cells := 0
+	for i := range grid {
+		if remaining := l.limits.MaxTableCells - cells; len(grid[i]) > remaining {
+			grid[i] = grid[i][:max(remaining, 0)]
+			l.tableLimitError(span)
+		}
+		cells += len(grid[i])
+	}
+	if cells >= l.limits.MaxTableCells {
+		for i := range grid {
+			if len(grid[i]) < columns {
+				l.tableLimitError(span)
+				break
+			}
+		}
+		return
+	}
+	for i := range grid {
+		for len(grid[i]) < columns && cells < l.limits.MaxTableCells {
+			grid[i] = append(grid[i], ir.NewRow(source.NewRange(span.End, span.End)))
+			cells++
+		}
+		if len(grid[i]) < columns {
+			l.tableLimitError(span)
+			break
+		}
+	}
 }
 
 func (l *lowerer) lowerCell(n *astNode, warnLinebreak bool) ir.Node {
