@@ -57,6 +57,7 @@ type (
 	FontData    = font.FontData
 	Fonts       = font.Fonts
 	FontSet     = font.FontSet
+	Formula     = ir.Formula
 	EquationTag = ir.EquationTag
 )
 

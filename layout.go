@@ -99,15 +99,58 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if root == nil || root.Root == nil {
 		return nil, ErrInvalidExpr
 	}
-	box, err := e.inner.LayoutParsedFormula(ctx, root, expr.mode, style)
+	return e.layoutRootContext(ctx, root, expr.mode, style, intersectLimits(e.limits, expr.limits), true)
+}
+
+// LayoutFormulaContext lays out canonical IR with cancellation and the
+// Engine's configured resource limits. Unlike Expr, formula must be immutable
+// for the duration of the call and may be shared after it returns.
+//
+// This is the advanced boundary for hosts that cache canonical IR or produce
+// it through another validated frontend. Parsed expressions should use
+// LayoutContext so parser-validated structure can be reused.
+func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mode Mode, style Style) (*Box, error) {
+	if e == nil || e.inner == nil {
+		return nil, ErrInvalidEngine
+	}
+	if ctx == nil {
+		return nil, ErrInvalidContext
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if formula == nil || formula.Root == nil {
+		return nil, fmt.Errorf("%w: nil formula", ErrInvalidInput)
+	}
+	style, err := snapshotLayoutStyle(style)
+	if err != nil {
+		return nil, err
+	}
+	return e.layoutRootContext(ctx, formula, mode, style, e.limits, false)
+}
+
+func (e *Engine) layoutRootContext(
+	ctx context.Context,
+	root *Formula,
+	mode Mode,
+	style Style,
+	altLimits Limits,
+	parsed bool,
+) (*Box, error) {
+	var box *Box
+	var err error
+	if parsed {
+		box, err = e.inner.LayoutParsedFormula(ctx, root, mode, style)
+	} else {
+		box, err = e.inner.LayoutFormula(ctx, root, mode, style)
+	}
 	if err != nil {
 		return nil, err
 	}
 	if box == nil {
 		return nil, fmt.Errorf("untie: layout returned a nil box")
 	}
-	altLimits := intersectLimits(e.limits, expr.limits)
-	alt, altErr := internalalt.GenerateFormulaContext(ctx, root, expr.mode, altLimits)
+	alt, altErr := internalalt.GenerateFormulaContext(ctx, root, mode, altLimits)
 	if altErr != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr

@@ -508,6 +508,34 @@ func TestPublicLayoutErrorClassification(t *testing.T) {
 	}
 }
 
+func TestLayoutFormulaContextAcceptsCanonicalIR(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	expr := ParseTeX(`x_i^2`, Inline, ParseOptions{})
+	formula := expr.Root()
+	box, err := engine.LayoutFormulaContext(context.Background(), formula, Inline, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("LayoutFormulaContext() error = %v", err)
+	}
+	if box == nil || box.Alt.Text == "" || box.Alt.Speech == "" {
+		t.Fatalf("LayoutFormulaContext() box = %#v", box)
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Box.Validate() error = %v", err)
+	}
+	if box.Alt != expr.Alt() {
+		t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, expr.Alt())
+	}
+	if _, err := engine.LayoutFormulaContext(context.Background(), nil, Inline, Style{Size: 16}); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("nil formula error = %v, want ErrInvalidInput", err)
+	}
+}
+
 func TestFallbackIRValidates(t *testing.T) {
 	t.Parallel()
 
