@@ -140,7 +140,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	bottomLeftKern := mathKern(base, bottomLeft, subShift, KernBottomLeft)
 	topRightKern := mathKern(base, topRight, supShift, KernTopRight)
 	bottomRightKern := mathKern(base, bottomRight, subShift, KernBottomRight)
-	if base.TextLike && bottomRight != nil {
+	if bottomRight != nil && (base.TextLike || singleSymbolBase(node.BaseItem)) {
 		bottomRightKern, err = sub(bottomRightKern, base.Italic)
 		if err != nil {
 			return nil, err
@@ -282,6 +282,25 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		}
 	}
 	return withClass(fragment, node.Class), nil
+}
+
+// singleSymbolBase reports whether the source base lowers to one glyph or
+// operator. KaTeX pulls side subscripts back by the base's italic correction
+// for these symbol boxes, including large non-textlike operators such as an
+// integral.
+func singleSymbolBase(node ir.Node) bool {
+	switch value := node.(type) {
+	case *ir.Glyph:
+		return true
+	case *ir.Operator:
+		return len([]rune(value.Text)) == 1
+	case *ir.Style:
+		return singleSymbolBase(value.Body)
+	case *ir.Color:
+		return singleSymbolBase(value.Body)
+	default:
+		return false
+	}
 }
 
 func (s *layoutState) layoutScriptBase(node ir.Node, env environment, depth int, target geometry.Em) (*Fragment, error) {

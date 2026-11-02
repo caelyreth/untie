@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/internal/tex"
+	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -33,6 +34,27 @@ func TestDisplayOperatorSpacingScalesLinearly(t *testing.T) {
 			assertDouble(t, widths[1], widths[0], "16 to 32 DIP")
 			assertDouble(t, widths[2], widths[1], "32 to 64 DIP")
 		})
+	}
+}
+
+func TestIntegralSubscriptParity(t *testing.T) {
+	t.Parallel()
+
+	_, layoutEngine := newNewCMEngine(t, source.DefaultLimits())
+	texRoot := tex.Parse(`\int_{\mathcal M}`, ir.Display, tex.Options{}).Root
+	typstRoot := typst.Parse(`integral_(cal(M))`, ir.Display, typst.Options{}).Root
+	texBox, err := layoutEngine.Layout(t.Context(), texRoot, ir.Display, display.Style{Size: 32})
+	if err != nil {
+		t.Fatal(err)
+	}
+	typstBox, err := layoutEngine.Layout(t.Context(), typstRoot, ir.Display, display.Style{Size: 32})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if texBox.Width != typstBox.Width ||
+		texBox.Ascent != typstBox.Ascent ||
+		texBox.Descent != typstBox.Descent {
+		t.Fatalf("TeX box = %+v, Typst box = %+v", texBox, typstBox)
 	}
 }
 
