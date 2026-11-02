@@ -40,14 +40,29 @@ func (p *parser) parseOverUnderAccent(command token, position ir.Position, mark 
 
 func (p *parser) parseStacked(command token, position ir.Position) astNode {
 	annotation := p.parseRequiredArgument(command)
-	body := p.parseRequiredArgument(command)
-	return &astAccentNode{
-		astBase:    newASTBaseAt(astAccent, source.Merge(command.span, body.base().span), tokenOrigin(command)),
-		body:       body,
-		mark:       annotation,
-		position:   position,
-		exactWidth: true,
+	body := compactAST(p.parseRequiredArgument(command))
+	scripts := &astScriptsNode{
+		astBase: newASTBaseAt(astScripts, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		main: &astScriptsNode{
+			astBase: newASTBaseAt(astScripts, body.base().span, tokenOrigin(command)),
+			main:    body,
+			limits:  ir.LimitsAlways,
+		},
+		limits: ir.LimitsAlways,
 	}
+	if position == ir.PositionAbove {
+		scripts.top = annotation
+	} else {
+		scripts.bottom = annotation
+	}
+	return scripts
+}
+
+func compactAST(node astNode) astNode {
+	if row, ok := node.(*astRowNode); ok && len(row.items) == 1 {
+		return row.items[0]
+	}
+	return node
 }
 
 func (p *parser) parseExtensibleArrow(command token) astNode {
@@ -55,28 +70,21 @@ func (p *parser) parseExtensibleArrow(command token) astNode {
 	below := p.parseOptionalArgument(command)
 	above := p.parseRequiredArgument(command)
 	arrow := newGlyphAST(command.span, arrowText, ir.ClassRelation)
-	var body astNode = arrow
+	scripts := &astScriptsNode{
+		astBase: newASTBaseAt(astScripts, source.Merge(command.span, above.base().span), tokenOrigin(command)),
+		main:    arrow,
+		limits:  ir.LimitsAlways,
+	}
 	if astHasContent(above) {
-		body = &astAccentNode{
-			astBase:    newASTBaseAt(astAccent, source.Merge(command.span, above.base().span), tokenOrigin(command)),
-			body:       body,
-			mark:       above,
-			position:   ir.PositionAbove,
-			exactWidth: true,
-		}
+		scripts.top = above
 	}
 	if astHasContent(below) {
-		body = &astAccentNode{
-			astBase:    newASTBaseAt(astAccent, source.Merge(command.span, below.base().span), tokenOrigin(command)),
-			body:       body,
-			mark:       below,
-			position:   ir.PositionBelow,
-			exactWidth: true,
-		}
+		scripts.bottom = below
+		scripts.span = source.Merge(scripts.span, below.base().span)
 	}
-	body.base().span = source.Merge(command.span, body.base().span)
-	body.base().origin = tokenOrigin(command)
-	return body
+	scripts.span = source.Merge(command.span, scripts.span)
+	scripts.origin = tokenOrigin(command)
+	return scripts
 }
 
 func astHasContent(node astNode) bool {

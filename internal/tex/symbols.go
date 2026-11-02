@@ -632,7 +632,7 @@ func addOperators() {
 		namedOperators["\\"+name] = name
 	}
 	for _, name := range []string{
-		"det", "gcd", "inf", "lim", "liminf", "limsup", "max", "min", "Pr", "sup",
+		"inf", "lim", "liminf", "limsup", "max", "min", "Pr", "sup",
 		"argmax", "argmin", "injlim", "plim", "projlim", "varinjlim", "varliminf",
 		"varlimsup", "varprojlim",
 	} {

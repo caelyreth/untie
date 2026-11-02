@@ -99,10 +99,14 @@ type astRadicalNode struct {
 
 type astScriptsNode struct {
 	astBase
-	main   astNode
-	top    astNode
-	bottom astNode
-	limits ir.LimitsPlacement
+	main        astNode
+	top         astNode
+	bottom      astNode
+	topLeft     astNode
+	bottomLeft  astNode
+	topRight    astNode
+	bottomRight astNode
+	limits      ir.LimitsPlacement
 }
 
 type astFencedNode struct {
@@ -111,6 +115,7 @@ type astFencedNode struct {
 	close    astNode
 	body     []astNode
 	balanced bool
+	size     ir.MathSize
 }
 
 type astAccentNode struct {

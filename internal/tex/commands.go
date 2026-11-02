@@ -211,6 +211,8 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseDelimitedArgument(t)
 	case "\\substack":
 		return p.parseSubstack(t)
+	case "\\sideset":
+		return p.parseSideSet(t, stop)
 	case "\\href":
 		return p.parseHref(t)
 	case "\\url":
@@ -570,7 +572,7 @@ func (p *parser) parseBinomial(command token) astNode {
 		open:     newGlyphAST(command.span, "(", ir.ClassOpening),
 		close:    newGlyphAST(command.span, ")", ir.ClassClosing),
 		body:     []astNode{f},
-		balanced: true,
+		balanced: false,
 	}
 }
 
@@ -634,6 +636,7 @@ func (p *parser) parseLeftRight(command token) astNode {
 				close:    close,
 				body:     body,
 				balanced: balanced,
+				size:     inheritedTableSize(body),
 			}
 		default:
 			p.report(source.Diagnostic{
@@ -650,6 +653,16 @@ func (p *parser) parseLeftRight(command token) astNode {
 			}
 		}
 	}
+}
+
+func inheritedTableSize(body []astNode) ir.MathSize {
+	if len(body) != 1 {
+		return ir.SizeInherit
+	}
+	if table, ok := body[0].(*astTableNode); ok {
+		return table.size
+	}
+	return ir.SizeInherit
 }
 
 func (p *parser) parseDelimiter(owner token, fallbackClass ir.MathClass) astNode {

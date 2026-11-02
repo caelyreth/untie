@@ -145,7 +145,7 @@ func verifyCase(ctx context.Context, harness *layoutHarness, testCase fixture.Ca
 	}
 	texBox, texLayoutErr := harness.layout(ctx, texSide.root.Root, mode, size)
 
-	typstSemantic, err := normalizeFormula(typstSide.root, mode)
+	typstSemantic, err := normalizeTypstFormula(typstSide.root, mode)
 	if err != nil {
 		result.Kind, result.Detail = SemanticIRMismatch, "normalize Typst IR: "+err.Error()
 		return result

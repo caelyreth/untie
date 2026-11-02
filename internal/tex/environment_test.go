@@ -41,23 +41,29 @@ func TestFencedMatrixAndArray(t *testing.T) {
 	}
 }
 
-func TestAlignedEnvironmentLowersToAlignedTable(t *testing.T) {
+func TestAlignedEnvironmentLowersToMultiline(t *testing.T) {
 	t.Parallel()
 
 	result := parseTest(t, `\begin{aligned}x&=1\\y&=2\end{aligned}`, Options{})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("diagnostics: %v", result.Diagnostics)
 	}
-	table := requireKind[*ir.Table](t, rowItems(t, result.Root)[0])
-	if len(table.Rows) != 2 {
-		t.Fatalf("rows = %d, want 2", len(table.Rows))
+	multiline := requireKind[*ir.Multiline](t, rowItems(t, result.Root)[0])
+	if len(multiline.Rows) != 2 {
+		t.Fatalf("rows = %d, want 2", len(multiline.Rows))
 	}
-	if len(table.Columns) != 2 || table.Columns[0] != ir.AlignRight || table.Columns[1] != ir.AlignLeft {
-		t.Errorf("columns = %v, want right/left", table.Columns)
+	if !multiline.Centered {
+		t.Fatal("multiline is not centered")
 	}
-	for _, row := range table.Rows {
-		if len(row.Cells) != 2 {
-			t.Errorf("row has %d cells, want 2", len(row.Cells))
+	for i, row := range multiline.Rows {
+		markers := 0
+		for _, item := range row {
+			if _, ok := item.(*ir.AlignMarker); ok {
+				markers++
+			}
+		}
+		if markers != 1 {
+			t.Errorf("row %d has %d alignment markers, want 1", i, markers)
 		}
 	}
 }

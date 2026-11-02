@@ -84,17 +84,17 @@ func TestSharedTeXMetadataResolvesCommonSymbols(t *testing.T) {
 	}
 }
 
-func TestEnvironmentFamiliesLowerToTables(t *testing.T) {
+func TestEnvironmentFamiliesLowerToNeutralContainers(t *testing.T) {
 	tests := []struct {
 		source      string
 		kind        ir.NodeKind
 		rows        int
 		columnCount int
 	}{
-		{`\begin{align*}a&=b\\c&=d\end{align*}`, ir.KindTable, 2, 2},
-		{`\begin{alignat*}{2}a&=b&c&=d\end{alignat*}`, ir.KindTable, 1, 4},
-		{`\begin{gather*}a=b\\c=d\end{gather*}`, ir.KindTable, 2, 1},
-		{`\begin{equation*}a=b+c\end{equation*}`, ir.KindTable, 1, 1},
+		{`\begin{align*}a&=b\\c&=d\end{align*}`, ir.KindMultiline, 2, 0},
+		{`\begin{alignat*}{2}a&=b&c&=d\end{alignat*}`, ir.KindMultiline, 1, 0},
+		{`\begin{gather*}a=b\\c=d\end{gather*}`, ir.KindMultiline, 2, 0},
+		{`\begin{equation*}a=b+c\end{equation*}`, ir.KindMultiline, 1, 0},
 		{`\begin{Bmatrix*}[r]0&-1\\-1&0\end{Bmatrix*}`, ir.KindFenced, 0, 0},
 		{`\begin{darray}{cc}a&b\\c&d\end{darray}`, ir.KindTable, 2, 2},
 		{`\begin{dcases}a&b\\c&d\end{dcases}`, ir.KindFenced, 0, 0},
@@ -109,6 +109,13 @@ func TestEnvironmentFamiliesLowerToTables(t *testing.T) {
 			node := rowItems(t, result.Root)[0]
 			if node.NodeBase().Kind() != tc.kind {
 				t.Fatalf("kind = %v, want %v", node.NodeBase().Kind(), tc.kind)
+			}
+			if tc.kind == ir.KindMultiline {
+				multiline := requireKind[*ir.Multiline](t, node)
+				if len(multiline.Rows) != tc.rows {
+					t.Fatalf("rows = %d, want %d", len(multiline.Rows), tc.rows)
+				}
+				return
 			}
 			if tc.kind != ir.KindTable {
 				return

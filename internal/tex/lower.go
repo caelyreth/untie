@@ -11,6 +11,8 @@ type lowerContext struct {
 	cramped bool
 }
 
+var defaultFractionPadding = ir.RawLength(ir.LengthEm, 100_000)
+
 type lowerer struct {
 	limits     source.Limits
 	diagnostic func(source.Diagnostic)
@@ -52,7 +54,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			}
 		}
 		out := ir.NewRow(n.span, items...)
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
 		return out
 	case *astGlyphNode:
 		out := ir.NewGlyph(n.span, n.text)
@@ -104,12 +106,16 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out := ir.NewFraction(n.span, numerator, denominator)
 		out.Bar = n.bar
 		out.Style = n.style
+		if !out.Bar && out.Style == ir.FractionVertical {
+			out.Style = ir.FractionNoBar
+		}
+		out.Padding = defaultFractionPadding
 		if n.size == ir.SizeInherit {
 			out.Size = ctx.size
 		} else {
 			out.Size = n.size
 		}
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astRadicalNode:
 		radicand := l.lower(n.radicand, ctx)
@@ -154,6 +160,30 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out := ir.NewScripts(n.span, base)
 		out.Top = top
 		out.Bottom = bottom
+		if n.topLeft != nil {
+			out.TopLeft = l.lower(n.topLeft, ctx)
+			if l.exhausted {
+				return l.placeholder(n.span, "IR node limit exceeded")
+			}
+		}
+		if n.bottomLeft != nil {
+			out.BottomLeft = l.lower(n.bottomLeft, ctx)
+			if l.exhausted {
+				return l.placeholder(n.span, "IR node limit exceeded")
+			}
+		}
+		if n.topRight != nil {
+			out.TopRight = l.lower(n.topRight, ctx)
+			if l.exhausted {
+				return l.placeholder(n.span, "IR node limit exceeded")
+			}
+		}
+		if n.bottomRight != nil {
+			out.BottomRight = l.lower(n.bottomRight, ctx)
+			if l.exhausted {
+				return l.placeholder(n.span, "IR node limit exceeded")
+			}
+		}
 		out.Size = ctx.size
 		out.Limits = n.limits
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
@@ -161,15 +191,19 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		base.NodeBase().Limits = n.limits
 		return out
 	case *astFencedNode:
+		fenceCtx := ctx
+		if n.size != ir.SizeInherit {
+			fenceCtx.size = n.size
+		}
 		var open, close ir.Node
 		if n.open != nil {
-			open = l.lower(n.open, ctx)
+			open = l.lower(n.open, fenceCtx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
 		}
 		if n.close != nil {
-			close = l.lower(n.close, ctx)
+			close = l.lower(n.close, fenceCtx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
@@ -193,7 +227,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		body := make([]ir.Node, 0, len(n.body))
 		for _, item := range n.body {
-			child := l.lower(item, ctx)
+			child := l.lower(item, fenceCtx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
@@ -211,7 +245,11 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Open = open
 		out.Close = close
 		out.Balanced = n.balanced
-		out.Size = ctx.size
+		if n.size == ir.SizeInherit {
+			out.Size = ctx.size
+		} else {
+			out.Size = n.size
+		}
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
 		return out
 	case *astAccentNode:
@@ -269,7 +307,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		out := ir.NewColor(n.span, body, n.paint)
 		out.Size = ctx.size
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astBoxNode:
 		body := l.lower(n.body, ctx)
@@ -287,7 +325,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.BorderWidth = n.borderSize
 		out.Radius = n.radius
 		out.Size = ctx.size
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astPhantomNode:
 		body := l.lower(n.body, ctx)
@@ -346,7 +384,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.NewSize = n.size
 		out.SetCramped = n.cramped
 		out.Cramped = n.cramped
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astTableNode:
 		rows := make([]ir.TableRow, 0, len(n.rows))
@@ -381,7 +419,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		} else {
 			out.Size = n.size
 		}
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astMultilineNode:
 		rows := make([][]ir.Node, 0, len(n.rows))
@@ -405,7 +443,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out := ir.NewMultiline(n.span, rows...)
 		out.Centered = n.centered
 		out.Size = ctx.size
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astErrorNode:
 		out := ir.NewError(n.span, n.text, n.code)

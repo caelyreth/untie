@@ -46,7 +46,7 @@ func (p *parser) parseSubstack(command token) astNode {
 	}
 	p.exp.next()
 	span := open.span
-	var rows []astTableRow
+	var rows [][]astNode
 	cells := 0
 	for {
 		cell := p.parseSequence(stopCell)
@@ -55,7 +55,7 @@ func (p *parser) parseSubstack(command token) astNode {
 		if cells > p.limits.MaxTableCells {
 			p.limit(normalizeRange(cell.base().span), "TeX table cell limit exceeded")
 		} else {
-			rows = append(rows, astTableRow{cells: []astNode{cell}})
+			rows = append(rows, []astNode{cell})
 		}
 		t := p.exp.peek()
 		switch {
@@ -66,11 +66,10 @@ func (p *parser) parseSubstack(command token) astNode {
 		case t.is(tokEndGroup):
 			p.exp.next()
 			span = source.Merge(span, t.span)
-			return &astTableNode{
-				astBase: newASTBaseAt(astTable, source.Merge(command.span, span), tokenOrigin(command)),
-				rows:    rows,
-				columns: []ir.ColumnAlign{ir.AlignCenter},
-				size:    ir.SizeScript,
+			return &astMultilineNode{
+				astBase:  newASTBaseAt(astMultiline, source.Merge(command.span, span), tokenOrigin(command)),
+				rows:     rows,
+				centered: true,
 			}
 		case t.isEOF():
 			p.report(source.Diagnostic{
@@ -79,11 +78,10 @@ func (p *parser) parseSubstack(command token) astNode {
 				Code:     source.CodeUnclosedGroup,
 				Message:  "unclosed \\substack group",
 			})
-			return &astTableNode{
-				astBase: newASTBaseAt(astTable, source.Merge(command.span, span), tokenOrigin(command)),
-				rows:    rows,
-				columns: []ir.ColumnAlign{ir.AlignCenter},
-				size:    ir.SizeScript,
+			return &astMultilineNode{
+				astBase:  newASTBaseAt(astMultiline, source.Merge(command.span, span), tokenOrigin(command)),
+				rows:     rows,
+				centered: true,
 			}
 		default:
 			p.report(source.Diagnostic{
@@ -91,6 +89,112 @@ func (p *parser) parseSubstack(command token) astNode {
 				Severity: source.SeverityError,
 				Code:     source.CodeUnexpectedToken,
 				Message:  "unexpected token in \\substack",
+			})
+			p.exp.next()
+		}
+	}
+}
+
+func (p *parser) parseSideSet(command token, stop stopMode) astNode {
+	leftTop, leftBottom, leftSpan, leftOK := p.parseScriptGroup(command, "left")
+	rightTop, rightBottom, rightSpan, rightOK := p.parseScriptGroup(command, "right")
+	if !leftOK || !rightOK {
+		return newPlaceholderAST(source.Merge(command.span, rightSpan), "missing sideset script group")
+	}
+
+	base := p.parseAtom(stop)
+	if base == nil {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(source.Merge(command.span, rightSpan)),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "\\sideset requires a base expression",
+		})
+		return newPlaceholderAST(source.Merge(command.span, rightSpan), "missing sideset base")
+	}
+
+	span := source.Merge(command.span, leftSpan)
+	span = source.Merge(span, rightSpan)
+	span = source.Merge(span, base.base().span)
+	limitsBase := &astScriptsNode{
+		astBase: newASTBaseAt(astScripts, base.base().span, tokenOrigin(command)),
+		main:    base,
+		limits:  ir.LimitsAlways,
+	}
+	return &astScriptsNode{
+		astBase:     newASTBaseAt(astScripts, span, tokenOrigin(command)),
+		main:        limitsBase,
+		topLeft:     leftTop,
+		bottomLeft:  leftBottom,
+		topRight:    rightTop,
+		bottomRight: rightBottom,
+		limits:      ir.LimitsAuto,
+	}
+}
+
+func (p *parser) parseScriptGroup(owner token, side string) (top, bottom astNode, span source.Range, ok bool) {
+	p.exp.consumeSpaces()
+	open := p.exp.peek()
+	if !open.is(tokBeginGroup) {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(open.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "\\sideset requires two script groups",
+		})
+		return nil, nil, open.span, false
+	}
+	p.exp.next()
+	span = open.span
+	for {
+		p.exp.consumeSpaces()
+		t := p.exp.peek()
+		switch {
+		case t.is(tokEndGroup):
+			p.exp.next()
+			return top, bottom, source.Merge(span, t.span), true
+		case t.isEOF():
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(source.Merge(owner.span, span)),
+				Severity: source.SeverityError,
+				Code:     source.CodeUnclosedGroup,
+				Message:  "unclosed \\sideset " + side + " script group",
+			})
+			return top, bottom, span, false
+		case !t.isControl() && t.is(tokSuperscript):
+			p.exp.next()
+			arg, argSpan := p.parseScriptArgument("superscript", t)
+			if top != nil {
+				p.report(source.Diagnostic{
+					Range:    normalizeRange(t.span),
+					Severity: source.SeverityError,
+					Code:     source.CodeUnexpectedToken,
+					Message:  "double superscript in \\sideset",
+				})
+			} else {
+				top = arg
+			}
+			span = source.Merge(span, argSpan)
+		case !t.isControl() && t.is(tokSubscript):
+			p.exp.next()
+			arg, argSpan := p.parseScriptArgument("subscript", t)
+			if bottom != nil {
+				p.report(source.Diagnostic{
+					Range:    normalizeRange(t.span),
+					Severity: source.SeverityError,
+					Code:     source.CodeUnexpectedToken,
+					Message:  "double subscript in \\sideset",
+				})
+			} else {
+				bottom = arg
+			}
+			span = source.Merge(span, argSpan)
+		default:
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(t.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeUnexpectedToken,
+				Message:  "unexpected token in \\sideset script group",
 			})
 			p.exp.next()
 		}
@@ -288,10 +392,11 @@ func (p *parser) parseBmod(command token) astNode {
 
 func (p *parser) parseModArgument(command token) astNode {
 	arg := p.parseRequiredArgument(command)
-	mod := &astTextNode{
-		astBase: newASTBaseAt(astText, command.span, tokenOrigin(command)),
+	mod := &astOperatorNode{
+		astBase: newASTBaseAt(astOperator, command.span, tokenOrigin(command)),
 		text:    "mod",
 		variant: ir.VariantNormal,
+		limits:  ir.LimitsNever,
 	}
 	var body astNode
 	switch command.text {
@@ -300,15 +405,14 @@ func (p *parser) parseModArgument(command token) astNode {
 	case "\\pmod":
 		body = &astRowNode{
 			astBase: newASTBaseAt(astRow, source.Merge(command.span, arg.base().span), tokenOrigin(command)),
-			items:   []astNode{mod, explicitSpaceAST(command.span, 6), arg},
+			items:   []astNode{mod, arg},
 		}
 	case "\\mod":
 		body = &astRowNode{
 			astBase: newASTBaseAt(astRow, source.Merge(command.span, arg.base().span), tokenOrigin(command)),
-			items:   []astNode{mod, explicitSpaceAST(command.span, 6), arg},
+			items:   []astNode{mod, arg},
 		}
 	}
-	items := []astNode{explicitSpaceAST(command.span, 12)}
 	if command.text == "\\pmod" || command.text == "\\pod" {
 		body = &astFencedNode{
 			astBase:  newASTBaseAt(astFenced, source.Merge(command.span, arg.base().span), tokenOrigin(command)),
@@ -318,10 +422,9 @@ func (p *parser) parseModArgument(command token) astNode {
 			balanced: true,
 		}
 	}
-	items = append(items, body)
 	return &astRowNode{
 		astBase: newASTBaseAt(astRow, source.Merge(command.span, arg.base().span), tokenOrigin(command)),
-		items:   items,
+		items:   []astNode{body},
 	}
 }
 
