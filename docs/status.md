@@ -34,6 +34,8 @@ tests and migration notes.
   and MathML remains unimplemented.
 - Layout emits source-linked hit regions for atoms, groups, scripts, fraction
   parts, fences, and table cells from their actual placed fragment extents.
+- Inline layout emits deterministic top-level relation, binary, and explicit
+  break opportunities with post-operator glue folded into the preceding piece.
 - Parsing facade with dialect selection, TeX macro options, Typst preamble
   options, diagnostics, stable parse keys, cancellation checks, and a panic
   containment boundary.
@@ -169,10 +171,10 @@ The following are genuine gaps, not hidden behavior:
   tolerances; comparison against every static Typlet frame is not yet green.
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
-- Break output types exist, but layout does not yet populate legal break
-  metadata. Display wrapping, split pieces, `display.Box.Alt` integration,
-  equation numbering, tags, links, MathML, rasterization, and SVG export are not
-  product features. SVG support is test-only.
+- Inline break metadata and `Expr.Alt` are implemented, but display wrapping,
+  split pieces, `display.Box.Alt` integration, equation numbering, tags, links,
+  MathML, rasterization, and SVG export are not product features. SVG support is
+  test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary

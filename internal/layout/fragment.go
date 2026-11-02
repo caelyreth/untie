@@ -43,7 +43,14 @@ type Fragment struct {
 
 	items  []placedDraw
 	hits   []sourceHit
+	breaks []fragmentBreak
 	ownHit int
+}
+
+type fragmentBreak struct {
+	x       geometry.Em
+	penalty int
+	kind    display.BreakKind
 }
 
 type sourceHit struct {

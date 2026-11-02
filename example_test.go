@@ -1,7 +1,9 @@
 package untie_test
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/caelyreth/untie"
 )
@@ -13,4 +15,49 @@ func ExampleParseTeX() {
 	// Output:
 	// x^2+\frac{1}{2}
 	// 0
+}
+
+func ExampleEngine_layoutAtTwoSizes() {
+	fontBytes, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		panic(err)
+	}
+	fonts, err := untie.LoadFonts(untie.Fonts{
+		Math: untie.FontData{Bytes: fontBytes, ID: "NewCMMath-Book"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	engine, err := untie.NewEngine(fonts, untie.Limits{})
+	if err != nil {
+		panic(err)
+	}
+
+	expr := untie.ParseTeX(`\frac{x+1}{2}`, untie.Inline, untie.ParseOptions{})
+	small, err := engine.Layout(expr, untie.Style{Size: 12})
+	if err != nil {
+		panic(err)
+	}
+	before, err := small.MarshalCanonical()
+	if err != nil {
+		panic(err)
+	}
+	large, err := engine.Layout(expr, untie.Style{Size: 24})
+	if err != nil {
+		panic(err)
+	}
+	after, err := small.MarshalCanonical()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("small valid:", small.Validate() == nil)
+	fmt.Println("large valid:", large.Validate() == nil)
+	fmt.Println("scales up:", large.Width > small.Width)
+	fmt.Println("first box unchanged:", bytes.Equal(before, after))
+	// Output:
+	// small valid: true
+	// large valid: true
+	// scales up: true
+	// first box unchanged: true
 }
