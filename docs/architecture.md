@@ -19,8 +19,9 @@ The layers have different responsibilities:
 
 1. A dialect frontend owns lexing, macro or value evaluation, syntax recovery,
    and one lowering pass into the neutral IR.
-2. `ir` owns the language-neutral formula tree and its invariants. It must not
-   contain measured font geometry or know which dialect produced a node.
+2. `ir` owns the language-neutral formula root, formula-scoped metadata, and
+   their invariants. It must not contain measured font geometry or know which
+   dialect produced a node.
 3. `internal/layout` owns style, spacing, font-metric use, construct layout, and
    flattening. It must not import a dialect frontend or branch on dialect.
 4. `display` owns the immutable public output contract. It contains positioned
@@ -277,6 +278,20 @@ frame and includes every logical line-width excess, even when trailing spaces
 have no ink. Line-local overflow is the maximum of local ink excess and line
 width beyond the frame; it is not copied directly as the parent value.
 
+`ir.Formula` carries an equation-tag sidecar beside its root. Tags contain
+normal math IR bodies plus source evidence, manual/suppression/star metadata,
+and a line association. They never appear as synthetic root children, and
+document counters never enter neutral IR. Phase 1 lays out one manual tag for a
+single display line. `display.TagBox.Box` is tag-local and is placed by
+`TagBox.X/Y` in parent coordinates. For constrained output, `LineBox.Tag`
+repeats the metadata in the parent frame; its coordinates do not move with
+`OffsetX`. Parent `Items` and `Hits` already include the translated tag
+aggregate. A host drawing per-line items must draw `LineBox.Box` and
+`LineBox.Tag.Box` separately. Non-starred TeX tags receive generated
+parentheses at display-layout time; they are not nodes in the neutral tag body.
+Formula-root breaks and root-only source semantics are not polluted by tag
+content.
+
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.
 
@@ -291,6 +306,11 @@ requiring line and parent `Overflow` to cover both rendered ink excess and
 logical line-width excess. `Validate` also checks hit ranges/areas and break
 positions. `MarshalCanonical` exists for deterministic tests and diagnostics;
 it is not yet a stable cross-language protocol.
+
+Tag-box validation rejects nil or nested tags, invalid source ranges, malformed
+placement, and aggregate item/hit disagreement. Parent aggregates include tag
+items and hits; constrained parent and line tag metadata must agree. Clone and
+canonical output own every tag box path and line record independently.
 
 ## Public Orchestration
 

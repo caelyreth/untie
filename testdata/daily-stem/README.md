@@ -125,5 +125,7 @@ remain fatal.
 - Node and output limits have exact fallback/error expectations.
 - Typst decimal number runs now render as individual source-linked digits;
   `physics.units.typst` is a clean success with no tracked issue.
-- Equation tags/numbering and Typst preamble-backed declarative code are not
-  implemented, so this corpus does not claim them.
+- TeX single-line manual display tags are implemented outside this initial
+  corpus. Host/Typst document numbering, multiline row tags, and Typst
+  preamble-backed declarative code remain unsupported, so this corpus does not
+  claim them.

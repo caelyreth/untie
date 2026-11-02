@@ -7,8 +7,8 @@ paths and filled rules.
 
 The project is under active implementation. The repository now contains a
 working end-to-end vertical slice for both dialects, including canonical IR,
-OpenType MATH layout, source hits, inline breaks, alternative text, and
-width-constrained display lines.
+OpenType MATH layout, source hits, inline breaks, alternative text, TeX manual
+equation tags, and width-constrained display lines.
 
 ## Use
 
@@ -51,6 +51,17 @@ go run ./cmd/formula-preview -font NewCMMath-Book.otf \
   -display -max-width 480 -align center 'a+b+c'
 ```
 
+TeX display manual tags are formula metadata, not synthetic root content.
+`\tag{1}` exposes the authored body through `Expr.Tags()` and renders a
+parenthesized tag; `\tag*{1}` preserves the star metadata and renders the body
+without generated parentheses. `\nonumber` and `\notag` are retained as
+suppression events. For a single-line display formula, `box.Tag` describes a
+tag-local sub-box and its placement. Constrained output additionally exposes
+the same parent-frame tag through `line.Tag`. Parent `box.Items` already include
+the translated tag; a host drawing per-line items must draw `line.Tag.Box`
+separately. Typst document numbering, host counters, and multiline row tags are
+explicitly deferred.
+
 `NewEngine` is the caller-owned lifecycle API for repeated layouts. The
 package-level `Layout` and `LayoutContext` helpers use a bounded process-wide
 engine cache that can be released with `ClearLayoutEngineCache`.
@@ -75,6 +86,7 @@ go run ./cmd/dailyreport -allow-known-issues # diagnostic mode only
 - reusable caller-owned layout engines with bounded convenience caching
 - source-linked hit rectangles emitted from placed layout fragments
 - deterministic inline break metadata and constrained display line boxes
+- TeX display equation-tag metadata and independently drawable tag boxes
 - deterministic text/speech alternative output with bounded fallbacks
 - a tracked daily-STEM acceptance corpus that outranks rare reference cases
 - no reference project is compiled or executed by the test suite
