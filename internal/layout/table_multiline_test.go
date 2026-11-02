@@ -38,8 +38,8 @@ func TestBuiltInTableExactBaselines(t *testing.T) {
 		if len(refs) != 4 {
 			t.Fatalf("refs = %d, want 4", len(refs))
 		}
-		wantX := []float32{0, 8, 0, 8}
-		wantY := []float32{-7.2, -7.2, 7.2, 7.2}
+		wantX := []float32{0, 0, 8, 8}
+		wantY := []float32{-7.2, 7.2, -7.2, 7.2}
 		for i := range refs {
 			if !closeHost(refs[i].At.X, wantX[i]) || !closeHost(refs[i].At.Y, wantY[i]) {
 				t.Fatalf("matrix glyph %d at %+v, want (%v,%v)", i, refs[i].At, wantX[i], wantY[i])
@@ -61,7 +61,8 @@ func TestBuiltInTableExactBaselines(t *testing.T) {
 		if len(refs) != 3 {
 			t.Fatalf("refs = %d, want 3", len(refs))
 		}
-		if !closeHost(refs[1].At.X, 8) || !closeHost(refs[2].At.Y, 7.2) {
+		if !closeHost(refs[1].At.X, 0) || !closeHost(refs[1].At.Y, 7.2) ||
+			!closeHost(refs[2].At.X, 8) || !closeHost(refs[2].At.Y, -7.2) {
 			t.Fatalf("cases positions = %+v", refs)
 		}
 	})

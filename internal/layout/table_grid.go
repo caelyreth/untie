@@ -78,25 +78,32 @@ func (s *layoutState) layoutTableGrid(
 	fragment.BaseAscent = baseline
 	fragment.BaseDescent = descent
 
-	for rowIndex, row := range rows {
-		if rowIndex%64 == 0 {
-			if err := s.ctx.Err(); err != nil {
-				return nil, err
-			}
-		}
-		rowBaseline, err := sum(rowTops[rowIndex], row.ascent, -baseline)
+	rowBaselines := make([]geometry.Em, len(rows))
+	for rowIndex := range rows {
+		rowBaseline, err := sum(rowTops[rowIndex], rows[rowIndex].ascent, -baseline)
 		if err != nil {
 			return nil, err
 		}
-		for columnIndex, cell := range row.cells {
-			if columnIndex >= len(columnLefts) {
-				break
+		rowBaselines[rowIndex] = rowBaseline
+	}
+	// Typst emits cells column by column. Paint order is part of the display
+	// contract, even when the resulting ink is geometrically identical.
+	for columnIndex, columnLeft := range columnLefts {
+		for rowIndex := range rows {
+			if rowIndex%64 == 0 {
+				if err := s.ctx.Err(); err != nil {
+					return nil, err
+				}
 			}
+			if columnIndex >= len(rows[rowIndex].cells) {
+				continue
+			}
+			cell := rows[rowIndex].cells[columnIndex]
 			if len(cell.parts) == 0 {
 				continue
 			}
 			if len(columnWidths[columnIndex]) <= 1 {
-				x := columnLefts[columnIndex]
+				x := columnLeft
 				free, err := sub(columnTotals[columnIndex], cell.parts[0].width)
 				if err != nil {
 					return nil, err
@@ -106,7 +113,7 @@ func (s *layoutState) layoutTableGrid(
 					return nil, err
 				}
 				x += alignOffset(alignment, free)
-				if err := fragment.AddGroup(x, rowBaseline, cell.parts[0].fragment); err != nil {
+				if err := fragment.AddGroup(x, rowBaselines[rowIndex], cell.parts[0].fragment); err != nil {
 					return nil, err
 				}
 				continue
@@ -114,16 +121,18 @@ func (s *layoutState) layoutTableGrid(
 			run := alignedRun{
 				parts: cell.parts,
 			}
-			if err := s.addAlignedRun(fragment, columnLefts[columnIndex], rowBaseline, run, columnWidths[columnIndex], true); err != nil {
+			if err := s.addAlignedRun(fragment, columnLeft, rowBaselines[rowIndex], run, columnWidths[columnIndex], true); err != nil {
 				return nil, err
 			}
 		}
+	}
+	for rowIndex, row := range rows {
 		if row.tag != nil {
 			tagX, err := sub(totalWidth, row.tag.Width)
 			if err != nil {
 				return nil, err
 			}
-			if err := fragment.AddGroup(tagX, rowBaseline, row.tag); err != nil {
+			if err := fragment.AddGroup(tagX, rowBaselines[rowIndex], row.tag); err != nil {
 				return nil, err
 			}
 		}
