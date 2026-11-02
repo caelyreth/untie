@@ -503,6 +503,7 @@ func (p *parser) parseCall(callee *astNode) *astNode {
 	call := p.node(open.span, astCall)
 	call.base = callee
 	call.inCode = callee.inCode
+	call.openSpan = open.span
 
 	seenNamed := make(map[string]source.Range)
 	for p.current().kind != tokEOF && p.current().kind != tokRParen {
@@ -514,16 +515,20 @@ func (p *parser) parseCall(callee *astNode) *astNode {
 			spread := p.advance()
 			arg.kind = argSpread
 			arg.span = spread.span
+			arg.spreadSpan = spread.span
 			arg.node = p.parseRow(stopComma | stopSemicolon | stopRParen)
 		case named != "":
 			name := p.advance()
+			arg.nameSpan = name.span
 			for i := 1; i < nameLen; i++ {
-				p.advance()
+				part := p.advance()
+				arg.nameSpan = source.Merge(arg.nameSpan, part.span)
 			}
-			p.advance() // colon
+			colon := p.advance()
 			arg.kind = argNamed
 			arg.name = named
 			arg.span = name.span
+			arg.colonSpan = colon.span
 			if prior, duplicate := seenNamed[named]; duplicate {
 				p.errorAt(name.span, source.CodeSyntax, "duplicate argument: %s", named)
 				_ = prior
@@ -536,6 +541,7 @@ func (p *parser) parseCall(callee *astNode) *astNode {
 			}
 		default:
 			arg.node = p.parseRow(stopComma | stopSemicolon | stopRParen)
+			arg.empty = len(arg.node.items) == 0
 		}
 		if p.pos == before {
 			for !p.atStop(stopComma | stopSemicolon | stopRParen) {
@@ -547,11 +553,11 @@ func (p *parser) parseCall(callee *astNode) *astNode {
 			arg.span = source.Merge(arg.span, arg.node.span)
 		}
 		if p.current().kind == tokSemicolon {
-			p.advance()
+			arg.separatorSpan = p.advance().span
 			arg.semicolonAfter = true
-			arg.span = source.Merge(arg.span, p.peek(-1).span)
+			arg.span = source.Merge(arg.span, arg.separatorSpan)
 		} else if p.current().kind == tokComma {
-			p.advance()
+			arg.separatorSpan = p.advance().span
 		}
 		call.args = append(call.args, arg)
 		if p.current().kind == tokRParen || p.current().kind == tokEOF {
@@ -561,7 +567,7 @@ func (p *parser) parseCall(callee *astNode) *astNode {
 
 	end := p.current().span.End
 	if p.current().kind == tokRParen {
-		p.advance()
+		call.closeSpan = p.advance().span
 	} else {
 		p.errorAt(open.span, source.CodeUnclosedGroup, "unclosed function arguments")
 	}
@@ -678,10 +684,7 @@ func (p *parser) parseCodeAtom() *astNode {
 		ident := p.parseIdentOrField(true)
 		switch ident.text {
 		case "let", "set", "show", "for", "while", "import", "include", "if", "else", "context", "return", "break", "continue":
-			p.errorAt(ident.span, source.CodeUnsupported, "%s expressions are not supported in Typst math", ident.text)
-			bad := p.node(ident.span, astError)
-			bad.raw = ident.text
-			return bad
+			return p.unsupportedCodeStatement(ident)
 		case "none":
 			lit := p.node(ident.span, astLiteral)
 			lit.value = noneValue()
@@ -791,6 +794,51 @@ func (p *parser) parseCodeAtom() *astNode {
 		return p.parseCode()
 	}
 	return p.parsePrimary()
+}
+
+// unsupportedCodeStatement consumes one complete unsupported statement or
+// expression as an opaque error boundary. Without this, only the leading
+// keyword is diagnosed and the rest leaks back into visible math.
+func (p *parser) unsupportedCodeStatement(ident *astNode) *astNode {
+	start := ident.span.Start
+	end := ident.span.End
+	var groups []tokenKind
+	for p.current().kind != tokEOF {
+		tok := p.current()
+		if len(groups) == 0 {
+			switch tok.kind {
+			case tokSemicolon:
+				end = p.advance().span.End
+				return p.unsupportedStatementNode(start, end, ident.text)
+			case tokComma, tokRParen, tokRBracket, tokRBrace, tokDollar:
+				return p.unsupportedStatementNode(start, end, ident.text)
+			}
+		}
+
+		p.advance()
+		end = tok.span.End
+		switch tok.kind {
+		case tokLParen:
+			groups = append(groups, tokRParen)
+		case tokLBracket:
+			groups = append(groups, tokRBracket)
+		case tokLBrace:
+			groups = append(groups, tokRBrace)
+		case tokRParen, tokRBracket, tokRBrace:
+			if len(groups) > 0 && tok.kind == groups[len(groups)-1] {
+				groups = groups[:len(groups)-1]
+			}
+		}
+	}
+	return p.unsupportedStatementNode(start, end, ident.text)
+}
+
+func (p *parser) unsupportedStatementNode(start, end int, keyword string) *astNode {
+	span := source.NewRange(start, end)
+	p.errorAt(span, source.CodeUnsupported, "%s statements are not supported in Typst math", keyword)
+	bad := p.node(span, astError)
+	bad.raw = p.src[start:end]
+	return bad
 }
 
 // parseTrailingContentCall recognizes functions with a single content-block

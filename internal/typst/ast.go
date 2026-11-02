@@ -45,6 +45,9 @@ type astNode struct {
 	close string
 	raw   string
 
+	openSpan  source.Range
+	closeSpan source.Range
+
 	items []*astNode
 	args  []astArg
 	value value
@@ -72,11 +75,25 @@ type astArg struct {
 	name string
 	node *astNode
 
+	// empty marks a positional slot with no expression between separators.
+	// Matrix-like functions intentionally interpret these as empty cells.
+	empty bool
+
+	nameSpan      source.Range
+	colonSpan     source.Range
+	spreadSpan    source.Range
+	separatorSpan source.Range
+
 	// semicolonAfter records a two-dimensional argument separator. It is
 	// significant for mat(), but harmless metadata for other calls.
 	semicolonAfter bool
 }
 
 func newAST(kind astKind, span source.Range) *astNode {
-	return &astNode{kind: kind, span: span}
+	return &astNode{
+		kind:      kind,
+		span:      span,
+		openSpan:  source.Detached(),
+		closeSpan: source.Detached(),
+	}
 }

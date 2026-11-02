@@ -125,6 +125,13 @@ func setOf(values ...string) map[string]bool {
 }
 
 func (l *lowerer) validateSignature(call *astNode, name string) {
+	if !allowsEmptyPositional(name) {
+		for _, arg := range call.args {
+			if arg.kind == argPositional && arg.empty {
+				l.errorAt(arg.span, source.CodeMissingArgument, "missing positional argument")
+			}
+		}
+	}
 	sig, ok := signatureFor(name)
 	if !ok {
 		return
@@ -141,5 +148,14 @@ func (l *lowerer) validateSignature(call *astNode, name string) {
 		if arg.kind == argNamed && !sig.named[arg.name] {
 			l.errorAt(arg.span, source.CodeSyntax, "unexpected argument: %s", arg.name)
 		}
+	}
+}
+
+func allowsEmptyPositional(name string) bool {
+	switch name {
+	case "mat", "vec", "cases":
+		return true
+	default:
+		return false
 	}
 }

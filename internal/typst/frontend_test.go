@@ -259,6 +259,89 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	}
 }
 
+func TestEmptyPositionalArgumentsAreDiagnosed(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{
+		`frac(,1)`,
+		`frac(1,,2)`,
+		`sqrt(,)`,
+		`root(,x)`,
+		`attach(,t:2)`,
+	} {
+		result := parse(t, src)
+		comma := strings.LastIndexByte(src, ',')
+		if comma < 0 {
+			t.Fatalf("%q has no comma", src)
+		}
+		want := source.NewRange(comma, comma+1)
+		found := false
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Code == source.CodeMissingArgument && diagnostic.Range == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%q diagnostics = %#v, want missing argument at comma %v", src, result.Diagnostics, want)
+		}
+	}
+}
+
+func TestMatrixLikeCallsAllowEmptyCells(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{
+		`mat(,1)`,
+		`mat(1,,2;3,,4)`,
+		`vec(,1)`,
+		`cases(,x)`,
+	} {
+		result := parse(t, src)
+		requireNoDiagnostics(t, src, result)
+	}
+}
+
+func TestUnsupportedStatementsConsumeCompleteBoundary(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{
+		`#let x = 1; x`,
+		`#let x = (1 + (2 - 3)); x`,
+		`#let x = {1 + 2}; x`,
+		`#set text(fill: red); x`,
+	} {
+		result := parse(t, src)
+		var unsupported []source.Diagnostic
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Code == source.CodeUnsupported {
+				unsupported = append(unsupported, diagnostic)
+			}
+		}
+		if len(unsupported) != 1 {
+			t.Fatalf("%q unsupported diagnostics = %#v, want exactly one", src, unsupported)
+		}
+		wantEnd := strings.IndexByte(src, ';') + 1
+		if got := unsupported[0].Range.Slice(src); len(got) == 0 || got[len(got)-1] != ';' {
+			t.Fatalf("%q unsupported span = %q, want complete statement through semicolon", src, got)
+		}
+		if unsupported[0].Range.End != wantEnd {
+			t.Fatalf("%q unsupported end = %d, want %d", src, unsupported[0].Range.End, wantEnd)
+		}
+
+		var visible strings.Builder
+		ir.Walk(result.Root, func(node ir.Node) bool {
+			if glyph, ok := node.(*ir.Glyph); ok {
+				visible.WriteString(glyph.Text)
+			}
+			return true
+		})
+		if visible.String() != "x" {
+			t.Fatalf("%q visible glyphs = %q, want only trailing x", src, visible.String())
+		}
+	}
+}
+
 func TestSyntaxGroupingRowsStayNeutral(t *testing.T) {
 	t.Parallel()
 

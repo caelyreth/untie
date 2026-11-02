@@ -894,6 +894,12 @@ func (l *lowerer) contentArg(call *astNode, name string, index int, required boo
 	}
 	positional := l.positionalArguments(call)
 	if index < len(positional) && positional[index].node != nil {
+		if positional[index].empty {
+			if required {
+				return l.placeholder(positional[index].span, "missing "+name)
+			}
+			return nil
+		}
 		return l.lowerArgument(positional[index].node)
 	}
 	if required {

@@ -17,11 +17,13 @@ func (l *lowerer) lowerRootCall(call *astNode) ir.Node {
 	positional := l.positionalArguments(call)
 	index := l.contentNamed(call, "index")
 	if index == nil && len(positional) >= 2 {
-		index = l.lower(positional[0].node)
+		if !positional[0].empty {
+			index = l.lower(positional[0].node)
+		}
 		positional = positional[1:]
 	}
 	radicand := l.contentNamed(call, "radicand")
-	if radicand == nil && len(positional) > 0 {
+	if radicand == nil && len(positional) > 0 && !positional[len(positional)-1].empty {
 		radicand = l.lower(positional[len(positional)-1].node)
 	}
 	if radicand == nil {
