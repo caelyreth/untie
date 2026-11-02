@@ -57,6 +57,10 @@ The semantic comparison removes source evidence only:
 - Display-only script placement is distinct from class-dependent `auto`.
 - Accent source-stretch intent and natural width fitting are compared
   separately, so Typst and TeX policy differences are visible before layout.
+- Eight reviewed pairs preserve genuinely different source semantics, such as
+  different Greek code points, short versus long arrows, differential spacing,
+  preserved text spaces, and color scope. Their baseline reasons identify the
+  source fact instead of implying a renderer normalization bug.
 
 Everything else remains strict, including atom class, math variant, paint, math
 limits, explicit spacing, fraction padding/style/bar state, fence balance,
