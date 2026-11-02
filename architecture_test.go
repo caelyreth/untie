@@ -49,37 +49,38 @@ func checkImports(t *testing.T, pkg string, imports []string) {
 		}
 	}
 
-	switch pkg {
-	case "github.com/caelyreth/untie/source", "github.com/caelyreth/untie/geometry":
+	switch {
+	case pkg == "github.com/caelyreth/untie/source" || pkg == "github.com/caelyreth/untie/geometry":
 		for _, imp := range imports {
 			if strings.Contains(strings.Split(imp, "/")[0], ".") {
 				t.Errorf("%s imports non-standard package %s", pkg, imp)
 			}
 		}
-	case "github.com/caelyreth/untie/ir":
+	case pkg == "github.com/caelyreth/untie/ir":
 		rejectPrefixes(t, pkg, imports,
 			"github.com/caelyreth/untie/font",
 			"github.com/caelyreth/untie/display",
 			"github.com/caelyreth/untie/internal/",
 		)
-	case "github.com/caelyreth/untie/font":
+	case pkg == "github.com/caelyreth/untie/font":
 		rejectPrefixes(t, pkg, imports,
 			"github.com/caelyreth/untie/ir",
 			"github.com/caelyreth/untie/display",
 			"github.com/caelyreth/untie/internal/",
 		)
-	case "github.com/caelyreth/untie/internal/layout", "github.com/caelyreth/untie/internal/layout/":
+	case pkg == "github.com/caelyreth/untie/internal/layout" || strings.HasPrefix(pkg, "github.com/caelyreth/untie/internal/layout/"):
 		rejectPrefixes(t, pkg, imports,
 			"github.com/caelyreth/untie/internal/tex",
 			"github.com/caelyreth/untie/internal/typst",
 		)
-	case "github.com/caelyreth/untie/internal/tex", "github.com/caelyreth/untie/internal/typst":
+	case pkg == "github.com/caelyreth/untie/internal/tex" || strings.HasPrefix(pkg, "github.com/caelyreth/untie/internal/tex/") ||
+		pkg == "github.com/caelyreth/untie/internal/typst" || strings.HasPrefix(pkg, "github.com/caelyreth/untie/internal/typst/"):
 		rejectPrefixes(t, pkg, imports,
 			"github.com/caelyreth/untie/font",
 			"github.com/caelyreth/untie/display",
 			"github.com/caelyreth/untie/internal/layout",
 		)
-	case "github.com/caelyreth/untie/display":
+	case pkg == "github.com/caelyreth/untie/display":
 		rejectPrefixes(t, pkg, imports,
 			"github.com/caelyreth/untie/font",
 			"github.com/caelyreth/untie/internal/",
