@@ -307,6 +307,16 @@ func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "inconsistent baseline spacing",
+			box: &Box{
+				Width: 1, Ascent: 4, Descent: 4,
+				Lines: []LineBox{
+					{Baseline: 0, Box: &Box{Ascent: 1, Descent: 2}},
+					{Baseline: 4, Box: &Box{Ascent: 1}},
+				},
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

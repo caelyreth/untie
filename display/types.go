@@ -31,7 +31,8 @@ type Style struct {
 // Baseline is the line baseline's vertical offset from the parent box baseline,
 // positive downward. Adjacent baselines are separated by the previous line's
 // descent plus the current line's ascent; no additional leading is invented.
-// Box must not contain nested Lines.
+// Box must not contain nested Lines. Box.Overflow is local to that line; the
+// parent Box.Overflow is recomputed from the assembled aggregate.
 type LineBox struct {
 	Baseline float32
 	Box      *Box
@@ -196,7 +197,9 @@ const (
 // Automatically derived relation and binary opportunities use penalty zero
 // because the pinned TeX and Typst paths define eligibility, not a relative
 // cost. An explicit neutral IR break marker supplies its reviewed Penalty.
-// Lower values are preferable.
+// Lower values are preferable. Display line wrapping is width-greedy rather
+// than an upstream optimal breaker; it uses Penalty only to choose between
+// otherwise equal-width cuts at the same X position.
 type Break struct {
 	X       float32
 	Penalty int
