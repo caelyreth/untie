@@ -1,0 +1,76 @@
+package fixture
+
+import (
+	"errors"
+	"fmt"
+	"unicode/utf8"
+
+	"github.com/caelyreth/untie/source"
+)
+
+// ErrInvalidUTF8 reports a fixture source that cannot be represented as a
+// JavaScript/TypeScript string. UTF-16 offsets have no meaning for such input.
+var ErrInvalidUTF8 = errors.New("fixture: source is not valid UTF-8")
+
+// UTF16Range is a half-open range in UTF-16 code units.
+type UTF16Range struct {
+	Start int
+	End   int
+}
+
+// UTF16BoundaryError reports a UTF-16 offset that does not lie on a code-point
+// boundary, typically the middle of a surrogate pair.
+type UTF16BoundaryError struct {
+	Start  int
+	End    int
+	Offset int
+}
+
+func (e *UTF16BoundaryError) Error() string {
+	return fmt.Sprintf("fixture: UTF-16 offset %d is not a code-point boundary in [%d,%d)", e.Offset, e.Start, e.End)
+}
+
+// UTF16OffsetsToByteRange converts a half-open UTF-16 range to UTF-8 byte
+// offsets. The complete source must be valid UTF-8. Both offsets must be on
+// code-point boundaries and within the source.
+func UTF16OffsetsToByteRange(src string, start, end int) (source.Range, error) {
+	boundaries, units, err := utf16Boundaries(src)
+	if err != nil {
+		return source.Range{}, err
+	}
+	if start < 0 || end < start || end > units {
+		return source.Range{}, fmt.Errorf("fixture: invalid UTF-16 range [%d,%d) for %d code units", start, end, units)
+	}
+	startByte, ok := boundaries[start]
+	if !ok {
+		return source.Range{}, &UTF16BoundaryError{Start: 0, End: units, Offset: start}
+	}
+	endByte, ok := boundaries[end]
+	if !ok {
+		return source.Range{}, &UTF16BoundaryError{Start: 0, End: units, Offset: end}
+	}
+	return source.NewRange(startByte, endByte), nil
+}
+
+// ConvertUTF16Range converts r to UTF-8 byte offsets.
+func ConvertUTF16Range(src string, r UTF16Range) (source.Range, error) {
+	return UTF16OffsetsToByteRange(src, r.Start, r.End)
+}
+
+func utf16Boundaries(src string) (map[int]int, int, error) {
+	boundaries := map[int]int{0: 0}
+	units := 0
+	for byteOffset := 0; byteOffset < len(src); {
+		r, width := utf8.DecodeRuneInString(src[byteOffset:])
+		if r == utf8.RuneError && width == 1 {
+			return nil, 0, fmt.Errorf("%w at byte %d", ErrInvalidUTF8, byteOffset)
+		}
+		units++
+		if r > 0xffff {
+			units++
+		}
+		byteOffset += width
+		boundaries[units] = byteOffset
+	}
+	return boundaries, units, nil
+}
