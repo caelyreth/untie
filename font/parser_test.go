@@ -122,6 +122,22 @@ func TestValidateGSUBGlyphReferences(t *testing.T) {
 	}
 }
 
+func TestAlternateSubstitutionRejectsEmptyAlternateSet(t *testing.T) {
+	t.Parallel()
+	table := make([]byte, 16)
+	binary.BigEndian.PutUint16(table[0:2], 1)
+	binary.BigEndian.PutUint16(table[2:4], 8)
+	binary.BigEndian.PutUint16(table[4:6], 1)
+	binary.BigEndian.PutUint16(table[6:8], 14)
+	binary.BigEndian.PutUint16(table[8:10], 1)
+	binary.BigEndian.PutUint16(table[10:12], 1)
+	binary.BigEndian.PutUint16(table[12:14], 10)
+	binary.BigEndian.PutUint16(table[14:16], 0)
+	if _, err := parseAlternateSubstitution(table, 1); err == nil {
+		t.Fatal("parseAlternateSubstitution accepted an empty alternate set")
+	}
+}
+
 func TestValidateMATHGlyphReferences(t *testing.T) {
 	t.Parallel()
 	tests := map[string]mathTable{
