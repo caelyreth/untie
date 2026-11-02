@@ -219,6 +219,60 @@ func TestLayoutEngineCacheCancellationWhileWaiting(t *testing.T) {
 	}
 }
 
+func TestLayoutEngineCacheClearPreventsInflightInsert(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	cache := newLayoutEngineCache(2)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	cache.build = func(*FontSet, source.Limits) (*Engine, error) {
+		close(started)
+		<-release
+		return &Engine{}, nil
+	}
+	built := make(chan error, 1)
+	go func() {
+		_, err := cache.get(context.Background(), fonts, source.Limits{})
+		built <- err
+	}()
+	<-started
+	cache.clear()
+	close(release)
+	if err := <-built; err != nil {
+		t.Fatalf("in-flight build error = %v", err)
+	}
+	if got := cache.length(); got != 0 {
+		t.Fatalf("cache length after clear = %d, want 0", got)
+	}
+
+	cache.build = NewEngine
+	if _, err := cache.get(context.Background(), fonts, source.Limits{}); err != nil {
+		t.Fatalf("post-clear build error = %v", err)
+	}
+	if got := cache.length(); got != 1 {
+		t.Fatalf("cache length after new build = %d, want 1", got)
+	}
+}
+
+func TestClearLayoutEngineCache(t *testing.T) {
+	fonts := loadTestFonts(t)
+	expr := Parse("x", TeX, Inline, ParseOptions{})
+	if _, err := Layout(expr, fonts, Style{Size: 16}); err != nil {
+		t.Fatal(err)
+	}
+	if got := defaultLayoutEngineCache.length(); got == 0 {
+		t.Fatal("convenience layout did not populate the engine cache")
+	}
+	ClearLayoutEngineCache()
+	if got := defaultLayoutEngineCache.length(); got != 0 {
+		t.Fatalf("cache length after clear = %d, want 0", got)
+	}
+	if _, err := Layout(expr, fonts, Style{Size: 16}); err != nil {
+		t.Fatalf("layout after clear = %v", err)
+	}
+}
+
 func TestLayoutLifecycleHasNoCallOrderCoupling(t *testing.T) {
 	t.Parallel()
 

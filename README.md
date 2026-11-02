@@ -18,6 +18,7 @@ the first frontend/font/layout work in progress.
 - UTF-8 byte spans
 - fixed-point internal geometry
 - OpenType MATH metrics and glyph outlines
+- reusable caller-owned layout engines with bounded convenience caching
 - no reference project is compiled or executed by the test suite
 
 ## Development

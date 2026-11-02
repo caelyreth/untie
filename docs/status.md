@@ -35,6 +35,10 @@ tests and migration notes.
   containment boundary.
 - Public end-to-end layout through `internal/engine`, with real font, IR,
   layout, and display-list validation.
+- Caller-owned reusable `Engine` values and a bounded eight-entry convenience
+  cache keyed by complete font identity, effective limits, version, and cache
+  schema. `ClearLayoutEngineCache` releases convenience-path retention without
+  affecting caller-owned engines.
 
 ### TeX Frontend
 
@@ -159,8 +163,8 @@ The following are genuine gaps, not hidden behavior:
   gaps.
 - Some MATH assemblies and metric differences remain within documented fixture
   tolerances; comparison against every static Typlet frame is not yet green.
-- Public renderer instances are currently constructed per layout call; a
-  renderer cache keyed by FontSet and limits remains a performance follow-up.
+- Package-level convenience layout uses a bounded process-wide engine cache;
+  callers that need explicit lifetime control should use `NewEngine`.
 - Break output types exist, but layout does not yet populate legal break
   metadata. Display wrapping, split pieces, accessibility output, equation
   numbering, tags, links, MathML, rasterization, and SVG export are not product

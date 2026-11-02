@@ -156,6 +156,14 @@ func Layout(expr *Expr, fonts *FontSet, style Style) (*Box, error) {
 	return LayoutContext(context.Background(), expr, fonts, style)
 }
 
+// ClearLayoutEngineCache drops every prepared Engine retained by the
+// package-level layout convenience functions. Explicitly owned Engines from
+// NewEngine are unaffected. An in-flight convenience build may still finish,
+// but it will not be inserted after the clear.
+func ClearLayoutEngineCache() {
+	defaultLayoutEngineCache.clear()
+}
+
 func snapshotLayoutStyle(style Style) (Style, error) {
 	if err := engine.ValidateStyle(style); err != nil {
 		return Style{}, fmt.Errorf("%w: %v", ErrInvalidStyle, err)

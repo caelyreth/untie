@@ -46,9 +46,10 @@ type layoutEngineCacheEntry struct {
 }
 
 type layoutEngineBuild struct {
-	done   chan struct{}
-	engine *Engine
-	err    error
+	done       chan struct{}
+	generation uint64
+	engine     *Engine
+	err        error
 }
 
 // layoutEngineCache is a bounded LRU. It retains at most capacity FontSets,
@@ -57,12 +58,13 @@ type layoutEngineBuild struct {
 // shared between concurrent callers and is not counted against the bound until
 // it succeeds.
 type layoutEngineCache struct {
-	mu       sync.Mutex
-	capacity int
-	order    list.List
-	entries  map[layoutEngineCacheKey]*layoutEngineCacheEntry
-	builds   map[layoutEngineCacheKey]*layoutEngineBuild
-	build    func(*FontSet, source.Limits) (*Engine, error)
+	mu         sync.Mutex
+	capacity   int
+	order      list.List
+	entries    map[layoutEngineCacheKey]*layoutEngineCacheEntry
+	builds     map[layoutEngineCacheKey]*layoutEngineBuild
+	generation uint64
+	build      func(*FontSet, source.Limits) (*Engine, error)
 }
 
 func newLayoutEngineCache(capacity int) *layoutEngineCache {
@@ -111,7 +113,7 @@ func (c *layoutEngineCache) get(
 			return nil, ctx.Err()
 		}
 	}
-	build := &layoutEngineBuild{done: make(chan struct{})}
+	build := &layoutEngineBuild{done: make(chan struct{}), generation: c.generation}
 	c.builds[key] = build
 	c.mu.Unlock()
 
@@ -125,7 +127,7 @@ func (c *layoutEngineCache) get(
 	build.engine = prepared
 	build.err = err
 	delete(c.builds, key)
-	if err == nil {
+	if err == nil && build.generation == c.generation {
 		c.insert(key, prepared)
 	}
 	close(build.done)
@@ -135,6 +137,17 @@ func (c *layoutEngineCache) get(
 		return nil, ctxErr
 	}
 	return prepared, err
+}
+
+func (c *layoutEngineCache) clear() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.generation++
+	c.order.Init()
+	clear(c.entries)
 }
 
 func (c *layoutEngineCache) insert(key layoutEngineCacheKey, engine *Engine) {
