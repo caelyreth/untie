@@ -823,7 +823,10 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 			if call.args[i-1].semicolonAfter {
 				separator = ";"
 			}
-			sep := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), separator)
+			sep := l.glyph(punctuationSpan(call.args[i-1].separatorSpan, arg.span.Start), separator)
+			if sep == nil {
+				return nil
+			}
 			sep.Class = ir.ClassPunctuation
 			body = append(body, sep)
 		}
@@ -831,8 +834,11 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 		case argNamed:
 			l.errorAt(arg.span, source.CodeSyntax,
 				"named-argument syntax can only be used with functions")
-			name := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), arg.name)
-			colon := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), ":")
+			name := l.glyph(punctuationSpan(arg.nameSpan, arg.span.Start), arg.name)
+			colon := l.glyph(punctuationSpan(arg.colonSpan, arg.span.Start), ":")
+			if name == nil || colon == nil {
+				return nil
+			}
 			colon.Class = ir.ClassRelation
 			body = append(body, name, colon)
 			if arg.node != nil {
@@ -841,7 +847,10 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 		case argSpread:
 			l.errorAt(arg.span, source.CodeSyntax,
 				"spread-argument syntax can only be used with functions")
-			dots := l.glyph(source.NewRange(arg.span.Start, arg.span.Start), "..")
+			dots := l.glyph(punctuationSpan(arg.spreadSpan, arg.span.Start), "..")
+			if dots == nil {
+				return nil
+			}
 			body = append(body, dots)
 			if arg.node != nil {
 				body = append(body, l.lowerArgument(arg.node))
@@ -859,11 +868,11 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 	if fenced == nil {
 		return nil
 	}
-	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), "(")
+	open := l.glyph(punctuationSpan(call.openSpan, call.span.Start), "(")
 	if open == nil {
 		return nil
 	}
-	closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), ")")
+	closeGlyph := l.glyph(punctuationSpan(call.closeSpan, call.span.End), ")")
 	if closeGlyph == nil {
 		return nil
 	}
@@ -874,6 +883,16 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 	fenced.Balanced = true
 	fenced.Class = ir.ClassInner
 	return l.newRow(call.span, base, fenced)
+}
+
+// punctuationSpan uses the token that actually produced synthesized
+// punctuation. The fallback remains only for legacy synthetic call nodes that
+// do not originate from a parenthesized source call.
+func punctuationSpan(span source.Range, fallback int) source.Range {
+	if !span.IsDetached() {
+		return span
+	}
+	return source.NewRange(fallback, fallback)
 }
 
 func callName(n *astNode) string {

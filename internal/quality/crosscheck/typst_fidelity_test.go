@@ -146,6 +146,50 @@ func TestTypstNamedSpacePreservesGlyphHitAndClassSpacing(t *testing.T) {
 	}
 }
 
+func TestTypstContentCallPunctuationPreservesHitRanges(t *testing.T) {
+	root, _ := crosscheckPaths(t)
+	harness := testHarness(t, root)
+
+	for _, test := range []struct {
+		src    string
+		open   source.Range
+		comma  source.Range
+		close  source.Range
+		hasSep bool
+	}{
+		{src: `f(x)`, open: source.NewRange(1, 2), close: source.NewRange(3, 4)},
+		{
+			src:    `f(x,y)`,
+			open:   source.NewRange(1, 2),
+			comma:  source.NewRange(3, 4),
+			close:  source.NewRange(5, 6),
+			hasSep: true,
+		},
+	} {
+		expr := untie.ParseTypst(test.src, ir.Inline, untie.ParseOptions{})
+		box, err := harness.layout(t.Context(), requireValidRoot(t, expr).Root, ir.Inline, 16)
+		if err != nil {
+			t.Fatal(err)
+		}
+		open := requireHit(t, box, test.open, display.HitFence)
+		closeGlyph := requireHit(t, box, test.close, display.HitFence)
+		if open.Area.Width <= 0 || closeGlyph.Area.Width <= 0 ||
+			open.Area.X >= closeGlyph.Area.X {
+			t.Fatalf("%s fences = open %#v close %#v", test.src, open, closeGlyph)
+		}
+		if !test.hasSep {
+			continue
+		}
+		comma := requireHit(t, box, test.comma, display.HitAtom)
+		if comma.Area.Width <= 0 ||
+			comma.Area.X <= open.Area.X ||
+			comma.Area.X >= closeGlyph.Area.X {
+			t.Fatalf("%s punctuation = open %#v comma %#v close %#v",
+				test.src, open, comma, closeGlyph)
+		}
+	}
+}
+
 func TestTypstDisplayOnlyLimitsUseModeNotAtomClass(t *testing.T) {
 	root, _ := crosscheckPaths(t)
 	harness := testHarness(t, root)

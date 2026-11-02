@@ -496,6 +496,35 @@ func TestNonFunctionContentCallPreservesArguments(t *testing.T) {
 	}
 }
 
+func TestNonFunctionContentCallPunctuationSpans(t *testing.T) {
+	t.Parallel()
+
+	src := `f(x,y)`
+	result := parse(t, src)
+	want := map[string]source.Range{
+		"(": source.NewRange(1, 2),
+		",": source.NewRange(3, 4),
+		")": source.NewRange(5, 6),
+	}
+	found := make(map[string]source.Range)
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		glyph, ok := node.(*ir.Glyph)
+		if !ok {
+			return true
+		}
+		if _, ok := want[glyph.Text]; ok {
+			found[glyph.Text] = glyph.Span
+		}
+		return true
+	})
+	for text, span := range want {
+		if found[text] != span {
+			t.Fatalf("punctuation %q span = %v, want %v; all glyph spans = %#v",
+				text, found[text], span, found)
+		}
+	}
+}
+
 func TestUnsupportedParametersAreDiagnosed(t *testing.T) {
 	t.Parallel()
 
