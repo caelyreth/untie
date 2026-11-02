@@ -120,12 +120,20 @@ var textOperators = map[string]bool{
 }
 
 var spacingSymbols = map[string]ir.Length{
-	"space": ir.EmLength(0.25),
-	"thin":  ir.EmLength(1.0 / 6.0),
-	"med":   ir.EmLength(2.0 / 9.0),
-	"thick": ir.EmLength(5.0 / 18.0),
-	"quad":  ir.EmLength(1),
-	"wide":  ir.EmLength(2),
+	"space": builtinEmLength(0.25),
+	"thin":  builtinEmLength(1.0 / 6.0),
+	"med":   builtinEmLength(2.0 / 9.0),
+	"thick": builtinEmLength(5.0 / 18.0),
+	"quad":  builtinEmLength(1),
+	"wide":  builtinEmLength(2),
+}
+
+func builtinEmLength(value float64) ir.Length {
+	length, err := ir.EmLength(value)
+	if err != nil {
+		panic("invalid built-in Typst em length: " + err.Error())
+	}
+	return length
 }
 
 var accentAliases = map[string]string{

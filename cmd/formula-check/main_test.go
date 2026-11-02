@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -40,4 +41,20 @@ func TestRunRejectsBadDialect(t *testing.T) {
 	if code != 2 {
 		t.Fatalf("run() = %d, want 2", code)
 	}
+}
+
+func TestRunReportsOutputFailure(t *testing.T) {
+	t.Parallel()
+
+	var stderr bytes.Buffer
+	code := run([]string{"x"}, strings.NewReader(""), errorWriterForTest{}, &stderr)
+	if code == 0 {
+		t.Fatal("run() ignored stdout failure")
+	}
+}
+
+type errorWriterForTest struct{}
+
+func (errorWriterForTest) Write([]byte) (int, error) {
+	return 0, errors.New("write failed")
 }

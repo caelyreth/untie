@@ -87,14 +87,14 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 	}
 	switch kind {
 	case "mat":
-		table.RowGap = ir.EmLength(0.2)
-		table.ColumnGap = ir.EmLength(0.5)
+		table.RowGap = builtinEmLength(0.2)
+		table.ColumnGap = builtinEmLength(0.5)
 	case "vec":
-		table.RowGap = ir.EmLength(0.2)
-		table.ColumnGap = ir.EmLength(0)
+		table.RowGap = builtinEmLength(0.2)
+		table.ColumnGap = builtinEmLength(0)
 	case "cases":
-		table.RowGap = ir.EmLength(0.2)
-		table.ColumnGap = ir.EmLength(0)
+		table.RowGap = builtinEmLength(0.2)
+		table.ColumnGap = builtinEmLength(0)
 	}
 	if arg := namedArgument(call, "gap"); arg != nil {
 		if gap, ok := l.valueLength(arg.node); ok {

@@ -151,7 +151,7 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	)`)
 	requireNoDiagnostics(t, "matrix arguments", result)
 	table := find[*ir.Table](t, result.Root)
-	if table.RowGap != ir.EmLength(1) || table.ColumnGap != ir.EmLength(2) {
+	if table.RowGap != builtinEmLength(1) || table.ColumnGap != builtinEmLength(2) {
 		t.Fatalf("gaps = %v/%v", table.RowGap, table.ColumnGap)
 	}
 	if len(table.Vertical) != 1 || table.Vertical[0].Position != 1 {
@@ -205,7 +205,7 @@ func TestEvaluatorValuesSpreadAndHSpace(t *testing.T) {
 		t.Fatalf("fraction = %#v", fraction)
 	}
 	space := find[*ir.Space](t, result.Root)
-	if space.Amount != ir.EmLength(1.5) || !space.Weak {
+	if space.Amount != builtinEmLength(1.5) || !space.Weak {
 		t.Fatalf("space = %#v", space)
 	}
 	percent := parse(t, `lr([x], size: #150%)`)

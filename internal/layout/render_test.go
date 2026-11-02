@@ -14,6 +14,15 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
+func emLength(t *testing.T, value float64) ir.Length {
+	t.Helper()
+	length, err := ir.EmLength(value)
+	if err != nil {
+		t.Fatalf("EmLength(%v) error = %v", value, err)
+	}
+	return length
+}
+
 func TestRowAssemblyAndSpacing(t *testing.T) {
 	t.Parallel()
 
@@ -64,7 +73,7 @@ func TestExplicitSpaceDisablesAutomaticSpacing(t *testing.T) {
 	t.Parallel()
 
 	renderer, _, _ := newTestRenderer(t)
-	space := ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, ir.EmLength(1))
+	space := ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, emLength(t, 1))
 	root := ir.NewRow(source.NewRange(0, 3), glyph("x", ir.ClassNormal), space, glyph("y", ir.ClassNormal))
 	box, err := renderer.Layout(root, ir.Inline, testStyle(10))
 	if err != nil {
@@ -128,6 +137,7 @@ func TestFractionProducesRuleAndNestedStyles(t *testing.T) {
 
 	noBar := ir.NewFraction(source.NewRange(0, 5), glyph("1", ir.ClassNormal), glyph("2", ir.ClassNormal))
 	noBar.Style = ir.FractionNoBar
+	noBar.Bar = false
 	noBarBox, err := renderer.Layout(noBar, ir.Inline, testStyle(20))
 	if err != nil {
 		t.Fatalf("Layout(no-bar fraction) error = %v", err)
@@ -173,8 +183,8 @@ func TestRuleLayoutAndExplicitStyle(t *testing.T) {
 
 	renderer, _, _ := newTestRenderer(t)
 	line := ir.NewLine(source.NewRange(0, 3), glyph("x", ir.ClassNormal), ir.PositionAbove)
-	line.Thickness = ir.EmLength(0.05)
-	line.Gap = ir.EmLength(0.1)
+	line.Thickness = emLength(t, 0.05)
+	line.Gap = emLength(t, 0.1)
 	box, err := renderer.Layout(line, ir.Inline, testStyle(16))
 	if err != nil {
 		t.Fatalf("Layout(line) error = %v", err)

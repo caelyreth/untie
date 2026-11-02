@@ -19,26 +19,39 @@ func main() {
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("formula-check", flag.ContinueOnError)
-	flags.SetOutput(stderr)
+	flagOutput := &errorWriter{writer: stderr}
+	flags.SetOutput(flagOutput)
 	dialectName := flags.String("dialect", "tex", "tex or typst")
 	display := flags.Bool("display", false, "parse in display mode")
 	sourceFile := flags.String("f", "", "source file; reads stdin when empty")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "usage: formula-check [-dialect tex|typst] [-display] [-f FILE] [SOURCE]")
+		if err := writeLine(flagOutput, "usage: formula-check [-dialect tex|typst] [-display] [-f FILE] [SOURCE]"); err != nil {
+			return
+		}
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
+		if flagOutput.err != nil {
+			return 1
+		}
 		return 2
+	}
+	if flagOutput.err != nil {
+		return 1
 	}
 
 	dialect, err := parseDialect(*dialectName)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		if writeErr := writeLine(stderr, err.Error()); writeErr != nil {
+			return 1
+		}
 		return 2
 	}
 	src, err := readSource(*sourceFile, flags.Args(), stdin)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		if writeErr := writeLine(stderr, err.Error()); writeErr != nil {
+			return 1
+		}
 		return 2
 	}
 	mode := untie.Inline
@@ -47,16 +60,48 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	expr := untie.Parse(src, dialect, mode, untie.ParseOptions{})
 	for _, diagnostic := range expr.Diagnostics() {
-		fmt.Fprintf(stdout, "%d:%d: %s: %s\n",
-			diagnostic.Range.Start, diagnostic.Range.End, diagnostic.Code, diagnostic.Message)
+		if err := writeFormat(stdout, "%d:%d: %s: %s\n",
+			diagnostic.Range.Start, diagnostic.Range.End, diagnostic.Code, diagnostic.Message); err != nil {
+			return 1
+		}
 	}
 	canonical, err := ir.MarshalCanonical(expr.Root())
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		if writeErr := writeLine(stderr, err.Error()); writeErr != nil {
+			return 1
+		}
 		return 1
 	}
-	fmt.Fprintln(stdout, string(canonical))
+	if err := writeLine(stdout, string(canonical)); err != nil {
+		return 1
+	}
 	return 0
+}
+
+type errorWriter struct {
+	writer io.Writer
+	err    error
+}
+
+func (w *errorWriter) Write(data []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, err := w.writer.Write(data)
+	if err != nil {
+		w.err = err
+	}
+	return n, err
+}
+
+func writeFormat(writer io.Writer, format string, args ...any) error {
+	_, err := fmt.Fprintf(writer, format, args...)
+	return err
+}
+
+func writeLine(writer io.Writer, text string) error {
+	_, err := fmt.Fprintln(writer, text)
+	return err
 }
 
 func parseDialect(value string) (untie.Dialect, error) {

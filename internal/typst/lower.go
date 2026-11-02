@@ -345,7 +345,7 @@ func (l *lowerer) lowerFraction(n *astNode) ir.Node {
 		return l.errNode(n.span, l.sourceText(n.span), source.CodeInternal)
 	}
 	fr := ir.NewFraction(n.span, l.lower(n.items[0]), l.lower(n.items[1]))
-	fr.Padding = ir.EmLength(0.1)
+	fr.Padding = builtinEmLength(0.1)
 	return fr
 }
 

@@ -628,20 +628,25 @@ func parseLengthString(text string) (ir.Length, bool) {
 	if math.Abs(value) > float64(math.MaxInt64)/1_000_000 {
 		return ir.Length{}, false
 	}
+	var length ir.Length
 	switch unit {
 	case "em":
-		return ir.EmLength(value), true
+		length, err = ir.EmLength(value)
 	case "ex":
-		return ir.ExLength(value), true
+		length, err = ir.ExLength(value)
 	case "mu":
-		return ir.MuLength(value), true
+		length, err = ir.MuLength(value)
 	case "pt":
-		return ir.PtLength(value), true
+		length, err = ir.PtLength(value)
 	case "dip":
-		return ir.DipLength(value), true
+		length, err = ir.DipLength(value)
 	default:
 		return ir.Length{}, false
 	}
+	if err != nil {
+		return ir.Length{}, false
+	}
+	return length, true
 }
 
 func (p *parser) consumeRawGroupText() string {

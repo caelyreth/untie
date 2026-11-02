@@ -32,7 +32,7 @@ func (l *lowerer) lowerFracCall(call *astNode) ir.Node {
 	num := l.contentArg(call, "num", 0, true)
 	denom := l.contentArg(call, "denom", 1, true)
 	fr := ir.NewFraction(call.span, num, denom)
-	fr.Padding = ir.EmLength(0.1)
+	fr.Padding = builtinEmLength(0.1)
 	if styleArg := namedArgument(call, "style"); styleArg != nil {
 		style, ok := l.valueString(styleArg.node)
 		if !ok {
@@ -227,14 +227,14 @@ func (l *lowerer) lowerLine(call *astNode, name string) ir.Node {
 		position = ir.PositionBelow
 	}
 	line := ir.NewLine(call.span, body, position)
-	line.Thickness = ir.EmLength(0.05)
+	line.Thickness = builtinEmLength(0.05)
 	return line
 }
 
 func (l *lowerer) lowerCancel(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
 	cancel := ir.NewCancel(call.span, body)
-	cancel.Thickness = ir.EmLength(0.05)
+	cancel.Thickness = builtinEmLength(0.05)
 	if arg := namedArgument(call, "cross"); arg != nil {
 		if cross, ok := l.valueBool(arg.node); ok {
 			cancel.Cross = cross
