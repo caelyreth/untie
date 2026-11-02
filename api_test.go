@@ -485,6 +485,29 @@ func TestParsedLayoutRetainsStricterEngineTraversalLimit(t *testing.T) {
 	}
 }
 
+func TestPublicLayoutErrorClassification(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	missing := ParseTeX("中", Inline, ParseOptions{})
+	if _, err := engine.Layout(missing, Style{Size: 16}); !errors.Is(err, ErrMissingGlyph) {
+		t.Fatalf("missing-glyph layout error = %v", err)
+	}
+
+	limited, err := NewEngine(fonts, Limits{MaxOutputItems: 1})
+	if err != nil {
+		t.Fatalf("NewEngine(limited) error = %v", err)
+	}
+	expr := ParseTeX("x+y", Inline, ParseOptions{})
+	if _, err := limited.Layout(expr, Style{Size: 16}); !errors.Is(err, ErrLimit) {
+		t.Fatalf("limited layout error = %v", err)
+	}
+}
+
 func TestFallbackIRValidates(t *testing.T) {
 	t.Parallel()
 
