@@ -139,6 +139,8 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 		return nil, err
 	}
 	fragment, ok := s.renderer.tables.LayoutTable(TableRequest{
+		Context:    s.ctx,
+		Limits:     s.limits,
 		Style:      env.Style,
 		Rows:       rows,
 		Columns:    append([]ir.ColumnAlign(nil), node.Columns...),
@@ -149,6 +151,9 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 	})
 	if !ok {
 		return nil, fmt.Errorf("%w: table extension rejected input", ErrUnsupported)
+	}
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
 	}
 	return withClass(&fragment, node.Class), nil
 }
