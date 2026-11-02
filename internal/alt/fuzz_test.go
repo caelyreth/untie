@@ -2,8 +2,10 @@ package alt
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -21,6 +23,22 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 			MaxNesting:     24,
 			MaxTextBytes:   4_096,
 		}
+		for _, full := range []bool{false, true} {
+			root, values := attachmentFixture(data, full)
+			first, firstErr := GenerateContext(context.Background(), root, ir.Display, limits)
+			second, secondErr := GenerateContext(context.Background(), root, ir.Display, limits)
+			if firstErr != nil || secondErr != nil {
+				t.Fatalf("attachment fixture error = %v, %v", firstErr, secondErr)
+			}
+			if first != second {
+				t.Fatalf("attachment fixture is nondeterministic:\n%#v\n%#v", first, second)
+			}
+			if err := first.Validate(); err != nil {
+				t.Fatalf("attachment fixture is invalid: %v", err)
+			}
+			assertAttachmentValuesVisible(t, first, values)
+		}
+
 		first, firstErr := GenerateContext(context.Background(), root, ir.Display, limits)
 		second, secondErr := GenerateContext(context.Background(), root, ir.Display, limits)
 		if (firstErr == nil) != (secondErr == nil) || firstErr != nil && firstErr.Error() != secondErr.Error() {
@@ -44,6 +62,39 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 
 type fuzzCursor struct {
 	data []byte
+}
+
+func attachmentFixture(data []byte, full bool) (*ir.Scripts, []string) {
+	span := source.NewRange(0, 1)
+	scripts := ir.NewScripts(span, ir.NewGlyph(span, "x"))
+	if len(data) > 0 {
+		scripts.Role = ir.ScriptRole(data[0] % 4)
+	}
+	if full {
+		scripts.Top = ir.NewGlyph(span, "TOP_ONLY")
+		scripts.Bottom = ir.NewGlyph(span, "BOTTOM_ONLY")
+	}
+	scripts.TopLeft = ir.NewGlyph(span, "TOP_LEFT")
+	scripts.BottomLeft = ir.NewGlyph(span, "BOTTOM_LEFT")
+	scripts.TopRight = ir.NewGlyph(span, "TOP_RIGHT")
+	scripts.BottomRight = ir.NewGlyph(span, "BOTTOM_RIGHT")
+	values := []string{"TOP_LEFT", "BOTTOM_LEFT", "TOP_RIGHT", "BOTTOM_RIGHT"}
+	if full {
+		values = append(values, "TOP_ONLY", "BOTTOM_ONLY")
+	}
+	return scripts, values
+}
+
+func assertAttachmentValuesVisible(t *testing.T, alt display.Alt, values []string) {
+	t.Helper()
+	visible := alt.Text + "\n" + alt.Speech
+	unsupported := strings.Contains(visible, "unsupported node") ||
+		strings.Contains(visible, "[unsupported")
+	for _, value := range values {
+		if !strings.Contains(visible, value) && !unsupported {
+			t.Fatalf("attachment %q was silently lost: %#v", value, alt)
+		}
+	}
 }
 
 func (c *fuzzCursor) next() byte {
