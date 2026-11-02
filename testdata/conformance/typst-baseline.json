@@ -12326,6 +12326,7 @@
         "feature:group"
       ],
       "codes": [
+        "syntax",
         "unknown-variable"
       ],
       "diagnostics": [
@@ -12365,18 +12366,18 @@
           "message": "unknown variable: o9"
         },
         {
-          "code": "unknown-variable",
+          "code": "syntax",
           "severity": 0,
-          "start": 37,
-          "end": 39,
-          "message": "unknown variable: e5"
+          "start": 49,
+          "end": 51,
+          "message": "invalid floating point number: \"1e\""
         },
         {
-          "code": "unknown-variable",
+          "code": "syntax",
           "severity": 0,
-          "start": 66,
-          "end": 70,
-          "message": "unknown variable: e5em"
+          "start": 53,
+          "end": 58,
+          "message": "invalid floating point number: \"1.2E+\""
         }
       ],
       "detail": "upstream case expects successful parsing"

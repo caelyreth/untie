@@ -16,6 +16,7 @@ const (
 	tokEOF tokenKind = iota
 	tokIdent
 	tokNumber
+	tokInvalidNumber
 	tokString
 	tokShorthand
 	tokGlyph
@@ -57,6 +58,8 @@ func (t token) describe() string {
 		return fmt.Sprintf("identifier %q", t.text)
 	case tokNumber:
 		return fmt.Sprintf("number %q", t.text)
+	case tokInvalidNumber:
+		return fmt.Sprintf("invalid number %q", t.text)
 	case tokString:
 		return "string"
 	default:
@@ -253,12 +256,7 @@ func (l *lexer) next() token {
 	r, size := utf8.DecodeRuneInString(l.src[start:])
 	if r == utf8.RuneError && size == 1 {
 		l.pos++
-		l.diags = append(l.diags, source.Diagnostic{
-			Range:    source.NewRange(start, l.pos),
-			Severity: source.SeverityError,
-			Code:     source.CodeSyntax,
-			Message:  "invalid UTF-8 byte",
-		})
+		l.invalidUTF8(start)
 		return token{kind: tokGlyph, span: source.NewRange(start, l.pos), text: string(utf8.RuneError), spaceBefore: space}
 	}
 	if r >= '0' && r <= '9' {
@@ -300,18 +298,81 @@ func (l *lexer) numberToken(start int, space bool) token {
 			l.pos++
 		}
 	}
-	for _, unit := range []string{"em", "ex", "pt", "mm", "cm", "in"} {
-		if !strings.HasPrefix(l.src[l.pos:], unit) {
-			continue
+	if unit, end := numberSuffixAt(l.src, l.pos); end >= 0 && (unit == "em" || unit == "ex") {
+		// `em` and `ex` are suffixes, not the start of a malformed exponent.
+		l.pos = end
+	}
+
+	exponentStart := -1
+	exponentDigits := false
+	if l.pos < len(l.src) && (l.src[l.pos] == 'e' || l.src[l.pos] == 'E') {
+		exponentStart = l.pos
+		l.pos++
+		if l.pos < len(l.src) && (l.src[l.pos] == '+' || l.src[l.pos] == '-') {
+			l.pos++
 		}
-		end := l.pos + len(unit)
-		next, _ := utf8.DecodeRuneInString(l.src[end:])
-		if end == len(l.src) || !isIdentContinue(next) {
-			l.pos = end
-			break
+		digitsStart := l.pos
+		for l.pos < len(l.src) && l.src[l.pos] >= '0' && l.src[l.pos] <= '9' {
+			l.pos++
+		}
+		exponentDigits = l.pos > digitsStart
+	}
+	numberEnd := l.pos
+	if _, end := numberSuffixAt(l.src, l.pos); end >= 0 {
+		l.pos = end
+	}
+
+	kind := tokNumber
+	if exponentStart >= 0 {
+		number := l.src[start:numberEnd]
+		switch {
+		case !exponentDigits:
+			kind = tokInvalidNumber
+			l.diags = append(l.diags, source.Diagnostic{
+				Range:    source.NewRange(start, numberEnd),
+				Severity: source.SeverityError,
+				Code:     source.CodeSyntax,
+				Message:  fmt.Sprintf("invalid floating point number: %q", number),
+			})
+		case !isFiniteFloatLiteral(number):
+			kind = tokInvalidNumber
+			l.diags = append(l.diags, source.Diagnostic{
+				Range:    source.NewRange(start, numberEnd),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  fmt.Sprintf("number is not finite: %q", number),
+			})
 		}
 	}
-	return l.tok(tokNumber, start, space)
+	return l.tok(kind, start, space)
+}
+
+func numberSuffixAt(src string, pos int) (string, int) {
+	for _, unit := range [...]string{"em", "ex", "pt", "mm", "cm", "in"} {
+		if !strings.HasPrefix(src[pos:], unit) {
+			continue
+		}
+		end := pos + len(unit)
+		next, _ := utf8.DecodeRuneInString(src[end:])
+		if end == len(src) || !isIdentContinue(next) {
+			return unit, end
+		}
+	}
+	return "", -1
+}
+
+func isFiniteFloatLiteral(text string) bool {
+	v, ok := parseNumericLiteral(text)
+	return ok && v.kind == valueFloat
+}
+
+func (l *lexer) invalidUTF8(start int) {
+	l.diags = append(l.diags, source.Diagnostic{
+		Range:    source.NewRange(start, start+1),
+		Severity: source.SeverityError,
+		Code:     source.CodeSyntax,
+		Message:  "invalid UTF-8 byte",
+	})
 }
 
 func (l *lexer) stringToken(start int, space bool) token {
@@ -330,15 +391,22 @@ func (l *lexer) stringToken(start int, space bool) token {
 		}
 		if l.src[l.pos] != '\\' {
 			r, size := utf8.DecodeRuneInString(l.src[l.pos:])
+			if r == utf8.RuneError && size == 1 {
+				l.invalidUTF8(l.pos)
+				l.pos++
+				continue
+			}
 			decoded.WriteRune(r)
 			l.pos += size
 			continue
 		}
-		escaped, ok := l.scanEscape()
+		escaped, emit, ok := l.scanEscape()
 		if !ok {
 			break
 		}
-		decoded.WriteRune(escaped)
+		if emit {
+			decoded.WriteRune(escaped)
+		}
 	}
 	l.diags = append(l.diags, source.Diagnostic{
 		Range:    source.NewRange(start, l.pos),
@@ -384,7 +452,7 @@ func (l *lexer) backslashToken(start int, space bool) token {
 	return token{kind: tokGlyph, span: source.NewRange(start, l.pos), text: string(r), literal: string(r), spaceBefore: space}
 }
 
-func (l *lexer) scanEscape() (rune, bool) {
+func (l *lexer) scanEscape() (rune, bool, bool) {
 	start := l.pos
 	if strings.HasPrefix(l.src[start:], `\u{`) {
 		l.pos += 3
@@ -398,30 +466,35 @@ func (l *lexer) scanEscape() (rune, bool) {
 				Code:     source.CodeUnclosedGroup,
 				Message:  "unclosed Unicode escape sequence",
 			})
-			return utf8.RuneError, true
+			return utf8.RuneError, true, true
 		}
 		l.pos++
-		return l.parseUnicodeEscape(start), true
+		return l.parseUnicodeEscape(start), true, true
 	}
 	l.pos++
 	if l.pos >= len(l.src) {
-		return utf8.RuneError, false
+		return 0, false, false
 	}
 	r, size := utf8.DecodeRuneInString(l.src[l.pos:])
+	if r == utf8.RuneError && size == 1 {
+		l.invalidUTF8(l.pos)
+		l.pos++
+		return 0, false, true
+	}
 	l.pos += size
 	switch r {
 	case 'n':
-		return '\n', true
+		return '\n', true, true
 	case 'r':
-		return '\r', true
+		return '\r', true, true
 	case 't':
-		return '\t', true
+		return '\t', true, true
 	case '\\':
-		return '\\', true
+		return '\\', true, true
 	case '"':
-		return '"', true
+		return '"', true, true
 	default:
-		return r, true
+		return r, true, true
 	}
 }
 

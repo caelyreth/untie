@@ -1,6 +1,7 @@
 package typst
 
 import (
+	"math"
 	"testing"
 
 	"github.com/caelyreth/untie/source"
@@ -65,5 +66,102 @@ func TestLexerTokenLimit(t *testing.T) {
 	}
 	if len(diagnostics) != 1 || diagnostics[0].Code != source.CodeLimitExceeded {
 		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+}
+
+func TestLexerScientificNotation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		src  string
+		want float64
+	}{
+		{src: "1e5", want: 1e5},
+		{src: "1E+5", want: 1e5},
+		{src: "1.5e-3", want: 1.5e-3},
+		{src: "1e-400", want: 0},
+		{src: "5e-324", want: 5e-324},
+	}
+	for _, test := range tests {
+		tokens, diagnostics := lex(test.src, source.DefaultLimits())
+		if len(diagnostics) != 0 {
+			t.Fatalf("lex(%q) diagnostics = %#v", test.src, diagnostics)
+		}
+		if len(tokens) != 2 || tokens[0].kind != tokNumber || tokens[0].text != test.src {
+			t.Fatalf("lex(%q) tokens = %#v", test.src, tokens)
+		}
+		value, ok := parseNumericLiteral(tokens[0].text)
+		if !ok || value.kind != valueFloat || value.float != test.want || math.IsInf(value.float, 0) || math.IsNaN(value.float) {
+			t.Fatalf("parseNumericLiteral(%q) = %#v, %v; want finite %g", test.src, value, ok, test.want)
+		}
+	}
+}
+
+func TestLexerScientificNotationDiagnosticsAndSuffixes(t *testing.T) {
+	t.Parallel()
+
+	for _, src := range []string{"1e", "0e", "1.2E+"} {
+		tokens, diagnostics := lex(src, source.DefaultLimits())
+		if len(tokens) != 2 || tokens[0].kind != tokInvalidNumber || tokens[0].text != src {
+			t.Fatalf("lex(%q) tokens = %#v", src, tokens)
+		}
+		if len(diagnostics) != 1 || diagnostics[0].Code != source.CodeSyntax ||
+			diagnostics[0].Range != source.NewRange(0, len(src)) {
+			t.Fatalf("lex(%q) diagnostics = %#v, want malformed exponent", src, diagnostics)
+		}
+	}
+
+	tokens, diagnostics := lex("1e400", source.DefaultLimits())
+	if len(diagnostics) != 1 || diagnostics[0].Code != source.CodeInvalidValue {
+		t.Fatalf("overflow diagnostics = %#v", diagnostics)
+	}
+	if len(tokens) != 2 || tokens[0].kind != tokInvalidNumber || tokens[0].text != "1e400" {
+		t.Fatalf("overflow tokens = %#v", tokens)
+	}
+
+	for _, src := range []string{"e5", "e5em"} {
+		tokens, diagnostics := lex(src, source.DefaultLimits())
+		if len(diagnostics) != 0 {
+			t.Fatalf("lex(%q) diagnostics = %#v", src, diagnostics)
+		}
+		if len(tokens) != 2 || tokens[0].kind != tokIdent || tokens[0].text != src {
+			t.Fatalf("lex(%q) tokens = %#v, want identifier", src, tokens)
+		}
+	}
+
+	for _, src := range []string{"1em", "1ex", "1e5em"} {
+		tokens, diagnostics := lex(src, source.DefaultLimits())
+		if len(diagnostics) != 0 {
+			t.Fatalf("lex(%q) diagnostics = %#v", src, diagnostics)
+		}
+		if len(tokens) != 2 || tokens[0].kind != tokNumber || tokens[0].text != src {
+			t.Fatalf("lex(%q) tokens = %#v, want numeric suffix", src, tokens)
+		}
+	}
+}
+
+func TestLexerRejectsInvalidUTF8InStrings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		src     string
+		literal string
+		at      int
+	}{
+		{src: "\"a\xffb\"", literal: "ab", at: 2},
+		{src: "\"\\\xffb\"", literal: "b", at: 2},
+	}
+	for _, test := range tests {
+		tokens, diagnostics := lex(test.src, source.DefaultLimits())
+		if len(tokens) != 2 || tokens[0].kind != tokString {
+			t.Fatalf("lex(%q) tokens = %#v", test.src, tokens)
+		}
+		if tokens[0].literal != test.literal {
+			t.Fatalf("lex(%q) literal = %q, want %q", test.src, tokens[0].literal, test.literal)
+		}
+		if len(diagnostics) != 1 || diagnostics[0].Code != source.CodeSyntax ||
+			diagnostics[0].Range != source.NewRange(test.at, test.at+1) {
+			t.Fatalf("lex(%q) diagnostics = %#v, want invalid byte at %d:%d", test.src, diagnostics, test.at, test.at+1)
+		}
 	}
 }
