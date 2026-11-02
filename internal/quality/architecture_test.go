@@ -18,6 +18,7 @@ const exampleModulePath = modulePath + "/examples/mygo"
 type listedPackage struct {
 	ImportPath   string
 	ForTest      string
+	CgoFiles     []string
 	Imports      []string
 	TestImports  []string
 	XTestImports []string
@@ -28,21 +29,68 @@ type packageRules struct {
 	Tests      []string
 }
 
-type importViolationFunc func(string, []string, bool, map[string]packageRules) []string
+type importViolationFunc func(string, []string, bool, map[string]packageRules, stdlibPolicy) []string
+
+// stdlibPolicy rejects a small set of standard-library trees instead of
+// maintaining a package-by-package allowlist for the rest of the standard
+// library. Forbidden trees either bypass Go's memory or portability guarantees,
+// launch processes, install process-wide handlers, open network services, or
+// exist only for tests. Platform-specific UI code is additionally blocked by
+// the dotted-module rule and the exact external dependency allowlists.
+//
+// Exceptions are exact package/import pairs with a reason. They must be kept
+// fresh by the architecture test so temporary needs cannot silently spread.
+type stdlibPolicy struct {
+	ProductionForbidden  []string
+	TestForbidden        []string
+	ProductionExceptions map[string]map[string]string
+}
 
 type architectureModule struct {
 	Name       string
 	Path       string
 	Dir        string
 	Allowed    map[string]packageRules
+	Stdlib     stdlibPolicy
 	Violations importViolationFunc
 }
 
-// This is an exact allowlist for every project package. Standard-library
-// imports are permitted by convention; every non-standard import must appear
-// here. Test-only edges are additional to Production and never grant the same
-// edge to production code. Keep the table small and make dependency changes
-// visible in review.
+var untieStdlibPolicy = stdlibPolicy{
+	ProductionForbidden: []string{
+		"net",           // Rendering must not create a network side channel.
+		"os/exec",       // Process execution belongs to host tooling.
+		"os/signal",     // Libraries must not own process-wide signal policy.
+		"plugin",        // Dynamic loading breaks portable static builds.
+		"runtime/cgo",   // The renderer must remain pure Go.
+		"runtime/pprof", // Profiling belongs to the embedding application.
+		"runtime/trace", // Tracing belongs to the embedding application.
+		"syscall",       // Includes platform-specific escapes such as syscall/js.
+		"testing",       // Test dependencies must not enter production packages.
+		"unsafe",        // Keep the public safety and portability boundary intact.
+	},
+	TestForbidden: []string{
+		"plugin",
+		"runtime/cgo",
+		"syscall",
+		"unsafe",
+	},
+	ProductionExceptions: map[string]map[string]string{
+		modulePath + "/internal/quality/conformance": {
+			"os/exec": "external reference adapters are launched only by the conformance harness",
+		},
+	},
+}
+
+var exampleStdlibPolicy = stdlibPolicy{
+	ProductionForbidden: untieStdlibPolicy.ProductionForbidden,
+	TestForbidden:       untieStdlibPolicy.TestForbidden,
+}
+
+// This is an exact allowlist for every project package's non-standard imports.
+// Standard-library imports are governed separately by untieStdlibPolicy. Every
+// non-standard import must appear here. Test-only edges are additional to
+// Production and never grant the same edge to production code. Keep the table
+// small and make dependency changes visible in review.
 var allowedProjectImports = map[string]packageRules{
 	modulePath: {
 		Production: []string{
@@ -178,6 +226,7 @@ var architectureModules = []architectureModule{
 		Path:       modulePath,
 		Dir:        ".",
 		Allowed:    allowedProjectImports,
+		Stdlib:     untieStdlibPolicy,
 		Violations: packageImportViolations,
 	},
 	{
@@ -185,6 +234,7 @@ var architectureModules = []architectureModule{
 		Path:       exampleModulePath,
 		Dir:        filepath.Join("examples", "mygo"),
 		Allowed:    allowedExampleImports,
+		Stdlib:     exampleStdlibPolicy,
 		Violations: examplePackageImportViolations,
 	},
 }
@@ -223,12 +273,16 @@ func checkArchitectureModule(t *testing.T, dir string, module architectureModule
 			continue
 		}
 		seen[pkg.ImportPath] = true
-		for _, violation := range module.Violations(pkg.ImportPath, pkg.Imports, false, module.Allowed) {
+		if len(pkg.CgoFiles) > 0 {
+			t.Errorf("%s contains cgo files", pkg.ImportPath)
+		}
+		for _, violation := range module.Violations(pkg.ImportPath, pkg.Imports, false, module.Allowed, module.Stdlib) {
 			t.Error(violation)
 		}
+		checkStdlibExceptionFreshness(t, pkg.ImportPath, pkg.Imports, module.Stdlib)
 		testImports := append([]string(nil), pkg.TestImports...)
 		testImports = append(testImports, pkg.XTestImports...)
-		for _, violation := range module.Violations(pkg.ImportPath, testImports, true, module.Allowed) {
+		for _, violation := range module.Violations(pkg.ImportPath, testImports, true, module.Allowed, module.Stdlib) {
 			t.Error(violation)
 		}
 		checkRuleFreshness(t, pkg.ImportPath, pkg.Imports, testImports, module.Allowed)
@@ -236,6 +290,25 @@ func checkArchitectureModule(t *testing.T, dir string, module architectureModule
 	for pkg := range module.Allowed {
 		if !seen[pkg] {
 			t.Errorf("allowlist package %s in module %s was not returned by go list", pkg, module.Path)
+		}
+	}
+	for pkg := range module.Stdlib.ProductionExceptions {
+		if !seen[pkg] {
+			t.Errorf("stdlib exception package %s in module %s was not returned by go list", pkg, module.Path)
+		}
+	}
+}
+
+func checkStdlibExceptionFreshness(t *testing.T, pkg string, imports []string, policy stdlibPolicy) {
+	t.Helper()
+
+	importSet := importSet(imports)
+	for imp, reason := range policy.ProductionExceptions[pkg] {
+		if reason == "" {
+			t.Errorf("%s has a standard-library exception for %s without a reason", pkg, imp)
+		}
+		if !importSet[imp] {
+			t.Errorf("%s has unused standard-library exception for %s", pkg, imp)
 		}
 	}
 }
@@ -267,21 +340,96 @@ func TestArchitectureRuleDetectsViolation(t *testing.T) {
 	violations := packageImportViolations(modulePath+"/font", []string{
 		modulePath + "/ir",
 		"github.com/example/ui-toolkit",
-	}, false, allowedProjectImports)
+	}, false, allowedProjectImports, untieStdlibPolicy)
 	if len(violations) != 2 {
 		t.Fatalf("violations = %v, want two", violations)
 	}
-	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/geometry"}, false, allowedProjectImports); len(got) != 0 {
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/geometry"}, false, allowedProjectImports, untieStdlibPolicy); len(got) != 0 {
 		t.Fatalf("font -> geometry rejected: %v", got)
 	}
-	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, false, allowedProjectImports); len(got) == 0 {
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, false, allowedProjectImports, untieStdlibPolicy); len(got) == 0 {
 		t.Fatal("production-only import rule accepted internal/mathdata")
 	}
-	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, true, allowedProjectImports); len(got) == 0 {
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, true, allowedProjectImports, untieStdlibPolicy); len(got) == 0 {
 		t.Fatal("test rule accepted an unused font -> internal/mathdata edge")
 	}
-	if got := packageImportViolations(modulePath+"/internal/engine", []string{modulePath + "/internal/tex"}, false, allowedProjectImports); len(got) == 0 {
+	if got := packageImportViolations(modulePath+"/internal/engine", []string{modulePath + "/internal/tex"}, false, allowedProjectImports, untieStdlibPolicy); len(got) == 0 {
 		t.Fatal("test-only engine -> tex edge leaked into production rules")
+	}
+}
+
+func TestArchitectureStdlibPolicy(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []bool{false, true} {
+		if got := packageImportViolations(modulePath+"/font", []string{"C"}, test, allowedProjectImports, untieStdlibPolicy); len(got) != 1 {
+			t.Fatalf("cgo test=%t violations = %v, want one", test, got)
+		}
+	}
+
+	allowedProduction := []string{
+		"context",
+		"encoding/json",
+		"fmt",
+		"math",
+		"math/bits",
+	}
+	if got := packageImportViolations(modulePath+"/geometry", allowedProduction, false, allowedProjectImports, untieStdlibPolicy); len(got) != 0 {
+		t.Fatalf("ordinary standard-library imports rejected: %v", got)
+	}
+
+	forbiddenProduction := []string{
+		"net/http",
+		"os/exec",
+		"plugin",
+		"runtime/cgo",
+		"syscall",
+		"syscall/js",
+		"testing",
+		"unsafe",
+	}
+	for _, imp := range forbiddenProduction {
+		imp := imp
+		t.Run("forbidden/"+imp, func(t *testing.T) {
+			violations := packageImportViolations(modulePath+"/font", []string{imp}, false, allowedProjectImports, untieStdlibPolicy)
+			if len(violations) != 1 {
+				t.Fatalf("%s violations = %v, want one", imp, violations)
+			}
+		})
+	}
+
+	t.Run("documented exception", func(t *testing.T) {
+		pkg := modulePath + "/internal/quality/conformance"
+		if got := packageImportViolations(pkg, []string{"os/exec"}, false, allowedProjectImports, untieStdlibPolicy); len(got) != 0 {
+			t.Fatalf("documented conformance exception rejected: %v", got)
+		}
+		if got := packageImportViolations(modulePath+"/internal/quality/daily", []string{"os/exec"}, false, allowedProjectImports, untieStdlibPolicy); len(got) == 0 {
+			t.Fatal("os/exec exception leaked to another package")
+		}
+	})
+
+	t.Run("standard library allowlist cannot bypass policy", func(t *testing.T) {
+		allow := map[string]packageRules{
+			modulePath + "/font": {Production: []string{"unsafe"}},
+		}
+		if got := packageImportViolations(modulePath+"/font", []string{"unsafe"}, false, allow, untieStdlibPolicy); len(got) == 0 {
+			t.Fatal("exact import allowlist bypassed the restricted standard-library policy")
+		}
+	})
+
+	allowedTests := []string{
+		"net/http/httptest",
+		"os/exec",
+		"testing",
+		"testing/fstest",
+	}
+	if got := packageImportViolations(modulePath+"/internal/quality", allowedTests, true, allowedProjectImports, untieStdlibPolicy); len(got) != 0 {
+		t.Fatalf("legitimate test-only standard-library imports rejected: %v", got)
+	}
+	for _, imp := range []string{"plugin", "runtime/cgo", "syscall/js", "unsafe"} {
+		if got := packageImportViolations(modulePath+"/internal/quality", []string{imp}, true, allowedProjectImports, untieStdlibPolicy); len(got) == 0 {
+			t.Fatalf("test standard-library policy accepted %s", imp)
+		}
 	}
 }
 
@@ -292,7 +440,7 @@ func TestArchitectureExamplePolicyRejectsInternal(t *testing.T) {
 	allow := map[string]packageRules{
 		exampleModulePath: {Production: []string{internalImport}},
 	}
-	violations := examplePackageImportViolations(exampleModulePath, []string{internalImport}, false, allow)
+	violations := examplePackageImportViolations(exampleModulePath, []string{internalImport}, false, allow, exampleStdlibPolicy)
 	if len(violations) != 1 {
 		t.Fatalf("violations = %v, want one internal-import violation", violations)
 	}
@@ -305,12 +453,18 @@ func TestArchitectureExamplePolicyRejectsInternal(t *testing.T) {
 		exampleModulePath + "/futurepkg",
 		"github.com/egoist/mygo/ui",
 	}
-	if got := examplePackageImportViolations(exampleModulePath, allowed, false, allowedExampleImports); len(got) != 0 {
+	if got := examplePackageImportViolations(exampleModulePath, allowed, false, allowedExampleImports, exampleStdlibPolicy); len(got) != 0 {
 		t.Fatalf("allowed example imports rejected: %v", got)
+	}
+	if got := examplePackageImportViolations(exampleModulePath, []string{"os/exec"}, false, allowedExampleImports, exampleStdlibPolicy); len(got) == 0 {
+		t.Fatal("example policy accepted os/exec")
+	}
+	if got := examplePackageImportViolations(exampleModulePath, []string{"C"}, false, allowedExampleImports, exampleStdlibPolicy); len(got) == 0 {
+		t.Fatal("example policy accepted cgo")
 	}
 }
 
-func packageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules) []string {
+func packageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules, stdlib stdlibPolicy) []string {
 	rules, known := allow[pkg]
 	if !known {
 		return []string{fmt.Sprintf("%s is not in the architecture allowlist", pkg)}
@@ -326,8 +480,8 @@ func packageImportViolations(pkg string, imports []string, test bool, allow map[
 	slices.Sort(imports)
 	var violations []string
 	for _, imp := range imports {
-		if imp == "C" {
-			violations = append(violations, fmt.Sprintf("%s imports cgo", pkg))
+		if violation := stdlibViolation(pkg, imp, test, stdlib); violation != "" {
+			violations = append(violations, violation)
 			continue
 		}
 		if allowedSet[imp] {
@@ -345,7 +499,7 @@ func packageImportViolations(pkg string, imports []string, test bool, allow map[
 	return violations
 }
 
-func examplePackageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules) []string {
+func examplePackageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules, stdlib stdlibPolicy) []string {
 	rules, known := allow[pkg]
 	if !known {
 		return []string{fmt.Sprintf("%s is not in the example architecture allowlist", pkg)}
@@ -358,8 +512,8 @@ func examplePackageImportViolations(pkg string, imports []string, test bool, all
 	slices.Sort(imports)
 	var violations []string
 	for _, imp := range imports {
-		if imp == "C" {
-			violations = append(violations, fmt.Sprintf("%s imports cgo", pkg))
+		if violation := stdlibViolation(pkg, imp, test, stdlib); violation != "" {
+			violations = append(violations, violation)
 			continue
 		}
 		if untieInternalImport(imp) {
@@ -379,6 +533,38 @@ func examplePackageImportViolations(pkg string, imports []string, test bool, all
 		}
 	}
 	return violations
+}
+
+func stdlibViolation(pkg, imp string, test bool, policy stdlibPolicy) string {
+	if imp == "C" {
+		return fmt.Sprintf("%s imports cgo", pkg)
+	}
+	if !isStandardLibraryImport(imp) {
+		return ""
+	}
+	if !test {
+		if reason := policy.ProductionExceptions[pkg][imp]; reason != "" {
+			return ""
+		}
+	}
+	forbidden := policy.ProductionForbidden
+	if test {
+		forbidden = policy.TestForbidden
+	}
+	for _, root := range forbidden {
+		if withinModule(imp, root) {
+			return fmt.Sprintf("%s imports restricted standard-library package %s", pkg, imp)
+		}
+	}
+	return ""
+}
+
+func isStandardLibraryImport(imp string) bool {
+	if imp == "" || imp == "C" {
+		return false
+	}
+	first := strings.SplitN(imp, "/", 2)[0]
+	return !strings.Contains(first, ".")
 }
 
 func untieInternalImport(imp string) bool {
