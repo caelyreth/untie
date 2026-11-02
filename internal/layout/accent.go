@@ -88,6 +88,17 @@ func (s *layoutState) layoutAccent(node *ir.Accent, env environment, depth int) 
 	if err != nil {
 		return nil, err
 	}
+	if top && accent.HasInkBottom && accent.InkBottom < 0 {
+		// A MATH accent mark can have its entire ink box above the font
+		// baseline. Its signed lower ink edge is then the useful frame bottom.
+		accentHeight, err = add(accent.Ascent, accent.InkBottom)
+		if err != nil {
+			return nil, err
+		}
+		if accentHeight < 0 {
+			return nil, fmt.Errorf("%w: accent has negative frame height", ErrInvalidInput)
+		}
+	}
 	bodyHeight, err := body.Height()
 	if err != nil {
 		return nil, err
@@ -139,11 +150,11 @@ func (s *layoutState) layoutAccent(node *ir.Accent, env environment, depth int) 
 	fragment.AccentBottom = body.AccentBottom
 	fragment.Italic = body.Italic
 	fragment.TextLike = !node.ExactFrameWidth && body.TextLike
-	baseY, err := sub(bodyTop, baseline)
+	baseY, err := baselineAtTop(bodyTop, body.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}
-	accentY, err := sub(accentTop, baseline)
+	accentY, err := baselineAtTop(accentTop, accent.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}

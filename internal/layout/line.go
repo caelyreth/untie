@@ -77,7 +77,7 @@ func (s *layoutState) layoutLine(node *ir.Line, env environment, depth int) (*Fr
 	fragment.BaseDescent = descent
 	fragment.Italic = body.Italic
 	fragment.TextLike = body.TextLike
-	bodyY, err := sub(bodyTop, baseline)
+	bodyY, err := baselineAtTop(bodyTop, body.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}

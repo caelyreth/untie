@@ -18,6 +18,7 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 		return nil, fmt.Errorf("%w: empty glyph text", ErrInvalidInput)
 	}
 	req := GlyphRequest{
+		Context:  s.ctx,
 		Text:     text,
 		Style:    env.Style,
 		Variant:  env.Variant,
@@ -25,12 +26,9 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 		Features: env.Features,
 	}
 
-	glyph, ok, err := s.glyph(req, stretch)
+	glyph, err := s.glyph(req, stretch)
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("%w: %q in style %s", ErrMissingGlyph, text, env.Style)
 	}
 	scaled, err := s.scaleGlyph(glyph, env.Style, env.Paint)
 	if err != nil {
@@ -47,9 +45,9 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 		return nil, err
 	}
 	fragment.Italic = scaled.Glyph.Italic
+	fragment.TextLike = scaled.Glyph.TextLike
 	fragment.BaseAscent = scaled.Glyph.Ascent
 	fragment.BaseDescent = scaled.Glyph.Descent
-	fragment.TextLike = scaled.Glyph.TextLike
 	fragment.AccentTop = (fragment.Width + fragment.Italic) / 2
 	if scaled.Glyph.HasTopAccent {
 		fragment.AccentTop = scaled.Glyph.TopAccent
@@ -74,59 +72,65 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 	return fragment, nil
 }
 
-func (s *layoutState) glyph(req GlyphRequest, stretch *stretchSpec) (Glyph, bool, error) {
-	glyph, ok := s.renderer.fonts.Glyphs.Glyph(req)
+func (s *layoutState) glyph(req GlyphRequest, stretch *stretchSpec) (Glyph, error) {
+	glyph, err := s.renderer.fonts.Glyphs.Glyph(req)
+	if err != nil {
+		return Glyph{}, err
+	}
 	if stretch == nil {
-		return glyph, ok, nil
+		return glyph, nil
 	}
 	target, err := s.localLength(stretch.target, req.Style)
 	if err != nil {
-		return Glyph{}, false, err
+		return Glyph{}, err
 	}
 	shortFall, err := s.localLength(stretch.shortFall, req.Style)
 	if err != nil {
-		return Glyph{}, false, err
+		return Glyph{}, err
 	}
 	if target < 0 || shortFall < 0 {
-		return Glyph{}, false, fmt.Errorf("%w: negative stretch target", ErrInvalidInput)
+		return Glyph{}, fmt.Errorf("%w: negative stretch target", ErrInvalidInput)
 	}
 	if s.renderer.fonts.Stretch != nil {
-		if stretched, stretchedOK := s.renderer.fonts.Stretch.Stretch(StretchRequest{
+		stretched, err := s.renderer.fonts.Stretch.Stretch(StretchRequest{
 			GlyphRequest: req,
 			Axis:         stretch.axis,
 			Target:       target,
 			ShortFall:    shortFall,
-		}); stretchedOK {
-			glyph, ok = stretched, true
+		})
+		if err != nil {
+			return Glyph{}, err
 		}
-	}
-	if !ok {
-		return Glyph{}, false, nil
+		glyph = stretched
 	}
 	extent, err := glyphExtent(glyph, stretch.axis)
 	if err != nil {
-		return Glyph{}, false, err
+		return Glyph{}, err
 	}
 	required, err := sub(target, shortFall)
 	if err != nil {
-		return Glyph{}, false, err
+		return Glyph{}, err
 	}
 	if extent < required {
 		axis := "horizontal"
 		if stretch.axis == Vertical {
 			axis = "vertical"
 		}
-		return Glyph{}, false, fmt.Errorf(
+		return Glyph{}, fmt.Errorf(
 			"%w: %w: %s glyph extent %d is less than required %d",
 			ErrUnsupported, ErrInsufficientStretch, axis, extent, required,
 		)
 	}
-	return glyph, true, nil
+	return glyph, nil
 }
 
 func glyphExtent(glyph Glyph, axis Axis) (geometry.Em, error) {
 	if axis == Horizontal {
-		return glyph.Advance, nil
+		extent := glyph.Advance
+		if glyph.AdvanceIncludesItalic {
+			return sub(extent, glyph.Italic)
+		}
+		return extent, nil
 	}
 	return add(glyph.Ascent, glyph.Descent)
 }

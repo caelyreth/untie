@@ -1,6 +1,8 @@
 package layout
 
 import (
+	"context"
+
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -33,6 +35,7 @@ type Path []Segment
 
 // GlyphRequest identifies one glyph lookup or shaping operation.
 type GlyphRequest struct {
+	Context  context.Context
 	Text     string
 	Style    Style
 	Variant  ir.Variant
@@ -40,21 +43,23 @@ type GlyphRequest struct {
 	Features []string
 }
 
-// Glyph is a shaped glyph in local ems. Advance is the final layout advance,
-// including any font-specific italic correction. Outline may be empty when the
-// source only exposes a host glyph reference.
+// Glyph is a shaped glyph in local ems. Advance is the final layout advance.
+// AdvanceIncludesItalic reports that Italic has already been incorporated into
+// Advance. Outline may be empty when the source only exposes a host glyph
+// reference.
 type Glyph struct {
-	ID              uint16
-	FontID          string
-	Text            string
-	Advance         geometry.Em
-	Ascent          geometry.Em
-	Descent         geometry.Em
-	Italic          geometry.Em
-	TopAccent       geometry.Em
-	HasTopAccent    bool
-	BottomAccent    geometry.Em
-	HasBottomAccent bool
+	ID                    uint16
+	FontID                string
+	Text                  string
+	Advance               geometry.Em
+	Ascent                geometry.Em
+	Descent               geometry.Em
+	Italic                geometry.Em
+	AdvanceIncludesItalic bool
+	TopAccent             geometry.Em
+	HasTopAccent          bool
+	BottomAccent          geometry.Em
+	HasBottomAccent       bool
 	// InkBottom is the signed y coordinate of the outline's lower edge relative
 	// to the baseline. It may be negative for accents whose ink sits above the
 	// baseline. Fill Outline or set HasInkBottom to preserve exact placement.
@@ -119,7 +124,7 @@ func (k MathKernInfo) at(corner KernCorner) *MathKern {
 
 // GlyphSource is the only glyph-facing dependency of layout.
 type GlyphSource interface {
-	Glyph(req GlyphRequest) (Glyph, bool)
+	Glyph(req GlyphRequest) (Glyph, error)
 }
 
 // StretchRequest asks for a MATH size variant or assembly in local ems.
@@ -134,15 +139,27 @@ type StretchRequest struct {
 // assemblies. Without it, an ordinary glyph is used only if it meets the
 // target; otherwise layout returns ErrInsufficientStretch.
 type GlyphStretcher interface {
-	Stretch(req StretchRequest) (Glyph, bool)
+	Stretch(req StretchRequest) (Glyph, error)
 }
 
 // TextRequest identifies a shaped text run.
 type TextRequest struct {
+	Context  context.Context
 	Text     string
 	Style    Style
 	Variant  ir.Variant
+	Font     ir.FontRole
 	Tracking geometry.Em
+	Features []string
+}
+
+// OperatorRequest identifies one named operator run. Operator text is set as
+// a single upright run so scripts and limits attach to the complete name.
+type OperatorRequest struct {
+	Context  context.Context
+	Text     string
+	Style    Style
+	Variant  ir.Variant
 	Features []string
 }
 
@@ -164,7 +181,12 @@ type TextRun struct {
 
 // TextSource is an optional extension port for deterministic text shaping.
 type TextSource interface {
-	ShapeText(req TextRequest) (TextRun, bool)
+	ShapeText(req TextRequest) (TextRun, error)
+}
+
+// OperatorSource is an optional extension port for named operator runs.
+type OperatorSource interface {
+	ShapeOperator(req OperatorRequest) (TextRun, error)
 }
 
 // TableLine is a resolved table boundary passed to a TableLayouter.
@@ -175,7 +197,9 @@ type TableLine struct {
 	Thickness geometry.Em
 }
 
-// TableRow contains measured cells and an optional measured tag.
+// TableRow contains measured cells and an optional measured tag. Cell and tag
+// Fragments use the same baseline-relative coordinates as every other group;
+// a TableLayouter must place their baseline origins, not their top edges.
 type TableRow struct {
 	Cells []Fragment
 	Tag   *Fragment
@@ -200,8 +224,19 @@ type TableLayouter interface {
 
 // Fonts are the ports required by the layout engine.
 type Fonts struct {
-	Glyphs  GlyphSource
-	Metrics StyleFont
-	Stretch GlyphStretcher
-	Text    TextSource
+	Glyphs    GlyphSource
+	Metrics   StyleFont
+	Stretch   GlyphStretcher
+	Text      TextSource
+	Operators OperatorSource
+}
+
+// baselineAtTop converts a desired child top edge in a parent's top-origin
+// frame to the child baseline offset expected by Fragment.pushGroup.
+func baselineAtTop(top, childAscent, parentAscent geometry.Em) (geometry.Em, error) {
+	value, err := add(top, childAscent)
+	if err != nil {
+		return 0, err
+	}
+	return sub(value, parentAscent)
 }

@@ -170,11 +170,11 @@ func (s *layoutState) layoutVerticalFraction(node *ir.Fraction, env environment,
 
 	numX := (width - numerator.Width) / 2
 	denX := (width - denominator.Width) / 2
-	numY, err := sub(numTop, baseline)
+	numY, err := baselineAtTop(numTop, numerator.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}
-	denY, err := sub(denTop, baseline)
+	denY, err := baselineAtTop(denTop, denominator.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}
@@ -394,11 +394,11 @@ func (s *layoutState) layoutSkewedFraction(node *ir.Fraction, env environment, n
 	fragment.BaseDescent = descent
 	fragment.Italic = numerator.Italic
 	fragment.TextLike = false
-	numY, err = sub(numY, baseline)
+	numY, err = baselineAtTop(numY, numerator.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}
-	denY, err = sub(denY, baseline)
+	denY, err = baselineAtTop(denY, denominator.Ascent, baseline)
 	if err != nil {
 		return nil, err
 	}

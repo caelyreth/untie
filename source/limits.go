@@ -7,8 +7,7 @@ package source
 // Enforcement is split by layer: parsers enforce token, expansion, call, and
 // table-cell limits; ir.Validate enforces source, node, nesting, text, and
 // dimension limits; internal/layout enforces output-item and path-segment
-// limits. MaxAssemblyRepeats is reserved for the Typst evaluator, which
-// currently rejects evaluator-dependent input before assembly can run.
+// limits. Font assembly adapters enforce MaxAssemblyRepeats.
 type Limits struct {
 	MaxSourceBytes     int
 	MaxTokens          int
