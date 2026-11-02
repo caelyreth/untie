@@ -7,7 +7,11 @@
 - TeX display `\tag` and `\tag*` are now formula metadata instead of discarded
   diagnostics. Non-starred tags render display-time parentheses, starred tags
   render their literal body, `\nonumber`/`\notag` survive as suppression events,
-  and display output exposes `Box.Tag` plus constrained `LineBox.Tag`. Every
+  and display output exposes `Box.Tag` plus constrained `LineBox.Tag`.
+  Formula-level tags use `Line=-1` (`FormulaTagLine`) consistently in neutral
+  IR, display output, and public API. Constrained alignment reserves the tag
+  width before positioning the formula, keeping a fitting formula and tag
+  inside `MaxWidth`; overfull content follows the formula with honest overflow. Every
   syntactic argument boundary creates an independent metadata scope, so tags
   cannot be promoted from scripts, required/text/optional arguments, or
   macro-expanded equivalents. Nested Multiline/Table values no longer

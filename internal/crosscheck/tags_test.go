@@ -22,7 +22,7 @@ func TestNormalizeFormulaIncludesEquationTagMetadata(t *testing.T) {
 			Span:   span,
 			Origin: span,
 			Manual: true,
-			Line:   0,
+			Line:   ir.FormulaTagLine,
 		}},
 	}
 	plain := &ir.Formula{Root: ir.NewGlyph(source.NewRange(0, 1), "x")}

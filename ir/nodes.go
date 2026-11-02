@@ -2,6 +2,10 @@ package ir
 
 import "github.com/caelyreth/untie/source"
 
+// FormulaTagLine identifies a tag that belongs to the complete formula rather
+// than one source row. Phase 1 renders only formula-level tags.
+const FormulaTagLine = -1
+
 // Formula is the validated root returned by a frontend lowering pass. Tags are
 // formula metadata rather than synthetic root children.
 type Formula struct {
@@ -12,8 +16,9 @@ type Formula struct {
 // EquationTag is one formula-scoped tag or numbering-suppression event.
 //
 // Body is normal math IR and is nil only for a suppression-only event. Line is
-// -1 for a tag associated with the complete formula, or a zero-based source
-// row for future multiline output. Document counters never enter this type.
+// FormulaTagLine for a tag associated with the complete formula, or a
+// zero-based source row for future multiline output. Document counters never
+// enter this type.
 type EquationTag struct {
 	Body       Node
 	Span       source.Range

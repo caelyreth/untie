@@ -489,13 +489,13 @@ func TestGenerateFormulaIncludesVisibleEquationTags(t *testing.T) {
 				Span:   source.NewRange(1, 2),
 				Origin: source.NewRange(1, 2),
 				Manual: true,
-				Line:   0,
+				Line:   ir.FormulaTagLine,
 			},
 			{
 				Span:       source.NewRange(0, 2),
 				Origin:     source.NewRange(0, 2),
 				Suppressed: true,
-				Line:       0,
+				Line:       ir.FormulaTagLine,
 			},
 		},
 	}
@@ -521,7 +521,7 @@ func TestGenerateFormulaTagOutputObeysTextLimit(t *testing.T) {
 			Span:   source.NewRange(1, 2),
 			Origin: source.NewRange(1, 2),
 			Manual: true,
-			Line:   0,
+			Line:   ir.FormulaTagLine,
 		}},
 	}
 	out, err := GenerateFormulaContext(context.Background(), formula, ir.Display, source.Limits{MaxTextBytes: 4})

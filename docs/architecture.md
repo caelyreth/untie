@@ -282,7 +282,9 @@ width beyond the frame; it is not copied directly as the parent value.
 
 `ir.Formula` carries an equation-tag sidecar beside its root. Tags contain
 normal math IR bodies plus source evidence, manual/suppression/star metadata,
-and a line association. They never appear as synthetic root children, and
+and a line association. `ir.FormulaTagLine` is `-1` and is the sole Phase-1
+formula-level value exposed as `display.TagBox.Line`; nonnegative source-row
+tags remain future multiline metadata. Tags never appear as synthetic root children, and
 document counters never enter neutral IR. Phase 1 attaches one manual tag to a
 display formula; nested Multiline or Table values remain formula content rather
 than invalidating the top-level tag. A positive `MaxWidth` tagged formula
@@ -290,9 +292,13 @@ intentionally uses one complete constrained line because Phase 1 has no
 row-scoped tag ownership. `display.TagBox.Box` is tag-local and is placed by
 `TagBox.X/Y` in parent coordinates. For constrained output, `LineBox.Tag`
 repeats the metadata in the parent frame; its coordinates do not move with
-`OffsetX`. Parent `Items` and `Hits` already include the translated tag
-aggregate. A host drawing per-line items must draw `LineBox.Box` and
-`LineBox.Tag.Box` separately. Non-starred TeX tags receive generated
+`OffsetX`. The formula line aligns within `MaxWidth - TagBox.Width` when the
+formula fits that reserved area, and the tag occupies the right edge of the
+parent frame. If the formula is wider than the reserved area, the line uses
+zero offset and the tag follows the formula with honest overflow. Parent
+`Items` and `Hits` already include the translated tag aggregate. A host
+drawing per-line items must draw `LineBox.Box` and `LineBox.Tag.Box` separately.
+Non-starred TeX tags receive generated
 parentheses at display-layout time; they are not nodes in the neutral tag body.
 Formula-root breaks and root-only source semantics are not polluted by tag
 content.
@@ -312,9 +318,10 @@ logical line-width excess. `Validate` also checks hit ranges/areas and break
 positions. `MarshalCanonical` exists for deterministic tests and diagnostics;
 it is not yet a stable cross-language protocol.
 
-Tag-box validation rejects nil or nested tags, invalid source ranges, malformed
-placement, and aggregate item/hit disagreement. Parent aggregates include tag
-items and hits; constrained parent and line tag metadata and geometry must
+Tag-box validation rejects nil or nested tags, non-manual tags, non-formula
+line values, invalid source ranges, malformed placement, nested tags inside a
+`LineBox.Box`, and aggregate item/hit disagreement. Parent aggregates include
+tag items and hits; constrained parent and line tag metadata and geometry must
 agree, including the targeted line and signed rightmost-run italic correction.
 Parent overflow includes the tag's logical right edge even when trailing tag
 content has no ink. Clone and canonical output own every tag box path and line

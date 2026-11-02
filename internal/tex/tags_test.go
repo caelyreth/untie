@@ -21,7 +21,7 @@ func TestDisplayManualTagsBecomeFormulaMetadata(t *testing.T) {
 		t.Fatalf("tags = %+v, want one", result.Tags)
 	}
 	tag := result.Tags[0]
-	if !tag.Manual || tag.Suppressed || tag.Starred || tag.Line != 0 {
+	if !tag.Manual || tag.Suppressed || tag.Starred || tag.Line != ir.FormulaTagLine {
 		t.Fatalf("tag metadata = %+v", tag)
 	}
 	if tag.Span != source.NewRange(0, 17) || tag.Origin != tag.Span {

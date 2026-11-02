@@ -49,7 +49,9 @@ tests and migration notes.
   tag logical width contributes to parent overflow and the parent italic
   correction follows the rightmost tag run. Tag source semantics do not enter
   formula root breaks. Alternative text appends a deterministic equation-tag
-  phrase.
+  phrase. Constrained display alignment reserves the tag width before placing
+  the formula, so a fitting formula and its tag remain inside `MaxWidth`;
+  formula-level tags use the single public sentinel `Line=-1`.
 - Break metadata carries position and kind, not an invented relative cost.
 - Link syntax is text-only across both frontends: visible body content and source
   spans survive parsing/layout, destinations are intentionally discarded, and
@@ -69,10 +71,10 @@ tests and migration notes.
   cache keyed by complete font identity, effective limits, version, and cache
   schema. `ClearLayoutEngineCache` releases convenience-path retention without
   affecting caller-owned engines.
-- A product-priority daily-STEM acceptance corpus with 87 tracked cases across
-  12 categories, evaluated through the public parse, root, Alt, and layout
-  contracts with tracked NewCM font bytes. It contains 47 TeX and 40 Typst
-  cases, 35 inline and 52 display cases, 34 coverage groups, and 19 explicitly
+- A product-priority daily-STEM acceptance corpus with 92 tracked cases across
+  14 categories, evaluated through the public parse, root, Alt, and layout
+  contracts with tracked NewCM font bytes. It contains 51 TeX and 41 Typst
+  cases, 37 inline and 55 display cases, 35 coverage groups, and 22 explicitly
   source-specific cases. Coverage groups declare reviewed differences; they do
   not claim semantic equivalence.
 

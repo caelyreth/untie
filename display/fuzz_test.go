@@ -153,7 +153,7 @@ func randomBox(data []byte) *Box {
 			},
 			Source: source.NewRange(0, 1),
 			Manual: true,
-			Line:   0,
+			Line:   FormulaTagLine,
 			X:      fuzzAbsFloat(number()),
 		}
 		for _, item := range tag.Box.Items {
@@ -211,7 +211,7 @@ func fuzzTaggedConstrainedBox() *Box {
 		},
 		Source: source.NewRange(0, 1),
 		Manual: true,
-		Line:   0,
+		Line:   FormulaTagLine,
 		X:      2,
 	}
 	return &Box{

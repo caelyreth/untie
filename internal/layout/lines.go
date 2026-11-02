@@ -553,10 +553,14 @@ func (s *layoutState) displayItemsOverflow(items []display.Item, width, ascent, 
 }
 
 func (s *layoutState) displayLineOffset(lineWidth float32) (float32, error) {
-	if lineWidth >= s.request.MaxWidth {
+	return s.displayLineOffsetWithin(lineWidth, s.request.MaxWidth)
+}
+
+func (s *layoutState) displayLineOffsetWithin(lineWidth, frameWidth float32) (float32, error) {
+	if lineWidth >= frameWidth {
 		return 0, nil
 	}
-	remaining, err := s.subHost(s.request.MaxWidth, lineWidth)
+	remaining, err := s.subHost(frameWidth, lineWidth)
 	if err != nil {
 		return 0, err
 	}

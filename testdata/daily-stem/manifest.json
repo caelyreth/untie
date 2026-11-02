@@ -1,14 +1,16 @@
 {
   "schemaVersion": 2,
   "caseFile": "cases.jsonl",
-  "contentSHA256": "b23e1be5af8bfce6598aa8c0d6a6141dd001219b654f621d896e5556a57e4ac2",
-  "count": 87,
+  "contentSHA256": "27b1f443d9643165bcb8d323480d0825ea2811090ec7274398c4d5fa377692b4",
+  "count": 92,
   "categories": {
     "algebra": 10,
     "calculus": 12,
     "delimiters": 6,
     "display-wrapping": 5,
+    "equation-tags": 3,
     "linear-algebra": 10,
+    "links": 2,
     "malformed-input": 4,
     "multiline-cases": 6,
     "physics-engineering": 10,
@@ -18,12 +20,12 @@
     "text-and-fallback": 4
   },
   "dialects": {
-    "tex": 47,
-    "typst": 40
+    "tex": 51,
+    "typst": 41
   },
   "modes": {
-    "display": 52,
-    "inline": 35
+    "display": 55,
+    "inline": 37
   },
   "caseIDs": [
     "algebra.absolute.tex",
@@ -54,6 +56,9 @@
     "delimiter.floor.typst",
     "delimiter.paired.tex",
     "delimiter.paired.typst",
+    "equation-tag.align-end.tex",
+    "equation-tag.constrained.tex",
+    "equation-tag.free.tex",
     "limits.byte-limit.tex",
     "limits.byte-limit.typst",
     "limits.nodes.tex",
@@ -68,6 +73,8 @@
     "linear.transpose.typst",
     "linear.vector.tex",
     "linear.vector.typst",
+    "link.text.tex",
+    "link.text.typst",
     "malformed.fence.tex",
     "malformed.frac.tex",
     "malformed.frac.typst",
@@ -114,6 +121,6 @@
     "wrapping.overfull.tex",
     "wrapping.zero-width-break.tex"
   ],
-  "coverageGroups": 34,
-  "sourceSpecific": 19
+  "coverageGroups": 35,
+  "sourceSpecific": 22
 }
