@@ -83,7 +83,8 @@ reviewed behavior, not outputs that may be changed to hide a regression.
 After an intentional corpus review:
 
 ```sh
-go run ./cmd/dailyreport -update-manifest
+go test ./internal/quality -run '^TestDailySTEMCorpus$' \
+  -args -update-daily-manifest
 ```
 
 Baseline changes must be reviewed as data changes separate from behavior

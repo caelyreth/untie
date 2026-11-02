@@ -75,6 +75,13 @@ Pure-Go verification:
 CGO_ENABLED=0 go test ./...
 ```
 
+The repository-wide corpus and compatibility gates live under
+`internal/quality`:
+
+```sh
+go test ./internal/quality
+```
+
 ## License
 
 Copyright 2026 Yu (Caelyreth).

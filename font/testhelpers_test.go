@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	testFontPath    = "testdata/NewCMMath/NewCMMath-Book.otf"
-	testFixturePath = "testdata/NewCMMath/Typlet/font.jsonl"
+	testFontPath    = "../testdata/upstream/fonts/NewCMMath-Book.otf"
+	testFixturePath = "../testdata/upstream/typlet-0.2.0/fixtures/typst-0.15.1/font.jsonl"
 )
 
 var (

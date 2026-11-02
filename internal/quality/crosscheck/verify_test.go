@@ -16,78 +16,6 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
-func TestPairedConformanceBaseline(t *testing.T) {
-	root, baseline := crosscheckPaths(t)
-	report, err := Verify(context.Background(), Options{
-		FixtureRoot: root, KnownDifferences: baseline,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, err := LoadReport(baseline)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := CompareReports(want, report); err != nil {
-		t.Fatal(err)
-	}
-	if report.Unexplained != 0 {
-		t.Fatalf("Unexplained = %d", report.Unexplained)
-	}
-}
-
-func TestBaselineCoversCorpusExactly(t *testing.T) {
-	root, baseline := crosscheckPaths(t)
-	corpus, err := LoadPairedCorpus(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := LoadReport(baseline)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(corpus.Cases) != len(report.Cases) {
-		t.Fatalf("corpus has %d cases, baseline has %d", len(corpus.Cases), len(report.Cases))
-	}
-	for i, testCase := range corpus.Cases {
-		result := report.Cases[i]
-		if result.ID != testCase.ID || result.Category != testCase.Category {
-			t.Fatalf("case %d: baseline %q/%q, corpus %q/%q",
-				i+1, result.ID, result.Category, testCase.ID, testCase.Category)
-		}
-		if result.Kind != Pass && result.KnownReason == "" {
-			t.Fatalf("case %q has no reason", result.ID)
-		}
-	}
-}
-
-func TestSourcePairDifferencesHaveSpecificReasons(t *testing.T) {
-	t.Parallel()
-
-	_, baseline := crosscheckPaths(t)
-	report, err := LoadReport(baseline)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sourceDifferences := []string{
-		"middle", "braket", "greek", "arrows", "euler-product",
-		"text-in-math", "null-delim", "color",
-	}
-	byID := make(map[string]CaseResult, len(report.Cases))
-	for _, result := range report.Cases {
-		byID[result.ID] = result
-	}
-	for _, id := range sourceDifferences {
-		result, ok := byID[id]
-		if !ok {
-			t.Fatalf("missing source-pair case %q", id)
-		}
-		if !strings.Contains(strings.ToLower(result.KnownReason), "source-pair difference") {
-			t.Fatalf("%s reason = %q, want a source-pair classification", id, result.KnownReason)
-		}
-	}
-}
-
 func TestSupplementaryPlaneSpansAndLayout(t *testing.T) {
 	root, _ := crosscheckPaths(t)
 	harness := testHarness(t, root)
@@ -839,7 +767,7 @@ func crosscheckPaths(t *testing.T) (string, string) {
 	}
 	pkg := filepath.Dir(file)
 	return filepath.Join(pkg, "..", "..", "..", "testdata", "upstream"),
-		filepath.Join(pkg, "testdata", "paired-baseline.json")
+		filepath.Join(pkg, "..", "..", "..", "testdata", "crosscheck", "paired-baseline.json")
 }
 
 func testHarness(t *testing.T, fixtureRoot string) *layoutHarness {

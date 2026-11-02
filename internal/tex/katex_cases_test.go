@@ -19,7 +19,7 @@ type katexCase struct {
 func TestStaticKaTeXCases(t *testing.T) {
 	t.Parallel()
 
-	data, err := os.ReadFile("testdata/katex_cases.json")
+	data, err := os.ReadFile("../../testdata/tex/katex_cases.json")
 	if err != nil {
 		t.Fatal(err)
 	}

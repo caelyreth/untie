@@ -2,55 +2,17 @@ package conformance
 
 import (
 	"bytes"
-	"context"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 	"unicode/utf8"
 
 	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
-
-func TestTypstConformanceBaseline(t *testing.T) {
-	if raceEnabled {
-		t.Skip("process-per-case corpus is covered by non-race CI; run package race tests without baseline workers")
-	}
-	packageRoot := conformancePackageRoot(t)
-	report, err := BuildTypstReport(context.Background(), SuiteOptions{
-		FixtureRoot: filepath.Join(packageRoot, "..", "..", "..", "testdata", "upstream"),
-		PolicyPath:  filepath.Join(packageRoot, "testdata", "typst-policy.json"),
-		Frontend:    testTypstProcessFrontend(),
-		CaseTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := report.Validate(); err != nil {
-		t.Fatalf("actual report: %v", err)
-	}
-	if err := CheckTypstCorpusSet(report); err != nil {
-		t.Fatal(err)
-	}
-	if report.Summary.Unexplained != 0 {
-		t.Fatalf("report has %d unexplained cases", report.Summary.Unexplained)
-	}
-	if report.Summary.Total != 171 {
-		t.Fatalf("total = %d, want 171", report.Summary.Total)
-	}
-
-	want, err := LoadReport(filepath.Join(packageRoot, "testdata", "typst-baseline.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if difference := CompareReports(want, report); difference != "" {
-		t.Fatalf("Typst conformance baseline changed; review the behavior before explicitly regenerating with cmd/typstreport: %s", difference)
-	}
-}
 
 func TestTypstSupplementarySpansUseUTF8ByteOffsets(t *testing.T) {
 	packageRoot := conformancePackageRoot(t)

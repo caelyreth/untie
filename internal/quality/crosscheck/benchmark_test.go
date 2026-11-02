@@ -71,7 +71,7 @@ func benchmarkPaths(tb testing.TB) (string, string) {
 	}
 	pkg := filepath.Dir(file)
 	return filepath.Join(pkg, "..", "..", "..", "testdata", "upstream"),
-		filepath.Join(pkg, "testdata", "paired-baseline.json")
+		filepath.Join(pkg, "..", "..", "..", "testdata", "crosscheck", "paired-baseline.json")
 }
 
 func benchmarkHarness(tb testing.TB, root string) *layoutHarness {

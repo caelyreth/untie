@@ -1,10 +1,8 @@
 package daily
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -14,67 +12,6 @@ import (
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
-
-func TestTrackedDailyCorpusPasses(t *testing.T) {
-	cases, _ := loadTrackedCorpus(t)
-	fontPath := filepath.Join("..", "..", "..", "testdata", "upstream", "fonts", "NewCMMath-Book.otf")
-	fonts, err := LoadFonts(fontPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runner, err := NewRunner(fonts, 2*time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := runner.Run(t.Context(), cases)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := report.Validate(); err != nil {
-		for _, result := range report.Cases {
-			t.Logf("%s: matched=%v verdict=%q outcome=%q detail=%q",
-				result.ID, result.Matched, result.Verdict, result.Outcome, result.Detail)
-		}
-		t.Fatal(err)
-	}
-	want := Summary{
-		Total: 92, Pass: 92, KnownIssueFailures: 0, UnexpectedFailures: 0,
-		Rendered: 80, Recovered: 7, MissingGlyph: 4, LayoutError: 1, Failure: 0,
-	}
-	if report.Summary != want {
-		t.Fatalf("summary = %+v, want %+v", report.Summary, want)
-	}
-	for _, result := range report.Cases {
-		if result.Verdict != verdictPass || !result.Matched {
-			t.Errorf("%s verdict=%s matched=%v detail=%s",
-				result.ID, result.Verdict, result.Matched, result.Detail)
-		}
-	}
-	if _, err := report.MarshalCanonical(); err != nil {
-		t.Fatalf("canonical report: %v", err)
-	}
-
-	subset := selectCases(t, cases, "algebra.fraction.tex", "algebra.fraction.typst")
-	first, err := runner.Run(t.Context(), subset)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := runner.Run(t.Context(), subset)
-	if err != nil {
-		t.Fatal(err)
-	}
-	firstJSON, err := first.MarshalCanonical()
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondJSON, err := second.MarshalCanonical()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(firstJSON, secondJSON) {
-		t.Fatal("repeated subset runs produced different reports")
-	}
-}
 
 func TestKnownIssuesFailClosed(t *testing.T) {
 	t.Parallel()

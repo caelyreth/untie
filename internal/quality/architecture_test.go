@@ -43,18 +43,6 @@ var allowedProjectImports = map[string]packageRules{
 		},
 		Tests: []string{modulePath, modulePath + "/geometry"},
 	},
-	modulePath + "/cmd/formula-check": {
-		Production: []string{modulePath, modulePath + "/ir"},
-	},
-	modulePath + "/cmd/formula-preview": {
-		Production: []string{modulePath, modulePath + "/internal/testrender"},
-	},
-	modulePath + "/cmd/crosscheck": {
-		Production: []string{modulePath + "/internal/quality/crosscheck", modulePath + "/internal/quality/fixture"},
-	},
-	modulePath + "/cmd/dailyreport": {
-		Production: []string{modulePath + "/internal/quality/daily"},
-	},
 	modulePath + "/display": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
@@ -87,7 +75,13 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/source",
 		},
 	},
-	modulePath + "/internal/quality": {},
+	modulePath + "/internal/quality": {
+		Tests: []string{
+			modulePath + "/internal/quality/conformance",
+			modulePath + "/internal/quality/crosscheck",
+			modulePath + "/internal/quality/daily",
+		},
+	},
 	modulePath + "/internal/quality/conformance": {
 		Production: []string{
 			modulePath + "/internal/quality/fixture",
@@ -96,12 +90,6 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
-	},
-	modulePath + "/internal/quality/conformance/cmd/texreport": {
-		Production: []string{modulePath + "/internal/quality/conformance", modulePath + "/internal/quality/fixture"},
-	},
-	modulePath + "/internal/quality/conformance/cmd/typstreport": {
-		Production: []string{modulePath + "/internal/quality/conformance", modulePath + "/internal/quality/fixture"},
 	},
 	modulePath + "/internal/quality/crosscheck": {
 		Production: []string{
@@ -132,9 +120,6 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/internal/mathdata":     {},
 	modulePath + "/internal/mathdata/gen": {},
-	modulePath + "/internal/testrender": {
-		Production: []string{modulePath + "/display", modulePath + "/geometry"},
-	},
 	modulePath + "/internal/tex": {
 		Production: []string{
 			modulePath + "/geometry",
