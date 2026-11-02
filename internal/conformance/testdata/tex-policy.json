@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "diagnosticExpectations": [
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/repeated-infix"],
+      "codes": ["unexpected-token"],
+      "reason": "KaTeX rejects multiple infix operators in one group"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/conflicting-infix"],
+      "codes": ["unexpected-token"],
+      "reason": "KaTeX rejects conflicting infix operators"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-superscript-group"],
+      "codes": ["missing-argument"],
+      "reason": "KaTeX requires a group after a superscript marker"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-subscript-group"],
+      "codes": ["missing-argument"],
+      "reason": "KaTeX requires a group after a subscript marker"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/sqrt-as-superscript"],
+      "codes": ["missing-argument"],
+      "reason": "KaTeX rejects a function without an argument in script position"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/limits-without-operator"],
+      "codes": ["unexpected-token"],
+      "reason": "limit controls must follow a math operator"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/limits-at-start"],
+      "codes": ["unexpected-token"],
+      "reason": "limit controls at the start have no preceding operator"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/double-superscript"],
+      "codes": ["unexpected-token"],
+      "reason": "KaTeX rejects a second superscript on one nucleus"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/prime-double-superscript"],
+      "codes": ["unexpected-token"],
+      "reason": "a prime already establishes the superscript slot"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/double-subscript"],
+      "codes": ["unexpected-token"],
+      "reason": "KaTeX rejects a second subscript on one nucleus"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/unknown-environment"],
+      "codes": ["invalid-environment"],
+      "reason": "unknown environment names are parse errors"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/mismatched-environment"],
+      "codes": ["invalid-environment"],
+      "reason": "begin and end environment names must match"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/math-function-in-text"],
+      "codes": ["unsupported"],
+      "reason": "math functions inside text are explicitly unsupported"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-argument-eof"],
+      "codes": ["missing-argument"],
+      "reason": "a command at end of input is missing its required argument"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/undefined-control-sequence"],
+      "codes": ["unknown-command"],
+      "reason": "undefined control sequences are parse errors"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/extra-close-brace"],
+      "codes": ["unexpected-token"],
+      "reason": "an unmatched closing brace is rejected"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/top-level-alignment"],
+      "codes": ["unexpected-token"],
+      "reason": "alignment tabs are only legal inside supported environments"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-right"],
+      "codes": ["unclosed-group"],
+      "reason": "an unmatched left delimiter is rejected"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-color-brace"],
+      "codes": ["invalid-value"],
+      "reason": "the color argument is syntactically invalid"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/invalid-size-unit"],
+      "codes": ["invalid-value"],
+      "reason": "the rule dimension uses an unsupported unit"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/lone-backslash"],
+      "codes": ["syntax"],
+      "reason": "a terminal backslash is not a complete control sequence"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/unknown-column-type"],
+      "codes": ["invalid-value"],
+      "reason": "the array column specification is invalid"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/invalid-opening-delimiter"],
+      "codes": ["invalid-value"],
+      "reason": "a sized opening delimiter command has no valid delimiter"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/invalid-closing-delimiter"],
+      "codes": ["invalid-value"],
+      "reason": "a sized closing delimiter command has no valid delimiter"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-end"],
+      "codes": ["invalid-environment"],
+      "reason": "an environment without a closing end is rejected"
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/invalid-combining"],
+      "codes": ["unsupported"],
+      "reason": "the combining mark is not a recognized math accent"
+    }
+  ],
+  "exclusions": [
+    {
+      "corpus": "ratex-core",
+      "families": [
+        "command:\\big",
+        "command:\\Big",
+        "command:\\bigg",
+        "command:\\Bigg",
+        "command:\\bigl",
+        "command:\\Bigl",
+        "command:\\biggl",
+        "command:\\Biggl",
+        "command:\\bigm",
+        "command:\\Bigm",
+        "command:\\biggm",
+        "command:\\Biggm",
+        "command:\\bigr",
+        "command:\\Bigr",
+        "command:\\biggr",
+        "command:\\Biggr"
+      ],
+      "codes": ["unsupported"],
+      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion."
+    }
+  ],
+  "knownGaps": [
+    {
+      "corpus": "ratex-core",
+      "codes": ["unknown-command", "invalid-environment", "unexpected-token", "invalid-value"],
+      "reason": "The TeX frontend has not yet implemented or currently rejects this in-scope construct; the exact case, family, and diagnostic are frozen for parser coverage work."
+    },
+    {
+      "corpus": "ratex-core",
+      "ids": ["line:000980"],
+      "reason": "Unicode mathematical letters inside text are explicitly reported as unsupported pending text-shaping coverage."
+    },
+    {
+      "corpus": "ratex-core",
+      "families": ["command:\\text"],
+      "reason": "Text-mode parsing can enter a nonterminating loop for this case; process isolation turns it into a reviewed frontend timeout."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/limits-at-start"],
+      "reason": "The frontend reports an unknown-command diagnostic rather than rejecting the limit control itself."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/missing-color-brace"],
+      "reason": "The frontend reports token and command diagnostics instead of the expected invalid color value."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/invalid-size-unit"],
+      "reason": "The frontend does not yet parse \\rule dimensions and reports the command as unknown instead."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/repeated-infix"],
+      "reason": "The frontend currently recovers silently from repeated infix operators instead of rejecting them."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/conflicting-infix"],
+      "reason": "The frontend currently recovers silently from conflicting infix operators instead of rejecting them."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/sqrt-as-superscript"],
+      "reason": "The frontend currently recovers silently when a root function appears in a script slot."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/math-function-in-text"],
+      "reason": "The frontend nonterminates on a math function inside text before it can emit the expected unsupported diagnostic."
+    },
+    {
+      "corpus": "katex-cases",
+      "ids": ["errors/invalid-combining"],
+      "reason": "The frontend currently accepts an unrecognized combining mark without a diagnostic."
+    }
+  ]
+}
