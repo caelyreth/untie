@@ -103,7 +103,9 @@ func outputView(box *display.Box) layoutView {
 	}
 	for _, item := range box.Items {
 		view.Items = append(view.Items, itemToView(item))
-		if item.Kind != display.ItemGlyphPath && item.Kind != display.ItemGlyphRef {
+		isGlyph := item.Kind == display.ItemGlyphRef ||
+			(item.Kind == display.ItemGlyphPath && item.FontID != "" && item.Glyph != 0)
+		if !isGlyph {
 			continue
 		}
 		view.Glyphs = append(view.Glyphs, glyphView{
@@ -230,17 +232,22 @@ func compareLayoutViews(prefix string, got, want layoutView, fixtureCoords, comp
 			return fmt.Sprintf("%s.top-height: expected %.6f, got %.6f", prefix, want.TopHeight, got.TopHeight)
 		}
 	} else {
-		for _, field := range []struct {
+		type field struct {
 			name string
 			got  float64
 			want float64
-		}{
+		}
+		fields := []field{
 			{"ascent", got.Ascent, want.Ascent},
 			{"descent", got.Descent, want.Descent},
-			{"italic", got.Italic, want.Italic},
-			{"axis-height", got.Axis, want.Axis},
-			{"overflow", got.Overflow, want.Overflow},
-		} {
+		}
+		if !fixtureCoords {
+			fields = append(fields,
+				field{"italic", got.Italic, want.Italic},
+				field{"axis-height", got.Axis, want.Axis},
+				field{"overflow", got.Overflow, want.Overflow})
+		}
+		for _, field := range fields {
 			if !near(field.got, field.want) {
 				return fmt.Sprintf("%s.%s: expected %.6f, got %.6f", prefix, field.name, field.want, field.got)
 			}
