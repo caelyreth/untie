@@ -6,11 +6,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"unicode/utf8"
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/font"
+	"github.com/caelyreth/untie/internal/engine"
 	"github.com/caelyreth/untie/internal/tex"
 	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
@@ -84,9 +86,8 @@ var (
 	ErrInvalidExpr = errors.New("untie: nil expression")
 	// ErrInvalidFonts reports a missing prepared font set.
 	ErrInvalidFonts = errors.New("untie: nil font set")
-	// ErrLayoutNotImplemented reports that the production layout backend is not
-	// wired into the public facade yet.
-	ErrLayoutNotImplemented = errors.New("untie: layout backend not implemented")
+	// ErrInvalidStyle reports an invalid host layout style.
+	ErrInvalidStyle = errors.New("untie: invalid layout style")
 )
 
 // Parse parses source into an expression. Malformed source produces diagnostics
@@ -292,8 +293,11 @@ func LoadFonts(fonts Fonts) (*FontSet, error) {
 	return font.Load(fonts)
 }
 
-// LayoutContext lays out an expression. The layout backend is installed in a
-// later work package; the initial implementation reports that clearly.
+// LayoutContext lays out an expression with cancellation and resource limits.
+//
+// The facade currently constructs an engine per call. A renderer registry keyed
+// by FontSet and layout limits is a follow-up optimization, not part of this
+// correctness boundary.
 func LayoutContext(ctx context.Context, e *Expr, fonts *FontSet, style Style) (*Box, error) {
 	if ctx == nil {
 		return nil, ErrInvalidContext
@@ -307,7 +311,28 @@ func LayoutContext(ctx context.Context, e *Expr, fonts *FontSet, style Style) (*
 	if fonts == nil {
 		return nil, ErrInvalidFonts
 	}
-	return nil, ErrLayoutNotImplemented
+	if err := validateLayoutStyle(style); err != nil {
+		return nil, err
+	}
+	root := e.rootForLayout()
+	if root == nil || root.Root == nil {
+		return nil, ErrInvalidExpr
+	}
+	layoutEngine, err := engine.New(fonts, e.limits)
+	if err != nil {
+		return nil, fmt.Errorf("untie: prepare layout: %w", err)
+	}
+	box, err := layoutEngine.Layout(ctx, root.Root, e.mode, style)
+	if err != nil {
+		return nil, err
+	}
+	if box == nil {
+		return nil, fmt.Errorf("untie: layout returned a nil box")
+	}
+	if err := box.Validate(); err != nil {
+		return nil, fmt.Errorf("untie: invalid layout output: %w", err)
+	}
+	return box, nil
 }
 
 // Layout lays out an expression with a background context.
@@ -317,6 +342,22 @@ func Layout(e *Expr, fonts *FontSet, style Style) *Box {
 		return nil
 	}
 	return box
+}
+
+func validateLayoutStyle(style Style) error {
+	if style.Size <= 0 || math.IsNaN(float64(style.Size)) || math.IsInf(float64(style.Size), 0) {
+		return fmt.Errorf("%w: size must be finite and positive", ErrInvalidStyle)
+	}
+	if style.MaxWidth < 0 || math.IsNaN(float64(style.MaxWidth)) || math.IsInf(float64(style.MaxWidth), 0) {
+		return fmt.Errorf("%w: max width must be finite and non-negative", ErrInvalidStyle)
+	}
+	if style.Align > display.AlignEnd {
+		return fmt.Errorf("%w: unknown alignment %d", ErrInvalidStyle, style.Align)
+	}
+	if style.ScriptLevel < 0 {
+		return fmt.Errorf("%w: negative script level", ErrInvalidStyle)
+	}
+	return nil
 }
 
 func fallbackFormula(src string, limits source.Limits) *ir.Formula {

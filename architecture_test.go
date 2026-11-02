@@ -26,6 +26,7 @@ var allowedProjectImports = map[string][]string{
 	modulePath: {
 		modulePath + "/display",
 		modulePath + "/font",
+		modulePath + "/internal/engine",
 		modulePath + "/internal/tex",
 		modulePath + "/internal/typst",
 		modulePath + "/ir",
@@ -39,11 +40,25 @@ var allowedProjectImports = map[string][]string{
 		modulePath + "/geometry",
 	},
 	modulePath + "/font": {
+		"github.com/go-opentype/opentype",
+		"github.com/go-text/typesetting/font",
+		"github.com/go-text/typesetting/font/opentype",
 		modulePath + "/geometry",
 		modulePath + "/internal/mathdata",
 		modulePath + "/source",
 	},
 	modulePath + "/geometry": nil,
+	modulePath + "/internal/engine": {
+		modulePath + "/display",
+		modulePath + "/font",
+		modulePath + "/geometry",
+		modulePath + "/internal/layout",
+		modulePath + "/internal/mathdata",
+		modulePath + "/internal/tex",
+		modulePath + "/internal/typst",
+		modulePath + "/ir",
+		modulePath + "/source",
+	},
 	modulePath + "/internal/fixture": {
 		modulePath + "/geometry",
 		modulePath + "/source",
@@ -144,6 +159,9 @@ func packageImportViolations(pkg string, imports []string, allow map[string][]st
 			violations = append(violations, fmt.Sprintf("%s imports cgo", pkg))
 			continue
 		}
+		if allowedSet[imp] {
+			continue
+		}
 		if !strings.HasPrefix(imp, modulePath+"/") && imp != modulePath {
 			first := strings.SplitN(imp, "/", 2)[0]
 			if strings.Contains(first, ".") {
@@ -151,9 +169,7 @@ func packageImportViolations(pkg string, imports []string, allow map[string][]st
 			}
 			continue
 		}
-		if !allowedSet[imp] {
-			violations = append(violations, fmt.Sprintf("%s imports %s outside its exact allowlist", pkg, imp))
-		}
+		violations = append(violations, fmt.Sprintf("%s imports %s outside its exact allowlist", pkg, imp))
 	}
 	return violations
 }

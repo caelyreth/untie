@@ -3,6 +3,7 @@ package untie
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -114,8 +115,9 @@ func TestLayoutContextRejectsNilAndDoesNotReportFalseSuccess(t *testing.T) {
 	t.Parallel()
 
 	expr := Parse("x", TeX, Inline, ParseOptions{})
+	fonts := loadTestFonts(t)
 	//nolint:staticcheck // This assertion intentionally verifies nil-context handling.
-	if _, err := LayoutContext(nil, expr, nil, Style{}); !errors.Is(err, ErrInvalidContext) {
+	if _, err := LayoutContext(nil, expr, fonts, Style{Size: 16}); !errors.Is(err, ErrInvalidContext) {
 		t.Fatalf("nil context error = %v", err)
 	}
 	if _, err := LayoutContext(context.Background(), nil, nil, Style{}); !errors.Is(err, ErrInvalidExpr) {
@@ -124,12 +126,32 @@ func TestLayoutContextRejectsNilAndDoesNotReportFalseSuccess(t *testing.T) {
 	if _, err := LayoutContext(context.Background(), expr, nil, Style{}); !errors.Is(err, ErrInvalidFonts) {
 		t.Fatalf("nil fonts error = %v", err)
 	}
-	if box, err := LayoutContext(context.Background(), expr, &FontSet{}, Style{}); !errors.Is(err, ErrLayoutNotImplemented) || box != nil {
-		t.Fatalf("LayoutContext() = %v, %v, want nil, ErrLayoutNotImplemented", box, err)
+	if box, err := LayoutContext(context.Background(), expr, fonts, Style{}); !errors.Is(err, ErrInvalidStyle) || box != nil {
+		t.Fatalf("LayoutContext(invalid style) = %v, %v, want nil, ErrInvalidStyle", box, err)
 	}
-	if box := Layout(expr, &FontSet{}, Style{}); box != nil {
-		t.Fatalf("Layout() = %v, want nil while backend is unavailable", box)
+	box, err := LayoutContext(context.Background(), expr, fonts, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("LayoutContext() error = %v", err)
 	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("LayoutContext() box invalid: %v", err)
+	}
+	if box := Layout(expr, fonts, Style{Size: 16}); box == nil {
+		t.Fatal("Layout() = nil for valid input")
+	}
+}
+
+func loadTestFonts(t *testing.T) *FontSet {
+	t.Helper()
+	data, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		t.Fatalf("read test font: %v", err)
+	}
+	fonts, err := LoadFonts(Fonts{Math: FontData{Bytes: data, ID: "NewCMMath-Book"}})
+	if err != nil {
+		t.Fatalf("LoadFonts() error = %v", err)
+	}
+	return fonts
 }
 
 func TestRootReturnsIndependentSnapshots(t *testing.T) {
