@@ -39,3 +39,7 @@
 - Full LaTeX `hyperref` behavior, Typst labels/references as destinations,
   destination metadata, and clickable output are outside the neutral formula
   IR.
+- TeX URL catcodes are applied lexically to a literal braced group in source or
+  a host macro body. Bare `\url%...` remains a normal TeX comment, and text
+  assembled only from already-lexed macro arguments is not retroactively
+  reparsed as a raw URL.

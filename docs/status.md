@@ -213,7 +213,10 @@ The following are genuine gaps, not hidden behavior:
   pieces, equation numbering, tags, link destinations, Typst label/reference
   destinations, full `hyperref` behavior, MathML output, rasterization, and SVG
   export are not product features. `\nobreak` and cost-based line breaking are
-  explicitly unsupported. SVG support is test-only.
+  explicitly unsupported. TeX URL catcodes apply to a literal braced group in
+  source or a host macro body; bare `\url%...` remains a comment, and macro
+  arguments that were already lexed are not reparsed as raw URLs. SVG support
+  is test-only.
 - The daily corpus prioritizes ordinary STEM notation over reference-project
   completeness. Its content digest and exact expectations pass with no tracked
   issue entries, including four explicit missing-glyph boundaries. Chinese text

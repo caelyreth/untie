@@ -306,6 +306,12 @@ values; labels, references, and document-level resolution are outside the
 current evaluator. Full `hyperref` behavior and clickable output belong to a
 future backend rather than the math IR.
 
+URL catcodes are lexical rather than a second macro evaluator. Preservation
+therefore applies to a literal braced group present in source or host-macro
+text. A bare `%` after `\url` remains a TeX comment, and a URL assembled only
+from tokens already lexed as macro arguments cannot recover characters that the
+outer lexer removed as comments.
+
 ## Public Orchestration
 
 The root package is a coordinator:
