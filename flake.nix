@@ -1,5 +1,5 @@
 {
-  description = "Neverland - a writing workspace built with Go and MyGo";
+  description = "Untie - a pure-Go TeX and Typst math renderer";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

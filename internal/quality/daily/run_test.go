@@ -236,22 +236,3 @@ func TestAncestorFenceHitDoesNotCoverDelimiterLeaf(t *testing.T) {
 		t.Fatalf("validateHits() = %q", problem)
 	}
 }
-
-func selectCases(t testing.TB, cases []Case, ids ...string) []Case {
-	t.Helper()
-	selected := make([]Case, 0, len(ids))
-	for _, id := range ids {
-		index := -1
-		for i := range cases {
-			if cases[i].ID == id {
-				index = i
-				break
-			}
-		}
-		if index < 0 {
-			t.Fatalf("case %q not found", id)
-		}
-		selected = append(selected, cases[index])
-	}
-	return selected
-}
