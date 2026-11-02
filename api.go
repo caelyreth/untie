@@ -39,6 +39,16 @@ type (
 	Diagnostic = source.Diagnostic
 	Severity   = source.Severity
 	Box        = display.Box
+	Item       = display.Item
+	ItemKind   = display.ItemKind
+	Paint      = display.Paint
+	Role       = display.Role
+	RGBA       = display.RGBA
+	Hit        = display.Hit
+	HitKind    = display.HitKind
+	Break      = display.Break
+	BreakKind  = display.BreakKind
+	Align      = display.Align
 	FontData   = font.FontData
 	Fonts      = font.Fonts
 	FontSet    = font.FontSet
@@ -52,6 +62,33 @@ const (
 	SeverityError   = source.SeverityError
 	SeverityWarning = source.SeverityWarning
 	SeverityInfo    = source.SeverityInfo
+
+	ItemGlyphPath = display.ItemGlyphPath
+	ItemRule      = display.ItemRule
+	ItemGlyphRef  = display.ItemGlyphRef
+
+	RoleInk         = display.RoleInk
+	RoleError       = display.RoleError
+	RolePlaceholder = display.RolePlaceholder
+
+	HitAtom                = display.HitAtom
+	HitGroup               = display.HitGroup
+	HitScript              = display.HitScript
+	HitFractionNumerator   = display.HitFractionNumerator
+	HitFractionDenominator = display.HitFractionDenominator
+	HitRadical             = display.HitRadical
+	HitFence               = display.HitFence
+	HitTableCell           = display.HitTableCell
+	HitRow                 = display.HitRow
+	HitOther               = display.HitOther
+
+	BreakRelation = display.BreakRelation
+	BreakBinary   = display.BreakBinary
+	BreakExplicit = display.BreakExplicit
+
+	AlignStart  = display.AlignStart
+	AlignCenter = display.AlignCenter
+	AlignEnd    = display.AlignEnd
 )
 
 // Macro is a host-provided TeX macro.
