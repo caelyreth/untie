@@ -80,6 +80,9 @@ func TestTypstConformance(t *testing.T) {
 	if report.Summary.Total != 171 {
 		t.Fatalf("total = %d, want 171", report.Summary.Total)
 	}
+	if err := checkTypstBugBudget(report, typstKnownBugMaximum, typstKnownBugIDs); err != nil {
+		t.Fatal(err)
+	}
 	if *updateTypstBaseline {
 		data, err := report.CanonicalJSON()
 		if err != nil {
