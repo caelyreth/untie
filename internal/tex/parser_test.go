@@ -201,15 +201,6 @@ func TestCoreConstructsLowerToOnePassIR(t *testing.T) {
 			},
 		},
 		{
-			source: `\hat{x}`,
-			check: func(t *testing.T, root ir.Node) {
-				accent := requireKind[*ir.Accent](t, rowItems(t, root)[0])
-				if accent.Position != ir.PositionAbove || accent.Body == nil || accent.Accent == nil {
-					t.Errorf("accent was not lowered: %#v", accent)
-				}
-			},
-		},
-		{
 			source: `\text{hello world}`,
 			check: func(t *testing.T, root ir.Node) {
 				text := collectText(root)

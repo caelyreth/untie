@@ -13,6 +13,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 			return &astOperatorNode{
 				astBase: newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
 				text:    spec.text,
+				variant: spec.variant,
 				limits:  spec.limits,
 			}
 		}
@@ -28,6 +29,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	if spec, ok := accentCommands[t.text]; ok {
 		body := p.parseRequiredArgument(t)
 		mark := newGlyphAST(t.span, spec.text, ir.ClassDiacritic)
+		p.unsupportedLayout(source.Merge(t.span, body.base().span), "accent")
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,
@@ -71,7 +73,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseLeftRight(t)
 	case "\\right", "\\middle":
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnexpectedToken,
 			Message:  t.text + " without matching \\left",
@@ -115,8 +117,16 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	case "\\hspace", "\\hskip", "\\mspace":
 		amount := p.parseDimension(t, true)
 		return &astSpaceNode{astBase: newASTBaseAt(astSpace, t.span, tokenOrigin(t)), kind: ir.SpaceExplicit, amount: amount}
-	case "\\nobreak", "\\allowbreak":
+	case "\\allowbreak":
 		return &astBreakNode{astBase: newASTBaseAt(astBreak, t.span, tokenOrigin(t)), kind: ir.BreakExplicit}
+	case "\\nobreak":
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnsupported,
+			Message:  "line-break suppression is not represented in the neutral IR",
+		})
+		return nil
 	case "\\relax":
 		return nil
 	case "\\def", "\\gdef", "\\edef", "\\xdef":
@@ -135,7 +145,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseEnvironment(t)
 	case "\\end":
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidEnvironment,
 			Message:  "\\end without matching \\begin",
@@ -149,7 +159,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseSizedDelimiter(t)
 	case "\\\\":
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnexpectedToken,
 			Message:  "line break is only valid in a math environment",
@@ -159,14 +169,14 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 
 	if strings.HasPrefix(t.text, "\\") {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnknownCommand,
 			Message:  "undefined control sequence: " + t.text,
 		})
 	} else {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeSyntax,
 			Message:  "unexpected token '" + t.text + "'",
@@ -199,9 +209,10 @@ func (p *parser) parseBinomial(command token) astNode {
 	fraction := p.parseFraction(command)
 	f := fraction.(*astFractionNode)
 	f.bar = false
-	if command.text == "\\dbinom" {
+	switch command.text {
+	case "\\dbinom":
 		f.size = ir.SizeDisplay
-	} else if command.text == "\\tbinom" {
+	case "\\tbinom":
 		f.size = ir.SizeText
 	}
 	return &astFencedNode{
@@ -274,7 +285,7 @@ func (p *parser) parseLeftRight(command token) astNode {
 			}
 		default:
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(next.span),
+				Range:    normalizeRange(next.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnclosedGroup,
 				Message:  "missing \\right for \\left",
@@ -294,7 +305,7 @@ func (p *parser) parseDelimiter(owner token, fallbackClass ir.MathClass) astNode
 	t := p.exp.next()
 	if t.isEOF() || t.is(tokEndGroup) {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(owner.span),
+			Range:    normalizeRange(owner.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "missing delimiter after '" + owner.text + "'",
@@ -304,7 +315,7 @@ func (p *parser) parseDelimiter(owner token, fallbackClass ir.MathClass) astNode
 	spec, ok := delimiterCommands[t.text]
 	if !ok {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  "invalid delimiter '" + t.text + "'",
@@ -332,6 +343,7 @@ func (p *parser) parseLine(command token, position ir.Position) astNode {
 
 func (p *parser) parseCancel(command token) astNode {
 	body := p.parseRequiredArgument(command)
+	p.unsupportedLayout(source.Merge(command.span, body.base().span), "cancellation")
 	return &astCancelNode{
 		astBase:  newASTBaseAt(astCancel, source.Merge(command.span, body.base().span), tokenOrigin(command)),
 		body:     body,
@@ -364,7 +376,7 @@ func (p *parser) parseSizedDelimiter(command token) astNode {
 	spec, ok := delimiterCommands[t.text]
 	if !ok || spec.text == "." {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  "invalid delimiter after '" + command.text + "'",
@@ -372,7 +384,7 @@ func (p *parser) parseSizedDelimiter(command token) astNode {
 		return astErr(t.span, t.text, source.CodeInvalidValue)
 	}
 	p.report(source.Diagnostic{
-		Range:    nonEmptyRange(source.Merge(command.span, t.span)),
+		Range:    normalizeRange(source.Merge(command.span, t.span)),
 		Severity: source.SeverityError,
 		Code:     source.CodeUnsupported,
 		Message:  "explicit delimiter size command is not represented in the current neutral IR",
@@ -385,4 +397,13 @@ func fixedDelimiterClass(class ir.MathClass) ir.MathClass {
 		return ir.ClassFence
 	}
 	return class
+}
+
+func (p *parser) unsupportedLayout(span source.Range, construct string) {
+	p.report(source.Diagnostic{
+		Range:    normalizeRange(span),
+		Severity: source.SeverityError,
+		Code:     source.CodeUnsupported,
+		Message:  construct + " layout is not implemented; construct is preserved in the IR",
+	})
 }

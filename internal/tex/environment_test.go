@@ -45,8 +45,8 @@ func TestAlignedEnvironmentKeepsAlignmentMarkers(t *testing.T) {
 	t.Parallel()
 
 	result := parseTest(t, `\begin{aligned}x&=1\\y&=2\end{aligned}`, Options{})
-	if len(result.Diagnostics) != 0 {
-		t.Fatalf("diagnostics: %v", result.Diagnostics)
+	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+		t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
 	}
 	multiline := requireKind[*ir.Multiline](t, rowItems(t, result.Root)[0])
 	if len(multiline.Rows) != 2 {

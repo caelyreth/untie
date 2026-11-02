@@ -60,7 +60,7 @@ func (p *parser) parseEnvironment(command token) astNode {
 		spec, specSpan, ok := p.consumeRawGroupTextChecked(command)
 		if !ok {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(specSpan),
+				Range:    normalizeRange(specSpan),
 				Severity: source.SeverityError,
 				Code:     source.CodeMissingArgument,
 				Message:  "array environment requires a column specification",
@@ -73,7 +73,7 @@ func (p *parser) parseEnvironment(command token) astNode {
 			countText, countSpan, ok := p.consumeRawGroupTextChecked(command)
 			if !ok {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(countSpan),
+					Range:    normalizeRange(countSpan),
 					Severity: source.SeverityError,
 					Code:     source.CodeMissingArgument,
 					Message:  name + " environment requires a column count",
@@ -81,7 +81,7 @@ func (p *parser) parseEnvironment(command token) astNode {
 			}
 			if _, err := strconv.Atoi(strings.TrimSpace(countText)); err != nil {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(nameSpan),
+					Range:    normalizeRange(nameSpan),
 					Severity: source.SeverityError,
 					Code:     source.CodeInvalidValue,
 					Message:  "number of alignment columns must be a positive integer",
@@ -91,7 +91,7 @@ func (p *parser) parseEnvironment(command token) astNode {
 		return p.parseMultilineEnvironment(name, command, nameSpan)
 	default:
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(nameSpan),
+			Range:    normalizeRange(nameSpan),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidEnvironment,
 			Message:  "unknown TeX environment '" + name + "'",
@@ -107,7 +107,7 @@ func (p *parser) consumeRawGroupTextChecked(owner token) (string, source.Range, 
 	open := p.exp.popRaw()
 	if !open.is(tokBeginGroup) {
 		p.exp.push(open)
-		return "", nonEmptyRange(owner.span), false
+		return "", normalizeRange(owner.span), false
 	}
 	p.exp.push(open)
 	return p.consumeRawGroupText(), source.Merge(owner.span, open.span), true
@@ -135,11 +135,11 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 
 	for {
 		cell := p.parseSequence(stopCell)
-		currentRow = append(currentRow, cell)
 		cells++
 		if cells > p.limits.MaxTableCells {
-			p.limit(nonEmptyRange(cell.base().span), "TeX table cell limit exceeded")
-			currentRow[len(currentRow)-1] = newPlaceholderAST(cell.base().span, "table cell limit exceeded")
+			p.limit(normalizeRange(cell.base().span), "TeX table cell limit exceeded")
+		} else {
+			currentRow = append(currentRow, cell)
 		}
 		span = source.Merge(span, cell.base().span)
 
@@ -161,7 +161,7 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 			span = source.Merge(span, endNameSpan)
 			if endName != name {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(endNameSpan),
+					Range:    normalizeRange(endNameSpan),
 					Severity: source.SeverityError,
 					Code:     source.CodeInvalidEnvironment,
 					Message:  "environment '" + name + "' closed by '\\end{" + endName + "}'",
@@ -170,14 +170,14 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 			endFound = true
 		case t.isEOF() || t.is(tokEndGroup):
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(span),
+				Range:    normalizeRange(span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidEnvironment,
 				Message:  "missing \\end{" + name + "}",
 			})
 		default:
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidEnvironment,
 				Message:  "unexpected token in environment",
@@ -210,6 +210,13 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 }
 
 func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan source.Range) astNode {
+	p.report(source.Diagnostic{
+		Range:    normalizeRange(nameSpan),
+		Severity: source.SeverityError,
+		Code:     source.CodeUnsupported,
+		Message:  "multiline math layout is not implemented; construct is preserved in the IR",
+	})
+
 	var rows [][]astNode
 	var row []astNode
 	span := source.Merge(command.span, nameSpan)
@@ -245,7 +252,7 @@ func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan 
 			span = source.Merge(span, endNameSpan)
 			if endName != name {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(endNameSpan),
+					Range:    normalizeRange(endNameSpan),
 					Severity: source.SeverityError,
 					Code:     source.CodeInvalidEnvironment,
 					Message:  "environment '" + name + "' closed by '\\end{" + endName + "}'",
@@ -254,14 +261,14 @@ func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan 
 			endFound = true
 		case t.isEOF() || t.is(tokEndGroup):
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(span),
+				Range:    normalizeRange(span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidEnvironment,
 				Message:  "missing \\end{" + name + "}",
 			})
 		default:
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidEnvironment,
 				Message:  "unexpected token in environment",
@@ -288,7 +295,7 @@ func (p *parser) consumeEnvironmentName(command token) (string, source.Range) {
 	if !open.is(tokBeginGroup) {
 		p.exp.push(open)
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(command.span),
+			Range:    normalizeRange(command.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  command.text + " requires an environment name in braces",
@@ -301,7 +308,7 @@ func (p *parser) consumeEnvironmentName(command token) (string, source.Range) {
 		t := p.exp.popRaw()
 		if t.isEOF() {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(span),
+				Range:    normalizeRange(span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnclosedGroup,
 				Message:  "unclosed environment name",
@@ -314,7 +321,7 @@ func (p *parser) consumeEnvironmentName(command token) (string, source.Range) {
 		}
 		if t.isControl() || t.is(tokBeginGroup) {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidEnvironment,
 				Message:  "environment name must contain only plain characters",
@@ -327,6 +334,7 @@ func (p *parser) consumeEnvironmentName(command token) (string, source.Range) {
 func (p *parser) parseArraySpec(span source.Range, spec string) ([]ir.ColumnAlign, []ir.TableLine) {
 	var columns []ir.ColumnAlign
 	var vertical []ir.TableLine
+	reportedVertical := false
 	for _, r := range spec {
 		switch r {
 		case 'l':
@@ -337,10 +345,19 @@ func (p *parser) parseArraySpec(span source.Range, spec string) ([]ir.ColumnAlig
 			columns = append(columns, ir.AlignRight)
 		case '|', ':':
 			vertical = append(vertical, ir.TableLine{Position: len(columns), Count: 1})
+			if !reportedVertical {
+				reportedVertical = true
+				p.report(source.Diagnostic{
+					Range:    normalizeRange(span),
+					Severity: source.SeverityError,
+					Code:     source.CodeUnsupported,
+					Message:  "array vertical rules are not implemented by the current layout backend",
+				})
+			}
 		case ' ', '\t', '\r', '\n':
 		default:
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(span),
+				Range:    normalizeRange(span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
 				Message:  "unsupported array column specifier '" + string(r) + "'",

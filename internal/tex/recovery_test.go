@@ -74,6 +74,21 @@ func TestSourceByteLimit(t *testing.T) {
 	}
 }
 
+func TestSourceLimitFallbackObeysNodeBudget(t *testing.T) {
+	t.Parallel()
+
+	limits := source.DefaultLimits()
+	limits.MaxSourceBytes = 1
+	limits.MaxNodes = 1
+	result := Parse("xy", ir.Display, Options{Limits: limits})
+	if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
+		t.Fatalf("source-limit fallback violates limits: %v", err)
+	}
+	if result.Root.NodeBase().Kind() != ir.KindPlaceholder {
+		t.Fatalf("fallback kind = %v, want placeholder", result.Root.NodeBase().Kind())
+	}
+}
+
 func TestDiagnosticsAreDeterministicallyOrdered(t *testing.T) {
 	t.Parallel()
 

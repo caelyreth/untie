@@ -1,6 +1,7 @@
 package tex
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/ir"
@@ -184,6 +185,40 @@ func TestMacroExpansionBudgetStopsGrowth(t *testing.T) {
 	limits.MaxMacroExpansions = 4
 	limits.MaxExpandedTokens = 16
 	result := parseTest(t, `\def\a{\a\a}\a`, Options{Limits: limits})
+	if !hasDiagnostic(result.Diagnostics, source.CodeLimitExceeded) {
+		t.Fatalf("diagnostics = %v, want limit diagnostic", diagnosticCodes(result.Diagnostics))
+	}
+}
+
+func TestMacroExpansionBudgetIsIncremental(t *testing.T) {
+	t.Parallel()
+
+	src := `\def\four#1{#1#1#1#1}\four{x}`
+	limits := source.DefaultLimits()
+	limits.MaxExpandedTokens = 3
+	result := parseTest(t, src, Options{Limits: limits})
+	if !hasDiagnostic(result.Diagnostics, source.CodeLimitExceeded) {
+		t.Fatalf("diagnostics = %v, want limit diagnostic", diagnosticCodes(result.Diagnostics))
+	}
+
+	limits.MaxExpandedTokens = 4
+	result = parseTest(t, src, Options{Limits: limits})
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("exact replacement budget rejected: %v", result.Diagnostics)
+	}
+}
+
+func TestMacroExpansionPreflightsRepeatedArgument(t *testing.T) {
+	t.Parallel()
+
+	const argumentSize = 4096
+	body := strings.Repeat("#1", 1024)
+	argument := strings.Repeat("x", argumentSize)
+	src := `\def\spread#1{` + body + `}\spread{` + argument + `}`
+
+	limits := source.DefaultLimits()
+	limits.MaxExpandedTokens = 64
+	result := parseTest(t, src, Options{Limits: limits})
 	if !hasDiagnostic(result.Diagnostics, source.CodeLimitExceeded) {
 		t.Fatalf("diagnostics = %v, want limit diagnostic", diagnosticCodes(result.Diagnostics))
 	}
