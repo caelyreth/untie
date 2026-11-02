@@ -1,6 +1,7 @@
 package fixture
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"unicode/utf8"
@@ -16,6 +17,47 @@ var ErrInvalidUTF8 = errors.New("fixture: source is not valid UTF-8")
 type UTF16Range struct {
 	Start int
 	End   int
+}
+
+// UnmarshalJSON decodes a compact [start, end] UTF-16 range.
+func (r *UTF16Range) UnmarshalJSON(data []byte) error {
+	var values []json.RawMessage
+	if err := json.Unmarshal(data, &values); err != nil {
+		return fmt.Errorf("UTF-16 range: %w", err)
+	}
+	if len(values) != 2 {
+		return fmt.Errorf("UTF-16 range has %d values; want 2", len(values))
+	}
+	start, err := parseInt(values[0], "UTF-16 start")
+	if err != nil {
+		return err
+	}
+	end, err := parseInt(values[1], "UTF-16 end")
+	if err != nil {
+		return err
+	}
+	decoded := UTF16Range{Start: start, End: end}
+	if err := decoded.Validate(); err != nil {
+		return err
+	}
+	*r = decoded
+	return nil
+}
+
+// MarshalJSON restores the compact [start, end] representation.
+func (r UTF16Range) MarshalJSON() ([]byte, error) {
+	if err := r.Validate(); err != nil {
+		return nil, err
+	}
+	return json.Marshal([]int{r.Start, r.End})
+}
+
+// Validate checks that the range is non-negative and ordered.
+func (r UTF16Range) Validate() error {
+	if r.Start < 0 || r.End < r.Start {
+		return fmt.Errorf("invalid UTF-16 range [%d,%d)", r.Start, r.End)
+	}
+	return nil
 }
 
 // UTF16BoundaryError reports a UTF-16 offset that does not lie on a code-point
