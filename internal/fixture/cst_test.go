@@ -68,7 +68,7 @@ func TestResolveFixtureSelectsSourceForDiagnosticTarget(t *testing.T) {
 
 	fixture.Diagnostics[1].At = "unknown"
 	if _, err := ResolveFixture("abc", "xxPQRyy", &fixture); err == nil ||
-		!strings.Contains(err.Error(), "unknown target") {
+		!strings.Contains(err.Error(), "unknown source target") {
 		t.Fatalf("unknown target error = %v", err)
 	}
 }

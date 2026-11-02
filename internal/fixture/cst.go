@@ -178,18 +178,22 @@ func ResolveCST(src string, root *CSTNode) (*SourceCSTNode, error) {
 	if err := root.Validate(); err != nil {
 		return nil, err
 	}
-	resolved, err := resolveCSTNode(src, root, 1, nil)
+	index, err := newUTF16Index(src)
+	if err != nil {
+		return nil, err
+	}
+	resolved, err := resolveCSTNode(index, root, 1, nil)
 	if err != nil {
 		return nil, err
 	}
 	return &resolved, nil
 }
 
-func resolveCSTNode(src string, node *CSTNode, depth int, parent *source.Range) (SourceCSTNode, error) {
+func resolveCSTNode(index *utf16Index, node *CSTNode, depth int, parent *source.Range) (SourceCSTNode, error) {
 	if depth > maxCSTDepth {
 		return SourceCSTNode{}, fmt.Errorf("CST nesting exceeds %d levels", maxCSTDepth)
 	}
-	span, err := ConvertUTF16Range(src, node.Span)
+	span, err := index.byteRange(node.Span.Start, node.Span.End)
 	if err != nil {
 		return SourceCSTNode{}, fmt.Errorf("CST node %s: %w", node.Kind, err)
 	}
@@ -203,7 +207,7 @@ func resolveCSTNode(src string, node *CSTNode, depth int, parent *source.Range) 
 	if len(node.Children) > 0 {
 		resolved.Children = make([]SourceCSTNode, len(node.Children))
 		for i := range node.Children {
-			child, err := resolveCSTNode(src, &node.Children[i], depth+1, &span)
+			child, err := resolveCSTNode(index, &node.Children[i], depth+1, &span)
 			if err != nil {
 				return SourceCSTNode{}, fmt.Errorf("CST child %d: %w", i, err)
 			}

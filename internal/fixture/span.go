@@ -76,20 +76,37 @@ func (e *UTF16BoundaryError) Error() string {
 // offsets. The complete source must be valid UTF-8. Both offsets must be on
 // code-point boundaries and within the source.
 func UTF16OffsetsToByteRange(src string, start, end int) (source.Range, error) {
-	boundaries, units, err := utf16Boundaries(src)
+	index, err := newUTF16Index(src)
 	if err != nil {
 		return source.Range{}, err
 	}
-	if start < 0 || end < start || end > units {
-		return source.Range{}, fmt.Errorf("fixture: invalid UTF-16 range [%d,%d) for %d code units", start, end, units)
+	return index.byteRange(start, end)
+}
+
+type utf16Index struct {
+	boundaries map[int]int
+	units      int
+}
+
+func newUTF16Index(src string) (*utf16Index, error) {
+	boundaries, units, err := utf16Boundaries(src)
+	if err != nil {
+		return nil, err
 	}
-	startByte, ok := boundaries[start]
-	if !ok {
-		return source.Range{}, &UTF16BoundaryError{Start: 0, End: units, Offset: start}
+	return &utf16Index{boundaries: boundaries, units: units}, nil
+}
+
+func (i *utf16Index) byteRange(start, end int) (source.Range, error) {
+	if start < 0 || end < start || end > i.units {
+		return source.Range{}, fmt.Errorf("fixture: invalid UTF-16 range [%d,%d) for %d code units", start, end, i.units)
 	}
-	endByte, ok := boundaries[end]
+	startByte, ok := i.boundaries[start]
 	if !ok {
-		return source.Range{}, &UTF16BoundaryError{Start: 0, End: units, Offset: end}
+		return source.Range{}, &UTF16BoundaryError{Start: 0, End: i.units, Offset: start}
+	}
+	endByte, ok := i.boundaries[end]
+	if !ok {
+		return source.Range{}, &UTF16BoundaryError{Start: 0, End: i.units, Offset: end}
 	}
 	return source.NewRange(startByte, endByte), nil
 }

@@ -98,12 +98,44 @@ func ResolveFixture(src, preamble string, fixture *Fixture) (*ResolvedFixture, e
 		return nil, errors.New("nil fixture")
 	}
 	resolved := &ResolvedFixture{}
+	var srcIndex, preambleIndex *utf16Index
+	indexFor := func(target string) (*utf16Index, error) {
+		switch target {
+		case "src":
+			if srcIndex == nil {
+				index, err := newUTF16Index(src)
+				if err != nil {
+					return nil, err
+				}
+				srcIndex = index
+			}
+			return srcIndex, nil
+		case "preamble":
+			if preambleIndex == nil {
+				index, err := newUTF16Index(preamble)
+				if err != nil {
+					return nil, err
+				}
+				preambleIndex = index
+			}
+			return preambleIndex, nil
+		default:
+			return nil, fmt.Errorf("unknown source target %q", target)
+		}
+	}
 	if fixture.CST != nil {
-		cst, err := ResolveCST(src, fixture.CST)
+		if err := fixture.CST.Validate(); err != nil {
+			return nil, fmt.Errorf("fixture %q CST: %w", fixture.ID, err)
+		}
+		index, err := indexFor("src")
 		if err != nil {
 			return nil, fmt.Errorf("fixture %q CST: %w", fixture.ID, err)
 		}
-		resolved.CST = cst
+		cst, err := resolveCSTNode(index, fixture.CST, 1, nil)
+		if err != nil {
+			return nil, fmt.Errorf("fixture %q CST: %w", fixture.ID, err)
+		}
+		resolved.CST = &cst
 	}
 	resolved.Diagnostics = make([]ResolvedDiagnostic, len(fixture.Diagnostics))
 	for i, diagnostic := range fixture.Diagnostics {
@@ -116,17 +148,11 @@ func ResolveFixture(src, preamble string, fixture *Fixture) (*ResolvedFixture, e
 			Hints: append([]string(nil), diagnostic.Hints...),
 		}
 		if diagnostic.Span != nil {
-			var target string
-			switch diagnostic.At {
-			case "src":
-				target = src
-			case "preamble":
-				target = preamble
-			default:
-				return nil, fmt.Errorf("fixture %q diagnostic %d has span for unknown target %q",
-					fixture.ID, i, diagnostic.At)
+			index, err := indexFor(diagnostic.At)
+			if err != nil {
+				return nil, fmt.Errorf("fixture %q diagnostic %d: %w", fixture.ID, i, err)
 			}
-			span, err := ConvertUTF16Range(target, *diagnostic.Span)
+			span, err := index.byteRange(diagnostic.Span.Start, diagnostic.Span.End)
 			if err != nil {
 				return nil, fmt.Errorf("fixture %q diagnostic %d: %w", fixture.ID, i, err)
 			}
