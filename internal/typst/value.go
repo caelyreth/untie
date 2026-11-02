@@ -124,25 +124,31 @@ func lengthFromParts(number, unit string) (ir.Length, bool) {
 	if err != nil || math.IsInf(v, 0) || math.IsNaN(v) {
 		return ir.Length{}, false
 	}
+	var length ir.Length
+	var lengthErr error
 	switch unit {
 	case "em":
-		return ir.EmLength(v), true
+		length, lengthErr = ir.EmLength(v)
 	case "ex":
-		return ir.ExLength(v), true
+		length, lengthErr = ir.ExLength(v)
 	case "pt":
-		return ir.PtLength(v), true
+		length, lengthErr = ir.PtLength(v)
 	case "mm":
 		// One inch is 72 PostScript points and 96 host DIPs.
-		return ir.DipLength(v * 96.0 / 25.4), true
+		length, lengthErr = ir.DipLength(v * 96.0 / 25.4)
 	case "cm":
-		return ir.DipLength(v * 96.0 / 2.54), true
+		length, lengthErr = ir.DipLength(v * 96.0 / 2.54)
 	case "in":
-		return ir.DipLength(v * 96.0), true
+		length, lengthErr = ir.DipLength(v * 96.0)
 	case "%":
-		return ir.PercentLength(v), true
+		length, lengthErr = ir.PercentLength(v)
 	default:
 		return ir.Length{}, false
 	}
+	if lengthErr != nil {
+		return ir.Length{}, false
+	}
+	return length, true
 }
 
 var namedColors = map[string]ir.RGBA{

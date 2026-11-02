@@ -692,7 +692,12 @@ func (p *parser) parseCodeAtom() *astNode {
 			if err != nil {
 				p.errorAt(tok.span, source.CodeInvalidValue, "invalid percentage")
 			}
-			lit.value = lengthValue(ir.PercentLength(value))
+			length, err := ir.PercentLength(value)
+			if err != nil {
+				p.errorAt(tok.span, source.CodeInvalidValue, "invalid percentage")
+				length = ir.Length{}
+			}
+			lit.value = lengthValue(length)
 			return lit
 		}
 		if v, ok := parseNumericLiteral(tok.text); ok {

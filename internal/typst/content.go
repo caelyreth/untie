@@ -187,7 +187,7 @@ func (l *lowerer) lowerBox(call *astNode) ir.Node {
 		if paint, ok := l.valuePaint(arg.node); ok {
 			box.HasBorder = true
 			box.Border = paint
-			box.BorderWidth = ir.EmLength(0.05)
+			box.BorderWidth = builtinEmLength(0.05)
 		} else if !isNoneAST(arg.node) {
 			l.errorAt(arg.span, source.CodeInvalidValue, "expected color or stroke")
 		}
