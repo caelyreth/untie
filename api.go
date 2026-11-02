@@ -43,6 +43,8 @@ type (
 	Severity    = source.Severity
 	Box         = display.Box
 	LineBox     = display.LineBox
+	ItemRange   = display.ItemRange
+	HitRange    = display.HitRange
 	Alt         = display.Alt
 	Item        = display.Item
 	ItemKind    = display.ItemKind
@@ -69,10 +71,12 @@ type (
 
 // Style is a display.Style layout request. Display layout with a positive
 // MaxWidth emits Box.Lines in a MaxWidth-wide alignment frame. Align positions
-// each line within that frame; line items remain line-local and expose OffsetX.
-// Single-line display tags populate Box.Tag and the associated LineBox.Tag;
-// constrained alignment reserves the tag width before positioning the line.
-// Inline layout ignores both MaxWidth and Align and rejects manual tags.
+// each line within that frame. Box.Items and Box.Hits are the sole drawable
+// storage; LineBox and TagBox ranges select parent-frame records and must not
+// be translated again. Single-line display tags populate Box.Tag and the
+// associated LineBox.Tag. Constrained alignment reserves the tag width before
+// positioning the line. Inline layout ignores both MaxWidth and Align and
+// rejects manual tags.
 type Style = display.Style
 
 const (
