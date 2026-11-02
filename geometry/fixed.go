@@ -9,6 +9,8 @@ import (
 const (
 	// EmScale is the number of fixed-point subunits in one em.
 	EmScale int64 = 1 << 16
+	// DipScale is the number of fixed-point subunits in one host DIP.
+	DipScale int64 = 1 << 10
 )
 
 var (
@@ -18,6 +20,9 @@ var (
 
 // Em is a signed fixed-point length in 1/EmScale em.
 type Em int64
+
+// Dip is a signed fixed-point length in 1/DipScale host DIP.
+type Dip int64
 
 // EmFromParts returns a value equal to numerator/denominator em.
 func EmFromParts(numerator, denominator int64) (Em, error) {
@@ -62,6 +67,42 @@ func (a Em) Abs() Em {
 // Float returns the value in ems.
 func (a Em) Float() float64 {
 	return float64(a) / float64(EmScale)
+}
+
+// DipFromFloat converts a host-unit value to fixed-point DIP.
+func DipFromFloat(v float64) Dip {
+	return Dip(math.Round(v * float64(DipScale)))
+}
+
+// Float returns the value in DIPs.
+func (d Dip) Float() float64 {
+	return float64(d) / float64(DipScale)
+}
+
+// Float32 returns the value in DIPs as a host-friendly float32.
+func (d Dip) Float32() float32 {
+	return float32(d.Float())
+}
+
+// EmToDip scales a fixed-point em value by the root em size.
+func EmToDip(em Em, emSize Dip) (Dip, error) {
+	value, err := mulDiv(int64(em), int64(emSize), EmScale)
+	if err != nil {
+		return 0, err
+	}
+	return Dip(value), nil
+}
+
+// FontUnitsToEm converts integer font design units to fixed-point em.
+func FontUnitsToEm(value int64, unitsPerEm int64) (Em, error) {
+	if unitsPerEm <= 0 {
+		return 0, ErrInvalidScale
+	}
+	scaled, err := mulDiv(value, EmScale, unitsPerEm)
+	if err != nil {
+		return 0, err
+	}
+	return Em(scaled), nil
 }
 
 func mulDiv(a, b, c int64) (int64, error) {

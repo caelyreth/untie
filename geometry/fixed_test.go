@@ -54,3 +54,37 @@ func TestEmFloat(t *testing.T) {
 		t.Fatalf("Float() = %v, want 1.5", got)
 	}
 }
+
+func TestDipConversions(t *testing.T) {
+	t.Parallel()
+
+	size := DipFromFloat(16)
+	if got := size.Float(); got != 16 {
+		t.Fatalf("Dip.Float() = %v, want 16", got)
+	}
+	if got := size.Float32(); got != 16 {
+		t.Fatalf("Dip.Float32() = %v, want 16", got)
+	}
+	got, err := EmToDip(Em(EmScale/2), size)
+	if err != nil {
+		t.Fatalf("EmToDip() error = %v", err)
+	}
+	if got != Dip(DipScale*8) {
+		t.Fatalf("EmToDip() = %v, want %v", got, Dip(DipScale*8))
+	}
+}
+
+func TestFontUnitsToEm(t *testing.T) {
+	t.Parallel()
+
+	got, err := FontUnitsToEm(500, 1000)
+	if err != nil {
+		t.Fatalf("FontUnitsToEm() error = %v", err)
+	}
+	if got != Em(EmScale/2) {
+		t.Fatalf("FontUnitsToEm() = %d, want %d", got, Em(EmScale/2))
+	}
+	if _, err := FontUnitsToEm(1, 0); err != ErrInvalidScale {
+		t.Fatalf("zero UPEM error = %v, want %v", err, ErrInvalidScale)
+	}
+}
