@@ -329,16 +329,20 @@ func (g gsubTable) shape(glyphs []GlyphID, features []Feature) []GlyphID {
 	}
 	out := append([]GlyphID(nil), glyphs...)
 	for _, feature := range features {
+		feature, ok := normalizeFeature(feature)
+		if !ok {
+			continue
+		}
 		for _, lookup := range g.features[feature.Tag] {
 			for _, st := range lookup.subtables {
-				if st.single != nil && feature.Value != 0 {
+				if st.single != nil {
 					for i, gid := range out {
 						if replacement, ok := st.single[gid]; ok {
 							out[i] = replacement
 						}
 					}
 				}
-				if st.alternates != nil && feature.Value != 0 {
+				if st.alternates != nil {
 					altIndex := int(feature.Value - 1)
 					for i, gid := range out {
 						alts := st.alternates[gid]
@@ -351,6 +355,23 @@ func (g gsubTable) shape(glyphs []GlyphID, features []Feature) []GlyphID {
 		}
 	}
 	return out
+}
+
+// normalizeFeature enforces OpenType's exact four-byte, case-sensitive tag
+// syntax and drops disabled or unsupported features before traversal.
+func normalizeFeature(feature Feature) (Feature, bool) {
+	if feature.Value == 0 || len(feature.Tag) != 4 {
+		return Feature{}, false
+	}
+	for i := 0; i < len(feature.Tag); i++ {
+		if feature.Tag[i] < 0x20 || feature.Tag[i] > 0x7e {
+			return Feature{}, false
+		}
+	}
+	if _, ok := mathFeatureTags[feature.Tag]; !ok {
+		return Feature{}, false
+	}
+	return feature, true
 }
 
 func subtableAllowHeader(b []byte, off int) ([]byte, error) {
