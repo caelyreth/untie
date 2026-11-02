@@ -124,6 +124,53 @@ func TestAttachmentsMergeAndPreserveLimits(t *testing.T) {
 	}
 }
 
+func TestSemanticLoweringDefaults(t *testing.T) {
+	t.Parallel()
+
+	t.Run("relation attachments use limits", func(t *testing.T) {
+		result := parse(t, `arrow.r^1_2`)
+		requireNoDiagnostics(t, "relation attachment", result)
+		scripts := find[*ir.Scripts](t, result.Root)
+		if scripts.Limits != ir.LimitsAlways {
+			t.Fatalf("relation limits = %v, want always", scripts.Limits)
+		}
+	})
+
+	t.Run("directional fence classes", func(t *testing.T) {
+		result := parse(t, `floor(x)`)
+		requireNoDiagnostics(t, "floor", result)
+		fenced := find[*ir.Fenced](t, result.Root)
+		if fenced.Open.NodeBase().Class != ir.ClassOpening || fenced.Close.NodeBase().Class != ir.ClassClosing {
+			t.Fatalf("floor classes = %v/%v", fenced.Open.NodeBase().Class, fenced.Close.NodeBase().Class)
+		}
+
+		result = parse(t, `norm(x)`)
+		requireNoDiagnostics(t, "norm", result)
+		fenced = find[*ir.Fenced](t, result.Root)
+		if fenced.Open.NodeBase().Class != ir.ClassFence || fenced.Close.NodeBase().Class != ir.ClassFence {
+			t.Fatalf("norm classes = %v/%v", fenced.Open.NodeBase().Class, fenced.Close.NodeBase().Class)
+		}
+	})
+
+	t.Run("binom padding", func(t *testing.T) {
+		result := parse(t, `binom(n, k)`)
+		requireNoDiagnostics(t, "binom", result)
+		fraction := find[*ir.Fraction](t, result.Root)
+		if fraction.Padding != builtinEmLength(0.1) {
+			t.Fatalf("binom padding = %v, want %v", fraction.Padding, builtinEmLength(0.1))
+		}
+	})
+
+	t.Run("alignment marker class", func(t *testing.T) {
+		result := parse(t, `a &= b \ c &= d`)
+		requireNoDiagnostics(t, "alignment", result)
+		marker := find[*ir.AlignMarker](t, result.Root)
+		if marker.Class != ir.ClassSpecial {
+			t.Fatalf("align marker class = %v, want special", marker.Class)
+		}
+	})
+}
+
 func TestLRPromotesBodyDelimiters(t *testing.T) {
 	t.Parallel()
 

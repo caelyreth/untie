@@ -94,7 +94,9 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 		}
 		return l.lowerValueContent(n.span, v)
 	case astAlign:
-		return ir.NewAlignMarker(n.span)
+		marker := ir.NewAlignMarker(n.span)
+		marker.Class = ir.ClassSpecial
+		return marker
 	case astLinebreak:
 		return ir.NewBreak(n.span, ir.BreakExplicit, 0)
 	case astEquation:
@@ -337,6 +339,9 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	if g, ok := scripts.BaseItem.(*ir.Glyph); ok {
 		if scripts.Limits == ir.LimitsAuto {
 			scripts.Limits = g.Limits
+		}
+		if scripts.Limits == ir.LimitsAuto && g.Class == ir.ClassRelation {
+			scripts.Limits = ir.LimitsAlways
 		}
 	}
 	return scripts

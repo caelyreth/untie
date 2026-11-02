@@ -75,6 +75,7 @@ func (l *lowerer) lowerBinom(call *astNode) ir.Node {
 	fr := ir.NewFraction(call.span, upper, lower)
 	fr.Bar = false
 	fr.Style = ir.FractionNoBar
+	fr.Padding = builtinEmLength(0.1)
 	fenced := ir.NewFenced(call.span, fr)
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), "(")
 	closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), ")")
@@ -97,6 +98,9 @@ func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 	scripts.BottomRight = l.contentNamed(call, "br")
 	if g, ok := base.(*ir.Glyph); ok {
 		scripts.Limits = g.Limits
+		if scripts.Limits == ir.LimitsAuto && g.Class == ir.ClassRelation {
+			scripts.Limits = ir.LimitsAlways
+		}
 	}
 	return scripts
 }
@@ -195,8 +199,12 @@ func (l *lowerer) lowerFenceFunction(call *astNode, name string) ir.Node {
 	fenced := ir.NewFenced(call.span, l.flattenFenceBody(body)...)
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), pair[0])
 	closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), pair[1])
-	open.Class = ir.ClassFence
-	closeGlyph.Class = ir.ClassFence
+	open.Class = ir.ClassOpening
+	closeGlyph.Class = ir.ClassClosing
+	if name == "abs" || name == "norm" {
+		open.Class = ir.ClassFence
+		closeGlyph.Class = ir.ClassFence
+	}
 	fenced.Open = open
 	fenced.Close = closeGlyph
 	fenced.Balanced = true

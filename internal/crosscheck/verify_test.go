@@ -164,9 +164,7 @@ func TestSemanticNormalizationHarmonizesNeutralEncodings(t *testing.T) {
 		tex   string
 		typst string
 	}{
-		{"operator class", `\operatorname{tr}(A)`, `op("tr")(A)`},
 		{"integral limits", `\int_0^1`, `integral_0^1`},
-		{"symmetric fences", `\lfloor x \rfloor`, `floor(x)`},
 	}
 	for _, tc := range tests {
 		tc := tc
@@ -178,12 +176,10 @@ func TestSemanticNormalizationHarmonizesNeutralEncodings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			typstSemantic, err := normalizeTypstFormula(typstRoot, ir.Inline)
+			typstSemantic, err := normalizeFormula(typstRoot, ir.Inline)
 			if err != nil {
 				t.Fatal(err)
 			}
-			texSemantic = normalizedRootItems(texSemantic)
-			typstSemantic = normalizedRootItems(typstSemantic)
 			if difference := CompareSemantic(texSemantic, typstSemantic); difference != nil {
 				t.Fatal(difference)
 			}
@@ -191,7 +187,7 @@ func TestSemanticNormalizationHarmonizesNeutralEncodings(t *testing.T) {
 	}
 }
 
-func TestSemanticNormalizationFractionDefaults(t *testing.T) {
+func TestSemanticNormalizationKeepsExplicitFractionPadding(t *testing.T) {
 	t.Parallel()
 
 	glyph := func(text string) *ir.Glyph {
@@ -211,8 +207,8 @@ func TestSemanticNormalizationFractionDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if difference := CompareSemantic(left, right); difference != nil {
-		t.Fatal(difference)
+	if difference := CompareSemantic(left, right); difference == nil {
+		t.Fatal("omitted fraction padding normalized as explicit 0.1em")
 	}
 }
 
@@ -236,12 +232,23 @@ func TestSemanticNormalizationAccentMark(t *testing.T) {
 	}
 	item := tex.(map[string]any)
 	mark := item["accent"].(map[string]any)
-	if mark["class"] != "diacritic" || mark["text"] != "\u0302" {
-		t.Fatalf("accent mark = %#v, want canonical diacritic", mark)
+	if mark["text"] != "\u0302" {
+		t.Fatalf("accent mark = %#v, want canonical glyph", mark)
+	}
+	if mark["class"] != "normal" {
+		t.Fatalf("accent canonicalization invented metadata: %#v", mark)
+	}
+
+	tilde, err := normalizeFormula(&ir.Formula{Root: accent("~")}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if CompareSemantic(tex, tilde) == nil {
+		t.Fatal("different accent glyph encodings normalized as equal")
 	}
 }
 
-func TestSemanticNormalizationDefaultStroke(t *testing.T) {
+func TestSemanticNormalizationKeepsExplicitStroke(t *testing.T) {
 	t.Parallel()
 
 	span := source.NewRange(0, 1)
@@ -257,64 +264,42 @@ func TestSemanticNormalizationDefaultStroke(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if difference := CompareSemantic(left, right); difference != nil {
-		t.Fatal(difference)
+	if difference := CompareSemantic(left, right); difference == nil {
+		t.Fatal("omitted stroke thickness normalized as explicit 0.05em")
 	}
 }
 
-func TestSemanticNormalizationDeparenthesizesTypstFractionOperand(t *testing.T) {
+func TestSemanticNormalizationKeepsFractionOperandFence(t *testing.T) {
 	t.Parallel()
 
 	span := source.NewRange(0, 1)
-	fraction := ir.NewFraction(span, ir.NewGlyph(span, "b"), ir.NewGlyph(span, "c"))
-	body := ir.NewRow(span, fraction, ir.NewGlyph(span, "+"), ir.NewGlyph(span, "d"))
+	bodyFraction := ir.NewFraction(span, ir.NewGlyph(span, "b"), ir.NewGlyph(span, "c"))
+	body := ir.NewRow(span, bodyFraction, ir.NewGlyph(span, "+"), ir.NewGlyph(span, "d"))
 	fenced := ir.NewFenced(span, body)
 	fenced.Open = ir.NewGlyph(span, "(")
 	fenced.Close = ir.NewGlyph(span, ")")
 	fenced.Class = ir.ClassInner
 	fenced.Balanced = true
 
-	kept, err := normalizeFractionOperand(fenced, semanticMode{size: ir.SizeText})
+	normalized, err := normalizeFormula(&ir.Formula{Root: ir.NewFraction(span, ir.NewGlyph(span, "a"), fenced)}, ir.Inline)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if item, ok := kept.(map[string]any); !ok || item["kind"] != "fenced" {
-		t.Fatalf("non-Typst operand normalized to %#v, want fenced", kept)
+	fractionValue, ok := normalized.(map[string]any)
+	if !ok {
+		t.Fatalf("normalized fraction = %#v", normalized)
 	}
-
-	stripped, err := normalizeFractionOperand(fenced, semanticMode{
-		size:                          ir.SizeText,
-		deparenthesizeFractionOperand: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	items, ok := stripped.([]any)
-	if !ok || len(items) != 3 {
-		t.Fatalf("Typst operand normalized to %#v, want three atoms", stripped)
+	denominator, ok := fractionValue["denominator"].(map[string]any)
+	if !ok || denominator["kind"] != "fenced" {
+		t.Fatalf("fraction denominator normalized to %#v, want fenced", fractionValue["denominator"])
 	}
 }
 
-func normalizedRootItems(value any) any {
-	if row, ok := value.(map[string]any); ok && row["kind"] == "row" {
-		if items, ok := row["items"].([]any); ok {
-			return items
-		}
-	}
-	if _, ok := value.([]any); ok {
-		return value
-	}
-	if value == nil {
-		return value
-	}
-	return []any{value}
-}
-
-func TestSemanticNormalizationKeepsScalingFences(t *testing.T) {
+func TestSemanticNormalizationKeepsLiteralParentheses(t *testing.T) {
 	t.Parallel()
 
 	root := requireValidRoot(t, untie.ParseTypst(`(a/b)`, ir.Inline, untie.ParseOptions{}))
-	normalized, err := normalizeTypstFormula(root, ir.Inline)
+	normalized, err := normalizeFormula(root, ir.Inline)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,8 +323,17 @@ func TestSemanticNormalizationKeepsScalingFences(t *testing.T) {
 	}
 found:
 	item, ok := value.(map[string]any)
-	if !ok || item["kind"] != "fenced" {
-		t.Fatalf("scaling fence normalized to %#v, want a fenced node", value)
+	if !ok || item["kind"] != "row" {
+		t.Fatalf("literal parentheses normalized to %#v, want a row", value)
+	}
+	items, ok := item["items"].([]any)
+	if !ok || len(items) != 3 {
+		t.Fatalf("literal parenthesis items = %#v, want opening/fraction/closing", item["items"])
+	}
+	open, _ := items[0].(map[string]any)
+	closeItem, _ := items[2].(map[string]any)
+	if open["text"] != "(" || closeItem["text"] != ")" {
+		t.Fatalf("literal parentheses = %#v/%#v", items[0], items[2])
 	}
 }
 

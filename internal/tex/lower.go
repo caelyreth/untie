@@ -12,6 +12,7 @@ type lowerContext struct {
 }
 
 var defaultFractionPadding = ir.RawLength(ir.LengthEm, 100_000)
+var defaultStrokeThickness = ir.RawLength(ir.LengthEm, 50_000)
 
 type lowerer struct {
 	limits     source.Limits
@@ -281,6 +282,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		out := ir.NewLine(n.span, body, n.position)
 		out.Size = ctx.size
+		out.Thickness = defaultStrokeThickness
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astCancelNode:
@@ -295,6 +297,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Cross = n.cross
 		out.Inverted = n.inverted
 		out.Size = ctx.size
+		out.Thickness = defaultStrokeThickness
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astColorNode:

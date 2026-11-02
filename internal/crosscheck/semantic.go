@@ -16,9 +16,8 @@ import (
 // size on some wrapper nodes while Typst leaves it implicit; comparing
 // effective state is the only dialect-neutral representation.
 type semanticMode struct {
-	size                          ir.MathSize
-	cramped                       bool
-	deparenthesizeFractionOperand bool
+	size    ir.MathSize
+	cramped bool
 }
 
 func normalizeFormula(formula *ir.Formula, mode ir.Mode) (any, error) {
@@ -26,17 +25,6 @@ func normalizeFormula(formula *ir.Formula, mode ir.Mode) (any, error) {
 		return nil, fmt.Errorf("nil formula")
 	}
 	initial := semanticMode{size: ir.SizeText}
-	if mode == ir.Display {
-		initial.size = ir.SizeDisplay
-	}
-	return normalizeNode(formula.Root, initial)
-}
-
-func normalizeTypstFormula(formula *ir.Formula, mode ir.Mode) (any, error) {
-	if formula == nil || formula.Root == nil {
-		return nil, fmt.Errorf("nil formula")
-	}
-	initial := semanticMode{size: ir.SizeText, deparenthesizeFractionOperand: true}
 	if mode == ir.Display {
 		initial.size = ir.SizeDisplay
 	}
@@ -69,9 +57,13 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			items = appendNormalized(items, value)
+			switch item := value.(type) {
+			case []any:
+				items = append(items, item...)
+			default:
+				items = append(items, item)
+			}
 		}
-		items = coalesceTextRuns(items)
 		if len(items) == 0 {
 			return map[string]any{"kind": "empty-row"}, nil
 		}
@@ -101,11 +93,11 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["weak"] = node.Weak
 		return baseValue, nil
 	case *ir.Fraction:
-		numerator, err := normalizeFractionOperand(node.Numerator, childMode)
+		numerator, err := normalizeNode(node.Numerator, childMode)
 		if err != nil {
 			return nil, err
 		}
-		denominator, err := normalizeFractionOperand(node.Denominator, childMode)
+		denominator, err := normalizeNode(node.Denominator, childMode)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +106,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["denominator"] = denominator
 		baseValue["bar"] = node.Bar
 		baseValue["style"] = fractionStyleName(node.Style)
-		baseValue["padding"] = normalizedFractionPadding(node.Padding)
+		baseValue["padding"] = normalizedLength(node.Padding)
 		return baseValue, nil
 	case *ir.Radical:
 		radicand, err := normalizeNode(node.Radicand, childMode)
@@ -130,19 +122,6 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["index"] = index
 		return baseValue, nil
 	case *ir.Scripts:
-		if isBareScripts(node) {
-			child, err := normalizeNode(node.BaseItem, childMode)
-			if err != nil {
-				return nil, err
-			}
-			if node.Limits != ir.LimitsAuto {
-				if item, ok := child.(map[string]any); ok {
-					item["limits"] = limitsName(node.Limits)
-					return item, nil
-				}
-			}
-			return child, nil
-		}
 		children := make(map[string]any, 7)
 		type childSpec struct {
 			name  string
@@ -183,12 +162,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		// Scripts' own atom class is derived from the base node by both
 		// frontends; the base class is compared once inside main.
 		if main := node.BaseItem; main != nil {
-			baseValue["class"] = mathClassName(effectiveClass(main))
-		}
-		if aboveBelow {
-			baseValue["limits"] = "above-below"
-		} else {
-			baseValue["limits"] = "side"
+			baseValue["class"] = mathClassName(main.NodeBase().Class)
 		}
 		baseValue["kind"] = "scripts"
 		for name, value := range children {
@@ -206,26 +180,12 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		}
 		open = nullDelimiter(open)
 		closeNode = nullDelimiter(closeNode)
-		open, closeNode = canonicalFenceClasses(open, closeNode)
 		body := make([]any, len(node.Body))
 		for i, child := range node.Body {
 			body[i], err = normalizeNode(child, childMode)
 			if err != nil {
 				return nil, err
 			}
-		}
-		if isLiteralBalancedFence(node) {
-			result := make([]any, 0, len(body)+2)
-			result = append(result, open)
-			for _, item := range body {
-				if list, ok := item.([]any); ok {
-					result = append(result, list...)
-				} else {
-					result = append(result, item)
-				}
-			}
-			result = append(result, closeNode)
-			return result, nil
 		}
 		baseValue["kind"] = "fenced"
 		baseValue["open"] = open
@@ -247,7 +207,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["body"] = body
 		baseValue["accent"] = accent
 		baseValue["position"] = positionName(node.Position)
-		baseValue["stretchy"] = node.Stretchy && !isSingleAccentBase(node.Body)
+		baseValue["stretchy"] = node.Stretchy
 		baseValue["dotless"] = node.Dotless
 		baseValue["exact-width"] = node.ExactFrameWidth
 		return baseValue, nil
@@ -259,7 +219,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["kind"] = "line"
 		baseValue["body"] = body
 		baseValue["position"] = positionName(node.Position)
-		baseValue["thickness"] = normalizedDefaultStroke(node.Thickness)
+		baseValue["thickness"] = normalizedLength(node.Thickness)
 		baseValue["gap"] = normalizedLength(node.Gap)
 		return baseValue, nil
 	case *ir.Cancel:
@@ -271,7 +231,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["body"] = body
 		baseValue["cross"] = node.Cross
 		baseValue["inverted"] = node.Inverted
-		baseValue["thickness"] = normalizedDefaultStroke(node.Thickness)
+		baseValue["thickness"] = normalizedLength(node.Thickness)
 		return baseValue, nil
 	case *ir.Table:
 		var err error
@@ -294,24 +254,20 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["rows"] = rows
 		baseValue["columns"] = normalizedColumns(node.Columns)
 		baseValue["row-gap"] = normalizedLength(node.RowGap)
-		if len(node.Columns) <= 1 {
-			baseValue["column-gap"] = nil
-		} else {
-			baseValue["column-gap"] = normalizedLength(node.ColumnGap)
-		}
+		baseValue["column-gap"] = normalizedLength(node.ColumnGap)
 		baseValue["horizontal"] = normalizedTableLines(node.Horizontal)
 		baseValue["vertical"] = normalizedTableLines(node.Vertical)
 		return baseValue, nil
 	case *ir.Multiline:
 		rows := make([]any, len(node.Rows))
 		for i, row := range node.Rows {
-			items := make([]any, 0, len(row))
-			for _, child := range row {
+			items := make([]any, len(row))
+			for j, child := range row {
 				value, err := normalizeNode(child, childMode)
 				if err != nil {
 					return nil, err
 				}
-				items = appendNormalized(items, value)
+				items[j] = value
 			}
 			rows[i] = items
 		}
@@ -394,7 +350,6 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		return baseValue, nil
 	case *ir.AlignMarker:
 		baseValue["kind"] = "align-marker"
-		baseValue["class"] = "special"
 		return baseValue, nil
 	default:
 		return nil, fmt.Errorf("unsupported IR node %T", n)
@@ -406,111 +361,6 @@ func nullDelimiter(value any) any {
 		return nil
 	}
 	return value
-}
-
-func appendNormalized(items []any, value any) []any {
-	if list, ok := value.([]any); ok {
-		return append(items, list...)
-	}
-	return append(items, value)
-}
-
-func coalesceTextRuns(items []any) []any {
-	if len(items) < 2 {
-		return items
-	}
-	out := make([]any, 0, len(items))
-	for _, value := range items {
-		current, currentOK := value.(map[string]any)
-		if currentOK && current["kind"] == "text" && len(out) > 0 {
-			previous, previousOK := out[len(out)-1].(map[string]any)
-			if previousOK && previous["kind"] == "text" && sameTextMetadata(previous, current) {
-				previous["text"] = previous["text"].(string) + current["text"].(string)
-				continue
-			}
-		}
-		out = append(out, value)
-	}
-	return out
-}
-
-func sameTextMetadata(left, right map[string]any) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for key, value := range left {
-		if key == "text" {
-			continue
-		}
-		if other, ok := right[key]; !ok || !reflect.DeepEqual(value, other) {
-			return false
-		}
-	}
-	return true
-}
-
-func withAtomClass(value any, class string) any {
-	item, ok := value.(map[string]any)
-	if !ok {
-		return value
-	}
-	switch item["kind"] {
-	case "atom", "operator-text":
-		item["class"] = class
-	}
-	return item
-}
-
-func canonicalFenceClasses(open, close any) (any, any) {
-	openMap, openOK := open.(map[string]any)
-	closeMap, closeOK := close.(map[string]any)
-	if openOK && closeOK {
-		openText, _ := openMap["text"].(string)
-		closeText, _ := closeMap["text"].(string)
-		if openText != "" && openText == closeText {
-			return withAtomClass(open, "fence"), withAtomClass(close, "fence")
-		}
-	}
-	return withAtomClass(open, "opening"), withAtomClass(close, "closing")
-}
-
-func isBareScripts(node *ir.Scripts) bool {
-	return node.Top == nil && node.Bottom == nil &&
-		node.TopLeft == nil && node.BottomLeft == nil &&
-		node.TopRight == nil && node.BottomRight == nil
-}
-
-func normalizeFractionOperand(n ir.Node, mode semanticMode) (any, error) {
-	fenced, ok := n.(*ir.Fenced)
-	if !mode.deparenthesizeFractionOperand || !ok ||
-		!fenced.Balanced || fenced.Open == nil || fenced.Close == nil ||
-		glyphText(fenced.Open) != "(" || glyphText(fenced.Close) != ")" {
-		return normalizeNode(n, mode)
-	}
-	items := make([]any, 0, len(fenced.Body))
-	for _, child := range fenced.Body {
-		value, err := normalizeNode(child, mode)
-		if err != nil {
-			return nil, err
-		}
-		items = appendNormalized(items, value)
-	}
-	items = coalesceTextRuns(items)
-	if len(items) == 1 {
-		return items[0], nil
-	}
-	return items, nil
-}
-
-func glyphText(n ir.Node) string {
-	switch node := n.(type) {
-	case *ir.Glyph:
-		return node.Text
-	case *ir.Operator:
-		return node.Text
-	default:
-		return ""
-	}
 }
 
 func canonicalAccent(value any) any {
@@ -525,8 +375,6 @@ func canonicalAccent(value any) any {
 	if canonical, ok := accentCanonicalForms[text]; ok {
 		item["text"] = canonical
 	}
-	item["class"] = "diacritic"
-	item["variant"] = "normal-or-auto"
 	return item
 }
 
@@ -555,59 +403,11 @@ func isTransparentSizeStyle(node *ir.Style) bool {
 		!base.IgnoreAsSpace
 }
 
-func isLiteralBalancedFence(node *ir.Fenced) bool {
-	if !node.Balanced || node.Open == nil || node.Close == nil || len(node.Body) == 0 {
-		return false
-	}
-	base := node.NodeBase()
-	if base.Class != ir.ClassInner ||
-		base.Variant != ir.VariantAuto ||
-		base.Paint.Role != ir.PaintInk || base.Paint.HasExplicit ||
-		base.Limits != ir.LimitsAuto ||
-		!base.LeftSpacing.IsZero() || !base.RightSpacing.IsZero() ||
-		base.IgnoreAsSpace {
-		return false
-	}
-	for _, child := range node.Body {
-		if !isLiteralFenceNode(child) {
-			return false
-		}
-	}
-	return true
-}
-
-func isLiteralFenceNode(n ir.Node) bool {
-	switch n := n.(type) {
-	case *ir.Glyph, *ir.Operator, *ir.Space:
-		return true
-	case *ir.Row:
-		for _, child := range n.Items {
-			if !isLiteralFenceNode(child) {
-				return false
-			}
-		}
-		return true
-	default:
-		return false
-	}
-}
-
-func isSingleAccentBase(n ir.Node) bool {
-	switch node := n.(type) {
-	case *ir.Glyph, *ir.Operator:
-		return true
-	case *ir.Row:
-		return len(node.Items) == 1 && isSingleAccentBase(node.Items[0])
-	default:
-		return false
-	}
-}
-
 func normalizedBase(n ir.Node, size ir.MathSize, cramped bool) map[string]any {
 	base := n.NodeBase()
 	return map[string]any{
 		"kind":            ir.KindName(base.Kind()),
-		"class":           mathClassName(effectiveClass(n)),
+		"class":           mathClassName(base.Class),
 		"size":            mathSizeName(size),
 		"cramped":         cramped,
 		"variant":         variantName(base.Variant),
@@ -619,32 +419,7 @@ func normalizedBase(n ir.Node, size ir.MathSize, cramped bool) map[string]any {
 	}
 }
 
-func effectiveClass(n ir.Node) ir.MathClass {
-	base := n.NodeBase()
-	if scripts, ok := n.(*ir.Scripts); ok && scripts.BaseItem != nil {
-		return effectiveClass(scripts.BaseItem)
-	}
-	// Operator nodes are semantic Op atoms. Both Typst's resolveOp and TeX's
-	// operator paths mean ClassLarge even when one frontend leaves the default
-	// class on the node.
-	if _, ok := n.(*ir.Operator); ok && base.Class == ir.ClassNormal {
-		return ir.ClassLarge
-	}
-	return base.Class
-}
-
 func normalizeAtom(base map[string]any, text string, source *ir.Base) (any, error) {
-	canonicalizeAtomLimits(base, text)
-	if utf8.RuneCountInString(text) > 1 && allDigits(text) {
-		items := make([]any, 0, utf8.RuneCountInString(text))
-		for _, r := range text {
-			item := cloneMap(base)
-			item["kind"] = "atom"
-			item["text"] = string(r)
-			items = append(items, item)
-		}
-		return items, nil
-	}
 	if text == "" {
 		base["kind"] = "atom"
 		base["text"] = text
@@ -655,11 +430,6 @@ func normalizeAtom(base map[string]any, text string, source *ir.Base) (any, erro
 		base["kind"] = "operator-text"
 		base["text"] = text
 		return base, nil
-	}
-	if source.Variant == ir.VariantBold && isGreekLetter(r) {
-		// Math bold Greek follows the bold-italic alphabet unless an upright
-		// bold face was explicitly selected.
-		base["variant"] = "bold-italic"
 	}
 	// A single Unicode symbol may be represented as Glyph by one frontend and
 	// Operator by the other. The source encoding has no neutral semantics.
@@ -672,43 +442,15 @@ func normalizeAtom(base map[string]any, text string, source *ir.Base) (any, erro
 	return base, nil
 }
 
-func isGreekLetter(r rune) bool {
-	return (r >= '\u0370' && r <= '\u03ff') || (r >= '\u1f00' && r <= '\u1fff')
-}
-
-func allDigits(text string) bool {
-	for _, r := range text {
-		if !unicode.IsDigit(r) {
-			return false
-		}
-	}
-	return text != ""
-}
-
-func cloneMap(source map[string]any) map[string]any {
-	out := make(map[string]any, len(source))
-	for key, value := range source {
-		out[key] = value
-	}
-	return out
-}
-
-func canonicalizeAtomLimits(base map[string]any, text string) {
-	limits, _ := base["limits"].(string)
-	if base["class"] == "large" && isIntegralText(text) && (limits == "auto" || limits == "never") {
-		base["limits"] = "never"
-	}
-	if base["class"] == "relation" && (limits == "auto" || limits == "always") {
-		base["limits"] = "always"
-	}
-}
-
 func usesLimits(node *ir.Scripts, size ir.MathSize) bool {
 	placement := node.Limits
-	class := effectiveClass(node.BaseItem)
+	class := node.Class
 	if base := node.BaseItem.NodeBase(); base != nil {
 		if placement == ir.LimitsAuto {
 			placement = base.Limits
+		}
+		if base.Class != ir.ClassNormal {
+			class = base.Class
 		}
 	}
 	switch placement {
@@ -717,40 +459,7 @@ func usesLimits(node *ir.Scripts, size ir.MathSize) bool {
 	case ir.LimitsNever:
 		return false
 	}
-	if class == ir.ClassRelation {
-		return true
-	}
-	return size == ir.SizeDisplay && class == ir.ClassLarge && !isIntegralBase(node.BaseItem)
-}
-
-func isIntegralBase(n ir.Node) bool {
-	for {
-		switch node := n.(type) {
-		case *ir.Glyph:
-			return isIntegralText(node.Text)
-		case *ir.Operator:
-			return isIntegralText(node.Text)
-		case *ir.Scripts:
-			n = node.BaseItem
-			continue
-		case *ir.Row:
-			if len(node.Items) != 1 {
-				return false
-			}
-			n = node.Items[0]
-			continue
-		default:
-			return false
-		}
-	}
-}
-
-func isIntegralText(text string) bool {
-	r, size := utf8.DecodeRuneInString(text)
-	if size == 0 || size != len(text) {
-		return false
-	}
-	return (r >= '\u222b' && r <= '\u2233') || (r >= '\u2a0b' && r <= '\u2a1c')
+	return size == ir.SizeDisplay && class == ir.ClassLarge
 }
 
 func firstNode(nodes ...ir.Node) ir.Node {
@@ -764,6 +473,7 @@ func firstNode(nodes ...ir.Node) ir.Node {
 
 func isNeutralRow(base *ir.Base) bool {
 	return base.Class == ir.ClassNormal &&
+		base.Variant == ir.VariantAuto &&
 		base.Paint.Role == ir.PaintInk && !base.Paint.HasExplicit &&
 		base.Limits == ir.LimitsAuto &&
 		base.LeftSpacing.IsZero() && base.RightSpacing.IsZero() &&
@@ -859,34 +569,7 @@ func normalizedLength(length ir.Length) any {
 	if length.IsZero() {
 		return nil
 	}
-	if length.Unit == ir.LengthMu {
-		// TeX math units are exactly 1/18 em. Normalize them to the same
-		// millionth-em representation Typst's named spacing uses.
-		return []any{"em", roundedDiv(length.Value, 18)}
-	}
 	return []any{lengthUnitName(length.Unit), length.Value}
-}
-
-func normalizedFractionPadding(length ir.Length) any {
-	if length.IsZero() {
-		return []any{"em", int64(100_000)}
-	}
-	return normalizedLength(length)
-}
-
-func normalizedDefaultStroke(length ir.Length) any {
-	if length.IsZero() ||
-		(length.Unit == ir.LengthEm && length.Value == 50_000) {
-		return []any{"em", int64(50_000)}
-	}
-	return normalizedLength(length)
-}
-
-func roundedDiv(value, divisor int64) int64 {
-	if value >= 0 {
-		return (value + divisor/2) / divisor
-	}
-	return -((-value + divisor/2) / divisor)
 }
 
 func normalizedPaint(paint ir.Paint) any {

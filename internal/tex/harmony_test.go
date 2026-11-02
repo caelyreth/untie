@@ -26,6 +26,15 @@ func TestCompoundNodesUseNeutralClasses(t *testing.T) {
 	if operator.Class != ir.ClassLarge {
 		t.Errorf("operatorname class = %v, want large", operator.Class)
 	}
+
+	line := requireKind[*ir.Line](t, rowItems(t, parseTest(t, `\overline{x}`, Options{}).Root)[0])
+	if line.Thickness != defaultStrokeThickness {
+		t.Errorf("line thickness = %v, want %v", line.Thickness, defaultStrokeThickness)
+	}
+	cancel := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\cancel{x}`, Options{}).Root)[0])
+	if cancel.Thickness != defaultStrokeThickness {
+		t.Errorf("cancel thickness = %v, want %v", cancel.Thickness, defaultStrokeThickness)
+	}
 }
 
 func TestFenceRolesAndMatrixSemantics(t *testing.T) {
