@@ -40,6 +40,10 @@ var allowedProjectImports = map[string][]string{
 		modulePath,
 		modulePath + "/internal/testrender",
 	},
+	modulePath + "/cmd/crosscheck": {
+		modulePath + "/internal/crosscheck",
+		modulePath + "/internal/fixture",
+	},
 	modulePath + "/display": {
 		modulePath + "/geometry",
 	},
@@ -77,6 +81,15 @@ var allowedProjectImports = map[string][]string{
 	modulePath + "/internal/conformance/cmd/typstreport": {
 		modulePath + "/internal/conformance",
 		modulePath + "/internal/fixture",
+	},
+	modulePath + "/internal/crosscheck": {
+		modulePath,
+		modulePath + "/display",
+		modulePath + "/font",
+		modulePath + "/internal/engine",
+		modulePath + "/internal/fixture",
+		modulePath + "/ir",
+		modulePath + "/source",
 	},
 	modulePath + "/internal/fixture": {
 		modulePath + "/geometry",
