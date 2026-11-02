@@ -28,16 +28,15 @@ type expander struct {
 
 func newExpander(src string, limits source.Limits, macros map[string]Macro, diagnostic func(source.Diagnostic)) *expander {
 	lex := newLexer(src, limits, false, diagnostic)
-	tokens := lex.all()
+	capacity := min(len(src)+1, limits.MaxTokens+1)
 	e := &expander{
-		tokens:     make([]token, 0, len(tokens)),
+		tokens:     make([]token, 0, capacity),
 		scopes:     []map[string]*macroDef{{}},
 		diagnostic: diagnostic,
 		limits:     limits,
 	}
-	for i := len(tokens) - 1; i >= 0; i-- {
-		e.tokens = append(e.tokens, tokens[i])
-	}
+	e.tokens = lex.appendAll(e.tokens)
+	slices.Reverse(e.tokens)
 
 	names := make([]string, 0, len(macros))
 	for rawName := range macros {

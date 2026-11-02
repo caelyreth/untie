@@ -70,6 +70,10 @@ func newLexer(src string, limits source.Limits, detached bool, diagnostic func(s
 func (l *lexer) all() []token {
 	capacity := min(len(l.src)+1, l.limits.MaxTokens+1)
 	out := make([]token, 0, capacity)
+	return l.appendAll(out)
+}
+
+func (l *lexer) appendAll(out []token) []token {
 	for {
 		t := l.next()
 		out = append(out, t)
