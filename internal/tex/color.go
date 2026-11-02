@@ -97,19 +97,52 @@ func (p *parser) parseFramedBox(command token) astNode {
 }
 
 func (p *parser) parsePhantom(command token) astNode {
+	width, height, depth := true, true, true
+	smashNoop := false
+	switch command.text {
+	case "\\hphantom":
+		height, depth = false, false
+	case "\\vphantom":
+		width = false
+	case "\\smash":
+		height, depth = false, false
+		if option, _, ok := p.consumeRawOptionalGroup(); ok {
+			if strings.TrimSpace(option) == "" {
+				smashNoop = true
+			} else {
+				height, depth = true, true
+				for _, r := range option {
+					switch r {
+					case 't':
+						height = false
+					case 'b':
+						depth = false
+					default:
+						// KaTeX treats any other [tb] spelling as an unsmashed box.
+						smashNoop = true
+					}
+				}
+			}
+		}
+	}
 	body := p.parseRequiredArgument(command)
+	if smashNoop {
+		return body
+	}
 	return &astPhantomNode{
 		astBase: newASTBaseAt(astPhantom, source.Merge(command.span, body.base().span), tokenOrigin(command)),
 		body:    body,
-		width:   command.text != "\\vphantom",
-		height:  command.text != "\\hphantom",
-		depth:   command.text != "\\hphantom",
+		width:   width,
+		height:  height,
+		depth:   depth,
 	}
 }
 
 func (p *parser) parseMathClass(command token) astNode {
+	// KaTeX mclass.ts applies only the requested atom class. The op.ts
+	// \mathop handler also defaults limits to false; explicit \limits may
+	// override that later in parseAtom.
 	class := ir.ClassNormal
-	limits := ir.LimitsAuto
 	switch command.text {
 	case "\\mathbin":
 		class = ir.ClassBinary
@@ -125,20 +158,27 @@ func (p *parser) parseMathClass(command token) astNode {
 		class = ir.ClassInner
 	case "\\mathop":
 		class = ir.ClassLarge
-	default:
-		limits = ir.LimitsNever
 	}
 	body := p.parseRequiredArgument(command)
 	return &astClassNode{
-		astBase: newASTBaseAt(astClass, source.Merge(command.span, body.base().span), tokenOrigin(command)),
-		body:    body,
-		class:   class,
-		limits:  limits,
+		astBase:   newASTBaseAt(astClass, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		body:      body,
+		class:     class,
+		limits:    ir.LimitsNever,
+		setLimits: true,
 	}
 }
 
 func (p *parser) parseRule(command token) astNode {
-	_, _, _ = p.consumeRawOptionalGroup()
+	shift, _, hasShift := p.consumeRawOptionalGroup()
+	if hasShift && strings.TrimSpace(shift) != "" {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityWarning,
+			Code:     source.CodeUnsupported,
+			Message:  "vertical \\rule shift is not represented in the neutral IR",
+		})
+	}
 	widthText, widthSpan, widthOK := p.consumeRawGroupTextChecked(command)
 	heightText, heightSpan, heightOK := p.consumeRawGroupTextChecked(command)
 	span := source.Merge(widthSpan, heightSpan)

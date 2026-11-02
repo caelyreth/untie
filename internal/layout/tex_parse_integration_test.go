@@ -25,6 +25,10 @@ func TestPublicTeXParseIRLayout(t *testing.T) {
 		{"matrix", `\begin{matrix}a&b\\c&d\end{matrix}`, ir.KindTable},
 		{"cases", `\begin{cases}x&x>0\\-x&x<0\end{cases}`, ir.KindFenced},
 		{"aligned", `\begin{aligned}x&=1\\y&=2\end{aligned}`, ir.KindMultiline},
+		{"inline-math-in-text", `\text{graph: \(y=mx+b\)}`, ir.KindStyle},
+		{"operator-limits", `\sum_{i=1}^n i`, ir.KindScripts},
+		{"structural-brace", `\overbrace{x+1}^{n}`, ir.KindScripts},
+		{"empty-genfrac-style", `\genfrac{}{}{}{}{a}{b}`, ir.KindFraction},
 	}
 	for _, test := range tests {
 		test := test

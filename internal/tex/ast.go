@@ -168,9 +168,10 @@ type astPhantomNode struct {
 
 type astClassNode struct {
 	astBase
-	body   astNode
-	class  ir.MathClass
-	limits ir.LimitsPlacement
+	body      astNode
+	class     ir.MathClass
+	limits    ir.LimitsPlacement
+	setLimits bool
 }
 
 type astRuleNode struct {
