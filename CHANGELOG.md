@@ -7,9 +7,14 @@
 - TeX display `\tag` and `\tag*` are now formula metadata instead of discarded
   diagnostics. Non-starred tags render display-time parentheses, starred tags
   render their literal body, `\nonumber`/`\notag` survive as suppression events,
-  and single-line display output exposes `Box.Tag` plus constrained
-  `LineBox.Tag`. Typst numbering, host counters, and multiline row tags remain
-  deferred.
+  and display output exposes `Box.Tag` plus constrained `LineBox.Tag`. Every
+  syntactic argument boundary creates an independent metadata scope, so tags
+  cannot be promoted from scripts, required/text/optional arguments, or
+  macro-expanded equivalents. Nested Multiline/Table values no longer
+  invalidate a top-level tag. Tagged output with `MaxWidth` uses one complete
+  constrained line with honest tag logical overflow; parent `Italic` follows
+  the rightmost tag run. Typst numbering, host counters, and row-scoped
+  multiline tags remain deferred.
 - `TableRow.Tag` and the table-provider tag fragment were removed. They had no
   producing frontend and incorrectly suggested that top-level equation tags
   belonged inside table rows. Use `ir.Formula.Tags` and `display.TagBox`.

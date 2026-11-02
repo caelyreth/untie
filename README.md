@@ -55,11 +55,16 @@ TeX display manual tags are formula metadata, not synthetic root content.
 `\tag{1}` exposes the authored body through `Expr.Tags()` and renders a
 parenthesized tag; `\tag*{1}` preserves the star metadata and renders the body
 without generated parentheses. `\nonumber` and `\notag` are retained as
-suppression events. For a single-line display formula, `box.Tag` describes a
-tag-local sub-box and its placement. Constrained output additionally exposes
-the same parent-frame tag through `line.Tag`. Parent `box.Items` already include
-the translated tag; a host drawing per-line items must draw `line.Tag.Box`
-separately. Typst document numbering, host counters, and multiline row tags are
+suppression events. Tags appearing inside any braced or unbraced command/script
+argument remain argument-local and are diagnosed rather than promoted to the
+formula. A nested `substack`, matrix, or other multiline value does not
+invalidate a top-level tag. For display output, `box.Tag` describes a tag-local
+sub-box and its placement. Positive `MaxWidth` with a tag intentionally emits
+one complete constrained line rather than a multi-line wrap that cannot own one
+unambiguous tag. Constrained output additionally exposes the same parent-frame
+tag through `line.Tag`. Parent `box.Items` already include the translated tag;
+a host drawing per-line items must draw `line.Tag.Box` separately. Typst
+document numbering, host counters, and row-scoped multiline tags remain
 explicitly deferred.
 
 `NewEngine` is the caller-owned lifecycle API for repeated layouts. The

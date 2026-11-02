@@ -283,8 +283,11 @@ width beyond the frame; it is not copied directly as the parent value.
 `ir.Formula` carries an equation-tag sidecar beside its root. Tags contain
 normal math IR bodies plus source evidence, manual/suppression/star metadata,
 and a line association. They never appear as synthetic root children, and
-document counters never enter neutral IR. Phase 1 lays out one manual tag for a
-single display line. `display.TagBox.Box` is tag-local and is placed by
+document counters never enter neutral IR. Phase 1 attaches one manual tag to a
+display formula; nested Multiline or Table values remain formula content rather
+than invalidating the top-level tag. A positive `MaxWidth` tagged formula
+intentionally uses one complete constrained line because Phase 1 has no
+row-scoped tag ownership. `display.TagBox.Box` is tag-local and is placed by
 `TagBox.X/Y` in parent coordinates. For constrained output, `LineBox.Tag`
 repeats the metadata in the parent frame; its coordinates do not move with
 `OffsetX`. Parent `Items` and `Hits` already include the translated tag
@@ -311,8 +314,11 @@ it is not yet a stable cross-language protocol.
 
 Tag-box validation rejects nil or nested tags, invalid source ranges, malformed
 placement, and aggregate item/hit disagreement. Parent aggregates include tag
-items and hits; constrained parent and line tag metadata must agree. Clone and
-canonical output own every tag box path and line record independently.
+items and hits; constrained parent and line tag metadata and geometry must
+agree, including the targeted line and signed rightmost-run italic correction.
+Parent overflow includes the tag's logical right edge even when trailing tag
+content has no ink. Clone and canonical output own every tag box path and line
+record independently.
 
 Links are a deliberate text-only boundary. TeX `\href`/`\url` and Typst `link`
 retain rendered body content and its source spans, discard the destination, and

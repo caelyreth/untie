@@ -46,8 +46,10 @@ tests and migration notes.
   IR, source evidence, line association, and the TeX `\tag*` star distinction.
 - Single-line display output exposes a bounded `display.TagBox` sub-box and
   parent/line metadata. Parent output includes translated tag items and hits;
-  tag source semantics do not enter formula root breaks. Alternative text
-  appends a deterministic equation-tag phrase.
+  tag logical width contributes to parent overflow and the parent italic
+  correction follows the rightmost tag run. Tag source semantics do not enter
+  formula root breaks. Alternative text appends a deterministic equation-tag
+  phrase.
 - Break metadata carries position and kind, not an invented relative cost.
 - Link syntax is text-only across both frontends: visible body content and source
   spans survive parsing/layout, destinations are intentionally discarded, and
@@ -92,7 +94,8 @@ The bounded TeX frontend currently includes:
   encoded from TeX's 1.2em/1.8em/2.4em/3.0em tiers;
 - top-level display `\tag`/`\tag*` metadata with normal TeX math bodies,
   `\nonumber`/`\notag` suppression events, explicit malformed/inline/nested
-  diagnostics, and reviewed display geometry from the pinned Typst tag fixture;
+  diagnostics, independent metadata scope at every argument boundary, and
+  reviewed display geometry from the pinned Typst tag fixture;
 - matrix, array, cases, aligned, gathered, split, alignedat, and alignat parsing
   into table or multiline IR;
 - recovery diagnostics for malformed groups, missing arguments, invalid UTF-8,
@@ -165,8 +168,9 @@ tables.
   `MaxWidth`-wide frame.
 - single-line TeX equation-tag sub-box layout with source-grounded no-gap
   placement, generated parentheses for non-starred tags, constrained right-edge
-  placement when it does not overlap formula content, honest overflow, and
-  translated parent aggregate items/hits.
+  placement when it does not overlap formula content, one-complete-line fallback
+  under `MaxWidth`, honest logical/ink overflow, rightmost-run italic
+  correction, and translated parent aggregate items/hits.
 
 `internal/engine` adapts `font.FontSet` to layout, performs rune/class-aware
 variant selection, multi-glyph operator shaping, text tracking and fallback,
