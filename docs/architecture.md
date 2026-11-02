@@ -121,7 +121,7 @@ phantoms, errors, placeholders, breaks, and alignment markers.
 
 `ir.Base` carries source metadata and semantic state needed by layout:
 
-- source and origin ranges;
+- a contiguous source range and call-site origin;
 - math class;
 - requested math size and cramped state;
 - logical alphabet variant;
@@ -131,20 +131,37 @@ phantoms, errors, placeholders, breaks, and alignment markers.
 - explicit left and right spacing;
 - whether the node is ignored for automatic spacing.
 
+`Span` is always one contiguous source range, including for macro-expanded
+content. `Origin` records the contiguous call site used for source hits.
+Expansion-internal definition-site ranges are not exposed in neutral IR because
+the current contract has no multi-span metadata and rendering must not attach a
+hit to bytes outside the caller's formula text.
+
 Neutral nodes also preserve source semantics that layout must not infer:
 fraction/table/script/cancel roles, source accent stretch intent, and natural
 accent width fitting. These fields are compared by crosscheck; layout may
 consume them only through neutral rules, never dialect checks.
 
-An explicitly sized delimiter is a leaf, not metadata on `Fenced` and not an
-ordinary delimiter atom. It retains its delimiter text, opening/closing/
-relation/ordinary class, source evidence, and one of four neutral size tiers.
-Layout renders the leaf in text style so it remains fixed inside scripts, and
-targets the KaTeX-derived maximum heights 1.2em, 1.8em, 2.4em, and 3.0em
-through the existing vertical stretch port. Typst's non-default
-`lr(size: ...)` values are relative or absolute and are intentionally not folded
-into these tiers; the Typst frontend retains an explicit bounded unsupported
-diagnostic for them.
+`DelimiterSizing` is the shared target policy for paired `Fenced` nodes and
+standalone `SizedDelimiter` leaves:
+
+- `Content` fits delimiters to the wrapped content and is the default for
+  `Fenced`;
+- `Relative` multiplies the content-derived target by a percentage length;
+- `Absolute` supplies an explicit target length, with font-relative units
+  resolved against the active or explicitly selected typographic style.
+
+A standalone `SizedDelimiter` is not an ordinary delimiter atom. It retains its
+delimiter text, opening/closing/relation/ordinary class, source evidence, and an
+absolute or relative policy, but not a dialect tier name. Layout renders it in
+the inherited math style. TeX nodes explicitly request `SizeText`, so their
+em-valued targets remain fixed inside scripts. TeX's four `\big...` tiers stay
+in the TeX adapter and lower to absolute 1.2em, 1.8em, 2.4em, and 3.0em
+targets. Typst `lr(size:)` lowers default/100% to `Content`, other percentages
+to `Relative`, and length values to `Absolute`; single-delimiter calls use a
+standalone `SizedDelimiter` that inherits the surrounding script scale.
+Non-length arguments are invalid-value errors rather than
+unsupported/defaulted geometry.
 
 `ir` deliberately does not contain glyph IDs, font advances, outline paths,
 pixel sizes, or dialect AST types. Those values either belong to source
@@ -205,7 +222,10 @@ The public `font` package parses SFNT/TTC faces, cmap and variation mappings,
 MATH constants and constructions, math GSUB features, and CFF/TrueType outlines.
 `internal/engine` adapts those design-unit results to the narrow layout ports,
 including deterministic glyph selection, stretching, text shaping, and fallback
-order.
+order. For moustache delimiters without a native vertical MATH construction,
+the adapter assembles the KaTeX-defined U+23A7/U+23AA/U+23AD and
+U+23AB/U+23AA/U+23A9 piece sequences within the selected math face. The same
+adapter path serves standalone tiers and tall `\left...\right` moustaches.
 
 ## Display Contract
 
