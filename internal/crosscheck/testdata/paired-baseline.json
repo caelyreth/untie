@@ -3,10 +3,10 @@
   "corpus": "typlet-paired",
   "toleranceDIP": 0.002,
   "total": 81,
-  "pass": 16,
+  "pass": 17,
   "semanticIRMismatch": 60,
   "layoutMismatch": 0,
-  "fixtureMismatch": 3,
+  "fixtureMismatch": 2,
   "documentedPairDifference": 2,
   "unexplained": 0,
   "cases": [
@@ -68,9 +68,7 @@
       "id": "root-n",
       "index": 9,
       "category": "fractions",
-      "kind": "fixture-mismatch",
-      "detail": "Typst: fixture.glyphs[6].y: expected -2.361333, got -2.353882",
-      "reason": "Reviewed NewCM geometry difference from the pinned static Typlet frame; the exact metric or glyph difference is recorded in detail."
+      "kind": "pass"
     },
     {
       "id": "pde",

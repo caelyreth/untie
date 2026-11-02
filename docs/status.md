@@ -151,8 +151,8 @@ The bounded Typst math frontend includes:
   current split is 156 pass, 3 expected diagnostic, 4 unsupported, and 8
   reviewed gaps.
 - All 81 paired Typst/TeX formulas are classified with zero unexplained cases.
-- The committed paired baseline records 16 full passes, 60 semantic gaps, 0
-  layout gaps, 3 static-frame gaps, and 2 documented pair differences, with
+- The committed paired baseline records 17 full passes, 60 semantic gaps, 0
+  layout gaps, 2 static-frame gaps, and 2 documented pair differences, with
   zero unexplained cases.
 
 ## Not Yet Implemented

@@ -232,12 +232,20 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	if err != nil {
 		return display.Item{}, err
 	}
+	originY, err := add(y, glyph.Glyph.OriginY)
+	if err != nil {
+		return display.Item{}, err
+	}
+	hostOriginY, err := f.layout.host(originY)
+	if err != nil {
+		return display.Item{}, err
+	}
 	item := display.Item{
 		Kind:   display.ItemGlyphRef,
 		Paint:  toDisplayPaint(glyph.Paint),
 		FontID: glyph.Glyph.FontID,
 		Glyph:  glyph.Glyph.ID,
-		At:     geometry.Point{X: hostX, Y: hostY},
+		At:     geometry.Point{X: hostX, Y: hostOriginY},
 	}
 	em, err := f.layout.host(glyph.Scale)
 	if err != nil {

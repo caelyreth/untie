@@ -55,6 +55,10 @@ func (a *adapter) centerOnAxis(glyph layout.Glyph) (layout.Glyph, error) {
 				}
 			}
 		}
+		glyph.OriginY, err = glyph.OriginY.Add(shift)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
 	}
 	if glyph.HasInkBottom {
 		glyph.InkBottom, err = glyph.InkBottom.Add(shift)

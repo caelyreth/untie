@@ -192,6 +192,9 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 	if scaled.Italic, err = scale(glyph.Italic, factor); err != nil {
 		return nil, err
 	}
+	if scaled.OriginY, err = scale(glyph.OriginY, factor); err != nil {
+		return nil, err
+	}
 	if scaled.TopAccent, err = scale(glyph.TopAccent, factor); err != nil {
 		return nil, err
 	}

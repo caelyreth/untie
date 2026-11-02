@@ -49,13 +49,17 @@ type GlyphRequest struct {
 // Advance. Outline may be empty when the source only exposes a host glyph
 // reference.
 type Glyph struct {
-	ID                    uint16
-	FontID                string
-	Text                  string
-	Advance               geometry.Em
-	Ascent                geometry.Em
-	Descent               geometry.Em
-	Italic                geometry.Em
+	ID      uint16
+	FontID  string
+	Text    string
+	Advance geometry.Em
+	Ascent  geometry.Em
+	Descent geometry.Em
+	Italic  geometry.Em
+	// OriginY is the glyph origin's signed offset from the fragment baseline.
+	// It is non-zero when a vertical MATH construction is centered on the
+	// math axis while its outline stays at the font's original baseline.
+	OriginY               geometry.Em
 	AdvanceIncludesItalic bool
 	TopAccent             geometry.Em
 	HasTopAccent          bool
