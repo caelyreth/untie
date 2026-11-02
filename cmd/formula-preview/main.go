@@ -27,36 +27,36 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	maxWidth := flags.Float64("max-width", 0, "maximum display width in DIP")
 	output := flags.String("o", "", "output SVG file; stdout when empty")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "usage: formula-preview -font FONT [-dialect tex|typst] [-display] [-size DIP] [SOURCE]")
+		_, _ = fmt.Fprintln(stderr, "usage: formula-preview -font FONT [-dialect tex|typst] [-display] [-size DIP] [SOURCE]")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 	if *fontPath == "" {
-		fmt.Fprintln(stderr, "formula-preview: -font is required")
+		_, _ = fmt.Fprintln(stderr, "formula-preview: -font is required")
 		return 2
 	}
 	dialect, err := parseDialect(*dialectName)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 2
 	}
 	src, err := readSource(flags.Args(), stdin)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 2
 	}
 	fontBytes, err := os.ReadFile(*fontPath)
 	if err != nil {
-		fmt.Fprintf(stderr, "formula-preview: read font: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "formula-preview: read font: %v\n", err)
 		return 2
 	}
 	fonts, err := untie.LoadFonts(untie.Fonts{
 		Math: untie.FontData{Bytes: fontBytes, ID: *fontPath},
 	})
 	if err != nil {
-		fmt.Fprintf(stderr, "formula-preview: load font: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "formula-preview: load font: %v\n", err)
 		return 2
 	}
 	mode := untie.Inline
@@ -69,7 +69,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		MaxWidth: float32(*maxWidth),
 	})
 	if err != nil {
-		fmt.Fprintf(stderr, "formula-preview: layout: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "formula-preview: layout: %v\n", err)
 		return 1
 	}
 	svg := testrender.SVG(box, testrender.Options{
@@ -78,13 +78,13 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	})
 	if *output == "" {
 		if _, err := io.WriteString(stdout, svg); err != nil {
-			fmt.Fprintf(stderr, "formula-preview: write output: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "formula-preview: write output: %v\n", err)
 			return 1
 		}
 		return 0
 	}
 	if err := os.WriteFile(*output, []byte(svg), 0o644); err != nil {
-		fmt.Fprintf(stderr, "formula-preview: write %s: %v\n", *output, err)
+		_, _ = fmt.Fprintf(stderr, "formula-preview: write %s: %v\n", *output, err)
 		return 1
 	}
 	return 0

@@ -396,12 +396,3 @@ func fixedDelimiterClass(class ir.MathClass) ir.MathClass {
 	}
 	return class
 }
-
-func (p *parser) unsupportedLayout(span source.Range, construct string) {
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(span),
-		Severity: source.SeverityError,
-		Code:     source.CodeUnsupported,
-		Message:  construct + " layout is not implemented; construct is preserved in the IR",
-	})
-}
