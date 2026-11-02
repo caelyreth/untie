@@ -18,7 +18,7 @@ func signatureFor(name string) (signature, bool) {
 		return signature{maxPositional: 1, named: setOf("base", "size", "dotless")}, true
 	}
 	if def, ok := symbol(name); ok &&
-		(def.class == ir.ClassOpening || def.class == ir.ClassClosing || def.class == ir.ClassFence) {
+		(def.class == ir.ClassOpening || def.class == ir.ClassFence) {
 		return signature{maxPositional: 1, named: setOf("body")}, true
 	}
 	return signature{}, false

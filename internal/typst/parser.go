@@ -376,7 +376,7 @@ func (p *parser) parsePrimary() *astNode {
 	case tokLinebreak, tokAmp:
 		return nil
 	case tokIdent:
-		callee := p.parseIdentOrField()
+		callee := p.parseIdentOrField(false)
 		if p.current().kind == tokLParen && !p.current().spaceBefore {
 			return p.parseCall(callee)
 		}
@@ -472,12 +472,12 @@ func (p *parser) startsCodeDictionary() bool {
 		p.peek(3).kind == tokIdent && p.peek(4).kind == tokColon
 }
 
-func (p *parser) parseIdentOrField() *astNode {
+func (p *parser) parseIdentOrField(inCode bool) *astNode {
 	first := p.advance()
 	node := p.node(first.span, astIdentifier)
 	node.text = first.text
+	node.inCode = inCode
 	for p.current().kind == tokGlyph && p.current().text == "." {
-		dot := p.current()
 		next := p.peek(1)
 		if next.kind != tokIdent || next.spaceBefore {
 			break
@@ -486,7 +486,6 @@ func (p *parser) parseIdentOrField() *astNode {
 		part := p.advance()
 		node.text += "." + part.text
 		node.span = source.Merge(node.span, part.span)
-		_ = dot
 	}
 	if strings.Contains(node.text, ".") {
 		node.kind = astField
@@ -498,6 +497,7 @@ func (p *parser) parseCall(callee *astNode) *astNode {
 	open := p.advance() // left paren
 	call := p.node(open.span, astCall)
 	call.base = callee
+	call.inCode = callee.inCode
 
 	seenNamed := make(map[string]source.Range)
 	for p.current().kind != tokEOF && p.current().kind != tokRParen {
@@ -666,7 +666,7 @@ func (p *parser) parseCodeAtom() *astNode {
 	tok := p.current()
 	switch tok.kind {
 	case tokIdent:
-		ident := p.parseIdentOrField()
+		ident := p.parseIdentOrField(true)
 		switch ident.text {
 		case "let", "set", "show", "for", "while", "import", "include", "if", "else", "context", "return", "break", "continue":
 			p.errorAt(ident.span, source.CodeUnsupported, "%s expressions are not supported in Typst math", ident.text)
@@ -796,6 +796,7 @@ func (p *parser) parseTrailingContentCall(callee *astNode) *astNode {
 	content.raw = "content"
 	call := p.node(source.Merge(callee.span, content.span), astCall)
 	call.base = callee
+	call.inCode = callee.inCode
 	call.args = []astArg{{
 		kind: argPositional,
 		span: content.span,

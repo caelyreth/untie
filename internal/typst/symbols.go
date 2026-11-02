@@ -6,11 +6,65 @@ import (
 
 	"github.com/caelyreth/untie/internal/mathdata"
 	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
 )
 
 type symbolDef struct {
 	text  string
 	class ir.MathClass
+}
+
+// identResolution separates the source root of a dotted name from the path
+// resolved inside a Typst module. The two scopes matter: `math.frac` is valid
+// in code mode, but math mode only exposes `frac` directly (or through std).
+type identResolution struct {
+	name        string
+	module      string
+	fieldSpan   source.Range
+	unknownRoot string
+	rootSpan    source.Range
+}
+
+func resolveIdent(n *astNode) identResolution {
+	if n == nil {
+		return identResolution{}
+	}
+	raw := n.text
+	rootEnd := strings.IndexByte(raw, '.')
+	if rootEnd < 0 {
+		rootEnd = len(raw)
+	}
+	resolved := identResolution{
+		name:      raw,
+		fieldSpan: n.span,
+		rootSpan:  source.NewRange(n.span.Start, n.span.Start+rootEnd),
+	}
+
+	type modulePrefix struct {
+		prefix string
+		module string
+		code   bool
+	}
+	for _, candidate := range []modulePrefix{
+		{prefix: "std.math.", module: "math"},
+		{prefix: "std.sym.", module: "sym"},
+		{prefix: "math.", module: "math", code: true},
+		{prefix: "sym.", module: "sym", code: true},
+	} {
+		if !strings.HasPrefix(raw, candidate.prefix) {
+			continue
+		}
+		if candidate.code && !n.inCode {
+			resolved.unknownRoot = strings.TrimSuffix(candidate.prefix, ".")
+			resolved.rootSpan = source.NewRange(n.span.Start, n.span.Start+len(candidate.module))
+			return resolved
+		}
+		resolved.name = strings.TrimPrefix(raw, candidate.prefix)
+		resolved.module = candidate.module
+		resolved.fieldSpan = source.NewRange(n.span.Start+len(candidate.prefix), n.span.End)
+		return resolved
+	}
+	return resolved
 }
 
 var typstSymbols = map[string]symbolDef{
@@ -144,8 +198,6 @@ var accentAliases = map[string]string{
 }
 
 func symbol(name string) (symbolDef, bool) {
-	name = strings.TrimPrefix(name, "sym.")
-	name = strings.TrimPrefix(name, "math.")
 	// Typst 0.15.1 renamed center dots to dots.h.c and retains dots.c as a
 	// compatibility spelling in its symbol catalogue.
 	if name == "dots.c" {

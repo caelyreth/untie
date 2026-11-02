@@ -220,11 +220,17 @@ func (l *lowerer) lowerDelimiterFunction(call *astNode, def symbolDef) ir.Node {
 	closeText := matchingDelimiter(def.text)
 	fenced := ir.NewFenced(call.span, l.flattenFenceBody(body)...)
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), def.text)
-	open.Class = ir.ClassOpening
+	closeClass := ir.ClassClosing
+	if def.class == ir.ClassFence {
+		open.Class = ir.ClassFence
+		closeClass = ir.ClassFence
+	} else {
+		open.Class = ir.ClassOpening
+	}
 	fenced.Open = open
 	if closeText != "" {
 		closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), closeText)
-		closeGlyph.Class = ir.ClassClosing
+		closeGlyph.Class = closeClass
 		fenced.Close = closeGlyph
 	}
 	fenced.Balanced = true
@@ -234,7 +240,12 @@ func (l *lowerer) lowerDelimiterFunction(call *astNode, def symbolDef) ir.Node {
 
 func matchingDelimiter(open string) string {
 	pairs := map[string]string{
-		"(": ")", "[": "]", "{": "}", "⟨": "⟩", "⌊": "⌋", "⌈": "⌉", "⟦": "⟧",
+		"(": ")", "⟮": "⟯", "⦇": "⦈", "⦅": "⦆", "⦓": "⦔", "⦕": "⦖",
+		"{": "}", "⦃": "⦄", "[": "]", "⦍": "⦐", "⦏": "⦎", "⟦": "⟧",
+		"⦋": "⦌", "❲": "❳", "⟬": "⟭", "⦗": "⦘", "⟅": "⟆", "⎰": "⎱",
+		"⎱": "⎰", "⧘": "⧙", "⧚": "⧛", "⟨": "⟩", "⧼": "⧽", "⦑": "⦒",
+		"⦉": "⦊", "⟪": "⟫", "⌜": "⌝", "⌞": "⌟", "|": "|", "‖": "‖",
+		"⦀": "⦀", "⦙": "⦙", "⦚": "⦚", "⌈": "⌉", "⌊": "⌋",
 	}
 	if close, ok := pairs[open]; ok {
 		return close
