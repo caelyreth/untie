@@ -103,12 +103,12 @@ type Macro struct {
 	Args int
 }
 
-// ParseOptions configure parsing. TeX macros and the Typst preamble are
-// dialect-specific and ignored by the other frontend.
+// ParseOptions configure parsing. TeX macros are ignored by the Typst
+// frontend. Typst preamble/code definitions are intentionally unsupported;
+// hosts must expand them before calling Parse.
 type ParseOptions struct {
-	Macros   map[string]Macro
-	Preamble string
-	Limits   Limits
+	Macros map[string]Macro
+	Limits Limits
 }
 
 // Expr is an immutable parsed formula.
@@ -147,7 +147,7 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
 			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
 		case Typst:
-			result := typst.Parse(src, mode, typst.Options{Preamble: opts.Preamble, Limits: limits})
+			result := typst.Parse(src, mode, typst.Options{Limits: limits})
 			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
 		default:
 			span := source.NewRange(0, len(src))
@@ -426,7 +426,6 @@ func computeKey(e *Expr, limits source.Limits, opts ParseOptions) uint64 {
 	writeInt(int64(e.dialect))
 	writeInt(int64(e.mode))
 	writeString(e.source)
-	writeString(opts.Preamble)
 	for _, limit := range []int{
 		limits.MaxSourceBytes,
 		limits.MaxTokens,

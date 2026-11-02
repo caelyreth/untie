@@ -136,7 +136,7 @@ func verifyCase(ctx context.Context, harness *layoutHarness, testCase fixture.Ca
 		size = converted.FontSize
 	}
 	typstExpr := untie.ParseTypst(testCase.Source, mode, untie.ParseOptions{
-		Preamble: testCase.Preamble, Limits: source.DefaultLimits(),
+		Limits: source.DefaultLimits(),
 	})
 	typstSide, failure := parsedSide("Typst", typstExpr)
 	if failure != nil {

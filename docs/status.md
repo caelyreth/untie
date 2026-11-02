@@ -40,9 +40,10 @@ tests and migration notes.
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
   break opportunities with post-operator glue folded into the preceding piece.
-- Parsing facade with dialect selection, TeX macro options, Typst preamble
-  options, diagnostics, stable parse keys, cancellation checks, and a panic
-  containment boundary.
+- Parsing facade with dialect selection, TeX macro options, diagnostics, stable
+  parse keys, cancellation checks, and a panic containment boundary. Typst
+  preamble/code definitions are intentionally unsupported and no longer appear
+  as a public parse option.
 - Public end-to-end layout through `internal/engine`, with real font, IR,
   layout, and display-list validation.
 - Caller-owned reusable `Engine` values and a bounded eight-entry convenience

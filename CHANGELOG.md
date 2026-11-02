@@ -13,3 +13,6 @@
 - The unused `Alt.MathML` field was removed. Alternative output currently
   contains only `Text` and `Speech`; MathML output requires a separately
   designed backend.
+- `ParseOptions.Preamble` was removed. Typst preamble and formula-level code
+  definitions are outside the bounded math renderer; hosts must evaluate or
+  expand them before calling Untie and pass only formula source.
