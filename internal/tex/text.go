@@ -25,7 +25,7 @@ func (p *parser) parseTextCommand(command token) astNode {
 	}
 	body := p.parseTextArgument(command)
 	if body == nil {
-		return newPlaceholderAST(nonEmptyRange(command.span), "missing text argument")
+		return newPlaceholderAST(normalizeRange(command.span), "missing text argument")
 	}
 	if variant == ir.VariantAuto {
 		return body
@@ -46,18 +46,18 @@ func (p *parser) parseOperatorName(command token) astNode {
 	}
 	body := p.parseTextArgument(command)
 	if body == nil {
-		return newPlaceholderAST(nonEmptyRange(command.span), "missing operator name")
+		return newPlaceholderAST(normalizeRange(command.span), "missing operator name")
 	}
 	text, ok := plainText(body)
 	text = strings.TrimSpace(text)
 	if !ok || text == "" {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(body.base().span),
+			Range:    normalizeRange(body.base().span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnsupported,
 			Message:  "operator name must contain plain text",
 		})
-		return newPlaceholderAST(nonEmptyRange(body.base().span), "unsupported operator name")
+		return newPlaceholderAST(normalizeRange(body.base().span), "unsupported operator name")
 	}
 	return &astOperatorNode{
 		astBase: newASTBaseAt(astOperator, source.Merge(command.span, body.base().span), tokenOrigin(command)),
@@ -71,12 +71,12 @@ func (p *parser) parseTextArgument(owner token) astNode {
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.isControl() && (t.text == "\\right" || t.text == "\\end") {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(owner.span),
+			Range:    normalizeRange(owner.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "missing text argument to '" + owner.text + "'",
 		})
-		return newPlaceholderAST(nonEmptyRange(owner.span), "missing text argument to "+owner.text)
+		return newPlaceholderAST(normalizeRange(owner.span), "missing text argument to "+owner.text)
 	}
 	if t.is(tokBeginGroup) {
 		p.exp.next()
@@ -96,7 +96,7 @@ func (p *parser) parseTextGroup(open token) astNode {
 		span = source.Merge(open.span, close.span)
 	} else {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(open.span),
+			Range:    normalizeRange(open.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnclosedGroup,
 			Message:  "unclosed text group; expected '}'",
@@ -133,7 +133,7 @@ func (p *parser) parseTextSequence() astNode {
 			text := t.text
 			if text == "$" {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(t.span),
+					Range:    normalizeRange(t.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeUnsupported,
 					Message:  "embedded math inside \\text is not supported",
@@ -219,6 +219,7 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 	}
 	if spec, ok := accentCommands[t.text]; ok {
 		body := p.parseTextArgument(t)
+		p.unsupportedLayout(source.Merge(t.span, body.base().span), "accent")
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,
@@ -228,7 +229,7 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		}
 	}
 	p.report(source.Diagnostic{
-		Range:    nonEmptyRange(t.span),
+		Range:    normalizeRange(t.span),
 		Severity: source.SeverityError,
 		Code:     source.CodeUnsupported,
 		Message:  "command '" + t.text + "' is not supported in text mode",
@@ -250,7 +251,7 @@ func textRow(items []astNode) astNode {
 
 func astLiteralText(t token, text string) *astTextNode {
 	return &astTextNode{
-		astBase: newASTBaseAt(astText, nonEmptyRange(t.span), tokenOrigin(t)),
+		astBase: newASTBaseAt(astText, normalizeRange(t.span), tokenOrigin(t)),
 		text:    text,
 		variant: ir.VariantAuto,
 	}

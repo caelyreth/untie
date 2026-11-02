@@ -65,8 +65,9 @@ type astTextNode struct {
 
 type astOperatorNode struct {
 	astBase
-	text   string
-	limits ir.LimitsPlacement
+	text    string
+	variant ir.Variant
+	limits  ir.LimitsPlacement
 }
 
 type astSpaceNode struct {

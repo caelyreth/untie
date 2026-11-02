@@ -229,7 +229,7 @@ func (e *expander) expand(call token, m *macroDef) bool {
 		invocation = source.Merge(invocation, argSpan)
 		if !ok {
 			e.diagnostic(source.Diagnostic{
-				Range:    nonEmptyRange(source.Merge(call.span, argSpan)),
+				Range:    normalizeRange(source.Merge(call.span, argSpan)),
 				Severity: source.SeverityError,
 				Code:     source.CodeMissingArgument,
 				Message:  fmt.Sprintf("missing argument %d to macro %s", i+1, call.text),
@@ -250,17 +250,28 @@ func (e *expander) expand(call token, m *macroDef) bool {
 		m.compiled = true
 	}
 
-	replacement := make([]token, 0, len(m.body))
+	if call.depth+1 > e.limits.MaxCallDepth {
+		e.diagnostic(source.Diagnostic{
+			Range:    normalizeRange(invocation),
+			Severity: source.SeverityError,
+			Code:     source.CodeLimitExceeded,
+			Message:  "TeX macro call depth limit exceeded",
+		})
+		return false
+	}
+
+	size, ok := e.replacementSize(m, args)
+	if !ok {
+		e.reportLimit(call, "TeX expanded token limit exceeded")
+		e.disabled = true
+		return false
+	}
+
+	replacement := make([]token, 0, size)
 	for i := 0; i < len(m.body); i++ {
 		t := m.body[i]
 		if t.is(tokParameter) {
 			if i+1 >= len(m.body) {
-				e.diagnostic(source.Diagnostic{
-					Range:    nonEmptyRange(t.span),
-					Severity: source.SeverityError,
-					Code:     source.CodeInvalidValue,
-					Message:  "incomplete macro parameter at end of replacement text",
-				})
 				break
 			}
 			i++
@@ -273,12 +284,6 @@ func (e *expander) expand(call token, m *macroDef) bool {
 			if next.is(tokChar) && len(next.text) == 1 && next.text[0] >= '1' && next.text[0] <= '9' {
 				argIndex := int(next.text[0] - '1')
 				if argIndex >= len(args) {
-					e.diagnostic(source.Diagnostic{
-						Range:    nonEmptyRange(next.span),
-						Severity: source.SeverityError,
-						Code:     source.CodeInvalidValue,
-						Message:  fmt.Sprintf("macro argument #%d is not declared", argIndex+1),
-					})
 					continue
 				}
 				for _, arg := range args[argIndex] {
@@ -289,35 +294,81 @@ func (e *expander) expand(call token, m *macroDef) bool {
 				}
 				continue
 			}
-			e.diagnostic(source.Diagnostic{
-				Range:    nonEmptyRange(next.span),
-				Severity: source.SeverityError,
-				Code:     source.CodeInvalidValue,
-				Message:  "macro parameter must be # followed by an argument number",
-			})
 			continue
 		}
 		replacement = append(replacement, retarget(t, invocation, call.depth+1))
 	}
 
-	if call.depth+1 > e.limits.MaxCallDepth {
-		e.diagnostic(source.Diagnostic{
-			Range:    nonEmptyRange(invocation),
-			Severity: source.SeverityError,
-			Code:     source.CodeLimitExceeded,
-			Message:  "TeX macro call depth limit exceeded",
-		})
-		return false
-	}
 	e.expandedTokenCount += len(replacement)
-	if e.expandedTokenCount > e.limits.MaxExpandedTokens {
-		e.reportLimit(call, "TeX expanded token limit exceeded")
-		e.disabled = true
-		return false
-	}
-
 	e.push(replacement...)
 	return true
+}
+
+// replacementSize validates the replacement text while accounting for its size
+// against the remaining expansion budget. It must run before replacement is
+// allocated so repeated arguments cannot force a large allocation first.
+func (e *expander) replacementSize(m *macroDef, args [][]token) (int, bool) {
+	remaining := e.limits.MaxExpandedTokens - e.expandedTokenCount
+	if remaining < 0 {
+		return 0, false
+	}
+	size := 0
+	add := func(n int) bool {
+		if n < 0 || n > remaining-size {
+			return false
+		}
+		size += n
+		return true
+	}
+
+	for i := 0; i < len(m.body); i++ {
+		t := m.body[i]
+		if !t.is(tokParameter) {
+			if !add(1) {
+				return 0, false
+			}
+			continue
+		}
+		if i+1 >= len(m.body) {
+			e.diagnostic(source.Diagnostic{
+				Range:    normalizeRange(t.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  "incomplete macro parameter at end of replacement text",
+			})
+			break
+		}
+		i++
+		next := m.body[i]
+		switch {
+		case next.is(tokParameter):
+			if !add(1) {
+				return 0, false
+			}
+		case next.is(tokChar) && len(next.text) == 1 && next.text[0] >= '1' && next.text[0] <= '9':
+			argIndex := int(next.text[0] - '1')
+			if argIndex >= len(args) {
+				e.diagnostic(source.Diagnostic{
+					Range:    normalizeRange(next.span),
+					Severity: source.SeverityError,
+					Code:     source.CodeInvalidValue,
+					Message:  fmt.Sprintf("macro argument #%d is not declared", argIndex+1),
+				})
+				continue
+			}
+			if !add(len(args[argIndex])) {
+				return 0, false
+			}
+		default:
+			e.diagnostic(source.Diagnostic{
+				Range:    normalizeRange(next.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  "macro parameter must be # followed by an argument number",
+			})
+		}
+	}
+	return size, true
 }
 
 func (e *expander) reportLimit(t token, message string) {
@@ -326,7 +377,7 @@ func (e *expander) reportLimit(t token, message string) {
 	}
 	e.limitReported = true
 	e.diagnostic(source.Diagnostic{
-		Range:    nonEmptyRange(t.span),
+		Range:    normalizeRange(t.span),
 		Severity: source.SeverityError,
 		Code:     source.CodeLimitExceeded,
 		Message:  message,
@@ -343,12 +394,11 @@ func retarget(t token, invocation source.Range, depth int) token {
 	return t
 }
 
-func nonEmptyRange(r source.Range) source.Range {
+// normalizeRange preserves valid source ranges. Zero-width ranges are valid caret
+// positions, including at EOF, and must not be widened beyond the source.
+func normalizeRange(r source.Range) source.Range {
 	if r.IsDetached() {
 		return source.Detached()
-	}
-	if r.End == r.Start {
-		r.End++
 	}
 	return r
 }

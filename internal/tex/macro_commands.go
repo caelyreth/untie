@@ -33,7 +33,7 @@ func (p *parser) parseDefinition(command token, kind definitionKind, global bool
 	unsupported := command.text == "\\edef" || command.text == "\\xdef"
 	if unsupported {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(command.span),
+			Range:    normalizeRange(command.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnsupported,
 			Message:  "expanding macro definitions are not supported; definition is ignored",
@@ -53,7 +53,7 @@ func (p *parser) parseDefinition(command token, kind definitionKind, global bool
 	macro := &macroDef{args: args, body: body}
 	if !p.exp.define(name, macro, global) {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(nameSpan),
+			Range:    normalizeRange(nameSpan),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  "invalid macro name",
@@ -88,7 +88,7 @@ func (p *parser) parseNewCommandInScope(command token, global bool) {
 		if err != nil || number < 0 || number > 9 {
 			unsupported = true
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(nameSpan),
+				Range:    normalizeRange(nameSpan),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
 				Message:  "macro argument count must be an integer from 0 through 9",
@@ -99,7 +99,7 @@ func (p *parser) parseNewCommandInScope(command token, global bool) {
 		if _, _, second := p.consumeRawOptionalGroup(); second {
 			unsupported = true
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(nameSpan),
+				Range:    normalizeRange(nameSpan),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnsupported,
 				Message:  "optional macro arguments with defaults are not supported",
@@ -110,7 +110,7 @@ func (p *parser) parseNewCommandInScope(command token, global bool) {
 	_, body, bodySpan, ok := p.consumeRawRequiredGroup()
 	if !ok {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(nameSpan),
+			Range:    normalizeRange(nameSpan),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "missing replacement text for " + command.text,
@@ -129,7 +129,7 @@ func (p *parser) parseNewCommandInScope(command token, global bool) {
 	case defNew:
 		if exists {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(nameSpan),
+				Range:    normalizeRange(nameSpan),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
 				Message:  name + " is already defined; use \\renewcommand to replace it",
@@ -139,7 +139,7 @@ func (p *parser) parseNewCommandInScope(command token, global bool) {
 	case defRenew:
 		if !exists {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(nameSpan),
+				Range:    normalizeRange(nameSpan),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
 				Message:  name + " is not defined; use \\newcommand instead",
@@ -167,7 +167,7 @@ func (p *parser) parseLet(command token) {
 	}
 	if t.isEOF() || t.is(tokEndGroup) {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(nameSpan),
+			Range:    normalizeRange(nameSpan),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "\\let requires a target token",
@@ -188,7 +188,7 @@ func (p *parser) parseGlobal(command token) {
 	t := p.exp.next()
 	if !t.isControl() {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnexpectedToken,
 			Message:  "\\global must be followed by a macro definition",
@@ -202,7 +202,7 @@ func (p *parser) parseGlobal(command token) {
 		p.parseNewCommandInScope(t, true)
 	default:
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnexpectedToken,
 			Message:  "\\global must be followed by a macro definition",
@@ -216,7 +216,7 @@ func (p *parser) consumeDefinitionName() (string, source.Range, bool) {
 	t := p.exp.popRaw()
 	if !t.isControl() || t.isEOF() {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  "expected a control sequence for macro name",
@@ -236,7 +236,7 @@ func (p *parser) consumeNewCommandName(command token) (string, source.Range, boo
 		close := p.exp.popRaw()
 		if !name.isControl() || !close.is(tokEndGroup) {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(source.Merge(t.span, close.span)),
+				Range:    normalizeRange(source.Merge(t.span, close.span)),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
 				Message:  command.text + " requires a control sequence as its first argument",
@@ -247,7 +247,7 @@ func (p *parser) consumeNewCommandName(command token) (string, source.Range, boo
 	}
 	if !t.isControl() {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  command.text + " requires a control sequence as its first argument",
@@ -265,7 +265,7 @@ func (p *parser) consumeDefinitionBody(command token) (int, []token, source.Rang
 		t := p.exp.popRaw()
 		if t.isEOF() {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(command.span),
+				Range:    normalizeRange(command.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeMissingArgument,
 				Message:  "unexpected end of input in macro definition",
@@ -281,7 +281,7 @@ func (p *parser) consumeDefinitionBody(command token) (int, []token, source.Rang
 			number := p.exp.popRaw()
 			if !number.is(tokChar) || len(number.text) != 1 || number.text[0] < '1' || number.text[0] > '9' {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(number.span),
+					Range:    normalizeRange(number.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeInvalidValue,
 					Message:  "macro parameter must be # followed by an argument number",
@@ -291,7 +291,7 @@ func (p *parser) consumeDefinitionBody(command token) (int, []token, source.Rang
 			want := strconv.Itoa(args + 1)
 			if number.text != want {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(number.span),
+					Range:    normalizeRange(number.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeInvalidValue,
 					Message:  "macro parameters must be numbered consecutively from #1",
@@ -300,7 +300,7 @@ func (p *parser) consumeDefinitionBody(command token) (int, []token, source.Rang
 			args++
 			if args > 9 {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(number.span),
+					Range:    normalizeRange(number.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeLimitExceeded,
 					Message:  "TeX macros support at most nine arguments",
@@ -314,7 +314,7 @@ func (p *parser) consumeDefinitionBody(command token) (int, []token, source.Rang
 	body, span := p.consumeRawGroupAfter(open)
 	if delimited {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(source.Merge(command.span, span)),
+			Range:    normalizeRange(source.Merge(command.span, span)),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnsupported,
 			Message:  "delimited macro parameters are not supported",
@@ -343,7 +343,7 @@ func (p *parser) consumeRawGroupAfter(open token) ([]token, source.Range) {
 		t := p.exp.popRaw()
 		if t.isEOF() {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(open.span),
+				Range:    normalizeRange(open.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnclosedGroup,
 				Message:  "unexpected end of input in macro replacement text",
@@ -382,7 +382,7 @@ func (p *parser) consumeRawOptionalGroup() (string, source.Range, bool) {
 		t := p.exp.popRaw()
 		if t.isEOF() {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(open.span),
+				Range:    normalizeRange(open.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnclosedGroup,
 				Message:  "unexpected end of input in optional macro declaration argument",

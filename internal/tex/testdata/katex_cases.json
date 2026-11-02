@@ -93,7 +93,7 @@
     "name": "accent",
     "source": "\\hat{x}",
     "provenance": "KaTeX src/functions/accent.ts",
-    "diagnostic": ""
+    "diagnostic": "unsupported"
   },
   {
     "name": "overline",

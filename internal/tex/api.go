@@ -44,33 +44,18 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 			if fallbackText == "" {
 				fallbackText = "TeX frontend internal error"
 			}
-			d := source.Diagnostic{
-				Range:    rootSpan,
-				Severity: source.SeverityError,
-				Code:     source.CodeInternal,
-				Message:  fmt.Sprintf("TeX frontend invariant failure: %v", recovered),
-			}
-			result = Result{
-				Root: ir.NewRow(
-					rootSpan,
-					ir.NewError(rootSpan, fallbackText, source.CodeInternal),
-				),
-				Diagnostics: []source.Diagnostic{d},
-			}
+			result = fallbackResult(
+				rootSpan,
+				fallbackText,
+				source.CodeInternal,
+				fmt.Sprintf("TeX frontend invariant failure: %v", recovered),
+				limits,
+			)
 		}
 	}()
 
 	if len(src) > limits.MaxSourceBytes {
-		d := source.Diagnostic{
-			Range:    rootSpan,
-			Severity: source.SeverityError,
-			Code:     source.CodeLimitExceeded,
-			Message:  "source exceeds configured byte limit",
-		}
-		return Result{
-			Root:        ir.NewRow(rootSpan, ir.NewError(rootSpan, src, source.CodeLimitExceeded)),
-			Diagnostics: []source.Diagnostic{d},
-		}
+		return fallbackResult(rootSpan, src, source.CodeLimitExceeded, "source exceeds configured byte limit", limits)
 	}
 
 	p := newParser(src, mode, opts.Macros, limits)
@@ -78,5 +63,31 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	return Result{
 		Root:        root,
 		Diagnostics: source.NormalizeDiagnostics(p.diagnostics),
+	}
+}
+
+func fallbackResult(
+	span source.Range,
+	text string,
+	code source.Code,
+	message string,
+	limits source.Limits,
+) Result {
+	limits = limits.WithDefaults()
+	diagnostic := source.Diagnostic{
+		Range:    span,
+		Severity: source.SeverityError,
+		Code:     code,
+		Message:  message,
+	}
+	if limits.MaxNodes < 2 {
+		return Result{
+			Root:        ir.NewPlaceholder(span, "TeX frontend error"),
+			Diagnostics: []source.Diagnostic{diagnostic},
+		}
+	}
+	return Result{
+		Root:        ir.NewRow(span, ir.NewError(span, text, code)),
+		Diagnostics: []source.Diagnostic{diagnostic},
 	}
 }

@@ -331,7 +331,16 @@ func addSymbols(class ir.MathClass, table string) {
 		if !ok {
 			continue
 		}
-		symbolCommands["\\"+name] = symbolSpec{text: text, class: class, variant: ir.VariantAuto}
+		limits := ir.LimitsAuto
+		if class == ir.ClassLarge {
+			limits = ir.LimitsNever
+		}
+		symbolCommands["\\"+name] = symbolSpec{
+			text:    text,
+			class:   class,
+			variant: ir.VariantAuto,
+			limits:  limits,
+		}
 	}
 }
 
@@ -488,7 +497,7 @@ func addOperators() {
 func addFonts() {
 	fontCommands = map[string]ir.Variant{
 		"\\mathrm":     ir.VariantNormal,
-		"\\mathnormal": ir.VariantNormal,
+		"\\mathnormal": ir.VariantAuto,
 		"\\mathit":     ir.VariantItalic,
 		"\\mathbf":     ir.VariantBold,
 		"\\boldsymbol": ir.VariantBoldItalic,

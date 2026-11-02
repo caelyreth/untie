@@ -83,7 +83,7 @@ func (p *parser) parseSequence(stop stopMode) astNode {
 		}
 		if t.is(tokEndGroup) {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnexpectedToken,
 				Message:  "unexpected '}'",
@@ -103,7 +103,7 @@ func (p *parser) parseSequence(stop stopMode) astNode {
 
 		if t.is(tokAlignment) {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnexpectedToken,
 				Message:  "alignment tab '&' is only valid in a math environment",
@@ -114,7 +114,7 @@ func (p *parser) parseSequence(stop stopMode) astNode {
 		}
 		if t.isControl() && t.text == "\\\\" && stop != stopCell {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnexpectedToken,
 				Message:  "line break is only valid in a math environment",
@@ -176,21 +176,21 @@ func (p *parser) stopAtEOF(stop stopMode, t token) {
 	switch stop {
 	case stopGroup, stopBracket:
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnclosedGroup,
 			Message:  "unexpected end of input while parsing group",
 		})
 	case stopRight:
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnclosedGroup,
 			Message:  "unexpected end of input before '\\right'",
 		})
 	case stopCell:
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidEnvironment,
 			Message:  "unexpected end of input inside math environment",
@@ -202,7 +202,7 @@ func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionI
 	for _, item := range items {
 		if f, ok := item.(*astFractionNode); ok && f.infix {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(command.span),
+				Range:    normalizeRange(command.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
 				Message:  "only one infix fraction operator is allowed per group",
@@ -241,7 +241,7 @@ func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionI
 func (p *parser) parseAtom(stop stopMode) astNode {
 	if p.depth >= p.limits.MaxNesting {
 		t := p.exp.peek()
-		p.limit(nonEmptyRange(t.span), "TeX parser nesting limit exceeded")
+		p.limit(normalizeRange(t.span), "TeX parser nesting limit exceeded")
 		return p.recoverAtom(t)
 	}
 
@@ -272,7 +272,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 			p.exp.next()
 			if top != nil {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(t.span),
+					Range:    normalizeRange(t.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeUnexpectedToken,
 					Message:  "double superscript",
@@ -290,7 +290,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 			p.exp.next()
 			if bottom != nil {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(t.span),
+					Range:    normalizeRange(t.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeUnexpectedToken,
 					Message:  "double subscript",
@@ -315,7 +315,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 				row.origin = source.Merge(row.origin, tokenOrigin(t))
 			} else {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(t.span),
+					Range:    normalizeRange(t.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeUnexpectedToken,
 					Message:  "prime conflicts with an existing superscript",
@@ -326,7 +326,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 			p.exp.next()
 			if base.base().kind != astOperator {
 				p.report(source.Diagnostic{
-					Range:    nonEmptyRange(t.span),
+					Range:    normalizeRange(t.span),
 					Severity: source.SeverityError,
 					Code:     source.CodeUnexpectedToken,
 					Message:  "limit controls must follow a math operator",
@@ -357,10 +357,24 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 				main:    base,
 				top:     top,
 				bottom:  bottom,
-				limits:  limits,
+				limits:  scriptLimits(base, limits),
 			}
 			return scripts
 		}
+	}
+}
+
+func scriptLimits(base astNode, explicit ir.LimitsPlacement) ir.LimitsPlacement {
+	if explicit != ir.LimitsAuto {
+		return explicit
+	}
+	switch n := base.(type) {
+	case *astOperatorNode:
+		return n.limits
+	case *astGlyphNode:
+		return n.limits
+	default:
+		return ir.LimitsAuto
 	}
 }
 
@@ -381,7 +395,7 @@ func (p *parser) parseNucleus(stop stopMode) astNode {
 		}
 		if t.text == "$" {
 			p.report(source.Diagnostic{
-				Range:    nonEmptyRange(t.span),
+				Range:    normalizeRange(t.span),
 				Severity: source.SeverityError,
 				Code:     source.CodeUnsupported,
 				Message:  "nested math delimiters are not supported",
@@ -392,7 +406,7 @@ func (p *parser) parseNucleus(stop stopMode) astNode {
 		return astGlyphSpec(t.span, t.origin, spec)
 	case tokEndGroup, tokAlignment, tokParameter:
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(t.span),
+			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnexpectedToken,
 			Message:  "unexpected token '" + t.text + "'",
@@ -420,7 +434,7 @@ func (p *parser) parseGroup(open token) astNode {
 		span = source.Merge(open.span, close.span)
 	} else {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(span),
+			Range:    normalizeRange(span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnclosedGroup,
 			Message:  "unclosed group; expected '}'",
@@ -437,17 +451,17 @@ func (p *parser) parseScriptArgument(name string, marker token) (astNode, source
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.isControl() && (t.text == "\\right" || t.text == "\\middle" || t.text == "\\end") {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(marker.span),
+			Range:    normalizeRange(marker.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "expected group after '" + name + "'",
 		})
-		span := nonEmptyRange(marker.span)
+		span := normalizeRange(marker.span)
 		return newPlaceholderAST(span, "missing "+name), source.Merge(marker.span, t.span)
 	}
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
-		span := nonEmptyRange(marker.span)
+		span := normalizeRange(marker.span)
 		return newPlaceholderAST(span, "missing "+name), span
 	}
 	return node, source.Merge(marker.span, node.base().span)
@@ -458,12 +472,12 @@ func (p *parser) parseRequiredArgument(owner token) astNode {
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.is(tokAlignment) || t.isControl() && (t.text == "\\right" || t.text == "\\middle" || t.text == "\\end") {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(owner.span),
+			Range:    normalizeRange(owner.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "missing required argument to '" + owner.text + "'",
 		})
-		span := nonEmptyRange(owner.span)
+		span := normalizeRange(owner.span)
 		return newPlaceholderAST(span, "missing argument to "+owner.text)
 	}
 	if t.is(tokBeginGroup) {
@@ -472,7 +486,7 @@ func (p *parser) parseRequiredArgument(owner token) astNode {
 	}
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
-		return newPlaceholderAST(nonEmptyRange(owner.span), "missing argument to "+owner.text)
+		return newPlaceholderAST(normalizeRange(owner.span), "missing argument to "+owner.text)
 	}
 	return node
 }
@@ -494,7 +508,7 @@ func (p *parser) parseOptionalArgument(owner token) astNode {
 		span = source.Merge(t.span, close.span)
 	} else {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(owner.span),
+			Range:    normalizeRange(owner.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeUnclosedGroup,
 			Message:  "unclosed optional argument to '" + owner.text + "'",
@@ -524,7 +538,7 @@ func (p *parser) recoverAtom(t token) astNode {
 			}
 		}
 	}
-	return newPlaceholderAST(nonEmptyRange(t.span), "nesting limit exceeded")
+	return newPlaceholderAST(normalizeRange(t.span), "nesting limit exceeded")
 }
 
 func (p *parser) report(d source.Diagnostic) {
@@ -571,7 +585,7 @@ func (p *parser) parseDimension(t token, braced bool) ir.Length {
 	length, ok := parseLengthString(strings.TrimSpace(text))
 	if !ok {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(span),
+			Range:    normalizeRange(span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  "invalid TeX dimension '" + text + "'",
@@ -580,7 +594,7 @@ func (p *parser) parseDimension(t token, braced bool) ir.Length {
 	}
 	if math.Abs(float64(length.Value)) > float64(p.limits.MaxDimension)*1_000_000 {
 		p.report(source.Diagnostic{
-			Range:    nonEmptyRange(span),
+			Range:    normalizeRange(span),
 			Severity: source.SeverityError,
 			Code:     source.CodeLimitExceeded,
 			Message:  "TeX dimension exceeds configured limit",
@@ -691,7 +705,7 @@ func astGlyphSpec(span, origin source.Range, spec symbolSpec) *astGlyphNode {
 
 func newPlaceholderAST(span source.Range, reason string) *astPlaceholderNode {
 	return &astPlaceholderNode{
-		astBase: newASTBase(astPlaceholder, nonEmptyRange(span)),
+		astBase: newASTBase(astPlaceholder, normalizeRange(span)),
 		reason:  reason,
 	}
 }
@@ -701,7 +715,7 @@ func astErr(span source.Range, text string, code source.Code) *astErrorNode {
 		text = "error"
 	}
 	return &astErrorNode{
-		astBase: newASTBase(astError, nonEmptyRange(span)),
+		astBase: newASTBase(astError, normalizeRange(span)),
 		text:    text,
 		code:    code,
 	}
