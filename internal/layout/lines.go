@@ -151,7 +151,7 @@ func (s *layoutState) flattenPlannedDisplayLines(
 		if err := flatten.visit(segment, 0, 0); err != nil {
 			return nil, err
 		}
-		if err := s.appendLineOwnHit(parent, segment, line); err != nil {
+		if err := s.appendLineOwnHit(parent, root, line); err != nil {
 			return nil, err
 		}
 		line.Items.Count = len(parent.Items) - line.Items.Start

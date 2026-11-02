@@ -98,6 +98,37 @@ func TestDisplayLinesWrapAtNeutralBreaks(t *testing.T) {
 	if len(box.Items) != itemCount || len(box.Hits) != hitCount {
 		t.Fatalf("parent aggregate = %d items/%d hits, want %d/%d", len(box.Items), len(box.Hits), itemCount, hitCount)
 	}
+	for i, line := range box.Lines {
+		foundRoot := false
+		for _, hit := range box.Hits[line.Hits.Start:line.Hits.End()] {
+			if hit.Kind == display.HitRow && hit.Source == root.Origin {
+				foundRoot = true
+				break
+			}
+		}
+		if !foundRoot {
+			t.Fatalf("line %d has no row hit for root source %v", i, root.Origin)
+		}
+	}
+	resolvedRow := false
+	for _, hit := range box.Hits {
+		if hit.Kind != display.HitRow || hit.Source != root.Origin {
+			continue
+		}
+		for xi := 1; xi < 10 && !resolvedRow; xi++ {
+			for yi := 1; yi < 10 && !resolvedRow; yi++ {
+				point := geometry.Point{
+					X: hit.Area.X + hit.Area.Width*float32(xi)/10,
+					Y: hit.Area.Y + hit.Area.Height*float32(yi)/10,
+				}
+				got, ok := box.At(point)
+				resolvedRow = ok && got.Kind == display.HitRow && got.Source == root.Origin
+			}
+		}
+	}
+	if !resolvedRow {
+		t.Fatal("Box.At did not resolve an inter-atom point to the wrapped row hit")
+	}
 	if box.Lines[0].Baseline != 0 {
 		t.Fatalf("first baseline = %v, want 0", box.Lines[0].Baseline)
 	}
@@ -661,6 +692,64 @@ func TestDisplayLineLimitsAndCancellation(t *testing.T) {
 	})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("greedyLinePlans() error = %v, want context cancellation", err)
+	}
+}
+
+func TestDisplayRangeLimitsCountCanonicalStorageOnce(t *testing.T) {
+	t.Parallel()
+
+	root := ir.NewRow(source.NewRange(0, 3),
+		glyph("a", ir.ClassNormal),
+		glyph("+", ir.ClassBinary),
+		glyph("b", ir.ClassNormal),
+	)
+	fonts := Fonts{Glyphs: &fakeGlyphSource{glyphs: map[string]Glyph{}}, Metrics: fakeStyleFont{}}
+	style := testStyle(16)
+	style.MaxWidth = 1
+	baselineRenderer, err := New(fonts, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline, err := baselineRenderer.Layout(root, ir.Display, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pathSegments := 0
+	for _, item := range baseline.Items {
+		pathSegments += len(item.Path)
+	}
+
+	tests := []struct {
+		name    string
+		limits  source.Limits
+		wantErr bool
+	}{
+		{name: "items exact", limits: source.Limits{MaxOutputItems: len(baseline.Items)}},
+		{name: "items below", limits: source.Limits{MaxOutputItems: len(baseline.Items) - 1}, wantErr: true},
+		{name: "paths exact", limits: source.Limits{MaxPathSegments: pathSegments}},
+		{name: "paths below", limits: source.Limits{MaxPathSegments: pathSegments - 1}, wantErr: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			renderer, err := New(fonts, Options{Limits: test.limits})
+			if err != nil {
+				t.Fatal(err)
+			}
+			box, err := renderer.Layout(root, ir.Display, style)
+			if test.wantErr {
+				if !errors.Is(err, ErrLimit) || box != nil {
+					t.Fatalf("Layout() = %v, %v, want ErrLimit", box, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Layout() error = %v", err)
+			}
+			if len(box.Items) != len(baseline.Items) {
+				t.Fatalf("items = %d, want %d", len(box.Items), len(baseline.Items))
+			}
+		})
 	}
 }
 
