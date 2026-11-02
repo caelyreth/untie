@@ -428,7 +428,11 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 	if len(lines) == 0 {
 		return nil, fmt.Errorf("%w: display lines are empty", ErrInvalidInput)
 	}
+	if _, err := s.addHost(s.request.MaxWidth, 0); err != nil {
+		return nil, err
+	}
 	parent := &display.Box{
+		Width:      s.request.MaxWidth,
 		AxisHeight: base.AxisHeight,
 		Alt:        base.Alt,
 		Lines:      make([]display.LineBox, len(lines)),
@@ -454,9 +458,13 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 				return nil, err
 			}
 		}
+		offsetX, err := s.displayLineOffset(lines[i].Box.Width)
+		if err != nil {
+			return nil, err
+		}
 		lines[i].Baseline = baseline
+		lines[i].OffsetX = offsetX
 		parent.Lines[i] = lines[i]
-		parent.Width = maxFloat(parent.Width, lines[i].Box.Width)
 		// Italic correction belongs to the final horizontal endpoint, which is
 		// the end of the last line for a vertically assembled display box.
 		parent.Italic = lines[i].Box.Italic
@@ -480,7 +488,7 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 					return nil, err
 				}
 			}
-			translated, err := s.translateItem(item, baseline)
+			translated, err := s.translateItem(item, offsetX, baseline)
 			if err != nil {
 				return nil, err
 			}
@@ -493,6 +501,10 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 				}
 			}
 			translated := hit
+			translated.Area.X, err = s.addHost(hit.Area.X, offsetX)
+			if err != nil {
+				return nil, err
+			}
 			translated.Area.Y, err = s.addHost(hit.Area.Y, baseline)
 			if err != nil {
 				return nil, err
@@ -508,7 +520,6 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 		return nil, err
 	}
 	parent.Overflow = overflow
-	parent.Overflow = maxFloat(parent.Overflow, parent.Width-s.request.MaxWidth)
 	parent.Overflow = maxFloat(0, parent.Overflow)
 	if err := parent.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
@@ -534,13 +545,45 @@ func (s *layoutState) displayItemsOverflow(items []display.Item, width, ascent, 
 	return overflow, nil
 }
 
-func (s *layoutState) translateItem(item display.Item, dy float32) (display.Item, error) {
+func (s *layoutState) displayLineOffset(lineWidth float32) (float32, error) {
+	if lineWidth >= s.request.MaxWidth {
+		return 0, nil
+	}
+	remaining, err := s.subHost(s.request.MaxWidth, lineWidth)
+	if err != nil {
+		return 0, err
+	}
+	switch s.request.Align {
+	case display.AlignStart:
+		return 0, nil
+	case display.AlignCenter:
+		return remaining / 2, nil
+	case display.AlignEnd:
+		return remaining, nil
+	default:
+		return 0, fmt.Errorf("%w: invalid alignment", ErrInvalidInput)
+	}
+}
+
+func (s *layoutState) translateItem(item display.Item, dx, dy float32) (display.Item, error) {
 	var err error
+	item.Bound.X, err = s.addHost(item.Bound.X, dx)
+	if err != nil {
+		return display.Item{}, err
+	}
 	item.Bound.Y, err = s.addHost(item.Bound.Y, dy)
 	if err != nil {
 		return display.Item{}, err
 	}
+	item.Rect.X, err = s.addHost(item.Rect.X, dx)
+	if err != nil {
+		return display.Item{}, err
+	}
 	item.Rect.Y, err = s.addHost(item.Rect.Y, dy)
+	if err != nil {
+		return display.Item{}, err
+	}
+	item.At.X, err = s.addHost(item.At.X, dx)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -557,6 +600,10 @@ func (s *layoutState) translateItem(item display.Item, dy float32) (display.Item
 				}
 			}
 			for j := range item.Path[i].Points {
+				item.Path[i].Points[j].X, err = s.addHost(item.Path[i].Points[j].X, dx)
+				if err != nil {
+					return display.Item{}, err
+				}
 				item.Path[i].Points[j].Y, err = s.addHost(item.Path[i].Points[j].Y, dy)
 				if err != nil {
 					return display.Item{}, err

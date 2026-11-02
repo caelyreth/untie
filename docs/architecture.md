@@ -244,9 +244,12 @@ placed fragment tree rather than reconstructing geometry from a flattened item
 list. Inline layout emits top-level relation, binary, and explicit break
 metadata. Display layout with a positive `Style.MaxWidth` greedily partitions
 the top-level placed fragment groups at those neutral boundaries and emits
-baseline-offset `LineBox` values; it does not slice flattened items or rescan
-source. Public orchestration derives alternative text from the neutral IR after
-geometry succeeds, so an accessibility failure never changes formula layout.
+`LineBox` values in a `MaxWidth`-wide alignment frame; it does not slice
+flattened items or rescan source. Each line carries a nonnegative `OffsetX`,
+baseline offset, and line-local box. `Style.Align` chooses start, center, or end
+position within the frame. Public orchestration derives alternative text from
+the neutral IR after geometry succeeds, so an accessibility failure never
+changes formula layout.
 Alternative output honors the per-field stricter intersection of Engine and
 expression resource limits; `Box.Alt` may therefore be a bounded fallback that
 differs from `Expr.Alt` when the Engine contract is tighter.
@@ -257,10 +260,13 @@ returns one complete overfull line instead of guessing from paint order.
 Wrapped output charges the parent and line draw items plus `LineBox` records to
 `MaxOutputItems`; parent and line path copies remain bounded by
 `MaxPathSegments`; aggregated parent hits remain bounded by `MaxNodes`. Parent
-`Items` are the vertically translated aggregate. Hosts draw either parent items
-or per-line items, never both. Parent `Overflow` is recomputed from the
-assembled aggregate bounds and the requested maximum width; line-local overflow
-is not treated as the parent value.
+`Items` and `Hits` are the horizontally and vertically translated aggregate in
+frame coordinates. Hosts draw either parent items or per-line items at their
+line offset and baseline, never both. Parent `Width` is the requested
+`MaxWidth`, including for single-line and overfull results. An overfull
+unbreakable line has zero `OffsetX` and honest positive overflow. Parent
+`Overflow` is recomputed from the assembled aggregate bounds relative to the
+frame; line-local overflow is not treated as the parent value.
 
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.
@@ -291,9 +297,9 @@ The root package is a coordinator:
   prepared engines, keyed by full font identity, effective limits, layout
   revision, and cache schema. Layout results are not cached.
 - `ClearLayoutEngineCache` releases engines retained by the convenience path.
-- `Style.Align` is currently validated but inactive and must not be documented
-  as changing geometry. Width-constrained line boxes use start-origin
-  coordinates.
+- `Style.Align` positions constrained display lines within the requested
+  `MaxWidth` frame. It has no effect when `MaxWidth` is zero or for inline
+  layout.
 
 The root package must not grow construct-specific algorithms or duplicate
 frontend and layout logic.

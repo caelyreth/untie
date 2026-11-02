@@ -112,8 +112,8 @@ func TestDisplayLinesWrapAtNeutralBreaks(t *testing.T) {
 	if got := parentItem - secondLineItem; !closeHost(got, box.Lines[1].Baseline) {
 		t.Fatalf("second-line parent item offset = %v, want baseline %v", got, box.Lines[1].Baseline)
 	}
-	if !closeHost(box.Width, wantWidths[3]) {
-		t.Fatalf("parent Width = %v, want widest line %v", box.Width, wantWidths[3])
+	if !closeHost(box.Width, style.MaxWidth) {
+		t.Fatalf("parent Width = %v, want constrained frame %v", box.Width, style.MaxWidth)
 	}
 	if box.Overflow != box.Lines[3].Box.Overflow {
 		t.Fatalf("parent Overflow = %v, want %v", box.Overflow, box.Lines[3].Box.Overflow)
@@ -166,8 +166,20 @@ func TestDisplayLinesLifecycleAndEdgeCases(t *testing.T) {
 		if string(first) != string(second) {
 			t.Fatal("zero MaxWidth changed unconstrained display geometry")
 		}
+		for _, align := range []display.Align{display.AlignCenter, display.AlignEnd} {
+			alignedStyle := zeroWidthStyle
+			alignedStyle.Align = align
+			aligned, err := renderer.Layout(root, ir.Display, alignedStyle)
+			if err != nil {
+				t.Fatal(err)
+			}
+			alignedCanonical, _ := aligned.MarshalCanonical()
+			if string(first) != string(alignedCanonical) {
+				t.Fatalf("Align %d changed unconstrained display geometry", align)
+			}
+		}
 	})
-	t.Run("inline ignores max width", func(t *testing.T) {
+	t.Run("inline ignores max width and align", func(t *testing.T) {
 		base, err := renderer.Layout(root, ir.Inline, testStyle(16))
 		if err != nil {
 			t.Fatal(err)
@@ -186,6 +198,18 @@ func TestDisplayLinesLifecycleAndEdgeCases(t *testing.T) {
 		if string(first) != string(second) {
 			t.Fatal("inline MaxWidth changed inline geometry")
 		}
+		for _, align := range []display.Align{display.AlignCenter, display.AlignEnd} {
+			alignedStyle := style
+			alignedStyle.Align = align
+			aligned, err := renderer.Layout(root, ir.Inline, alignedStyle)
+			if err != nil {
+				t.Fatal(err)
+			}
+			alignedCanonical, _ := aligned.MarshalCanonical()
+			if string(first) != string(alignedCanonical) {
+				t.Fatalf("inline Align %d changed geometry", align)
+			}
+		}
 	})
 	t.Run("one fitting line", func(t *testing.T) {
 		style := testStyle(16)
@@ -197,8 +221,14 @@ func TestDisplayLinesLifecycleAndEdgeCases(t *testing.T) {
 		if len(box.Lines) != 1 || box.Lines[0].Baseline != 0 {
 			t.Fatalf("Lines = %+v, want one line at baseline 0", box.Lines)
 		}
-		if box.Lines[0].Box.Width != box.Width || box.Lines[0].Box.Overflow != box.Overflow {
-			t.Fatalf("fitting line = %+v, parent width %v", box.Lines[0].Box, box.Width)
+		if box.Width != style.MaxWidth {
+			t.Fatalf("parent Width = %v, want constrained frame %v", box.Width, style.MaxWidth)
+		}
+		if box.Lines[0].OffsetX != 0 {
+			t.Fatalf("start-aligned OffsetX = %v, want 0", box.Lines[0].OffsetX)
+		}
+		if box.Lines[0].Box.Overflow != box.Overflow {
+			t.Fatalf("fitting line overflow = %v, parent overflow %v", box.Lines[0].Box.Overflow, box.Overflow)
 		}
 	})
 	t.Run("no legal break", func(t *testing.T) {

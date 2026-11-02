@@ -26,10 +26,6 @@ func TestGenerateScripts(t *testing.T) {
 	if got.Speech != "x sub i squared" {
 		t.Fatalf("Speech = %q, want %q", got.Speech, "x sub i squared")
 	}
-	if got.MathML != "" {
-		t.Fatalf("MathML = %q, want empty", got.MathML)
-	}
-
 	left := ir.NewScripts(testSpan, glyph("x"))
 	left.TopLeft = glyph("a")
 	left.BottomLeft = glyph("b")
@@ -359,10 +355,6 @@ func TestGenerateRejectsUnknownNodesVisibly(t *testing.T) {
 	if out.Speech != "unsupported node: kind-255" {
 		t.Fatalf("Speech = %q", out.Speech)
 	}
-	if out.MathML != "" {
-		t.Fatalf("MathML = %q, want empty", out.MathML)
-	}
-
 	out, err = GenerateContext(context.Background(), row(glyph("x"), unknownNode{}, glyph("y")), ir.Inline, source.Limits{})
 	if !errors.Is(err, ErrUnsupportedNode) {
 		t.Fatalf("nested GenerateContext() error = %v, want ErrUnsupportedNode", err)

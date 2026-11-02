@@ -27,6 +27,7 @@ func TestCloneIndependent(t *testing.T) {
 		Alt:    Alt{Text: "x", Speech: "x"},
 		Lines: []LineBox{{
 			Baseline: 1,
+			OffsetX:  2.5,
 			Box: &Box{
 				Width: 1,
 				Items: []Item{{
@@ -53,6 +54,9 @@ func TestCloneIndependent(t *testing.T) {
 	if box.Lines[0].Box.Items[0].Path[0].Op != geometry.SegMoveTo {
 		t.Fatal("Clone shared line box storage")
 	}
+	if got.Lines[0].OffsetX != 2.5 {
+		t.Fatalf("Clone OffsetX = %v, want 2.5", got.Lines[0].OffsetX)
+	}
 	if box.Alt != (Alt{Text: "x", Speech: "x"}) {
 		t.Fatal("Clone changed alternative text")
 	}
@@ -69,11 +73,13 @@ func TestMarshalCanonical(t *testing.T) {
 		Items: []Item{{
 			Kind:  ItemRule,
 			Paint: Paint{Role: RoleInk},
-			Rect:  geometry.Rect{Width: 1, Height: 0.1},
+			Bound: geometry.Rect{Y: 1, Width: 1, Height: 0.1},
+			Rect:  geometry.Rect{Y: 1, Width: 1, Height: 0.1},
+			At:    geometry.Point{Y: 1},
 		}},
 		Hits: []Hit{{
 			Source: source.NewRange(0, 1),
-			Area:   geometry.Rect{Width: 1, Height: 1},
+			Area:   geometry.Rect{Y: 1, Width: 1, Height: 1},
 			Depth:  1,
 			Kind:   HitAtom,
 		}},
@@ -88,6 +94,7 @@ func TestMarshalCanonical(t *testing.T) {
 				Items: []Item{{
 					Kind:  ItemRule,
 					Paint: Paint{Role: RoleInk},
+					Bound: geometry.Rect{Width: 1, Height: 0.1},
 					Rect:  geometry.Rect{Width: 1, Height: 0.1},
 				}},
 				Hits: []Hit{{
@@ -115,10 +122,10 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 	if !strings.Contains(string(first), `"hits"`) ||
 		!strings.Contains(string(first), `"breaks"`) ||
-		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x","mathml":""}`) ||
+		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x"}`) ||
 		!strings.Contains(string(first), `"italic":-0.5`) ||
 		!strings.Contains(string(first), `"italic":-0.25`) ||
-		!strings.Contains(string(first), `"lines":[{"baseline":1,"box":`) {
+		!strings.Contains(string(first), `"lines":[{"baseline":1,"offsetX":0,"box":`) {
 		t.Fatalf("canonical output omitted hits, breaks, alt, signed italic, or lines: %s", first)
 	}
 	if _, err := (*Box)(nil).MarshalCanonical(); err == nil {
@@ -150,7 +157,7 @@ func TestAltCloneValidateAndMarshalCanonical(t *testing.T) {
 	if string(first) != string(second) {
 		t.Fatalf("canonical output is nondeterministic:\n%s\n%s", first, second)
 	}
-	const want = `{"speech":"x sub i squared","text":"x_i²","mathml":""}`
+	const want = `{"speech":"x sub i squared","text":"x_i²"}`
 	if string(first) != want {
 		t.Fatalf("MarshalCanonical() = %s, want %s", first, want)
 	}
@@ -166,7 +173,6 @@ func TestAltValidationRejectsMalformedAndDeferredOutput(t *testing.T) {
 		{name: "speech UTF-8", alt: Alt{Speech: string([]byte{0xff})}},
 		{name: "text UTF-8", alt: Alt{Text: string([]byte{0xff})}},
 		{name: "NUL", alt: Alt{Text: "x\x00y"}},
-		{name: "deferred MathML", alt: Alt{MathML: "<math/>"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -369,6 +375,14 @@ func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
 			box:  &Box{Lines: []LineBox{{Baseline: -1, Box: &Box{}}}},
 		},
 		{
+			name: "negative line offset",
+			box:  &Box{Lines: []LineBox{{OffsetX: -1, Box: &Box{}}}},
+		},
+		{
+			name: "non-finite line offset",
+			box:  &Box{Lines: []LineBox{{OffsetX: float32(math.Inf(1)), Box: &Box{}}}},
+		},
+		{
 			name: "nil line box",
 			box:  &Box{Lines: []LineBox{{}}},
 		},
@@ -379,8 +393,22 @@ func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
 			}}},
 		},
 		{
-			name: "line wider than parent",
+			name: "line wider than parent without overflow",
 			box:  &Box{Lines: []LineBox{{Box: &Box{Width: 1}}}},
+		},
+		{
+			name: "overfull line with nonzero offset",
+			box: &Box{Lines: []LineBox{{
+				OffsetX: 1,
+				Box:     &Box{Width: 2, Overflow: 1},
+			}}},
+		},
+		{
+			name: "fitting line exceeds parent frame",
+			box: &Box{Lines: []LineBox{{
+				OffsetX: 2,
+				Box:     &Box{Width: 2},
+			}}},
 		},
 		{
 			name: "decreasing baselines",
@@ -450,6 +478,34 @@ func TestValidateWrappedBoxAggregates(t *testing.T) {
 		t.Fatalf("empty line Validate() error = %v", err)
 	}
 
+	alignedLocalItem := Item{
+		Kind:  ItemRule,
+		Paint: Paint{Role: RoleInk},
+		Bound: geometry.Rect{X: 1, Y: -1, Width: 1, Height: 1},
+		Rect:  geometry.Rect{X: 1, Y: -1, Width: 1, Height: 1},
+	}
+	alignedLocalHit := Hit{
+		Source: source.NewRange(0, 1),
+		Area:   geometry.Rect{X: 1, Y: -1, Width: 1, Height: 1},
+		Kind:   HitAtom,
+	}
+	aligned := &Box{
+		Width: 4, Ascent: 1,
+		Items: []Item{translateTestItem(alignedLocalItem, 2, 0)},
+		Hits:  []Hit{translateTestHit(alignedLocalHit, 2, 0)},
+		Lines: []LineBox{{
+			OffsetX: 2,
+			Box: &Box{
+				Width: 2, Ascent: 1,
+				Items: []Item{alignedLocalItem},
+				Hits:  []Hit{alignedLocalHit},
+			},
+		}},
+	}
+	if err := aligned.Validate(); err != nil {
+		t.Fatalf("aligned aggregate Validate() error = %v", err)
+	}
+
 	tests := []struct {
 		name string
 		box  *Box
@@ -482,6 +538,30 @@ func TestValidateWrappedBoxAggregates(t *testing.T) {
 				Lines: []LineBox{{Box: line()}},
 			},
 		},
+		{
+			name: "parent item coordinate differs",
+			box: &Box{
+				Width: 4, Ascent: 1,
+				Items: []Item{{Kind: ItemRule, Paint: Paint{Role: RoleInk}, Rect: geometry.Rect{X: 9}}},
+				Hits:  []Hit{translateTestHit(alignedLocalHit, 2, 0)},
+				Lines: []LineBox{{
+					OffsetX: 2,
+					Box:     &Box{Width: 2, Ascent: 1, Items: []Item{alignedLocalItem}, Hits: []Hit{alignedLocalHit}},
+				}},
+			},
+		},
+		{
+			name: "parent hit coordinate differs",
+			box: &Box{
+				Width: 4, Ascent: 1,
+				Items: []Item{translateTestItem(alignedLocalItem, 2, 0)},
+				Hits:  []Hit{{Source: alignedLocalHit.Source, Area: geometry.Rect{X: 9}, Kind: HitAtom}},
+				Lines: []LineBox{{
+					OffsetX: 2,
+					Box:     &Box{Width: 2, Ascent: 1, Items: []Item{alignedLocalItem}, Hits: []Hit{alignedLocalHit}},
+				}},
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -494,4 +574,26 @@ func TestValidateWrappedBoxAggregates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func translateTestItem(item Item, dx, dy float32) Item {
+	item.Bound.X += dx
+	item.Bound.Y += dy
+	item.Rect.X += dx
+	item.Rect.Y += dy
+	item.At.X += dx
+	item.At.Y += dy
+	for i := range item.Path {
+		for j := range item.Path[i].Points {
+			item.Path[i].Points[j].X += dx
+			item.Path[i].Points[j].Y += dy
+		}
+	}
+	return item
+}
+
+func translateTestHit(hit Hit, dx, dy float32) Hit {
+	hit.Area.X += dx
+	hit.Area.Y += dy
+	return hit
 }
