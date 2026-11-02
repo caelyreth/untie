@@ -7,7 +7,7 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
-func TestLayoutUnsupportedConstructsAreDiagnosedAndPreserved(t *testing.T) {
+func TestLayoutConstructsArePreservedWithoutUnsupportedDiagnostics(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -24,8 +24,8 @@ func TestLayoutUnsupportedConstructsAreDiagnosedAndPreserved(t *testing.T) {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
 			result := parseTest(t, tc.source, Options{})
-			if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-				t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+			if hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+				t.Fatalf("diagnostics = %v, want layout-supported construct", diagnosticCodes(result.Diagnostics))
 			}
 			first := rowItems(t, result.Root)[0]
 			if first.NodeBase().Kind() != tc.kind {

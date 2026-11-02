@@ -63,6 +63,16 @@ var allowedProjectImports = map[string][]string{
 		modulePath + "/ir",
 		modulePath + "/source",
 	},
+	modulePath + "/internal/conformance": {
+		modulePath + "/internal/fixture",
+		modulePath + "/internal/tex",
+		modulePath + "/ir",
+		modulePath + "/source",
+	},
+	modulePath + "/internal/conformance/cmd/texreport": {
+		modulePath + "/internal/conformance",
+		modulePath + "/internal/fixture",
+	},
 	modulePath + "/internal/fixture": {
 		modulePath + "/geometry",
 		modulePath + "/source",

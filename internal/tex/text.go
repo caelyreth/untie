@@ -219,7 +219,6 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 	}
 	if spec, ok := accentCommands[t.text]; ok {
 		body := p.parseTextArgument(t)
-		p.unsupportedLayout(source.Merge(t.span, body.base().span), "accent")
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,

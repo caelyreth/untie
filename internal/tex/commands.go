@@ -29,7 +29,6 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	if spec, ok := accentCommands[t.text]; ok {
 		body := p.parseRequiredArgument(t)
 		mark := newGlyphAST(t.span, spec.text, ir.ClassDiacritic)
-		p.unsupportedLayout(source.Merge(t.span, body.base().span), "accent")
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,
@@ -343,7 +342,6 @@ func (p *parser) parseLine(command token, position ir.Position) astNode {
 
 func (p *parser) parseCancel(command token) astNode {
 	body := p.parseRequiredArgument(command)
-	p.unsupportedLayout(source.Merge(command.span, body.base().span), "cancellation")
 	return &astCancelNode{
 		astBase:  newASTBaseAt(astCancel, source.Merge(command.span, body.base().span), tokenOrigin(command)),
 		body:     body,
