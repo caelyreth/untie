@@ -14,7 +14,7 @@ func TestTeXConformanceBaseline(t *testing.T) {
 	}
 	packageRoot := conformancePackageRoot(t)
 	report, err := BuildTeXReport(context.Background(), SuiteOptions{
-		FixtureRoot: filepath.Join(packageRoot, "..", "..", "testdata", "upstream"),
+		FixtureRoot: filepath.Join(packageRoot, "..", "..", "..", "testdata", "upstream"),
 		PolicyPath:  filepath.Join(packageRoot, "testdata", "tex-policy.json"),
 		Frontend:    testProcessFrontend(),
 		CaseTimeout: 250 * time.Millisecond,

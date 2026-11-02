@@ -9,7 +9,7 @@ import (
 	"github.com/caelyreth/untie/font"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/internal/engine"
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )

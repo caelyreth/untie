@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/caelyreth/untie"
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -70,7 +70,7 @@ func benchmarkPaths(tb testing.TB) (string, string) {
 		tb.Fatal("runtime.Caller failed")
 	}
 	pkg := filepath.Dir(file)
-	return filepath.Join(pkg, "..", "..", "testdata", "upstream"),
+	return filepath.Join(pkg, "..", "..", "..", "testdata", "upstream"),
 		filepath.Join(pkg, "testdata", "paired-baseline.json")
 }
 

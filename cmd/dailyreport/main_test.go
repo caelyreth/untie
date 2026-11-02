@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/caelyreth/untie/internal/daily"
+	"github.com/caelyreth/untie/internal/quality/daily"
 )
 
 func TestRunReportsSmallCorpus(t *testing.T) {

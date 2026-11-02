@@ -167,5 +167,5 @@ func upstreamRoot(t *testing.T) string {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "testdata", "upstream"))
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", "testdata", "upstream"))
 }

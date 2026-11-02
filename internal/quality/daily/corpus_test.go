@@ -236,7 +236,7 @@ func TestLoadCasesRejectsMalformedCorpus(t *testing.T) {
 
 func loadTrackedCorpus(t testing.TB) ([]Case, Manifest) {
 	t.Helper()
-	root := filepath.Join("..", "..", "testdata", "daily-stem")
+	root := filepath.Join("..", "..", "..", "testdata", "daily-stem")
 	cases, err := LoadCaseFile(filepath.Join(root, "cases.jsonl"))
 	if err != nil {
 		t.Fatal(err)

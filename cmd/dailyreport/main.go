@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caelyreth/untie/internal/daily"
+	"github.com/caelyreth/untie/internal/quality/daily"
 )
 
 func main() {

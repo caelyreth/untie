@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/source"
 )
 

@@ -1,4 +1,4 @@
-package untie_test
+package quality_test
 
 import (
 	"encoding/json"
@@ -50,10 +50,10 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{modulePath, modulePath + "/internal/testrender"},
 	},
 	modulePath + "/cmd/crosscheck": {
-		Production: []string{modulePath + "/internal/crosscheck", modulePath + "/internal/fixture"},
+		Production: []string{modulePath + "/internal/quality/crosscheck", modulePath + "/internal/quality/fixture"},
 	},
 	modulePath + "/cmd/dailyreport": {
-		Production: []string{modulePath + "/internal/daily"},
+		Production: []string{modulePath + "/internal/quality/daily"},
 	},
 	modulePath + "/display": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
@@ -87,37 +87,38 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/source",
 		},
 	},
-	modulePath + "/internal/conformance": {
+	modulePath + "/internal/quality": {},
+	modulePath + "/internal/quality/conformance": {
 		Production: []string{
-			modulePath + "/internal/fixture",
+			modulePath + "/internal/quality/fixture",
 			modulePath + "/internal/tex",
 			modulePath + "/internal/typst",
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
 	},
-	modulePath + "/internal/conformance/cmd/texreport": {
-		Production: []string{modulePath + "/internal/conformance", modulePath + "/internal/fixture"},
+	modulePath + "/internal/quality/conformance/cmd/texreport": {
+		Production: []string{modulePath + "/internal/quality/conformance", modulePath + "/internal/quality/fixture"},
 	},
-	modulePath + "/internal/conformance/cmd/typstreport": {
-		Production: []string{modulePath + "/internal/conformance", modulePath + "/internal/fixture"},
+	modulePath + "/internal/quality/conformance/cmd/typstreport": {
+		Production: []string{modulePath + "/internal/quality/conformance", modulePath + "/internal/quality/fixture"},
 	},
-	modulePath + "/internal/crosscheck": {
+	modulePath + "/internal/quality/crosscheck": {
 		Production: []string{
 			modulePath,
 			modulePath + "/display",
 			modulePath + "/font",
 			modulePath + "/geometry",
 			modulePath + "/internal/engine",
-			modulePath + "/internal/fixture",
+			modulePath + "/internal/quality/fixture",
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
 	},
-	modulePath + "/internal/daily": {
+	modulePath + "/internal/quality/daily": {
 		Production: []string{modulePath, modulePath + "/ir", modulePath + "/source"},
 	},
-	modulePath + "/internal/fixture": {
+	modulePath + "/internal/quality/fixture": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
 	modulePath + "/internal/layout": {
@@ -159,7 +160,7 @@ var allowedProjectImports = map[string]packageRules{
 func TestArchitectureImportRules(t *testing.T) {
 	t.Parallel()
 
-	cmd := exec.Command("go", "list", "-test", "-json", "./...")
+	cmd := exec.Command("go", "list", "-test", "-json", modulePath+"/...")
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("go list -test: %v", err)

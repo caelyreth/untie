@@ -17,7 +17,7 @@ import (
 
 func TestTrackedDailyCorpusPasses(t *testing.T) {
 	cases, _ := loadTrackedCorpus(t)
-	fontPath := filepath.Join("..", "..", "testdata", "upstream", "fonts", "NewCMMath-Book.otf")
+	fontPath := filepath.Join("..", "..", "..", "testdata", "upstream", "fonts", "NewCMMath-Book.otf")
 	fonts, err := LoadFonts(fontPath)
 	if err != nil {
 		t.Fatal(err)

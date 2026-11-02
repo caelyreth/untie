@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/caelyreth/untie/internal/conformance"
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/conformance"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 )
 
 func main() {

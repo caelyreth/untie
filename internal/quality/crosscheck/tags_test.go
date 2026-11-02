@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/caelyreth/untie"
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )

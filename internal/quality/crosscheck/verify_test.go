@@ -11,7 +11,7 @@ import (
 	"github.com/caelyreth/untie"
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -838,7 +838,7 @@ func crosscheckPaths(t *testing.T) (string, string) {
 		t.Fatal("runtime.Caller failed")
 	}
 	pkg := filepath.Dir(file)
-	return filepath.Join(pkg, "..", "..", "testdata", "upstream"),
+	return filepath.Join(pkg, "..", "..", "..", "testdata", "upstream"),
 		filepath.Join(pkg, "testdata", "paired-baseline.json")
 }
 

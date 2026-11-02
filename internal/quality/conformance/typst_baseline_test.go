@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -22,7 +22,7 @@ func TestTypstConformanceBaseline(t *testing.T) {
 	}
 	packageRoot := conformancePackageRoot(t)
 	report, err := BuildTypstReport(context.Background(), SuiteOptions{
-		FixtureRoot: filepath.Join(packageRoot, "..", "..", "testdata", "upstream"),
+		FixtureRoot: filepath.Join(packageRoot, "..", "..", "..", "testdata", "upstream"),
 		PolicyPath:  filepath.Join(packageRoot, "testdata", "typst-policy.json"),
 		Frontend:    testTypstProcessFrontend(),
 		CaseTimeout: 5 * time.Second,
@@ -54,7 +54,7 @@ func TestTypstConformanceBaseline(t *testing.T) {
 
 func TestTypstSupplementarySpansUseUTF8ByteOffsets(t *testing.T) {
 	packageRoot := conformancePackageRoot(t)
-	root := filepath.Join(packageRoot, "..", "..", "testdata", "upstream")
+	root := filepath.Join(packageRoot, "..", "..", "..", "testdata", "upstream")
 	manifest, err := fixture.LoadCorpusManifest(filepath.Join(root, "manifests", "corpora.json"))
 	if err != nil {
 		t.Fatal(err)

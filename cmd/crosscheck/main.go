@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/caelyreth/untie/internal/crosscheck"
-	"github.com/caelyreth/untie/internal/fixture"
+	"github.com/caelyreth/untie/internal/quality/crosscheck"
+	"github.com/caelyreth/untie/internal/quality/fixture"
 )
 
 func main() {
@@ -23,7 +23,7 @@ func main() {
 	var refresh bool
 	var reasonsPath string
 	flag.StringVar(&fixtureRoot, "fixtures", "", "tracked upstream fixture root (default: discover testdata/upstream)")
-	flag.StringVar(&baseline, "baseline", "", "data-driven known-differences baseline (default: internal/crosscheck/testdata/paired-baseline.json)")
+	flag.StringVar(&baseline, "baseline", "", "data-driven known-differences baseline")
 	flag.StringVar(&writePath, "write", "", "explicitly write the rendered report as a reviewed baseline")
 	flag.BoolVar(&refresh, "refresh", false, "refresh details and accept only explicit kind-change reasons")
 	flag.StringVar(&reasonsPath, "reasons", "", "JSON object of case ID to reviewed reason for -refresh")
