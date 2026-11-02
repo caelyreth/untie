@@ -33,6 +33,9 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	defer func() { l.depth-- }()
 	if l.depth > l.limits.MaxNesting {
 		l.limit(node.base().span, "TeX IR nesting limit exceeded")
+		if !l.reserve(node.base().span) {
+			return nil
+		}
 		return l.placeholder(node.base().span, "IR nesting limit exceeded")
 	}
 

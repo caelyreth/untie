@@ -198,6 +198,132 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 	}
 }
 
+func TestLayoutAltUsesStricterEngineLimits(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{MaxTextBytes: 1})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	expr := ParseTeX(`x_i^2`, Inline, ParseOptions{})
+	for _, diagnostic := range expr.Diagnostics() {
+		if diagnostic.Code == source.CodeInternal {
+			t.Fatalf("parse introduced internal diagnostic: %+v", diagnostic)
+		}
+	}
+
+	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("LayoutContext() error = %v", err)
+	}
+	if box.Alt.Text == "" || box.Alt.Speech == "" {
+		t.Fatalf("Box.Alt = %#v, want visible bounded fallback", box.Alt)
+	}
+	if len(box.Alt.Text) > 1 || len(box.Alt.Speech) > 1 {
+		t.Fatalf("Box.Alt exceeds engine MaxTextBytes=1: %#v", box.Alt)
+	}
+	if err := box.Alt.Validate(); err != nil {
+		t.Fatalf("Box.Alt.Validate() error = %v", err)
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Box.Validate() error = %v", err)
+	}
+	if box.Alt == expr.Alt() {
+		t.Fatalf("Box.Alt = %#v, want stricter Engine limits to affect output", box.Alt)
+	}
+}
+
+func TestIntersectLimitsUsesPerFieldMinimum(t *testing.T) {
+	t.Parallel()
+
+	left := Limits{
+		MaxSourceBytes:     20,
+		MaxTokens:          21,
+		MaxNesting:         22,
+		MaxNodes:           23,
+		MaxMacroExpansions: 24,
+		MaxExpandedTokens:  25,
+		MaxCallDepth:       26,
+		MaxTableCells:      27,
+		MaxAssemblyRepeats: 28,
+		MaxTextBytes:       29,
+		MaxOutputItems:     30,
+		MaxPathSegments:    31,
+		MaxDimension:       32,
+	}
+	right := Limits{
+		MaxSourceBytes:     19,
+		MaxTokens:          22,
+		MaxNesting:         21,
+		MaxNodes:           24,
+		MaxMacroExpansions: 23,
+		MaxExpandedTokens:  26,
+		MaxCallDepth:       25,
+		MaxTableCells:      28,
+		MaxAssemblyRepeats: 27,
+		MaxTextBytes:       30,
+		MaxOutputItems:     29,
+		MaxPathSegments:    32,
+		MaxDimension:       31,
+	}
+	want := Limits{
+		MaxSourceBytes:     19,
+		MaxTokens:          21,
+		MaxNesting:         21,
+		MaxNodes:           23,
+		MaxMacroExpansions: 23,
+		MaxExpandedTokens:  25,
+		MaxCallDepth:       25,
+		MaxTableCells:      27,
+		MaxAssemblyRepeats: 27,
+		MaxTextBytes:       29,
+		MaxOutputItems:     29,
+		MaxPathSegments:    31,
+		MaxDimension:       31,
+	}
+	if got := intersectLimits(left, right); got != want {
+		t.Fatalf("intersectLimits() = %+v, want %+v", got, want)
+	}
+}
+
+func TestLayoutAltRecognizesExactTeXSpaceLengths(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	tests := []struct {
+		source string
+		text   string
+		speech string
+	}{
+		{source: `a\enspace b`, text: "a\u2002b", speech: "a en space b"},
+		{source: `a\quad b`, text: "a\u2003b", speech: "a quad space b"},
+		{source: `a\qquad b`, text: "a\u2003\u2003b", speech: "a double quad space b"},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
+			expr := ParseTeX(tc.source, Inline, ParseOptions{})
+			exprAlt := expr.Alt()
+			if exprAlt.Text != tc.text || exprAlt.Speech != tc.speech {
+				t.Fatalf("Expr.Alt() = %#v, want Text=%q Speech=%q", exprAlt, tc.text, tc.speech)
+			}
+			box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+			if err != nil {
+				t.Fatalf("LayoutContext() error = %v", err)
+			}
+			if box.Alt != exprAlt {
+				t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, exprAlt)
+			}
+		})
+	}
+}
+
 func loadTestFonts(t testing.TB) *FontSet {
 	t.Helper()
 	data := testFontBytes(t)
@@ -666,6 +792,31 @@ func TestExprAltContextLimitContract(t *testing.T) {
 	again, againErr := expr.AltContext(context.Background())
 	if again != alt || !errors.Is(againErr, ErrAltLimitExceeded) {
 		t.Fatalf("AltContext() is nondeterministic: %#v/%v != %#v/%v", alt, err, again, againErr)
+	}
+}
+
+func TestTexDepthLimitRecoveryStaysPubliclyValid(t *testing.T) {
+	t.Parallel()
+
+	limits := source.DefaultLimits()
+	limits.MaxNesting = 1
+	limits.MaxNodes = 4
+	expr := ParseTeX("abcdefghij", Inline, ParseOptions{Limits: limits})
+
+	if _, err := expr.RootSnapshot(); err != nil {
+		t.Fatalf("RootSnapshot() error = %v", err)
+	}
+	limitDiagnostics := 0
+	for _, diagnostic := range expr.Diagnostics() {
+		if diagnostic.Code == source.CodeInternal {
+			t.Fatalf("depth-limit recovery introduced internal diagnostic: %+v", diagnostic)
+		}
+		if diagnostic.Code == source.CodeLimitExceeded {
+			limitDiagnostics++
+		}
+	}
+	if limitDiagnostics != 1 {
+		t.Fatalf("limit diagnostics = %d (%+v), want exactly one", limitDiagnostics, expr.Diagnostics())
 	}
 }
 

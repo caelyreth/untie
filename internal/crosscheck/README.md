@@ -99,8 +99,8 @@ changed failure path, not merely a changed pass/fail bit, visible in review.
 Current reviewed baseline:
 
 ```text
-pass                        21
-semantic-ir-mismatch        56
+pass                        22
+semantic-ir-mismatch        55
 layout-mismatch              0
 fixture-mismatch             2
 documented-pair-difference   2
