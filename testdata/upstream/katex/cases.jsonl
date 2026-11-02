@@ -1,0 +1,36 @@
+{"id":"errors/repeated-infix","source":"1\\over 2\\over 3","kind":"error","expected":"only one infix operator per group","position":9,"upstream":"test/errors-spec.ts:6"}
+{"id":"errors/conflicting-infix","source":"1\\over 2\\choose 3","kind":"error","expected":"only one infix operator per group","position":9,"upstream":"test/errors-spec.ts:11"}
+{"id":"errors/missing-superscript-group","source":"{1^}","kind":"error","expected":"Expected group after '^'","position":3,"upstream":"test/errors-spec.ts:19"}
+{"id":"errors/missing-subscript-group","source":"1_","kind":"error","expected":"Expected group after '_'","position":2,"upstream":"test/errors-spec.ts:23"}
+{"id":"errors/sqrt-as-superscript","source":"1^\\sqrt{2}","kind":"error","expected":"Got function '\\\\sqrt' with no arguments as superscript","position":3,"upstream":"test/errors-spec.ts:27"}
+{"id":"errors/limits-without-operator","source":"\\alpha\\limits\\omega","kind":"error","expected":"Limit controls must follow a math operator","position":7,"upstream":"test/errors-spec.ts:35"}
+{"id":"errors/limits-at-start","source":"\\limits\\omega","kind":"error","expected":"Limit controls must follow a math operator","position":1,"upstream":"test/errors-spec.ts:40"}
+{"id":"errors/double-superscript","source":"1^2^3","kind":"error","expected":"Double superscript","position":4,"upstream":"test/errors-spec.ts:45"}
+{"id":"errors/prime-double-superscript","source":"1^2'","kind":"error","expected":"Double superscript","position":4,"upstream":"test/errors-spec.ts:51"}
+{"id":"errors/double-subscript","source":"1_2_3","kind":"error","expected":"Double subscript","position":4,"upstream":"test/errors-spec.ts:61"}
+{"id":"errors/unknown-environment","source":"\\begin{foo}bar\\end{foo}","kind":"error","expected":"No such environment: foo","position":7,"upstream":"test/errors-spec.ts:70"}
+{"id":"errors/mismatched-environment","source":"\\begin{pmatrix}1&2\\\\3&4\\end{bmatrix}+5","kind":"error","expected":"Mismatch: \\\\begin{pmatrix} matched by \\\\end{bmatrix}","position":24,"upstream":"test/errors-spec.ts:75"}
+{"id":"errors/math-function-in-text","source":"\\text{\\sqrt2 is irrational}","kind":"error","expected":"Can't use function '\\\\sqrt' in text mode","position":7,"upstream":"test/errors-spec.ts:114"}
+{"id":"errors/missing-argument-eof","source":"2\\sqrt","kind":"error","expected":"Expected group as argument to '\\\\sqrt' at end of input","strict":false,"upstream":"test/errors-spec.ts:131"}
+{"id":"errors/undefined-control-sequence","source":"\\xyz","kind":"error","expected":"Undefined control sequence: \\\\xyz","position":1,"upstream":"test/errors-spec.ts:149"}
+{"id":"errors/extra-close-brace","source":"{1+2}}","kind":"error","expected":"Expected 'EOF', got '}'","position":6,"upstream":"test/errors-spec.ts:172"}
+{"id":"errors/top-level-alignment","source":"1&2","kind":"error","expected":"Expected 'EOF', got '&'","position":2,"upstream":"test/errors-spec.ts:181"}
+{"id":"errors/missing-right","source":"\\left(1+2)","kind":"error","expected":"Expected '\\\\right', got 'EOF' at end of input","strict":false,"upstream":"test/errors-spec.ts:188"}
+{"id":"errors/missing-color-brace","source":"\\textcolor#ffffff{text}","kind":"error","expected":"Invalid color: '#'","position":11,"upstream":"test/errors-spec.ts:204"}
+{"id":"errors/invalid-size-unit","source":"\\rule{1au}{2em}","kind":"error","expected":"Invalid unit: 'au'","position":6,"upstream":"test/errors-spec.ts:338"}
+{"id":"errors/lone-backslash","source":"\\","kind":"error","expected":"Unexpected character: '\\\\'","position":1,"upstream":"test/errors-spec.ts:319"}
+{"id":"errors/unknown-column-type","source":"\\begin{array}{cba}\\end{array}","kind":"error","expected":"Unknown column alignment: b","position":16,"upstream":"test/errors-spec.ts:274"}
+{"id":"errors/invalid-opening-delimiter","source":"\\bigl 1 + 2 \\bigr","kind":"error","expected":"Invalid delimiter '1' after '\\\\bigl'","position":7,"upstream":"test/errors-spec.ts:286"}
+{"id":"errors/invalid-closing-delimiter","source":"\\bigl(1+2\\bigr=3","kind":"error","expected":"Invalid delimiter '=' after '\\\\bigr'","position":15,"upstream":"test/errors-spec.ts:291"}
+{"id":"errors/missing-end","source":"\\begin{matrix}1","kind":"error","expected":"Expected & or \\\\\\\\ or \\\\cr or \\\\end at end of input","strict":false,"upstream":"test/errors-spec.ts:261"}
+{"id":"errors/invalid-combining","source":"A\u0328","kind":"error","expected":"Unknown accent ' ̨'","position":1,"upstream":"test/errors-spec.ts:351"}
+{"id":"parser/empty","source":"","kind":"parse","expected":"parses","upstream":"test/katex-spec.ts:35"}
+{"id":"parser/ord","source":"1234|/@.\"`abcdefgzABCDEFGZ","kind":"parse","expected":"all root nodes are ord atoms","upstream":"test/katex-spec.ts:51"}
+{"id":"parser/bin","source":"+-*\\cdot\\pm\\div","kind":"parse","expected":"all root nodes are bin atoms","upstream":"test/katex-spec.ts:74"}
+{"id":"parser/rel","source":"=< >\\leq\\geq\\neq\\nleq\\ngeq\\cong","kind":"parse","expected":"all root nodes are relation atoms","upstream":"test/katex-spec.ts:93"}
+{"id":"parser/sup-sub","source":"x^2_3","kind":"parse","expected":"supsub with base, superscript, and subscript","upstream":"test/katex-spec.ts:199"}
+{"id":"parser/no-nucleus-scripts","source":"^3_2","kind":"parse","expected":"supsub without a base","upstream":"test/katex-spec.ts:205"}
+{"id":"parser/frac","source":"\\frac{1}{2}","kind":"parse","expected":"genfrac with numerator and denominator","upstream":"test/katex-spec.ts:504"}
+{"id":"parser/root","source":"\\sqrt[3]{x}","kind":"parse","expected":"sqrt with indexed argument","upstream":"test/katex-spec.ts:496"}
+{"id":"parser/matrix","source":"\\begin{matrix}a&b\\\\c&d\\end{matrix}","kind":"parse","expected":"array with two rows and two columns","upstream":"test/katex-spec.ts:494"}
+{"id":"parser/text","source":"\\text{hello world}","kind":"parse","expected":"text group","upstream":"test/katex-spec.ts:487"}

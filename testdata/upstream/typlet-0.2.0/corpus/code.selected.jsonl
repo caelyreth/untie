@@ -1,0 +1,16 @@
+{"display":false,"id":"display-int","src":"#2"}
+{"display":false,"id":"display-float","src":"#2.5"}
+{"display":false,"id":"display-str","src":"#\"text\""}
+{"display":false,"id":"display-length","src":"#1em"}
+{"display":false,"id":"display-array","src":"#(1, 2)"}
+{"display":false,"id":"display-color","src":"#red"}
+{"display":false,"id":"display-symbol","src":"#sym.arrow.r"}
+{"display":false,"id":"paren-expr","src":"#(1 + 2)"}
+{"display":false,"id":"spacing-h","src":"a #h(1em) b"}
+{"display":false,"id":"named-int","src":"mat(augment: #2, 1, 2, 3)"}
+{"display":false,"id":"named-string","src":"mat(delim: \"[\", 1, 2)"}
+{"display":false,"id":"call-unknown","src":"foo(x)"}
+{"display":false,"id":"unknown-variable","src":"foo"}
+{"display":false,"id":"field-on-symbol","src":"arrow.r.double"}
+{"display":false,"id":"math-module-call","src":"#math.attach(\"x\", t: \"2\")"}
+{"display":false,"id":"sym-module","src":"#sym.alpha + #sym.RR"}

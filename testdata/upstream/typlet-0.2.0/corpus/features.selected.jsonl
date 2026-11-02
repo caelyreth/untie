@@ -1,0 +1,29 @@
+{"display":false,"id":"number-decimal","src":"3.14 + 2."}
+{"display":false,"id":"spacings","src":"a thin b med c thick d quad e wide f"}
+{"display":false,"id":"vary-binary","src":"a - b"}
+{"display":false,"id":"vary-unary","src":"- b"}
+{"display":false,"id":"relation-chain","src":"a < b <= c = d"}
+{"display":false,"id":"large-op","src":"sum x + product y"}
+{"display":false,"id":"dif","src":"integral f(x) dif x"}
+{"display":false,"id":"primes-script","src":"x'^2 + x'_1 + x''_1^2"}
+{"display":false,"id":"attach-all","src":"attach(x, t: 1, b: 2, tl: 3, bl: 4, tr: 5, br: 6)"}
+{"display":false,"id":"attach-limits","src":"limits(x)_1^2"}
+{"display":false,"id":"frac-nested","src":"1/(1 + 1/x)"}
+{"display":false,"id":"frac-skewed","src":"math.frac(1, 2, style: \"skewed\")"}
+{"display":false,"id":"root-sign","src":"√x + ∛y + ∜(a + b)"}
+{"display":false,"id":"lr-mid","src":"lr(chevron.l a mid(|) b chevron.r)"}
+{"display":false,"id":"abs-norm","src":"abs(x) + norm(y) + floor(z) + ceil(w) + round(v)"}
+{"display":false,"id":"accents","src":"hat(x) + tilde(a) + macron(b) + dot(c) + dot.double(d) + arrow(e) + breve(f)"}
+{"display":false,"id":"under-over","src":"underbrace(a + b, n) + overbrace(c, m) + underparen(d) + overbracket(e, k)"}
+{"display":false,"id":"lines","src":"overline(x) + underline(y)"}
+{"display":false,"id":"cancel","src":"cancel(x) + cancel(y, cross: #true)"}
+{"display":false,"id":"mat-align-points","src":"mat(a & b, c; d & e, f)"}
+{"display":false,"id":"mat-delims","src":"mat(delim: \"[\", 1; 2) + mat(delim: #(none, \"]\"), 3)"}
+{"display":false,"id":"cases-align","src":"cases(x & \"if\" y, z & \"else\")"}
+{"display":false,"id":"multiline-align","src":"x &= 1 \\ &= 2"}
+{"display":false,"id":"styles-variants","src":"bb(R) + cal(A) + scr(B) + frak(g) + sans(x) + mono(y) + serif(z)"}
+{"display":false,"id":"sizes","src":"display(1/2) + inline(1/2) + script(1/2) + sscript(1/2)"}
+{"display":false,"id":"shorthands","src":"a -> b => c <=> d != e <= f >= g ... h :: i"}
+{"display":false,"id":"combining","src":"x̂ + é"}
+{"display":true,"id":"display-large-block","src":"sum_(i=1)^n x_i + integral_a^b f"}
+{"display":true,"id":"display-mat-block","src":"mat(1, 2; 3, 4)"}
