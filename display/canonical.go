@@ -44,20 +44,35 @@ type canonicalBoxSnapshot struct {
 }
 
 type canonicalLine struct {
-	Baseline float32              `json:"baseline"`
-	OffsetX  float32              `json:"offsetX"`
-	Box      canonicalBoxSnapshot `json:"box"`
-	Tag      *canonicalTagBox     `json:"tag,omitempty"`
+	Baseline float32          `json:"baseline"`
+	OffsetX  float32          `json:"offsetX"`
+	Width    float32          `json:"width"`
+	Ascent   float32          `json:"ascent"`
+	Descent  float32          `json:"descent"`
+	Overflow float32          `json:"overflow"`
+	Items    canonicalRange   `json:"items"`
+	Hits     canonicalRange   `json:"hits"`
+	Tag      *canonicalTagBox `json:"tag,omitempty"`
 }
 
 type canonicalTagBox struct {
-	Box     canonicalBoxSnapshot `json:"box"`
-	Source  [2]int               `json:"source"`
-	Manual  bool                 `json:"manual"`
-	Starred bool                 `json:"starred"`
-	Line    int                  `json:"line"`
-	X       float32              `json:"x"`
-	Y       float32              `json:"y"`
+	Source  [2]int         `json:"source"`
+	Manual  bool           `json:"manual"`
+	Starred bool           `json:"starred"`
+	Line    int            `json:"line"`
+	X       float32        `json:"x"`
+	Y       float32        `json:"y"`
+	Width   float32        `json:"width"`
+	Ascent  float32        `json:"ascent"`
+	Descent float32        `json:"descent"`
+	Italic  float32        `json:"italic"`
+	Items   canonicalRange `json:"items"`
+	Hits    canonicalRange `json:"hits"`
+}
+
+type canonicalRange struct {
+	Start int `json:"start"`
+	Count int `json:"count"`
 }
 
 func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
@@ -102,7 +117,12 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 			out.Lines[i] = canonicalLine{
 				Baseline: line.Baseline,
 				OffsetX:  line.OffsetX,
-				Box:      canonicalBoxValue(line.Box, false),
+				Width:    line.Width,
+				Ascent:   line.Ascent,
+				Descent:  line.Descent,
+				Overflow: line.Overflow,
+				Items:    canonicalItemRange(line.Items),
+				Hits:     canonicalHitRange(line.Hits),
 			}
 			if line.Tag != nil {
 				tag := canonicalTag(line.Tag)
@@ -115,14 +135,27 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 
 func canonicalTag(tag *TagBox) canonicalTagBox {
 	return canonicalTagBox{
-		Box:     canonicalBoxValue(tag.Box, false),
 		Source:  [2]int{tag.Source.Start, tag.Source.End},
 		Manual:  tag.Manual,
 		Starred: tag.Starred,
 		Line:    tag.Line,
 		X:       tag.X,
 		Y:       tag.Y,
+		Width:   tag.Width,
+		Ascent:  tag.Ascent,
+		Descent: tag.Descent,
+		Italic:  tag.Italic,
+		Items:   canonicalItemRange(tag.Items),
+		Hits:    canonicalHitRange(tag.Hits),
 	}
+}
+
+func canonicalItemRange(itemRange ItemRange) canonicalRange {
+	return canonicalRange{Start: itemRange.Start, Count: itemRange.Count}
+}
+
+func canonicalHitRange(hitRange HitRange) canonicalRange {
+	return canonicalRange{Start: hitRange.Start, Count: hitRange.Count}
 }
 
 type canonicalAlt struct {

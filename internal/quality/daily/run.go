@@ -628,14 +628,14 @@ func validateLines(testCase Case, style untie.Style, box *untie.Box) string {
 	for i, line := range box.Lines {
 		frameWidth := style.MaxWidth
 		if line.Tag != nil {
-			frameWidth -= line.Tag.Box.Width
+			frameWidth -= line.Tag.Width
 			if frameWidth < 0 {
 				frameWidth = 0
 			}
 		}
 		wantOffset := float32(0)
-		if line.Box.Width < frameWidth {
-			remaining := frameWidth - line.Box.Width
+		if line.Width < frameWidth {
+			remaining := frameWidth - line.Width
 			switch style.Align {
 			case untie.AlignStart:
 			case untie.AlignCenter:
@@ -657,7 +657,7 @@ func validateLines(testCase Case, style untie.Style, box *untie.Box) string {
 		}
 		lineOverflow := false
 		for _, line := range box.Lines {
-			if line.Box.Overflow > 0 {
+			if line.Overflow > 0 {
 				lineOverflow = true
 				break
 			}
@@ -673,7 +673,7 @@ func validateTag(testCase Case, box *untie.Box) string {
 	if !testCase.Expect.RequireTag {
 		return ""
 	}
-	if box.Tag == nil || box.Tag.Box == nil {
+	if box.Tag == nil {
 		return "required equation tag is absent"
 	}
 	if !box.Tag.Manual || box.Tag.Line != untie.FormulaTagLine {

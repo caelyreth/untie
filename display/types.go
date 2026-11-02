@@ -37,44 +37,81 @@ type Style struct {
 	GenerateAlt bool
 }
 
-// LineBox is one display line inside a constrained Box.
+// ItemRange identifies a contiguous range in Box.Items.
+//
+// Start is the zero-based index of the first item and Count is the number of
+// items. An empty range is valid. Ranges returned by layout always refer to
+// parent-frame storage and never require a coordinate translation.
+type ItemRange struct {
+	Start int
+	Count int
+}
+
+// End returns Start+Count.
+func (r ItemRange) End() int {
+	return r.Start + r.Count
+}
+
+// HitRange identifies a contiguous range in Box.Hits.
+//
+// Start is the zero-based index of the first hit and Count is the number of
+// hits. An empty range is valid. Ranges returned by layout always refer to
+// parent-frame storage.
+type HitRange struct {
+	Start int
+	Count int
+}
+
+// End returns Start+Count.
+func (r HitRange) End() int {
+	return r.Start + r.Count
+}
+
+// LineBox is metadata for one display line inside a constrained Box.
 //
 // Baseline is the line baseline's vertical offset from the parent box baseline,
 // positive downward. Adjacent baselines are separated by the previous line's
 // descent plus the current line's ascent; no additional leading is invented.
 // OffsetX is the nonnegative horizontal offset of the line inside the parent's
-// MaxWidth-wide alignment frame. Box uses line-local coordinates: hosts draw it
-// at (OffsetX, Baseline). Box must not contain nested Lines. Box.Overflow is
-// max(line-local ink overflow, line width minus the parent frame width); the
-// parent Box.Overflow covers the assembled aligned aggregate. When Tag is
-// non-nil, line alignment is computed in the reduced frame
-// MaxWidth-Tag.Box.Width; an overfull formula line uses zero offset and the tag
-// follows the formula.
+// MaxWidth-wide alignment frame. Items and Hits are contiguous ranges into the
+// owning Box's parent-frame slices. Overflow is max(line-local ink overflow,
+// line width minus the parent frame width); the parent Box.Overflow covers the
+// assembled aligned aggregate. When Tag is non-nil, line alignment is computed
+// in the reduced frame MaxWidth-Tag.Width; an overfull formula line uses zero
+// offset and the tag follows the formula.
 type LineBox struct {
 	Baseline float32
 	OffsetX  float32
-	Box      *Box
-	// Tag is parent-frame metadata for a tag associated with this line. It does
-	// not move with OffsetX. A host drawing per-line items must draw this tag
-	// separately; it is not part of Box.Items. Nil means no rendered tag.
+	Width    float32
+	Ascent   float32
+	Descent  float32
+	Overflow float32
+	Items    ItemRange
+	Hits     HitRange
+	// Tag is parent-frame metadata for a tag associated with this line. Its
+	// range is separate from the line range. Nil means no rendered tag.
 	Tag *TagBox
 }
 
-// TagBox is an independently drawable equation tag. Box uses tag-local
-// coordinates; draw it at (X, Y) in the owning Box's coordinate space. For a
-// LineBox.Tag, X and Y are still parent-frame coordinates and do not move with
-// OffsetX. Line is FormulaTagLine for the formula-level Phase-1 contract. Tag
-// boxes never contain nested tags or lines.
+// TagBox is equation-tag metadata. Its Items and Hits ranges index the owning
+// Box's parent-frame slices. X and Y are parent-frame coordinates and do not
+// move with LineBox.OffsetX. Line is FormulaTagLine for the formula-level
+// Phase-1 contract.
 type TagBox struct {
-	Box     *Box
 	Source  source.Range
 	Manual  bool
 	Starred bool
 	// Line is FormulaTagLine. Zero-based row tags are reserved for future
 	// multiline equation-tag support and are not emitted by Phase 1.
-	Line int
-	X    float32
-	Y    float32
+	Line    int
+	X       float32
+	Y       float32
+	Width   float32
+	Ascent  float32
+	Descent float32
+	Italic  float32
+	Items   ItemRange
+	Hits    HitRange
 }
 
 // Role is a theme-resolved paint role.
@@ -143,17 +180,14 @@ type Box struct {
 	Breaks []Break
 	Alt    Alt
 	// Tag is a single-line display equation tag in parent coordinates. Its
-	// translated items already appear in Items and Hits, so drawing the parent
-	// aggregate must not draw Tag separately. It is excluded from formula-root
-	// breaks.
+	// Items and Hits ranges identify its records in this Box. It is excluded
+	// from formula-root breaks.
 	Tag *TagBox
 	// Lines is populated only for display layout with a positive Style.MaxWidth.
 	// A constrained display result always has at least one line, including when
 	// the complete formula fits. Its Width is the requested MaxWidth, even when
-	// every line is narrower or an unbreakable line overflows it. Line boxes are
-	// source ordered and carry their own line-local items and hits. Items and
-	// Hits directly on this Box are the vertically and horizontally translated
-	// aggregate in frame coordinates.
+	// every line is narrower or an unbreakable line overflows it. Lines are
+	// source ordered and index the single parent-frame Items and Hits storage.
 	Lines []LineBox
 }
 
@@ -181,13 +215,8 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	out.Items = cloneItems(b.Items)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
-	if !cloneNested {
-		out.Tag = nil
-	} else if b.Tag != nil {
+	if b.Tag != nil {
 		tag := *b.Tag
-		if b.Tag.Box != nil {
-			tag.Box = cloneBox(b.Tag.Box, false)
-		}
 		out.Tag = &tag
 	}
 	if !cloneNested || len(b.Lines) == 0 {
@@ -196,19 +225,10 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	}
 	out.Lines = make([]LineBox, len(b.Lines))
 	for i, line := range b.Lines {
-		out.Lines[i].Baseline = line.Baseline
-		out.Lines[i].OffsetX = line.OffsetX
+		out.Lines[i] = line
 		if line.Tag != nil {
 			tag := *line.Tag
-			if line.Tag.Box != nil {
-				tag.Box = cloneBox(line.Tag.Box, false)
-			}
 			out.Lines[i].Tag = &tag
-		}
-		if line.Box != nil {
-			// Nested Lines are invalid, so a line's box is copied without
-			// descending again. This also makes Clone safe on malformed graphs.
-			out.Lines[i].Box = cloneBox(line.Box, false)
 		}
 	}
 	return &out

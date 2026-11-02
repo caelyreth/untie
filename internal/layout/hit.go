@@ -115,7 +115,7 @@ func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x,
 		if err != nil {
 			return err
 		}
-		f.box.Hits = append(f.box.Hits, display.Hit{
+		if err := f.appendHit(display.Hit{
 			Source: hit.source,
 			Area: geometry.Rect{
 				X:      hostX,
@@ -125,7 +125,9 @@ func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x,
 			},
 			Depth: hit.depth,
 			Kind:  hit.kind,
-		})
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
