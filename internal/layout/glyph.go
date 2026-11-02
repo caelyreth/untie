@@ -22,10 +22,13 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 		Style:    env.Style,
 		Variant:  env.Variant,
 		Font:     env.Font,
-		Features: s.features,
+		Features: env.Features,
 	}
 
-	glyph, ok := s.glyph(req, stretch)
+	glyph, ok, err := s.glyph(req, stretch)
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
 		return nil, fmt.Errorf("%w: %q in style %s", ErrMissingGlyph, text, env.Style)
 	}
@@ -47,33 +50,85 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 	fragment.BaseAscent = scaled.Glyph.Ascent
 	fragment.BaseDescent = scaled.Glyph.Descent
 	fragment.TextLike = scaled.Glyph.TextLike
+	fragment.AccentTop = (fragment.Width + fragment.Italic) / 2
+	if scaled.Glyph.HasTopAccent {
+		fragment.AccentTop = scaled.Glyph.TopAccent
+	}
+	if scaled.Glyph.HasBottomAccent {
+		fragment.AccentBottom = scaled.Glyph.BottomAccent
+	} else {
+		fragment.AccentBottom = (fragment.Width - fragment.Italic) / 2
+	}
+	fragment.InkBottom = scaled.Glyph.InkBottom
+	fragment.HasInkBottom = scaled.Glyph.HasInkBottom
+	if !fragment.HasInkBottom {
+		if bottom, ok := pathInkBottom(scaled.Glyph.Outline); ok {
+			fragment.InkBottom = bottom
+			fragment.HasInkBottom = true
+		}
+	}
+	fragment.Kerns = scaled.Glyph.Kerns
 	if err := fragment.pushGlyph(0, 0, scaled); err != nil {
 		return nil, err
 	}
 	return fragment, nil
 }
 
-func (s *layoutState) glyph(req GlyphRequest, stretch *stretchSpec) (Glyph, bool) {
-	if stretch == nil || s.renderer.fonts.Stretch == nil {
-		return s.renderer.fonts.Glyphs.Glyph(req)
+func (s *layoutState) glyph(req GlyphRequest, stretch *stretchSpec) (Glyph, bool, error) {
+	glyph, ok := s.renderer.fonts.Glyphs.Glyph(req)
+	if stretch == nil {
+		return glyph, ok, nil
 	}
 	target, err := s.localLength(stretch.target, req.Style)
 	if err != nil {
-		return Glyph{}, false
+		return Glyph{}, false, err
 	}
 	shortFall, err := s.localLength(stretch.shortFall, req.Style)
 	if err != nil {
-		return Glyph{}, false
+		return Glyph{}, false, err
 	}
-	if glyph, ok := s.renderer.fonts.Stretch.Stretch(StretchRequest{
-		GlyphRequest: req,
-		Axis:         stretch.axis,
-		Target:       target,
-		ShortFall:    shortFall,
-	}); ok {
-		return glyph, true
+	if target < 0 || shortFall < 0 {
+		return Glyph{}, false, fmt.Errorf("%w: negative stretch target", ErrInvalidInput)
 	}
-	return s.renderer.fonts.Glyphs.Glyph(req)
+	if s.renderer.fonts.Stretch != nil {
+		if stretched, stretchedOK := s.renderer.fonts.Stretch.Stretch(StretchRequest{
+			GlyphRequest: req,
+			Axis:         stretch.axis,
+			Target:       target,
+			ShortFall:    shortFall,
+		}); stretchedOK {
+			glyph, ok = stretched, true
+		}
+	}
+	if !ok {
+		return Glyph{}, false, nil
+	}
+	extent, err := glyphExtent(glyph, stretch.axis)
+	if err != nil {
+		return Glyph{}, false, err
+	}
+	required, err := sub(target, shortFall)
+	if err != nil {
+		return Glyph{}, false, err
+	}
+	if extent < required {
+		axis := "horizontal"
+		if stretch.axis == Vertical {
+			axis = "vertical"
+		}
+		return Glyph{}, false, fmt.Errorf(
+			"%w: %w: %s glyph extent %d is less than required %d",
+			ErrUnsupported, ErrInsufficientStretch, axis, extent, required,
+		)
+	}
+	return glyph, true, nil
+}
+
+func glyphExtent(glyph Glyph, axis Axis) (geometry.Em, error) {
+	if axis == Horizontal {
+		return glyph.Advance, nil
+	}
+	return add(glyph.Ascent, glyph.Descent)
 }
 
 func (s *layoutState) localLength(value geometry.Em, style Style) (geometry.Em, error) {
@@ -102,8 +157,25 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 	if scaled.TopAccent, err = scale(glyph.TopAccent, factor); err != nil {
 		return nil, err
 	}
+	if scaled.BottomAccent, err = scale(glyph.BottomAccent, factor); err != nil {
+		return nil, err
+	}
+	if scaled.InkBottom, err = scale(glyph.InkBottom, factor); err != nil {
+		return nil, err
+	}
+	if scaled.Kerns, err = scaleKernInfo(glyph.Kerns, factor); err != nil {
+		return nil, err
+	}
+	if err := s.reservePathSegments(len(glyph.Outline)); err != nil {
+		return nil, err
+	}
 	scaled.Outline = make(Path, len(glyph.Outline))
 	for i, segment := range glyph.Outline {
+		if i%64 == 0 {
+			if err := s.ctx.Err(); err != nil {
+				return nil, err
+			}
+		}
 		scaled.Outline[i].Op = segment.Op
 		for j, point := range segment.Points {
 			if scaled.Outline[i].Points[j].X, err = scale(point.X, factor); err != nil {
@@ -115,6 +187,57 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 		}
 	}
 	return &GlyphFragment{Glyph: scaled, Scale: factor, Paint: paint}, nil
+}
+
+func scaleKernInfo(info MathKernInfo, factor geometry.Em) (MathKernInfo, error) {
+	var out MathKernInfo
+	var err error
+	if out.TopLeft, err = scaleKern(info.TopLeft, factor); err != nil {
+		return MathKernInfo{}, err
+	}
+	if out.TopRight, err = scaleKern(info.TopRight, factor); err != nil {
+		return MathKernInfo{}, err
+	}
+	if out.BottomRight, err = scaleKern(info.BottomRight, factor); err != nil {
+		return MathKernInfo{}, err
+	}
+	if out.BottomLeft, err = scaleKern(info.BottomLeft, factor); err != nil {
+		return MathKernInfo{}, err
+	}
+	return out, nil
+}
+
+func scaleKern(kern *MathKern, factor geometry.Em) (*MathKern, error) {
+	if kern == nil {
+		return nil, nil
+	}
+	if len(kern.Kerns) != len(kern.Heights)+1 {
+		return nil, fmt.Errorf("%w: malformed math kern table", ErrInvalidInput)
+	}
+	for i := 1; i < len(kern.Heights); i++ {
+		if kern.Heights[i] <= kern.Heights[i-1] {
+			return nil, fmt.Errorf("%w: math kern heights are not increasing", ErrInvalidInput)
+		}
+	}
+	out := &MathKern{
+		Heights: make([]geometry.Em, len(kern.Heights)),
+		Kerns:   make([]geometry.Em, len(kern.Kerns)),
+	}
+	for i, height := range kern.Heights {
+		value, err := scale(height, factor)
+		if err != nil {
+			return nil, err
+		}
+		out.Heights[i] = value
+	}
+	for i, value := range kern.Kerns {
+		scaled, err := scale(value, factor)
+		if err != nil {
+			return nil, err
+		}
+		out.Kerns[i] = scaled
+	}
+	return out, nil
 }
 
 func (s *layoutState) layoutSpace(space *ir.Space, env environment) (*Fragment, error) {
@@ -129,10 +252,13 @@ func (s *layoutState) layoutSpace(space *ir.Space, env environment) (*Fragment, 
 	if space.Type == ir.SpaceInterword {
 		width, err = s.metricAt(metrics.SpaceWidth, env.Style)
 	} else {
-		width, err = s.length(space.Amount, env.Style, metrics)
+		width, err = s.signedLength(space.Amount, env.Style, metrics)
 	}
 	if err != nil {
 		return nil, err
+	}
+	if width < 0 {
+		return nil, fmt.Errorf("%w: negative standalone space", ErrInvalidInput)
 	}
 	fragment.Width = width
 	return fragment, nil

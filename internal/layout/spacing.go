@@ -69,6 +69,81 @@ func NormalizeClass(previous *ir.MathClass, current ir.MathClass) ir.MathClass {
 	return current
 }
 
+// normalizeRowClasses performs TeX's full atom-class normalization. Binary
+// operators are demoted when either side cannot accept a binary atom, which
+// requires one step of lookahead rather than only the previous class.
+func normalizeRowClasses(classes []ir.MathClass) []ir.MathClass {
+	out := make([]ir.MathClass, len(classes))
+	var previous *ir.MathClass
+	for i, current := range classes {
+		next := nextAtomClass(classes, i+1)
+		normalized := normalizeAtomClass(previous, current, next)
+		out[i] = normalized
+		if classOf(normalized) != groupNone {
+			value := normalized
+			previous = &value
+		}
+	}
+	return out
+}
+
+func nextAtomClass(classes []ir.MathClass, start int) *ir.MathClass {
+	for i := start; i < len(classes); i++ {
+		if classOf(classes[i]) == groupNone {
+			continue
+		}
+		value := classes[i]
+		return &value
+	}
+	return nil
+}
+
+func normalizeAtomClass(previous *ir.MathClass, current ir.MathClass, next *ir.MathClass) ir.MathClass {
+	if current == ir.ClassVarying {
+		if previous != nil {
+			switch *previous {
+			case ir.ClassNormal, ir.ClassAlphabetic, ir.ClassClosing, ir.ClassFence, ir.ClassUnary:
+				current = ir.ClassBinary
+			default:
+				return ir.ClassUnary
+			}
+		} else {
+			return ir.ClassUnary
+		}
+	}
+	if current != ir.ClassBinary {
+		return current
+	}
+	if !binaryLeftAllowed(previous) || !binaryRightAllowed(next) {
+		return ir.ClassUnary
+	}
+	return current
+}
+
+func binaryLeftAllowed(previous *ir.MathClass) bool {
+	if previous == nil {
+		return false
+	}
+	switch *previous {
+	case ir.ClassBinary, ir.ClassRelation, ir.ClassOpening, ir.ClassPunctuation, ir.ClassLarge:
+		return false
+	default:
+		return true
+	}
+}
+
+func binaryRightAllowed(next *ir.MathClass) bool {
+	if next == nil {
+		return false
+	}
+	switch *next {
+	case ir.ClassRelation, ir.ClassClosing, ir.ClassFence, ir.ClassPunctuation:
+		return false
+	default:
+		return true
+	}
+}
+
 // MathSpacing returns the automatic neutral inter-atom space in local ems.
 // Script and script-script styles suppress all automatic spacing. Cramped
 // affects constructions, not inter-atom spacing.

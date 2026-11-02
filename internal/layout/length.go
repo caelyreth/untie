@@ -11,13 +11,19 @@ func (s *layoutState) length(value ir.Length, style Style, metrics MathMetrics) 
 	if err := value.Validate(); err != nil {
 		return 0, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
+	if value.Value < 0 {
+		return 0, fmt.Errorf("%w: negative structural length", ErrInvalidInput)
+	}
+	return s.signedLength(value, style, metrics)
+}
+
+func (s *layoutState) signedLength(value ir.Length, style Style, metrics MathMetrics) (geometry.Em, error) {
+	if err := value.Validate(); err != nil {
+		return 0, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
 	if value.Unit == ir.LengthZero || value.Value == 0 {
 		return 0, nil
 	}
-	if value.Value < 0 {
-		return 0, fmt.Errorf("%w: negative length", ErrInvalidInput)
-	}
-
 	base, err := geometry.EmFromParts(value.Value, 1_000_000)
 	if err != nil {
 		return 0, err

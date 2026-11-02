@@ -14,6 +14,9 @@ var (
 	ErrMissingGlyph = errors.New("layout: missing glyph")
 	// ErrUnsupported reports a construct owned by a later work package.
 	ErrUnsupported = errors.New("layout: unsupported construct")
+	// ErrInsufficientStretch reports a required delimiter or accent that the
+	// configured font ports could not extend to its target.
+	ErrInsufficientStretch = errors.New("layout: insufficient stretch")
 	// ErrLimit reports a configured resource limit.
 	ErrLimit = errors.New("layout: limit exceeded")
 )

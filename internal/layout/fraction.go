@@ -27,8 +27,10 @@ func (s *layoutState) layoutFraction(node *ir.Fraction, env environment, depth i
 	switch node.Style {
 	case ir.FractionVertical, ir.FractionNoBar:
 		return s.layoutVerticalFraction(node, env, numerator, denominator)
-	case ir.FractionHorizontal, ir.FractionSkewed:
-		return s.layoutSlashFraction(node, env, numerator, denominator)
+	case ir.FractionHorizontal:
+		return s.layoutHorizontalFraction(node, env, numerator, denominator)
+	case ir.FractionSkewed:
+		return s.layoutSkewedFraction(node, env, numerator, denominator)
 	default:
 		return nil, fmt.Errorf("%w: fraction style %d", ErrInvalidInput, node.Style)
 	}
@@ -244,7 +246,7 @@ func (s *layoutState) stackMetrics(style Style, metrics MathMetrics) (geometry.E
 	return u, d, g, err
 }
 
-func (s *layoutState) layoutSlashFraction(node *ir.Fraction, env environment, numerator, denominator *Fragment) (*Fragment, error) {
+func (s *layoutState) layoutHorizontalFraction(node *ir.Fraction, env environment, numerator, denominator *Fragment) (*Fragment, error) {
 	slashEnv := env
 	slashEnv.Style = env.Style
 	slashText := "⁄"
@@ -277,5 +279,141 @@ func (s *layoutState) layoutSlashFraction(node *ir.Fraction, env environment, nu
 		}
 	}
 	fragment.TextLike = false
+	return withClass(fragment, node.Class), nil
+}
+
+func (s *layoutState) layoutSkewedFraction(node *ir.Fraction, env environment, numerator, denominator *Fragment) (*Fragment, error) {
+	metrics := s.fontMetrics(env.Style, env.Variant)
+	verticalGap, err := s.metricAt(metrics.SkewedFractionVerticalGap, env.Style)
+	if err != nil {
+		return nil, err
+	}
+	horizontalGap, err := s.metricAt(metrics.SkewedFractionHorizontalGap, env.Style)
+	if err != nil {
+		return nil, err
+	}
+	axis, err := s.metricAt(metrics.AxisHeight, env.Style)
+	if err != nil {
+		return nil, err
+	}
+	numHeight, err := numerator.Height()
+	if err != nil {
+		return nil, err
+	}
+	denHeight, err := denominator.Height()
+	if err != nil {
+		return nil, err
+	}
+	fractionHeight, err := sum(numHeight, denHeight, verticalGap)
+	if err != nil {
+		return nil, err
+	}
+
+	slash, err := s.layoutGlyphText("⁄", env, &stretchSpec{axis: Vertical, target: fractionHeight})
+	if err != nil {
+		slash, err = s.layoutGlyphText("/", env, &stretchSpec{axis: Vertical, target: fractionHeight})
+		if err != nil {
+			return nil, err
+		}
+	}
+	slashHeight, err := slash.Height()
+	if err != nil {
+		return nil, err
+	}
+	height := max(fractionHeight, slashHeight)
+	extraHeight, err := sub(height, fractionHeight)
+	if err != nil {
+		return nil, err
+	}
+	verticalOffset := extraHeight / 2
+	halfGap := horizontalGap / 2
+	slashX, err := sum(numerator.Width, halfGap)
+	if err != nil {
+		return nil, err
+	}
+	slashX, err = sub(slashX, slash.Width/2)
+	if err != nil {
+		return nil, err
+	}
+	slashY, err := sub(height/2, slashHeight/2)
+	if err != nil {
+		return nil, err
+	}
+	numX := geometry.Em(0)
+	numY := verticalOffset
+	denX, err := sum(numX, numerator.Width, horizontalGap)
+	if err != nil {
+		return nil, err
+	}
+	denY, err := sum(numY, numHeight, verticalGap)
+	if err != nil {
+		return nil, err
+	}
+	right, err := sum(denX, denominator.Width)
+	if err != nil {
+		return nil, err
+	}
+	slashRight, err := sum(slashX, slash.Width)
+	if err != nil {
+		return nil, err
+	}
+	width := max(right, slashRight)
+	if slashX < 0 {
+		width, err = sub(width, slashX)
+		if err != nil {
+			return nil, err
+		}
+		shift := -slashX
+		slashX, err = add(slashX, shift)
+		if err != nil {
+			return nil, err
+		}
+		numX, err = add(numX, shift)
+		if err != nil {
+			return nil, err
+		}
+		denX, err = add(denX, shift)
+		if err != nil {
+			return nil, err
+		}
+	}
+	baseline, err := add(height/2, axis)
+	if err != nil {
+		return nil, err
+	}
+	ascent := baseline
+	descent, err := sub(height, baseline)
+	if err != nil {
+		return nil, err
+	}
+	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	if err != nil {
+		return nil, err
+	}
+	fragment.BaseAscent = ascent
+	fragment.BaseDescent = descent
+	fragment.Italic = numerator.Italic
+	fragment.TextLike = false
+	numY, err = sub(numY, baseline)
+	if err != nil {
+		return nil, err
+	}
+	denY, err = sub(denY, baseline)
+	if err != nil {
+		return nil, err
+	}
+	slashY, err = sub(slashY, baseline)
+	if err != nil {
+		return nil, err
+	}
+	if err := fragment.pushGroup(numX, numY, numerator); err != nil {
+		return nil, err
+	}
+	if err := fragment.pushGroup(denX, denY, denominator); err != nil {
+		return nil, err
+	}
+	if err := fragment.pushGroup(slashX, slashY, slash); err != nil {
+		return nil, err
+	}
 	return withClass(fragment, node.Class), nil
 }
