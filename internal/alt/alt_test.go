@@ -183,14 +183,14 @@ func TestGenerateStructuralConstructs(t *testing.T) {
 func TestGenerateSizedDelimiters(t *testing.T) {
 	t.Parallel()
 
-	left := ir.NewSizedDelimiter(testSpan, "(", ir.DelimiterSize4)
+	left := ir.NewSizedDelimiter(testSpan, "(", ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 3_000_000)))
 	left.Class = ir.ClassOpening
 	got := Generate(left, ir.Inline, source.Limits{})
 	if got.Text != "(" || got.Speech != "left parenthesis" {
 		t.Fatalf("sized delimiter = %#v", got)
 	}
 
-	null := ir.NewSizedDelimiter(testSpan, ".", ir.DelimiterSize1)
+	null := ir.NewSizedDelimiter(testSpan, ".", ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_200_000)))
 	null.Class = ir.ClassNormal
 	got = Generate(null, ir.Inline, source.Limits{})
 	if got.Text != "" || got.Speech != "" {

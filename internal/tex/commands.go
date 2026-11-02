@@ -800,26 +800,48 @@ func (p *parser) parseSizedDelimiter(command token) astNode {
 		})
 		return astErr(command.span, command.text, source.CodeMissingArgument)
 	}
-	t := p.exp.next()
+	if next := p.exp.peek(); next.is(tokBeginGroup) {
+		_, groupSpan, closed := p.exp.consumeArgument()
+		if !closed {
+			return astErr(groupSpan, "invalid delimiter group", source.CodeInvalidValue)
+		}
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(groupSpan),
+			Severity: source.SeverityError,
+			Code:     source.CodeInvalidValue,
+			Message:  "invalid delimiter after '" + command.text + "'",
+		})
+		return astErr(groupSpan, "invalid delimiter group", source.CodeInvalidValue)
+	}
+	t := p.exp.peek()
 	text, ok := sizedDelimiterText[t.text]
 	if !ok {
+		if t.isControl() {
+			// KaTeX parses a primitive argument as a complete group. Consume a
+			// command and its own arguments before rejecting it so malformed
+			// delimiters cannot leak function arguments into the outer scope.
+			_ = p.parseNucleus(stopEOF)
+		} else {
+			t = p.exp.next()
+		}
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeInvalidValue,
 			Message:  "invalid delimiter after '" + command.text + "'",
 		})
-		return astErr(t.span, t.text, source.CodeInvalidValue)
+		return astErr(source.Merge(tokenOrigin(command), tokenOrigin(t)), t.text, source.CodeInvalidValue)
 	}
-	origin := tokenOrigin(command)
-	if !t.origin.IsDetached() {
-		origin = source.Merge(origin, t.origin)
-	}
+	t = p.exp.next()
+	// Macro-expanded delimiter tokens retain definition-site spans internally,
+	// but the neutral node must expose one contiguous call-site range. Origin is
+	// also the source-hit range, so it cannot be moved to the definition site.
+	callSpan := source.Merge(tokenOrigin(command), tokenOrigin(t))
 	return &astSizedDelimiterNode{
-		astBase: newASTBaseAt(astSizedDelimiter, source.Merge(command.span, t.span), origin),
+		astBase: newASTBaseAt(astSizedDelimiter, callSpan, callSpan),
 		text:    text,
 		class:   sizedSpec.class,
-		size:    sizedSpec.size,
+		sizing:  sizedSpec.sizing,
 	}
 }
 

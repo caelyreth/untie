@@ -124,9 +124,9 @@ type astFencedNode struct {
 
 type astSizedDelimiterNode struct {
 	astBase
-	text  string
-	class ir.MathClass
-	size  ir.DelimiterSize
+	text   string
+	class  ir.MathClass
+	sizing ir.DelimiterSizing
 }
 
 type astAccentNode struct {

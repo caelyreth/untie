@@ -194,11 +194,12 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["close"] = closeNode
 		baseValue["body"] = body
 		baseValue["balanced"] = node.Balanced
+		baseValue["sizing"] = normalizedDelimiterSizing(node.Sizing)
 		return baseValue, nil
 	case *ir.SizedDelimiter:
 		baseValue["kind"] = "sized-delimiter"
 		baseValue["text"] = node.Text
-		baseValue["delimiter-size"] = int(node.Size)
+		baseValue["sizing"] = normalizedDelimiterSizing(node.Sizing)
 		return baseValue, nil
 	case *ir.Accent:
 		body, err := normalizeNode(node.Body, childMode)
@@ -602,6 +603,14 @@ func normalizedLength(length ir.Length) any {
 		return nil
 	}
 	return []any{lengthUnitName(length.Unit), length.Value}
+}
+
+func normalizedDelimiterSizing(sizing ir.DelimiterSizing) []any {
+	return []any{delimiterSizingKindName(sizing.Kind), normalizedLength(sizing.Value)}
+}
+
+func delimiterSizingKindName(kind ir.DelimiterSizingKind) string {
+	return enumName(kind, []string{"content", "relative", "absolute"})
 }
 
 func normalizedPaint(paint ir.Paint) any {

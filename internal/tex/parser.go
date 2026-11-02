@@ -942,6 +942,7 @@ func newPlaceholderAST(span source.Range, reason string) *astPlaceholderNode {
 }
 
 func astErr(span source.Range, text string, code source.Code) *astErrorNode {
+	text = sanitizeFrontendText(text)
 	if text == "" {
 		text = "error"
 	}
@@ -950,6 +951,13 @@ func astErr(span source.Range, text string, code source.Code) *astErrorNode {
 		text:    text,
 		code:    code,
 	}
+}
+
+func sanitizeFrontendText(text string) string {
+	if utf8.ValidString(text) {
+		return text
+	}
+	return strings.ToValidUTF8(text, "\ufffd")
 }
 
 func isPrimeRow(row *astRowNode) bool {

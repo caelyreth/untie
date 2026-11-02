@@ -211,6 +211,9 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		if n.Balanced && (n.Open == nil || n.Close == nil) {
 			return fmt.Errorf("%w: %s: balanced fence has a missing delimiter", ErrInvalidIR, path)
 		}
+		if err := validateDelimiterSizing(n.Sizing, limits, path+".sizing", true); err != nil {
+			return err
+		}
 	case *SizedDelimiter:
 		if err := validateTextBytes(n.Text, limits, path, "sized delimiter"); err != nil {
 			return err
@@ -218,8 +221,8 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		if utf8.RuneCountInString(n.Text) != 1 {
 			return fmt.Errorf("%w: %s: sized delimiter text must be one rune", ErrInvalidIR, path)
 		}
-		if !n.Size.Valid() {
-			return fmt.Errorf("%w: %s: invalid delimiter size %d", ErrInvalidIR, path, n.Size)
+		if err := validateDelimiterSizing(n.Sizing, limits, path+".sizing", false); err != nil {
+			return err
 		}
 		switch n.Class {
 		case ClassNormal, ClassOpening, ClassClosing, ClassRelation:
@@ -326,6 +329,9 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		if n.Reason == "" {
 			return fmt.Errorf("%w: %s: empty placeholder reason", ErrInvalidIR, path)
 		}
+		if !utf8.ValidString(n.Reason) {
+			return fmt.Errorf("%w: %s: placeholder reason is not valid UTF-8", ErrInvalidIR, path)
+		}
 		if len(n.Reason) > limits.MaxTextBytes {
 			return fmt.Errorf("%w: %s: placeholder reason too long", ErrInvalidIR, path)
 		}
@@ -345,8 +351,34 @@ func validateTextBytes(text string, limits source.Limits, path, label string) er
 	if text == "" {
 		return fmt.Errorf("%w: %s: empty %s", ErrInvalidIR, path, label)
 	}
+	if !utf8.ValidString(text) {
+		return fmt.Errorf("%w: %s: %s is not valid UTF-8", ErrInvalidIR, path, label)
+	}
 	if len(text) > limits.MaxTextBytes {
 		return fmt.Errorf("%w: %s: %s text too long", ErrInvalidIR, path, label)
+	}
+	return nil
+}
+
+func validateDelimiterSizing(sizing DelimiterSizing, limits source.Limits, path string, contentAllowed bool) error {
+	if sizing.Kind > DelimiterSizingAbsolute {
+		return fmt.Errorf("%w: %s: invalid delimiter sizing kind %d", ErrInvalidIR, path, sizing.Kind)
+	}
+	if !contentAllowed && sizing.Kind == DelimiterSizingContent {
+		return fmt.Errorf("%w: %s: standalone delimiter requires a number or length target", ErrInvalidIR, path)
+	}
+	if err := sizing.Value.ValidateWithLimit(limits.MaxDimension); err != nil {
+		return fmt.Errorf("%w: %s: %v", ErrInvalidIR, path, err)
+	}
+	if !sizing.Valid() {
+		switch sizing.Kind {
+		case DelimiterSizingContent:
+			return fmt.Errorf("%w: %s: content sizing cannot carry a value", ErrInvalidIR, path)
+		case DelimiterSizingRelative:
+			return fmt.Errorf("%w: %s: relative sizing requires a percent length", ErrInvalidIR, path)
+		default:
+			return fmt.Errorf("%w: %s: absolute sizing requires a non-negative non-percent length", ErrInvalidIR, path)
+		}
 	}
 	return nil
 }

@@ -120,9 +120,14 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"base": base, "open": open, "close": closeNode, "body": body, "balanced": n.Balanced}, nil
+		return map[string]any{
+			"base": base, "open": open, "close": closeNode, "body": body,
+			"balanced": n.Balanced, "sizing": snapshotDelimiterSizing(n.Sizing),
+		}, nil
 	case *SizedDelimiter:
-		return map[string]any{"base": base, "text": n.Text, "delimiter-size": n.Size}, nil
+		return map[string]any{
+			"base": base, "text": n.Text, "sizing": snapshotDelimiterSizing(n.Sizing),
+		}, nil
 	case *Accent:
 		body, err := s.node(n.Body, depth+1)
 		if err != nil {
@@ -251,6 +256,13 @@ func snapshotLength(l Length) []any {
 		return nil
 	}
 	return []any{l.Unit, l.Value}
+}
+
+func snapshotDelimiterSizing(sizing DelimiterSizing) map[string]any {
+	return map[string]any{
+		"kind":  sizing.Kind,
+		"value": snapshotLength(sizing.Value),
+	}
 }
 
 func snapshotLengths(lengths []Length) []any {

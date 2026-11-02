@@ -59,8 +59,9 @@ unsupported cases, and 0 reviewed parser gaps. Unsupported cases are explicit
 scope exclusions such as math font-size declarations, chemistry,
 commutative diagrams, and document-layout commands; they are not relabeled
 passes. All 16 explicit `\big...` delimiter commands are now in-scope:
-standalone sized delimiters preserve their class and 1-4 size tier in neutral
-IR instead of remaining unsupported.
+standalone sized delimiters preserve their class and an absolute target policy
+in neutral IR. The TeX adapter maps its four command tiers to 1.2em, 1.8em,
+2.4em, and 3.0em; the neutral IR does not encode TeX tier names.
 
 Current Typst baseline:
 
@@ -76,7 +77,10 @@ The Typst baseline records 156 passes, 3 expected upstream diagnostics, 4
 explicit depth-limit scope exclusions, and 8 reviewed known gaps. Known gaps are
 limited to unrestricted Typst code evaluation and parser-only syntax probes
 outside the evaluable math subset. None are silently skipped; each has an exact
-case rule and reason in `typst-policy.json`.
+case rule and reason in `typst-policy.json`. Typst `lr(size:)` now lowers
+default/100% to content sizing, non-default percentages to relative sizing, and
+lengths to absolute sizing; the reviewed `big-sizes` record no longer reports a
+frontend warning.
 
 ## Isolation
 

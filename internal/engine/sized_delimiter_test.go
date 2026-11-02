@@ -1,12 +1,119 @@
 package engine
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
+
+func TestMoustachePiecesAreScopedToMoustacheDelimiters(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		text  string
+		runes string
+	}{
+		{text: "⎰", runes: "\u23a7\u23aa\u23ad"},
+		{text: "⎱", runes: "\u23ab\u23aa\u23a9"},
+	}
+	for _, tt := range tests {
+		parts, ok := moustachePieces(tt.text)
+		if !ok {
+			t.Fatalf("moustachePieces(%q) = unsupported", tt.text)
+		}
+		var got strings.Builder
+		for _, part := range parts {
+			got.WriteRune(part.text)
+		}
+		if got.String() != tt.runes || !parts[1].extender {
+			t.Fatalf("moustachePieces(%q) = %q (repeat=%v), want %q with one extender",
+				tt.text, got.String(), parts[1].extender, tt.runes)
+		}
+	}
+	for _, text := range []string{"(", ")", "/", `\`, "⟮", "∥"} {
+		if _, ok := moustachePieces(text); ok {
+			t.Fatalf("moustachePieces(%q) accepted a non-moustache delimiter", text)
+		}
+	}
+}
+
+func TestNewCMAcceptedDelimiterTierMatrix(t *testing.T) {
+	t.Parallel()
+
+	_, engine := newNewCMEngine(t, source.DefaultLimits())
+	commands := []string{`\big`, `\Big`, `\bigg`, `\Bigg`}
+	delimiters := []string{
+		"(", `\lparen`, ")", `\rparen`,
+		"[", `\lbrack`, "]", `\rbrack`,
+		`\{`, `\lbrace`, `\}`, `\rbrace`,
+		`\lfloor`, `\rfloor`, "⌊", "⌋",
+		`\lceil`, `\rceil`, "⌈", "⌉",
+		"<", `\langle`, "⟨", ">", `\rangle`, "⟩", `\lt`, `\gt`,
+		`\lvert`, `\rvert`, `\lVert`, `\rVert`,
+		`\lgroup`, `\rgroup`, "⟮", "⟯",
+		`\lmoustache`, `\rmoustache`, "⎰", "⎱",
+		"/", `\backslash`, "|", `\vert`, `\|`, `\Vert`,
+		`\uparrow`, `\Uparrow`, `\downarrow`, `\Downarrow`,
+		`\updownarrow`, `\Updownarrow`, ".",
+	}
+	for _, command := range commands {
+		for _, delimiter := range delimiters {
+			sourceText := command + delimiter
+			box := layoutTeX(t, engine, sourceText, ir.Display)
+			if len(box.Hits) == 0 {
+				t.Fatalf("%s produced no source hit", sourceText)
+			}
+			if delimiter != "." && len(box.Items) == 0 {
+				t.Fatalf("%s produced no drawable output", sourceText)
+			}
+		}
+	}
+}
+
+func TestNewCMTallMoustachesUseSyntheticAssembly(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{
+		`\left\lmoustache\frac{\frac{a}{b}}{\frac{c}{d}}\right\rmoustache`,
+		`\left\rmoustache\frac{\frac{a}{b}}{\frac{c}{d}}\right\lmoustache`,
+	}
+	for _, sourceText := range tests {
+		_, engine := newNewCMEngine(t, source.DefaultLimits())
+		box := layoutTeX(t, engine, sourceText, ir.Display)
+		if box.Ascent+box.Descent < 40 {
+			t.Fatalf("%s extent = %v, want a synthetic moustache assembly", sourceText, box.Ascent+box.Descent)
+		}
+		if len(box.Items) < 8 {
+			t.Fatalf("%s items = %d, want assembled moustache pieces", sourceText, len(box.Items))
+		}
+	}
+}
+
+func TestTypstZeroSizedDelimitersUseOrdinaryGlyphs(t *testing.T) {
+	t.Parallel()
+
+	_, engine := newNewCMEngine(t, source.DefaultLimits())
+	for _, src := range []string{
+		`lr(|, size: #0em)`,
+		`lr((frac(a,b)), size: #0%)`,
+	} {
+		result := typst.Parse(src, ir.Inline, typst.Options{})
+		if len(result.Diagnostics) != 0 {
+			t.Fatalf("%s diagnostics = %#v", src, result.Diagnostics)
+		}
+		box, err := engine.Layout(t.Context(), result.Root, ir.Inline, display.Style{Size: 16})
+		if err != nil {
+			t.Fatalf("%s layout error = %v", src, err)
+		}
+		if len(box.Items) == 0 || box.Width <= 0 {
+			t.Fatalf("%s box = %#v, want visible ordinary delimiters", src, box)
+		}
+	}
+}
 
 func TestNewCMSizedDelimiterGeometry(t *testing.T) {
 	t.Parallel()

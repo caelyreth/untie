@@ -269,8 +269,11 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
 		return out
 	case *astSizedDelimiterNode:
-		out := ir.NewSizedDelimiter(n.span, n.text, n.size)
+		out := ir.NewSizedDelimiter(n.span, n.text, n.sizing)
 		l.applyBase(&out.Base, &n.astBase, ctx, n.class)
+		// KaTeX renders explicit \big... tiers in text style, so their em-valued
+		// targets remain fixed even when the surrounding math style is a script.
+		out.Size = ir.SizeText
 		return out
 	case *astAccentNode:
 		body := l.lower(n.body, ctx)

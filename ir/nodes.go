@@ -128,6 +128,7 @@ type Fenced struct {
 	Close    Node
 	Body     []Node
 	Balanced bool
+	Sizing   DelimiterSizing
 }
 
 // NewFenced constructs a fenced group.
@@ -138,20 +139,20 @@ func NewFenced(span source.Range, body ...Node) *Fenced {
 	}
 }
 
-// SizedDelimiter is one standalone delimiter with an explicit size tier. It is
-// distinct from an ordinary delimiter atom and from a paired Fenced group.
+// SizedDelimiter is one standalone delimiter with an explicit target policy. It
+// is distinct from an ordinary delimiter atom and from a paired Fenced group.
 type SizedDelimiter struct {
 	Base
-	Text string
-	Size DelimiterSize
+	Text   string
+	Sizing DelimiterSizing
 }
 
 // NewSizedDelimiter constructs a standalone explicitly sized delimiter.
-func NewSizedDelimiter(span source.Range, text string, size DelimiterSize) *SizedDelimiter {
+func NewSizedDelimiter(span source.Range, text string, sizing DelimiterSizing) *SizedDelimiter {
 	return &SizedDelimiter{
-		Base: NewBase(KindSizedDelimiter, span),
-		Text: text,
-		Size: size,
+		Base:   NewBase(KindSizedDelimiter, span),
+		Text:   text,
+		Sizing: sizing,
 	}
 }
 

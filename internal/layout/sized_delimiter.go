@@ -16,10 +16,11 @@ func (s *layoutState) layoutSizedDelimiter(node *ir.SizedDelimiter, env environm
 		fragment.TextLike = false
 		return withClass(fragment, node.Class), nil
 	}
-	// KaTeX renders every explicit delimiter tier in text style. The size tier
-	// is therefore stable inside scripts rather than inheriting their scale.
-	env.Style = Style{Size: Text}
-	target, err := sizedDelimiterHeight(node.Size)
+	unitTarget, err := s.metricAt(geometry.Em(geometry.EmScale), env.Style)
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.delimiterSizingTarget(node.Sizing, unitTarget, env)
 	if err != nil {
 		return nil, err
 	}
@@ -32,19 +33,4 @@ func (s *layoutState) layoutSizedDelimiter(node *ir.SizedDelimiter, env environm
 	}
 	fragment.TextLike = false
 	return withClass(fragment, node.Class), nil
-}
-
-func sizedDelimiterHeight(size ir.DelimiterSize) (geometry.Em, error) {
-	switch size {
-	case ir.DelimiterSize1:
-		return geometry.EmFromParts(6, 5)
-	case ir.DelimiterSize2:
-		return geometry.EmFromParts(9, 5)
-	case ir.DelimiterSize3:
-		return geometry.EmFromParts(12, 5)
-	case ir.DelimiterSize4:
-		return geometry.EmFromParts(3, 1)
-	default:
-		return 0, fmt.Errorf("%w: invalid delimiter size %d", ErrInvalidInput, size)
-	}
 }

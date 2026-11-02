@@ -87,7 +87,7 @@ func fallbackResult(
 		}
 	}
 	return Result{
-		Root:        ir.NewRow(span, ir.NewError(span, text, code)),
+		Root:        ir.NewRow(span, ir.NewError(span, sanitizeFrontendText(text), code)),
 		Diagnostics: []source.Diagnostic{diagnostic},
 	}
 }
