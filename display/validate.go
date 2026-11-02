@@ -47,16 +47,16 @@ func validateItem(item Item) error {
 			return errors.New("empty glyph path")
 		}
 		for i, seg := range item.Path {
-			if seg.Op > 3 {
+			if seg.Op > geometry.SegClose {
 				return fmt.Errorf("segment %d has unknown op %d", i, seg.Op)
 			}
 			points := 1
 			switch seg.Op {
-			case 2:
+			case geometry.SegQuadTo:
 				points = 2
-			case 3:
+			case geometry.SegCubeTo:
 				points = 3
-			case 4:
+			case geometry.SegClose:
 				points = 0
 			}
 			for j := 0; j < points; j++ {
