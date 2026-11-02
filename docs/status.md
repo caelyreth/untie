@@ -7,8 +7,8 @@ is not a compatibility claim.
 ## Snapshot
 
 - Repository state: post engine hardening, generated/fixture import, neutral
-  delimiter sizing, synthetic moustache assembly, and TeX/Typst conformance
-  baselines
+  delimiter sizing, synthetic moustache assembly, and break/link API-boundary
+  cleanup
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
@@ -40,6 +40,11 @@ tests and migration notes.
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
   break opportunities with post-operator glue folded into the preceding piece.
+  Break metadata carries position and kind, not an invented relative cost.
+- Link syntax is text-only across both frontends: visible body content and source
+  spans survive parsing/layout, destinations are intentionally discarded, and
+  an unsupported warning is reported. The neutral IR has no link node or target
+  metadata.
 - Parsing facade with dialect selection, TeX macro options, diagnostics, stable
   parse keys, cancellation checks, and a panic containment boundary. Typst
   preamble/code definitions are intentionally unsupported and no longer appear
@@ -195,8 +200,10 @@ The following are genuine gaps, not hidden behavior:
   callers that need explicit lifetime control should use `NewEngine`.
 - Inline break metadata, alternative text, and width-constrained display line
   boxes with start/center/end alignment are implemented. Re-layout split
-  pieces, equation numbering, tags, links, MathML output, rasterization, and SVG
-  export are not product features. SVG support is test-only.
+  pieces, equation numbering, tags, link destinations, MathML output,
+  rasterization, and SVG export are not product features. `\nobreak` and
+  cost-based line breaking are explicitly unsupported. SVG support is
+  test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary
