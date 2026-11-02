@@ -90,24 +90,24 @@ changed failure path, not merely a changed pass/fail bit, visible in review.
 
 ## Current Baseline
 
-At the `codex/crosscheck` base commit:
+Current reviewed baseline:
 
 ```text
-pass                         3
-semantic-ir-mismatch        61
-layout-mismatch              1
-fixture-mismatch            14
+pass                        16
+semantic-ir-mismatch        60
+layout-mismatch              0
+fixture-mismatch             3
 documented-pair-difference   2
 unexplained                  0
 ```
 
 This is a conformance inventory, not a claim that the paired corpus currently
-passes. The reasons are recorded per case in the baseline. All non-fixture cases
-currently stop at a semantic or frontend-diagnostic difference before reaching
-the cross-dialect layout comparison. The largest remaining gaps are compound
-atom classes, remaining Typst symbol/evaluator coverage, style-boundary spacing,
-delimiter assembly extents, math-alphabet structure, and static-frame metric
-drift.
+passes. The reasons are recorded per case in the baseline. The remaining
+semantic cases mostly stop at a frontend-diagnostic or compound IR difference
+before cross-dialect layout comparison. The largest remaining gaps are
+unrestricted Typst code, unsupported delimiter/font-sizing constructs,
+chemistry/commutative-diagram pairs, compound atom structure, math alphabets,
+and the three remaining static-frame metric differences.
 
 Baseline details can be refreshed with an explicit review file:
 

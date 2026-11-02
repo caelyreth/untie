@@ -142,11 +142,11 @@ The bounded Typst math frontend includes:
 - 1,111 TeX cases from RaTeX and selected KaTeX inputs are classified with zero
   unexplained cases.
 - 171 selected Typst cases are classified with zero unexplained cases; the
-  current split is 156 pass, 2 expected diagnostic, 4 unsupported, and 9
+  current split is 156 pass, 3 expected diagnostic, 4 unsupported, and 8
   reviewed gaps.
 - All 81 paired Typst/TeX formulas are classified with zero unexplained cases.
-- The committed paired baseline records 3 full passes, 61 semantic gaps, 1
-  layout gap, 14 static-frame gaps, and 2 documented pair differences, with
+- The committed paired baseline records 16 full passes, 60 semantic gaps, 0
+  layout gaps, 3 static-frame gaps, and 2 documented pair differences, with
   zero unexplained cases.
 
 ## Not Yet Implemented
@@ -157,8 +157,8 @@ The following are genuine gaps, not hidden behavior:
   providers remain optional extensions.
 - Paired Typst/TeX semantic and geometry conformance still has substantial
   reviewed gaps.
-- TeX conformance currently records 11 reviewed parser gaps, with the remaining
-  failures concentrated in text-mode commands and parser-only syntax.
+- TeX conformance records no reviewed parser gaps; remaining non-passes are
+  reviewed upstream diagnostics or explicit unsupported scope exclusions.
 - Typst conformance still records reviewed evaluator and parser-only syntax
   gaps.
 - Some MATH assemblies and metric differences remain within documented fixture

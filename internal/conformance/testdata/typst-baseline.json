@@ -58,9 +58,9 @@
   "summary": {
     "total": 171,
     "pass": 156,
-    "diagnostic": 2,
+    "diagnostic": 3,
     "unsupported": 4,
-    "bug": 9,
+    "bug": 8,
     "unexplained": 0
   },
   "families": [
@@ -883,9 +883,9 @@
       "id": "frac-skewed",
       "corpus": "typlet-features",
       "index": 12,
-      "status": "bug",
-      "review": "known-gap",
-      "reason": "The fixture expects an upstream unknown-variable error, but this frontend accepts the namespace form. The upstream expectation remains visible rather than being rewritten.",
+      "status": "diagnostic",
+      "review": "upstream-diagnostic",
+      "reason": "selected upstream case expects a recoverable diagnostic",
       "families": [
         "feature:group",
         "feature:text",
@@ -894,7 +894,18 @@
       "commands": [
         "math.frac"
       ],
-      "detail": "upstream case expects a diagnostic, but parsing recovered silently"
+      "codes": [
+        "unknown-variable"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-variable",
+          "severity": 0,
+          "start": 0,
+          "end": 4,
+          "message": "unknown variable: math"
+        }
+      ]
     },
     {
       "id": "root-sign",

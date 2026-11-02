@@ -11,7 +11,7 @@
       "corpus": "typlet-features",
       "ids": ["frac-skewed"],
       "codes": ["unknown-variable"],
-      "reason": "The pinned Typst 0.15.1 fixture rejects unqualified math in math mode; the expectation is reviewed independently of the frontend result."
+      "reason": "Bare `math` is not a valid math-mode namespace in the pinned Typst behavior; it remains an upstream error even though qualified `#math` and `#std.math` work."
     }
   ],
   "exclusions": [
@@ -26,11 +26,6 @@
       "corpus": "typlet-paired",
       "ids": ["macros", "loop-matrix", "computed"],
       "reason": "Preamble definitions, loops, and user-function execution are explicitly outside the restricted math frontend."
-    },
-    {
-      "corpus": "typlet-features",
-      "ids": ["frac-skewed"],
-      "reason": "The fixture expects an upstream unknown-variable error, but this frontend accepts the namespace form. The upstream expectation remains visible rather than being rewritten."
     },
     {
       "corpus": "typlet-syntax",
