@@ -96,10 +96,10 @@ changed failure path, not merely a changed pass/fail bit, visible in review.
 Current reviewed baseline:
 
 ```text
-pass                        16
+pass                        17
 semantic-ir-mismatch        60
 layout-mismatch              0
-fixture-mismatch             3
+fixture-mismatch             2
 documented-pair-difference   2
 unexplained                  0
 ```
@@ -110,7 +110,7 @@ semantic cases mostly stop at a frontend-diagnostic or compound IR difference
 before cross-dialect layout comparison. The largest remaining gaps are
 unrestricted Typst code, unsupported delimiter/font-sizing constructs,
 chemistry/commutative-diagram pairs, compound atom structure, math alphabets,
-and the three remaining static-frame metric differences.
+and the two remaining static-frame differences.
 
 Baseline details can be refreshed with an explicit review file:
 
