@@ -93,10 +93,10 @@ changed failure path, not merely a changed pass/fail bit, visible in review.
 At the `codex/crosscheck` base commit:
 
 ```text
-pass                         0
-semantic-ir-mismatch        71
+pass                         3
+semantic-ir-mismatch        61
 layout-mismatch              1
-fixture-mismatch             7
+fixture-mismatch            14
 documented-pair-difference   2
 unexplained                  0
 ```
@@ -105,8 +105,20 @@ This is a conformance inventory, not a claim that the paired corpus currently
 passes. The reasons are recorded per case in the baseline. All non-fixture cases
 currently stop at a semantic or frontend-diagnostic difference before reaching
 the cross-dialect layout comparison. The largest remaining gaps are compound
-atom classes, balanced-fence representation, operator limits and stretch
-metadata, math-alphabet structure, spacing units, and static-frame metric drift.
+atom classes, remaining Typst symbol/evaluator coverage, style-boundary spacing,
+delimiter assembly extents, math-alphabet structure, and static-frame metric
+drift.
+
+Baseline details can be refreshed with an explicit review file:
+
+```sh
+go run ./cmd/crosscheck -refresh \
+  -write internal/crosscheck/testdata/paired-baseline.json \
+  -reasons reviewed-reasons.json
+```
+
+The refresh command reuses reasons for unchanged result kinds but refuses any
+kind transition without a new reviewed reason.
 
 Supplementary-plane spans and long repeated runs are tested separately from the
 upstream 81-case count so the pinned corpus remains exact.

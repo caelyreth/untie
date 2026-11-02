@@ -145,20 +145,20 @@ The bounded Typst math frontend includes:
   current split is 156 pass, 2 expected diagnostic, 4 unsupported, and 9
   reviewed gaps.
 - All 81 paired Typst/TeX formulas are classified with zero unexplained cases.
-- The committed paired baseline currently records zero full passes, showing
-  the remaining cross-dialect semantic differences rather than hiding them.
+- The committed paired baseline records 3 full passes, 61 semantic gaps, 1
+  layout gap, 14 static-frame gaps, and 2 documented pair differences, with
+  zero unexplained cases.
 
 ## Not Yet Implemented
 
 The following are genuine gaps, not hidden behavior:
 
-- The internal table layout still requires a host-supplied extension port and is
-  not yet a complete built-in table implementation.
-- `ir.Multiline` still needs a built-in layout implementation.
+- The built-in table and multiline layout paths are implemented; custom table
+  providers remain optional extensions.
 - Paired Typst/TeX semantic and geometry conformance still has substantial
   reviewed gaps.
-- TeX conformance still records hundreds of reviewed parser coverage gaps,
-  especially text-mode commands, environments, groups, rows, and alignment.
+- TeX conformance currently records 11 reviewed parser gaps, with the remaining
+  failures concentrated in text-mode commands and parser-only syntax.
 - Typst conformance still records reviewed evaluator and parser-only syntax
   gaps.
 - Some MATH assemblies and metric differences remain within documented fixture
