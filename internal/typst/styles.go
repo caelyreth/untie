@@ -55,7 +55,6 @@ func (l *lowerer) lowerAlphabet(call *astNode, name string) ir.Node {
 		variant = ir.VariantFraktur
 	}
 	applyVariant(body, variant)
-	applyClass(body, ir.ClassNormal)
 	return body
 }
 

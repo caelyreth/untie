@@ -217,3 +217,57 @@ func TestMatrixArrayRowsPadAndRemainBounded(t *testing.T) {
 		t.Fatalf("bounded matrix diagnostics = %#v, want limit", bounded.Diagnostics)
 	}
 }
+
+func TestValueDisplayAndMathStylesPreserveSemantics(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		src  string
+		text string
+	}{
+		{`#auto`, "auto"},
+		{`#true`, "true"},
+		{`#false`, "false"},
+		{`#1em`, "1em"},
+		{`#(1, 2)`, "(1, 2)"},
+	} {
+		result := parse(t, test.src)
+		requireNoDiagnostics(t, test.src, result)
+		text := find[*ir.Text](t, result.Root)
+		if text.Text != test.text || text.Font != ir.FontText || text.Variant != ir.VariantMonospace {
+			t.Fatalf("%s text = %#v", test.src, text)
+		}
+	}
+
+	for _, test := range []struct {
+		src   string
+		class ir.MathClass
+	}{
+		{`bold(alpha)`, ir.ClassAlphabetic},
+		{`italic(plus)`, ir.ClassBinary},
+		{`bb(R)`, ir.ClassAlphabetic},
+		{`sans(integral)`, ir.ClassLarge},
+	} {
+		result := parse(t, test.src)
+		requireNoDiagnostics(t, test.src, result)
+		glyph := find[*ir.Glyph](t, result.Root)
+		if glyph.Class != test.class {
+			t.Fatalf("%s class = %v, want %v", test.src, glyph.Class, test.class)
+		}
+		if glyph.Variant == ir.VariantAuto {
+			t.Fatalf("%s did not apply a math variant", test.src)
+		}
+	}
+
+	for _, src := range []string{
+		`dash(x)`,
+		`diaer(x)`,
+		`acute.double(x)`,
+		`harpoon(x)`,
+		`harpoon.lt(x)`,
+	} {
+		result := parse(t, src)
+		requireNoDiagnostics(t, src, result)
+		find[*ir.Accent](t, result.Root)
+	}
+}

@@ -201,8 +201,9 @@ func builtinMuLength(value float64) ir.Length {
 var accentAliases = map[string]string{
 	"hat": "̂", "tilde": "̃", "macron": "̄", "bar": "¯", "breve": "̆",
 	"acute": "́", "grave": "̀", "caron": "̌", "dot": "̇", "dot.double": "̈",
-	"dot.triple": "⃛", "dot.quad": "⃜",
+	"dot.triple": "⃛", "dot.quad": "⃜", "acute.double": "˝",
 	"arrow": "⃗", "arrow.l": "⃖", "arrow.l.r": "⃡", "circle": "̊",
+	"dash": "‾", "diaer": "̈", "harpoon": "⇀", "harpoon.lt": "↼",
 }
 
 func symbol(name string) (symbolDef, bool) {
