@@ -35,7 +35,7 @@ tests and migration notes.
   public error contract. Public layout populates `display.Box.Alt` after
   geometry succeeds under the per-field stricter intersection of Engine and
   expression resource limits, so tighter Engine limits may produce a bounded
-  fallback that differs from `Expr.Alt`; MathML remains unimplemented.
+  fallback that differs from `Expr.Alt`.
 - Layout emits source-linked hit regions for atoms, groups, scripts, fraction
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
@@ -193,7 +193,7 @@ The following are genuine gaps, not hidden behavior:
   callers that need explicit lifetime control should use `NewEngine`.
 - Inline break metadata, alternative text, and width-constrained display line
   boxes are implemented. Re-layout split pieces, equation numbering, tags,
-  links, MathML, rasterization, and SVG export are not product features. SVG
+  links, MathML output, rasterization, and SVG export are not product features. SVG
   support is test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 

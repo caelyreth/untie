@@ -331,8 +331,8 @@ func (e *Expr) Diagnostics() []Diagnostic {
 }
 
 // Alt returns deterministic plain text and speech derived from the neutral IR.
-// If generation cannot complete, it returns a bounded, validated fallback.
-// MathML is deferred and remains empty. Use AltContext to observe the error.
+// If generation cannot complete, it returns a bounded, validated fallback. Use
+// AltContext to observe the error.
 func (e *Expr) Alt() Alt {
 	if e == nil {
 		return Alt{}

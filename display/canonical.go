@@ -94,7 +94,6 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 type canonicalAlt struct {
 	Speech string `json:"speech"`
 	Text   string `json:"text"`
-	MathML string `json:"mathml"`
 }
 
 type canonicalHit struct {

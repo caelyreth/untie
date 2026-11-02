@@ -115,7 +115,7 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 	if !strings.Contains(string(first), `"hits"`) ||
 		!strings.Contains(string(first), `"breaks"`) ||
-		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x","mathml":""}`) ||
+		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x"}`) ||
 		!strings.Contains(string(first), `"italic":-0.5`) ||
 		!strings.Contains(string(first), `"italic":-0.25`) ||
 		!strings.Contains(string(first), `"lines":[{"baseline":1,"box":`) {
@@ -150,7 +150,7 @@ func TestAltCloneValidateAndMarshalCanonical(t *testing.T) {
 	if string(first) != string(second) {
 		t.Fatalf("canonical output is nondeterministic:\n%s\n%s", first, second)
 	}
-	const want = `{"speech":"x sub i squared","text":"x_i²","mathml":""}`
+	const want = `{"speech":"x sub i squared","text":"x_i²"}`
 	if string(first) != want {
 		t.Fatalf("MarshalCanonical() = %s, want %s", first, want)
 	}
@@ -166,7 +166,6 @@ func TestAltValidationRejectsMalformedAndDeferredOutput(t *testing.T) {
 		{name: "speech UTF-8", alt: Alt{Speech: string([]byte{0xff})}},
 		{name: "text UTF-8", alt: Alt{Text: string([]byte{0xff})}},
 		{name: "NUL", alt: Alt{Text: "x\x00y"}},
-		{name: "deferred MathML", alt: Alt{MathML: "<math/>"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

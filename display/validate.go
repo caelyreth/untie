@@ -110,8 +110,7 @@ func lineTolerance(value float32) float32 {
 	return maxFloat(1e-5, absFloat(value)*1e-6)
 }
 
-// Validate checks that alternative text is valid UTF-8 and that deferred
-// output remains empty.
+// Validate checks that alternative text is valid UTF-8 and contains no NUL.
 func (a Alt) Validate() error {
 	for _, field := range []struct {
 		name  string
@@ -119,7 +118,6 @@ func (a Alt) Validate() error {
 	}{
 		{"speech", a.Speech},
 		{"text", a.Text},
-		{"mathml", a.MathML},
 	} {
 		if !utf8.ValidString(field.value) {
 			return fmt.Errorf("%w: %s is not valid UTF-8", ErrInvalidAlt, field.name)
@@ -127,9 +125,6 @@ func (a Alt) Validate() error {
 		if strings.ContainsRune(field.value, '\x00') {
 			return fmt.Errorf("%w: %s contains NUL", ErrInvalidAlt, field.name)
 		}
-	}
-	if a.MathML != "" {
-		return fmt.Errorf("%w: MathML is not implemented", ErrInvalidAlt)
 	}
 	return nil
 }
