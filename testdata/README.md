@@ -51,3 +51,15 @@ Normal verification uses:
 ```sh
 CGO_ENABLED=0 go test ./...
 ```
+
+The daily corpus also has a whole-pipeline benchmark comparing caller-owned,
+warm package-cache, cold package-cache, and no-cache engine strategies:
+
+```sh
+CGO_ENABLED=0 go test ./internal/quality \
+  -run '^$' -bench '^BenchmarkEndToEndDailyCorpus$' -benchmem
+```
+
+One benchmark operation is one complete pass over every corpus case. Item, hit,
+and path totals cover successful layouts only. Their `/case` metrics divide by
+all parse attempts; `/success` metrics divide by layouts that produced a box.
