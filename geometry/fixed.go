@@ -72,6 +72,9 @@ func (a Em) Abs() (Em, error) {
 	if a == Em(math.MinInt64) {
 		return 0, ErrOverflow
 	}
+	if a > MaxEm || a < -MaxEm {
+		return 0, ErrDimension
+	}
 	if a < 0 {
 		return -a, nil
 	}
@@ -114,6 +117,9 @@ func (d Dip) Float32() float32 {
 func EmToDip(em Em, emSize Dip) (Dip, error) {
 	if emSize <= 0 {
 		return 0, ErrInvalidScale
+	}
+	if emSize > MaxDip {
+		return 0, ErrDimension
 	}
 	if em > MaxEm || em < -MaxEm {
 		return 0, ErrDimension
