@@ -142,6 +142,25 @@ func TestSemanticNormalizationRejectsMaterialDifference(t *testing.T) {
 	}
 }
 
+func TestFirstDifferenceReportsKeyPresence(t *testing.T) {
+	t.Parallel()
+
+	path, want, got := firstDifference("root",
+		map[string]any{"amount": nil},
+		map[string]any{},
+	)
+	if path != "root.amount" || want != nil || got != (missingValue{}) {
+		t.Fatalf("missing field difference = %q, %#v, %#v", path, want, got)
+	}
+	path, want, got = firstDifference("root",
+		map[string]any{},
+		map[string]any{"amount": nil},
+	)
+	if path != "root.amount" || want != (missingValue{}) || got != nil {
+		t.Fatalf("added field difference = %q, %#v, %#v", path, want, got)
+	}
+}
+
 func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 	t.Parallel()
 

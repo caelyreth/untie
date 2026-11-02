@@ -501,6 +501,9 @@ type SemanticDifference struct {
 }
 
 func shortJSON(value any) string {
+	if _, missing := value.(missingValue); missing {
+		return "<absent>"
+	}
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Sprintf("<json error: %v>", err)
@@ -547,7 +550,13 @@ func firstDifference(path string, want, got any) (string, any, any) {
 		for _, key := range keys {
 			wv, wok := w[key]
 			gv, gok := g[key]
-			if wok != gok || !reflect.DeepEqual(wv, gv) {
+			if wok != gok {
+				if !wok {
+					return path + "." + key, missingValue{}, gv
+				}
+				return path + "." + key, wv, missingValue{}
+			}
+			if !reflect.DeepEqual(wv, gv) {
 				return firstDifference(path+"."+key, wv, gv)
 			}
 		}
@@ -568,6 +577,8 @@ func firstDifference(path string, want, got any) (string, any, any) {
 	}
 	return path, want, got
 }
+
+type missingValue struct{}
 
 func normalizedLength(length ir.Length) any {
 	if length.IsZero() {

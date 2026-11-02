@@ -131,7 +131,7 @@
       "index": 17,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].balanced: expected null, got true",
+      "detail": "root[2].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -179,7 +179,7 @@
       "index": 23,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].balanced: expected null, got true",
+      "detail": "root[0].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -187,7 +187,7 @@
       "index": 24,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].balanced: expected null, got true",
+      "detail": "root[0].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -203,7 +203,7 @@
       "index": 26,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root.main.body[0].denominator[0].amount: expected null, got [\"mu\",3000000]",
+      "detail": "root.main.body[0].denominator[0].amount: expected \u003cabsent\u003e, got [\"mu\",3000000]",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -255,7 +255,7 @@
       "index": 34,
       "category": "matrices",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
+      "detail": "root[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -309,7 +309,7 @@
       "index": 41,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].amount: expected null, got null",
+      "detail": "root[1].amount: expected null, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -317,7 +317,7 @@
       "index": 42,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].amount: expected null, got null",
+      "detail": "root[1].amount: expected null, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -389,7 +389,7 @@
       "index": 51,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].balanced: expected null, got true",
+      "detail": "root[2].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -421,7 +421,7 @@
       "index": 55,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[9].balanced: expected true, got null",
+      "detail": "root[9].balanced: expected true, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -429,7 +429,7 @@
       "index": 56,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[6].amount: expected null, got null",
+      "detail": "root[6].amount: expected null, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -445,7 +445,7 @@
       "index": 58,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].body: expected {\"class\":\"relation\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"≡\",\"variant\":\"normal-or-auto\"}, got null",
+      "detail": "root[1].body: expected {\"class\":\"relation\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"≡\",\"variant\":\"normal-or-auto\"}, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -519,7 +519,7 @@
       "index": 68,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
+      "detail": "root[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -543,7 +543,7 @@
       "index": 71,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
+      "detail": "root[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
