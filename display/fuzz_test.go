@@ -3,7 +3,6 @@ package display
 import (
 	"bytes"
 	"encoding/binary"
-	"math"
 	"testing"
 
 	"github.com/caelyreth/untie/geometry"
@@ -66,17 +65,13 @@ func randomBox(data []byte) *Box {
 		return value
 	}
 	number := func() float32 {
-		return float32(int8(next())) / 4
-	}
-	if next()%5 == 0 {
-		return fuzzTaggedConstrainedBox()
+		return float32(int8(next())) / 8
 	}
 	box := &Box{
-		Width: fuzzAbsFloat(number()), Ascent: fuzzAbsFloat(number()), Descent: fuzzAbsFloat(number()),
-		Italic: number(), AxisHeight: fuzzAbsFloat(number()), Overflow: fuzzAbsFloat(number()),
-		Alt: Alt{Speech: string(data), Text: string(data)},
+		Width:  fuzzAbsFloat(number()) + 1,
+		Ascent: 1,
 	}
-	itemCount := int(next() % 8)
+	itemCount := int(next() % 6)
 	for range itemCount {
 		item := Item{
 			Kind: ItemKind(next() % 3),
@@ -85,15 +80,15 @@ func randomBox(data []byte) *Box {
 				Explicit:    RGBA{R: next(), G: next(), B: next(), A: next()},
 				HasExplicit: next()%2 == 0,
 			},
-			Bound:  rect(number),
-			Rect:   rect(number),
+			Bound:  fuzzRect(number),
+			Rect:   fuzzRect(number),
 			FontID: string([]byte{'f', 'o', 'n', 't', next() % 4}),
 			Glyph:  binary.BigEndian.Uint16([]byte{next(), next()}),
 			At:     geometry.Point{X: number(), Y: number()},
-			Em:     fuzzAbsFloat(number()),
+			Em:     fuzzAbsFloat(number()) + 0.25,
 		}
 		if item.Kind == ItemGlyphPath || next()%2 == 0 {
-			item.Path = make([]geometry.Segment, int(next()%5))
+			item.Path = make([]geometry.Segment, int(next()%4)+1)
 			for i := range item.Path {
 				item.Path[i].Op = geometry.SegOp(next() % 5)
 				for j := range item.Path[i].Points {
@@ -103,139 +98,72 @@ func randomBox(data []byte) *Box {
 		}
 		box.Items = append(box.Items, item)
 	}
-	hitCount := int(next() % 8)
+	hitCount := int(next() % 6)
 	for range hitCount {
-		start := int(next() % 16)
+		start := int(next() % 8)
 		box.Hits = append(box.Hits, Hit{
-			Source: source.NewRange(start, start+int(next()%8)),
-			Area:   rect(number),
+			Source: source.NewRange(start, start+int(next()%4)+1),
+			Area:   fuzzRect(number),
 			Depth:  int(next() % 8),
 			Kind:   HitKind(next() % (byte(HitOther) + 1)),
 		})
 	}
-	breakCount := int(next() % 8)
-	for range breakCount {
-		box.Breaks = append(box.Breaks, Break{
-			X:    fuzzAbsFloat(number()),
-			Kind: BreakKind(next() % (byte(BreakExplicit) + 1)),
-		})
-	}
-	if next()%3 == 0 {
-		line := &Box{
-			Width:      box.Width,
-			Ascent:     box.Ascent,
-			Descent:    box.Descent,
-			Italic:     box.Italic,
-			AxisHeight: box.AxisHeight,
-			Overflow:   box.Overflow,
-		}
+
+	switch next() % 3 {
+	case 0:
 		box.Lines = []LineBox{{
-			Baseline: 0,
-			OffsetX:  fuzzAbsFloat(number()),
-			Box:      line,
+			Width:  box.Width,
+			Ascent: box.Ascent,
+			Items:  ItemRange{Count: len(box.Items)},
+			Hits:   HitRange{Count: len(box.Hits)},
 		}}
-	} else if next()%4 == 0 {
-		tag := &TagBox{
-			Box: &Box{
-				Width:  1,
-				Ascent: 1,
-				Items: []Item{{
-					Kind:  ItemRule,
-					Paint: Paint{Role: RoleInk},
-					Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-					Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-				}},
-				Hits: []Hit{{
-					Source: source.NewRange(0, 1),
-					Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
-					Kind:   HitAtom,
-				}},
-			},
+	case 1:
+		tagStart := len(box.Items)
+		hitStart := len(box.Hits)
+		tagX := box.Width
+		box.Items = append(box.Items, ruleItemAt(tagX, 1))
+		box.Hits = append(box.Hits, ruleHitAt(tagX, 1))
+		box.Tag = &TagBox{
 			Source: source.NewRange(0, 1),
 			Manual: true,
 			Line:   FormulaTagLine,
-			X:      fuzzAbsFloat(number()),
+			X:      tagX,
+			Width:  1,
+			Ascent: 1,
+			Items:  ItemRange{Start: tagStart, Count: 1},
+			Hits:   HitRange{Start: hitStart, Count: 1},
 		}
-		for _, item := range tag.Box.Items {
-			translated := item
-			translated.Bound.X += tag.X
-			translated.Rect.X += tag.X
-			translated.At.X += tag.X
-			box.Items = append(box.Items, translated)
+		box.Width += 1
+	case 2:
+		lineCount := int(next()%3) + 1
+		itemStart, hitStart := 0, 0
+		box.Ascent = float32(lineCount)
+		box.Descent = 0
+		box.Overflow = 1_000
+		box.Lines = make([]LineBox, lineCount)
+		for i := range box.Lines {
+			itemCount := len(box.Items) - itemStart
+			hitCount := len(box.Hits) - hitStart
+			if i < lineCount-1 {
+				itemCount = int(next() % byte(itemCount+1))
+				hitCount = int(next() % byte(hitCount+1))
+			}
+			box.Lines[i] = LineBox{
+				Baseline: float32(i),
+				Width:    box.Width,
+				Ascent:   1,
+				Overflow: 1_000,
+				Items:    ItemRange{Start: itemStart, Count: itemCount},
+				Hits:     HitRange{Start: hitStart, Count: hitCount},
+			}
+			itemStart += itemCount
+			hitStart += hitCount
 		}
-		for _, hit := range tag.Box.Hits {
-			translated := hit
-			translated.Area.X += tag.X
-			box.Hits = append(box.Hits, translated)
-		}
-		box.Tag = tag
-		box.Italic = tag.Box.Italic
-		box.Width = maxFloat(box.Width, tag.X+tag.Box.Width)
-		box.Ascent = maxFloat(box.Ascent, tag.Box.Ascent)
-		box.Overflow = math.MaxFloat32 / 4
 	}
 	return box
 }
 
-func fuzzTaggedConstrainedBox() *Box {
-	lineItem := Item{
-		Kind:  ItemRule,
-		Paint: Paint{Role: RoleInk},
-		Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-		Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-	}
-	line := &Box{
-		Width:  1,
-		Ascent: 1,
-		Items:  []Item{lineItem},
-		Hits: []Hit{{
-			Source: source.NewRange(0, 1),
-			Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
-			Kind:   HitAtom,
-		}},
-	}
-	tagItem := lineItem
-	tagItem.Bound.X = 2
-	tagItem.Rect.X = 2
-	tagItem.At.X = 2
-	tag := &TagBox{
-		Box: &Box{
-			Width:  1,
-			Ascent: 1,
-			Items:  []Item{lineItem},
-			Hits: []Hit{{
-				Source: source.NewRange(0, 1),
-				Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
-				Kind:   HitAtom,
-			}},
-		},
-		Source: source.NewRange(0, 1),
-		Manual: true,
-		Line:   FormulaTagLine,
-		X:      2,
-	}
-	return &Box{
-		Width:  3,
-		Ascent: 1,
-		Lines:  []LineBox{{Box: line, Tag: tag}},
-		Items:  []Item{lineItem, tagItem},
-		Hits: []Hit{
-			{
-				Source: source.NewRange(0, 1),
-				Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
-				Kind:   HitAtom,
-			},
-			{
-				Source: source.NewRange(0, 1),
-				Area:   geometry.Rect{X: 2, Y: -1, Width: 1, Height: 1},
-				Kind:   HitAtom,
-			},
-		},
-		Tag: tag,
-	}
-}
-
-func rect(number func() float32) geometry.Rect {
+func fuzzRect(number func() float32) geometry.Rect {
 	return geometry.Rect{
 		X: number(), Y: number(),
 		Width: fuzzAbsFloat(number()), Height: fuzzAbsFloat(number()),

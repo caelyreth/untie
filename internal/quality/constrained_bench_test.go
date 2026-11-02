@@ -14,12 +14,12 @@ type constrainedBenchStats struct {
 	parentItems        int64
 	parentHits         int64
 	parentPathSegments int64
-	lineItems          int64
-	lineHits           int64
-	linePathSegments   int64
-	tagItems           int64
-	tagHits            int64
-	tagPathSegments    int64
+	lineRangeItems     int64
+	lineRangeHits      int64
+	lineRangePaths     int64
+	tagRangeItems      int64
+	tagRangeHits       int64
+	tagRangePaths      int64
 	successes          int64
 	layoutErrors       int64
 }
@@ -82,20 +82,17 @@ func observeBoxStorage(box *untie.Box, stats *constrainedBenchStats) {
 		stats.parentPathSegments += int64(len(item.Path))
 	}
 	for _, line := range box.Lines {
-		if line.Box == nil {
-			continue
-		}
-		stats.lineItems += int64(len(line.Box.Items))
-		stats.lineHits += int64(len(line.Box.Hits))
-		for _, item := range line.Box.Items {
-			stats.linePathSegments += int64(len(item.Path))
+		stats.lineRangeItems += int64(line.Items.Count)
+		stats.lineRangeHits += int64(line.Hits.Count)
+		for _, item := range box.Items[line.Items.Start:line.Items.End()] {
+			stats.lineRangePaths += int64(len(item.Path))
 		}
 	}
-	if box.Tag != nil && box.Tag.Box != nil {
-		stats.tagItems += int64(len(box.Tag.Box.Items))
-		stats.tagHits += int64(len(box.Tag.Box.Hits))
-		for _, item := range box.Tag.Box.Items {
-			stats.tagPathSegments += int64(len(item.Path))
+	if box.Tag != nil {
+		stats.tagRangeItems += int64(box.Tag.Items.Count)
+		stats.tagRangeHits += int64(box.Tag.Hits.Count)
+		for _, item := range box.Items[box.Tag.Items.Start:box.Tag.Items.End()] {
+			stats.tagRangePaths += int64(len(item.Path))
 		}
 	}
 }
@@ -108,23 +105,23 @@ func reportConstrainedBenchmarkMetrics(b *testing.B, stats constrainedBenchStats
 	perCorpus := func(value int64) float64 {
 		return float64(value) / float64(stats.corpora)
 	}
-	physicalPathSegments := stats.parentPathSegments + stats.linePathSegments + stats.tagPathSegments
-	physicalItems := stats.parentItems + stats.lineItems + stats.tagItems
+	physicalPathSegments := stats.parentPathSegments
+	physicalItems := stats.parentItems
 	b.ReportMetric(float64(stats.corpora)/elapsed, "corpora/s")
 	b.ReportMetric(perCorpus(stats.cases), "cases/corpus")
 	b.ReportMetric(perCorpus(stats.successes), "successes/corpus")
 	b.ReportMetric(perCorpus(stats.layoutErrors), "layout-errors/corpus")
 	b.ReportMetric(perCorpus(stats.parentItems), "parent-items/corpus")
-	b.ReportMetric(perCorpus(stats.lineItems), "line-items/corpus")
-	b.ReportMetric(perCorpus(stats.tagItems), "tag-items/corpus")
+	b.ReportMetric(perCorpus(stats.lineRangeItems), "line-range-items/corpus")
+	b.ReportMetric(perCorpus(stats.tagRangeItems), "tag-range-items/corpus")
 	b.ReportMetric(perCorpus(physicalItems), "physical-items/corpus")
 	b.ReportMetric(perCorpus(stats.parentPathSegments), "parent-path-seg/corpus")
-	b.ReportMetric(perCorpus(stats.linePathSegments), "line-path-seg/corpus")
-	b.ReportMetric(perCorpus(stats.tagPathSegments), "tag-path-seg/corpus")
+	b.ReportMetric(perCorpus(stats.lineRangePaths), "line-range-path-seg/corpus")
+	b.ReportMetric(perCorpus(stats.tagRangePaths), "tag-range-path-seg/corpus")
 	b.ReportMetric(perCorpus(physicalPathSegments), "physical-path-seg/corpus")
 	b.ReportMetric(perCorpus(stats.parentHits), "parent-hits/corpus")
-	b.ReportMetric(perCorpus(stats.lineHits), "line-hits/corpus")
-	b.ReportMetric(perCorpus(stats.tagHits), "tag-hits/corpus")
+	b.ReportMetric(perCorpus(stats.lineRangeHits), "line-range-hits/corpus")
+	b.ReportMetric(perCorpus(stats.tagRangeHits), "tag-range-hits/corpus")
 	if stats.parentItems > 0 {
 		b.ReportMetric(float64(physicalItems)/float64(stats.parentItems), "item-storage-x")
 	}

@@ -66,22 +66,16 @@ func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 		return nil, err
 	}
 
-	state := flattenState{
-		layout: s,
-		stack:  make(map[*Fragment]struct{}),
-		box: &display.Box{
-			Width:      width,
-			Ascent:     ascent,
-			Descent:    descent,
-			Italic:     italic,
-			AxisHeight: axisHeight,
-		},
+	box := &display.Box{
+		Width:      width,
+		Ascent:     ascent,
+		Descent:    descent,
+		Italic:     italic,
+		AxisHeight: axisHeight,
 	}
+	state := newFlattenState(s, box, 0, 0)
 	if err := state.visit(root, 0, 0); err != nil {
 		return nil, err
-	}
-	if len(state.box.Items) > s.limits.MaxOutputItems {
-		return nil, fmt.Errorf("%w: output item count %d", ErrLimit, len(state.box.Items))
 	}
 	if s.mode == ir.Inline {
 		state.box.Breaks, err = s.displayBreaks(s.ctx, root.breaks)
@@ -97,8 +91,98 @@ type flattenState struct {
 	layout     *layoutState
 	box        *display.Box
 	stack      map[*Fragment]struct{}
+	offsetX    float32
+	offsetY    float32
 	visits     int
 	operations int
+}
+
+func newFlattenState(layout *layoutState, box *display.Box, offsetX, offsetY float32) flattenState {
+	return flattenState{
+		layout:  layout,
+		stack:   make(map[*Fragment]struct{}),
+		box:     box,
+		offsetX: offsetX,
+		offsetY: offsetY,
+	}
+}
+
+func (f *flattenState) appendItem(item display.Item) error {
+	if f.offsetX != 0 || f.offsetY != 0 {
+		var err error
+		item, err = f.layout.offsetItem(item, f.offsetX, f.offsetY)
+		if err != nil {
+			return err
+		}
+	}
+	f.box.Items = append(f.box.Items, item)
+	if len(f.box.Items) > f.layout.limits.MaxOutputItems {
+		return fmt.Errorf("%w: output item count", ErrLimit)
+	}
+	return nil
+}
+
+func (f *flattenState) appendHit(hit display.Hit) error {
+	if f.offsetX != 0 {
+		var err error
+		hit.Area.X, err = f.layout.addHost(hit.Area.X, f.offsetX)
+		if err != nil {
+			return err
+		}
+	}
+	if f.offsetY != 0 {
+		var err error
+		hit.Area.Y, err = f.layout.addHost(hit.Area.Y, f.offsetY)
+		if err != nil {
+			return err
+		}
+	}
+	f.box.Hits = append(f.box.Hits, hit)
+	if len(f.box.Hits) > f.layout.limits.MaxNodes {
+		return fmt.Errorf("%w: source hit count %d", ErrLimit, len(f.box.Hits))
+	}
+	return nil
+}
+
+func (s *layoutState) offsetItem(item display.Item, dx, dy float32) (display.Item, error) {
+	var err error
+	item.Bound.X, err = s.addHost(item.Bound.X, dx)
+	if err != nil {
+		return display.Item{}, err
+	}
+	item.Bound.Y, err = s.addHost(item.Bound.Y, dy)
+	if err != nil {
+		return display.Item{}, err
+	}
+	item.Rect.X, err = s.addHost(item.Rect.X, dx)
+	if err != nil {
+		return display.Item{}, err
+	}
+	item.Rect.Y, err = s.addHost(item.Rect.Y, dy)
+	if err != nil {
+		return display.Item{}, err
+	}
+	item.At.X, err = s.addHost(item.At.X, dx)
+	if err != nil {
+		return display.Item{}, err
+	}
+	item.At.Y, err = s.addHost(item.At.Y, dy)
+	if err != nil {
+		return display.Item{}, err
+	}
+	for i := range item.Path {
+		for j := range item.Path[i].Points {
+			item.Path[i].Points[j].X, err = s.addHost(item.Path[i].Points[j].X, dx)
+			if err != nil {
+				return display.Item{}, err
+			}
+			item.Path[i].Points[j].Y, err = s.addHost(item.Path[i].Points[j].Y, dy)
+			if err != nil {
+				return display.Item{}, err
+			}
+		}
+	}
+	return item, nil
 }
 
 func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
@@ -119,9 +203,6 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	defer delete(f.stack, fragment)
 	if err := f.layout.appendFragmentHits(f, fragment, x, y); err != nil {
 		return err
-	}
-	if len(f.box.Hits) > f.layout.limits.MaxNodes {
-		return fmt.Errorf("%w: source hit count %d", ErrLimit, len(f.box.Hits))
 	}
 	for _, draw := range fragment.items {
 		if err := f.tick(); err != nil {
@@ -174,18 +255,16 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 			if err != nil {
 				return err
 			}
-			f.box.Items = append(f.box.Items, item)
-			if len(f.box.Items) > f.layout.limits.MaxOutputItems {
-				return fmt.Errorf("%w: output item count", ErrLimit)
+			if err := f.appendItem(item); err != nil {
+				return err
 			}
 		case drawPath:
 			item, err := f.pathItem(itemX, itemY, draw.path)
 			if err != nil {
 				return err
 			}
-			f.box.Items = append(f.box.Items, item)
-			if len(f.box.Items) > f.layout.limits.MaxOutputItems {
-				return fmt.Errorf("%w: output item count", ErrLimit)
+			if err := f.appendItem(item); err != nil {
+				return err
 			}
 		default:
 			return fmt.Errorf("%w: unknown draw kind %d", ErrInvalidInput, draw.kind)
@@ -203,7 +282,9 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 		return fmt.Errorf("%w: inexact glyph reference without an outline", ErrInvalidInput)
 	}
 	if item.Kind == display.ItemGlyphPath {
-		f.box.Items = append(f.box.Items, item)
+		if err := f.appendItem(item); err != nil {
+			return err
+		}
 	}
 	if exactRef && (f.layout.request.GlyphRefs || item.Kind == display.ItemGlyphRef) {
 		ref := display.Item{
@@ -215,10 +296,9 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 			At:     item.At,
 			Em:     item.Em,
 		}
-		f.box.Items = append(f.box.Items, ref)
-	}
-	if len(f.box.Items) > f.layout.limits.MaxOutputItems {
-		return fmt.Errorf("%w: output item count", ErrLimit)
+		if err := f.appendItem(ref); err != nil {
+			return err
+		}
 	}
 	return nil
 }

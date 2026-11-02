@@ -27,7 +27,11 @@ func (s *layoutState) flattenDisplayLines(root *Fragment) (*display.Box, error) 
 		return nil, err
 	}
 	if width <= s.request.MaxWidth || len(root.breaks) == 0 {
-		return s.constrainedFallback(root)
+		offsetX, err := s.displayLineOffset(width)
+		if err != nil {
+			return nil, err
+		}
+		return s.flattenSingleDisplayLine(root, offsetX)
 	}
 
 	boundaries, ok, err := s.displayLineBoundaries(root)
@@ -35,17 +39,75 @@ func (s *layoutState) flattenDisplayLines(root *Fragment) (*display.Box, error) 
 		return nil, err
 	}
 	if !ok {
-		return s.constrainedFallback(root)
+		offsetX, err := s.displayLineOffset(width)
+		if err != nil {
+			return nil, err
+		}
+		return s.flattenSingleDisplayLine(root, offsetX)
 	}
 	plans, err := s.greedyLinePlans(boundaries)
 	if err != nil {
 		return nil, err
 	}
 	if len(plans) == 1 {
-		return s.constrainedFallback(root)
+		offsetX, err := s.displayLineOffset(width)
+		if err != nil {
+			return nil, err
+		}
+		return s.flattenSingleDisplayLine(root, offsetX)
 	}
+	return s.flattenPlannedDisplayLines(root, boundaries, plans)
+}
 
-	lines := make([]display.LineBox, 0, len(plans))
+func (s *layoutState) flattenSingleDisplayLine(root *Fragment, offsetX float32) (*display.Box, error) {
+	parent, err := s.newConstrainedDisplayBox()
+	if err != nil {
+		return nil, err
+	}
+	width, ascent, descent, italic, err := s.fragmentHostMetrics(root)
+	if err != nil {
+		return nil, err
+	}
+	line := display.LineBox{
+		Baseline: 0,
+		OffsetX:  offsetX,
+		Width:    width,
+		Ascent:   ascent,
+		Descent:  descent,
+		Items:    display.ItemRange{Start: 0},
+		Hits:     display.HitRange{Start: 0},
+	}
+	flatten := newFlattenState(s, parent, offsetX, 0)
+	if err := flatten.visit(root, 0, 0); err != nil {
+		return nil, err
+	}
+	line.Items.Count = len(parent.Items) - line.Items.Start
+	line.Hits.Count = len(parent.Hits) - line.Hits.Start
+	line.Overflow, err = s.localRangeOverflow(parent.Items, line, parent.Width)
+	if err != nil {
+		return nil, err
+	}
+	parent.Lines = []display.LineBox{line}
+	parent.Ascent = ascent
+	parent.Descent = descent
+	parent.Italic = italic
+	if err := s.finishConstrainedDisplayBox(parent); err != nil {
+		return nil, err
+	}
+	return parent, nil
+}
+
+func (s *layoutState) flattenPlannedDisplayLines(
+	root *Fragment,
+	boundaries []lineBoundary,
+	plans []linePlan,
+) (*display.Box, error) {
+	parent, err := s.newConstrainedDisplayBox()
+	if err != nil {
+		return nil, err
+	}
+	parent.Lines = make([]display.LineBox, 0, len(plans))
+	var baseline float32
 	for i, plan := range plans {
 		if i%64 == 0 {
 			if err := s.ctx.Err(); err != nil {
@@ -57,65 +119,184 @@ func (s *layoutState) flattenDisplayLines(root *Fragment) (*display.Box, error) 
 		if err != nil {
 			return nil, err
 		}
-		line, err := s.flattenFragment(segment)
+		width, ascent, descent, italic, err := s.fragmentHostMetrics(segment)
 		if err != nil {
 			return nil, err
 		}
-		line.Alt = display.Alt{}
-		line.Overflow = maxFloat(line.Overflow, line.Width-s.request.MaxWidth)
-		line.Overflow = maxFloat(0, line.Overflow)
-		if err := s.appendLineOwnHit(root, line); err != nil {
+		if i > 0 {
+			previous := parent.Lines[i-1]
+			step, err := s.addHost(previous.Descent, ascent)
+			if err != nil {
+				return nil, err
+			}
+			baseline, err = s.addHost(previous.Baseline, step)
+			if err != nil {
+				return nil, err
+			}
+		}
+		offsetX, err := s.displayLineOffset(width)
+		if err != nil {
 			return nil, err
 		}
-		if len(line.Hits) > s.limits.MaxNodes {
-			return nil, fmt.Errorf("%w: line source hit count %d", ErrLimit, len(line.Hits))
+		line := display.LineBox{
+			Baseline: baseline,
+			OffsetX:  offsetX,
+			Width:    width,
+			Ascent:   ascent,
+			Descent:  descent,
+			Items:    display.ItemRange{Start: len(parent.Items)},
+			Hits:     display.HitRange{Start: len(parent.Hits)},
 		}
-		lines = append(lines, display.LineBox{Box: line})
+		flatten := newFlattenState(s, parent, offsetX, baseline)
+		if err := flatten.visit(segment, 0, 0); err != nil {
+			return nil, err
+		}
+		if err := s.appendLineOwnHit(parent, root, line); err != nil {
+			return nil, err
+		}
+		line.Items.Count = len(parent.Items) - line.Items.Start
+		line.Hits.Count = len(parent.Hits) - line.Hits.Start
+		line.Overflow, err = s.localRangeOverflow(parent.Items, line, parent.Width)
+		if err != nil {
+			return nil, err
+		}
+		parent.Lines = append(parent.Lines, line)
+		parent.Italic = italic
+
+		top, err := s.subHost(baseline, ascent)
+		if err != nil {
+			return nil, err
+		}
+		bottom, err := s.addHost(baseline, descent)
+		if err != nil {
+			return nil, err
+		}
+		if top < 0 {
+			parent.Ascent = maxFloat(parent.Ascent, -top)
+		}
+		parent.Descent = maxFloat(parent.Descent, bottom)
 	}
-	return s.assembleDisplayLines(lines)
+	if err := s.finishConstrainedDisplayBox(parent); err != nil {
+		return nil, err
+	}
+	return parent, nil
 }
 
-func (s *layoutState) constrainedFallback(root *Fragment) (*display.Box, error) {
-	base, err := s.flattenFragment(root)
+func (s *layoutState) newConstrainedDisplayBox() (*display.Box, error) {
+	if _, err := s.addHost(s.request.MaxWidth, 0); err != nil {
+		return nil, err
+	}
+	axis, err := s.metricAt(s.metrics.AxisHeight, s.rootStyle)
 	if err != nil {
 		return nil, err
 	}
-	return s.constrainedFallbackBox(base)
-}
-
-func (s *layoutState) constrainedFallbackBox(base *display.Box) (*display.Box, error) {
-	line, err := s.singleDisplayLine(base, s.request.MaxWidth)
+	axisHeight, err := s.host(axis)
 	if err != nil {
 		return nil, err
 	}
-	return s.assembleDisplayLines([]display.LineBox{{Box: line}})
+	return &display.Box{
+		Width:      s.request.MaxWidth,
+		AxisHeight: axisHeight,
+	}, nil
 }
 
-func (s *layoutState) singleDisplayLine(base *display.Box, maxWidth float32) (*display.Box, error) {
-	if base == nil {
-		return nil, fmt.Errorf("%w: nil fallback box", ErrInvalidInput)
+func (s *layoutState) fragmentHostMetrics(fragment *Fragment) (float32, float32, float32, float32, error) {
+	if fragment == nil {
+		return 0, 0, 0, 0, fmt.Errorf("%w: nil line fragment", ErrInvalidInput)
 	}
-	if err := s.ctx.Err(); err != nil {
-		return nil, err
+	width, err := s.host(fragment.Width)
+	if err != nil {
+		return 0, 0, 0, 0, err
 	}
-	line := *base
-	line.Breaks = nil
-	line.Alt = display.Alt{}
-	line.Lines = nil
-	if len(base.Breaks) > 0 {
-		line.Breaks = make([]display.Break, len(base.Breaks))
-		for i := range base.Breaks {
-			if i%64 == 0 {
-				if err := s.ctx.Err(); err != nil {
-					return nil, err
-				}
+	ascent, err := s.host(fragment.Ascent)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	descent, err := s.host(fragment.Descent)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	italic, err := s.host(fragment.Italic)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	return width, ascent, descent, italic, nil
+}
+
+func (s *layoutState) appendLineOwnHit(parent *display.Box, root *Fragment, line display.LineBox) error {
+	if root.ownHit < 0 || root.ownHit >= len(root.hits) {
+		return nil
+	}
+	hit := root.hits[root.ownHit]
+	height, err := s.addHost(line.Ascent, line.Descent)
+	if err != nil {
+		return err
+	}
+	y, err := s.subHost(line.Baseline, line.Ascent)
+	if err != nil {
+		return err
+	}
+	parent.Hits = append(parent.Hits, display.Hit{
+		Source: hit.source,
+		Area: geometry.Rect{
+			X:      line.OffsetX,
+			Y:      y,
+			Width:  line.Width,
+			Height: height,
+		},
+		Depth: hit.depth,
+		Kind:  hit.kind,
+	})
+	if len(parent.Hits) > s.limits.MaxNodes {
+		return fmt.Errorf("%w: parent source hit count %d", ErrLimit, len(parent.Hits))
+	}
+	return nil
+}
+
+func (s *layoutState) localRangeOverflow(
+	items []display.Item,
+	line display.LineBox,
+	parentWidth float32,
+) (float32, error) {
+	var overflow float32
+	for i := line.Items.Start; i < line.Items.End(); i++ {
+		if (i-line.Items.Start)%256 == 0 {
+			if err := s.ctx.Err(); err != nil {
+				return 0, err
 			}
-			line.Breaks[i] = base.Breaks[i]
 		}
+		bound := items[i].Bound
+		x, err := s.subHost(bound.X, line.OffsetX)
+		if err != nil {
+			return 0, err
+		}
+		y, err := s.subHost(bound.Y, line.Baseline)
+		if err != nil {
+			return 0, err
+		}
+		overflow = maxFloat(overflow, maxFloat(0, -x))
+		overflow = maxFloat(overflow, maxFloat(0, x+bound.Width-line.Width))
+		overflow = maxFloat(overflow, maxFloat(0, -y-line.Ascent))
+		overflow = maxFloat(overflow, maxFloat(0, y+bound.Height-line.Descent))
 	}
-	line.Overflow = maxFloat(line.Overflow, line.Width-maxWidth)
-	line.Overflow = maxFloat(0, line.Overflow)
-	return &line, nil
+	return maxFloat(overflow, maxFloat(0, line.Width-parentWidth)), nil
+}
+
+func (s *layoutState) finishConstrainedDisplayBox(parent *display.Box) error {
+	overflow, err := s.displayItemsOverflow(parent.Items, parent.Width, parent.Ascent, parent.Descent)
+	if err != nil {
+		return err
+	}
+	for i, line := range parent.Lines {
+		if i%64 == 0 {
+			if err := s.ctx.Err(); err != nil {
+				return err
+			}
+		}
+		overflow = maxFloat(overflow, maxFloat(0, line.Width-parent.Width))
+	}
+	parent.Overflow = overflow
+	return nil
 }
 
 func (s *layoutState) displayLineBoundaries(root *Fragment) ([]lineBoundary, bool, error) {
@@ -340,148 +521,6 @@ func segmentPointCountForBounds(op geometry.SegOp) int {
 	return points
 }
 
-func (s *layoutState) appendLineOwnHit(root *Fragment, line *display.Box) error {
-	if root.ownHit < 0 || root.ownHit >= len(root.hits) {
-		return nil
-	}
-	hit := root.hits[root.ownHit]
-	height, err := s.addHost(line.Ascent, line.Descent)
-	if err != nil {
-		return err
-	}
-	line.Hits = append(line.Hits, display.Hit{
-		Source: hit.source,
-		Area: geometry.Rect{
-			Y:      -line.Ascent,
-			Width:  line.Width,
-			Height: height,
-		},
-		Depth: hit.depth,
-		Kind:  hit.kind,
-	})
-	return nil
-}
-
-func (s *layoutState) assembleDisplayLines(lines []display.LineBox) (*display.Box, error) {
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("%w: display lines are empty", ErrInvalidInput)
-	}
-	if _, err := s.addHost(s.request.MaxWidth, 0); err != nil {
-		return nil, err
-	}
-	if lines[0].Box == nil {
-		return nil, fmt.Errorf("%w: nil first display line", ErrInvalidInput)
-	}
-	maxOutput := int64(s.limits.MaxOutputItems)
-	physicalItems := int64(len(lines))
-	physicalPathSegments := int64(0)
-	parent := &display.Box{
-		Width:      s.request.MaxWidth,
-		AxisHeight: lines[0].Box.AxisHeight,
-		Lines:      make([]display.LineBox, len(lines)),
-	}
-	var baseline float32
-	for i := range lines {
-		if i%64 == 0 {
-			if err := s.ctx.Err(); err != nil {
-				return nil, err
-			}
-		}
-		if lines[i].Box == nil {
-			return nil, fmt.Errorf("%w: nil display line", ErrInvalidInput)
-		}
-		if i > 0 {
-			previous := &lines[i-1]
-			step, err := s.addHost(previous.Box.Descent, lines[i].Box.Ascent)
-			if err != nil {
-				return nil, err
-			}
-			baseline, err = s.addHost(previous.Baseline, step)
-			if err != nil {
-				return nil, err
-			}
-		}
-		offsetX, err := s.displayLineOffset(lines[i].Box.Width)
-		if err != nil {
-			return nil, err
-		}
-		lines[i].Baseline = baseline
-		lines[i].OffsetX = offsetX
-		parent.Lines[i] = lines[i]
-		// Italic correction belongs to the final horizontal endpoint, which is
-		// the end of the last line for a vertically assembled display box.
-		parent.Italic = lines[i].Box.Italic
-
-		top, err := s.subHost(baseline, lines[i].Box.Ascent)
-		if err != nil {
-			return nil, err
-		}
-		bottom, err := s.addHost(baseline, lines[i].Box.Descent)
-		if err != nil {
-			return nil, err
-		}
-		if top < 0 {
-			parent.Ascent = maxFloat(parent.Ascent, -top)
-		}
-		parent.Descent = maxFloat(parent.Descent, bottom)
-
-		for itemIndex, item := range lines[i].Box.Items {
-			if itemIndex%64 == 0 {
-				if err := s.ctx.Err(); err != nil {
-					return nil, err
-				}
-			}
-			translated, err := s.translateItem(item, offsetX, baseline)
-			if err != nil {
-				return nil, err
-			}
-			parent.Items = append(parent.Items, translated)
-			physicalItems += 2
-			physicalPathSegments += 2 * int64(len(item.Path))
-			if physicalItems > maxOutput {
-				return nil, fmt.Errorf("%w: display output item count", ErrLimit)
-			}
-			if physicalPathSegments > int64(s.limits.MaxPathSegments) {
-				return nil, fmt.Errorf("%w: display path segment count", ErrLimit)
-			}
-		}
-		for hitIndex, hit := range lines[i].Box.Hits {
-			if hitIndex%64 == 0 {
-				if err := s.ctx.Err(); err != nil {
-					return nil, err
-				}
-			}
-			translated := hit
-			translated.Area.X, err = s.addHost(hit.Area.X, offsetX)
-			if err != nil {
-				return nil, err
-			}
-			translated.Area.Y, err = s.addHost(hit.Area.Y, baseline)
-			if err != nil {
-				return nil, err
-			}
-			parent.Hits = append(parent.Hits, translated)
-			if len(parent.Hits) > s.limits.MaxNodes {
-				return nil, fmt.Errorf("%w: parent source hit count %d", ErrLimit, len(parent.Hits))
-			}
-		}
-	}
-	overflow, err := s.displayItemsOverflow(parent.Items, parent.Width, parent.Ascent, parent.Descent)
-	if err != nil {
-		return nil, err
-	}
-	for i, line := range parent.Lines {
-		if i%64 == 0 {
-			if err := s.ctx.Err(); err != nil {
-				return nil, err
-			}
-		}
-		overflow = maxFloat(overflow, maxFloat(0, line.Box.Width-parent.Width))
-	}
-	parent.Overflow = overflow
-	return parent, nil
-}
-
 func (s *layoutState) displayItemsOverflow(items []display.Item, width, ascent, descent float32) (float32, error) {
 	var overflow float32
 	for i, item := range items {
@@ -522,55 +561,6 @@ func (s *layoutState) displayLineOffsetWithin(lineWidth, frameWidth float32) (fl
 	default:
 		return 0, fmt.Errorf("%w: invalid alignment", ErrInvalidInput)
 	}
-}
-
-func (s *layoutState) translateItem(item display.Item, dx, dy float32) (display.Item, error) {
-	var err error
-	item.Bound.X, err = s.addHost(item.Bound.X, dx)
-	if err != nil {
-		return display.Item{}, err
-	}
-	item.Bound.Y, err = s.addHost(item.Bound.Y, dy)
-	if err != nil {
-		return display.Item{}, err
-	}
-	item.Rect.X, err = s.addHost(item.Rect.X, dx)
-	if err != nil {
-		return display.Item{}, err
-	}
-	item.Rect.Y, err = s.addHost(item.Rect.Y, dy)
-	if err != nil {
-		return display.Item{}, err
-	}
-	item.At.X, err = s.addHost(item.At.X, dx)
-	if err != nil {
-		return display.Item{}, err
-	}
-	item.At.Y, err = s.addHost(item.At.Y, dy)
-	if err != nil {
-		return display.Item{}, err
-	}
-	if len(item.Path) > 0 {
-		item.Path = append([]geometry.Segment(nil), item.Path...)
-		for i := range item.Path {
-			if i%256 == 0 {
-				if err := s.ctx.Err(); err != nil {
-					return display.Item{}, err
-				}
-			}
-			for j := range item.Path[i].Points {
-				item.Path[i].Points[j].X, err = s.addHost(item.Path[i].Points[j].X, dx)
-				if err != nil {
-					return display.Item{}, err
-				}
-				item.Path[i].Points[j].Y, err = s.addHost(item.Path[i].Points[j].Y, dy)
-				if err != nil {
-					return display.Item{}, err
-				}
-			}
-		}
-	}
-	return item, nil
 }
 
 func (s *layoutState) addHost(a, b float32) (float32, error) {

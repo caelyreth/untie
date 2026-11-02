@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -9,6 +10,135 @@ import (
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
+
+type displayLineInput struct {
+	Baseline float32
+	OffsetX  float32
+	Box      *display.Box
+	Tag      *display.TagBox
+}
+
+// assembleDisplayLinesForTest preserves the old line-local fixture shape for
+// focused geometry tests while asserting the range-based production contract.
+func assembleDisplayLinesForTest(
+	state *layoutState,
+	lines []displayLineInput,
+) (*display.Box, error) {
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("%w: display lines are empty", ErrInvalidInput)
+	}
+	if _, err := state.addHost(state.request.MaxWidth, 0); err != nil {
+		return nil, err
+	}
+	parent := &display.Box{
+		Width:      state.request.MaxWidth,
+		AxisHeight: lines[0].Box.AxisHeight,
+		Lines:      make([]display.LineBox, len(lines)),
+	}
+	var baseline float32
+	for i, input := range lines {
+		if input.Box == nil {
+			return nil, fmt.Errorf("%w: nil display line", ErrInvalidInput)
+		}
+		if i > 0 {
+			step, err := state.addHost(lines[i-1].Box.Descent, input.Box.Ascent)
+			if err != nil {
+				return nil, err
+			}
+			baseline, err = state.addHost(baseline, step)
+			if err != nil {
+				return nil, err
+			}
+		}
+		offsetX, err := state.displayLineOffset(input.Box.Width)
+		if err != nil {
+			return nil, err
+		}
+		line := display.LineBox{
+			Baseline: baseline,
+			OffsetX:  offsetX,
+			Width:    input.Box.Width,
+			Ascent:   input.Box.Ascent,
+			Descent:  input.Box.Descent,
+			Overflow: input.Box.Overflow,
+			Items:    display.ItemRange{Start: len(parent.Items)},
+			Hits:     display.HitRange{Start: len(parent.Hits)},
+			Tag:      input.Tag,
+		}
+		for _, item := range input.Box.Items {
+			translated, err := state.offsetItem(cloneDisplayItemForTest(item), offsetX, baseline)
+			if err != nil {
+				return nil, err
+			}
+			parent.Items = append(parent.Items, translated)
+		}
+		for _, hit := range input.Box.Hits {
+			hit.Area.X += offsetX
+			hit.Area.Y += baseline
+			parent.Hits = append(parent.Hits, hit)
+		}
+		line.Items.Count = len(parent.Items) - line.Items.Start
+		line.Hits.Count = len(parent.Hits) - line.Hits.Start
+		parent.Lines[i] = line
+		parent.Italic = input.Box.Italic
+		top := baseline - input.Box.Ascent
+		parent.Ascent = maxFloat(parent.Ascent, maxFloat(0, -top))
+		parent.Descent = maxFloat(parent.Descent, baseline+input.Box.Descent)
+	}
+	overflow, err := state.displayItemsOverflow(parent.Items, parent.Width, parent.Ascent, parent.Descent)
+	if err != nil {
+		return nil, err
+	}
+	for _, line := range parent.Lines {
+		overflow = maxFloat(overflow, maxFloat(0, line.Width-parent.Width))
+	}
+	parent.Overflow = overflow
+	return parent, nil
+}
+
+func lineBoxForTest(box *display.Box, line display.LineBox) *display.Box {
+	if box == nil {
+		return nil
+	}
+	out := &display.Box{
+		Width:    line.Width,
+		Ascent:   line.Ascent,
+		Descent:  line.Descent,
+		Overflow: line.Overflow,
+		Items:    make([]display.Item, line.Items.Count),
+		Hits:     make([]display.Hit, line.Hits.Count),
+	}
+	for i := range out.Items {
+		out.Items[i] = cloneDisplayItemForTest(box.Items[line.Items.Start+i])
+		translateItemForTest(&out.Items[i], -line.OffsetX, -line.Baseline)
+	}
+	copy(out.Hits, box.Hits[line.Hits.Start:line.Hits.End()])
+	for i := range out.Hits {
+		out.Hits[i].Area.X -= line.OffsetX
+		out.Hits[i].Area.Y -= line.Baseline
+	}
+	return out
+}
+
+func cloneDisplayItemForTest(item display.Item) display.Item {
+	item.Path = append([]geometry.Segment(nil), item.Path...)
+	return item
+}
+
+func translateItemForTest(item *display.Item, dx, dy float32) {
+	item.Bound.X += dx
+	item.Bound.Y += dy
+	item.Rect.X += dx
+	item.Rect.Y += dy
+	item.At.X += dx
+	item.At.Y += dy
+	for i := range item.Path {
+		for j := range item.Path[i].Points {
+			item.Path[i].Points[j].X += dx
+			item.Path[i].Points[j].Y += dy
+		}
+	}
+}
 
 type fakeGlyphSource struct {
 	glyphs map[string]Glyph

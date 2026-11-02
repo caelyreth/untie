@@ -178,8 +178,8 @@ math; it ignores `MaxWidth` and `Align` and does not return `Box.Lines`.
 
 Untie is not a paragraph layout engine. An inline caller remains responsible
 for placing the returned box in a text line. A display caller can use the
-returned `MaxWidth` frame and `Lines`, or draw the unconstrained aggregate when
-`MaxWidth` is zero.
+returned `MaxWidth` frame and line ranges for clipping or interaction. Draw
+`Box.Items` once in both constrained and unconstrained display.
 
 ## Style Essentials
 
@@ -210,8 +210,8 @@ text under the engine's effective limits.
   results are intended to remain drawable.
 - Treating a nil/zero `Box` as a successful layout. Layout errors return no
   box.
-- Drawing parent `Box.Items` and nested `LineBox.Box.Items` together. Choose
-  one coordinate level.
+- Re-translating a `LineBox.Items` range by `OffsetX`/`Baseline`; range items
+  are already in parent-frame coordinates.
 - Supplying a font without a valid OpenType MATH table as `Fonts.Math`.
 
 ## Evidence

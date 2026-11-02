@@ -20,7 +20,7 @@ parsing, accessibility, and compatibility guidance.
 - reusable caller-owned layout engines with bounded convenience caching
 - source-linked hit rectangles emitted from placed layout fragments
 - deterministic inline break metadata and constrained display line boxes
-- TeX display equation-tag metadata and independently drawable tag boxes
+- TeX display equation-tag metadata and separately selectable tag ranges
 - text-only link bodies with explicit unsupported destination diagnostics
 - deterministic text/speech alternative output with bounded fallbacks
 - a tracked daily-STEM acceptance corpus
@@ -53,12 +53,10 @@ if err != nil {
 ```
 
 Display layout with a positive `Style.MaxWidth` returns `box.Lines` inside a
-`MaxWidth`-wide alignment frame. Each line's items remain line-local and are
-drawn at `(line.OffsetX, line.Baseline)`. The parent `box.Items`, `box.Hits`,
-and `box.Overflow` are the translated aggregate, so a host must draw either the
-parent items or the per-line items, never both. `Style.Align` positions each
-line in the frame with start, center, or end alignment. Inline layout ignores
-`MaxWidth` and `Align`.
+`MaxWidth`-wide alignment frame. `box.Items` and `box.Hits` are the single
+drawable storage; each line carries ranges into them plus baseline, alignment,
+and overflow metadata. `Style.Align` positions each line in the frame with
+start, center, or end alignment. Inline layout ignores `MaxWidth` and `Align`.
 
 `NewEngine` is the caller-owned lifecycle API for repeated layouts. The
 package-level `Layout` and `LayoutContext` helpers use a bounded process-wide

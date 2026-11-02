@@ -86,9 +86,6 @@ func ExampleEngine_displayLines() {
 		panic(err)
 	}
 	allValid := box.Validate() == nil
-	for _, line := range box.Lines {
-		allValid = allValid && line.Box.Validate() == nil
-	}
 	fmt.Println("wrapped:", len(box.Lines) > 1)
 	fmt.Println("lines valid:", allValid)
 	fmt.Println("first baseline:", displayLineBaseline(box.Lines[0]))

@@ -501,7 +501,7 @@ func TestLayoutTeXQuadReportsLogicalOverflow(t *testing.T) {
 		t.Fatalf("Lines = %d, want one constrained line", len(box.Lines))
 	}
 	want := unwrapped.Width - 1
-	assertHostClose(t, box.Lines[0].Box.Overflow, want)
+	assertHostClose(t, box.Lines[0].Overflow, want)
 	assertHostClose(t, box.Overflow, want)
 }
 

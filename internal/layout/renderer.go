@@ -127,13 +127,27 @@ func (r *Renderer) layoutFormulaContext(
 	if err != nil {
 		return nil, err
 	}
+	tag, err := state.prepareSingleLineTag(formula.Tags, env)
+	if err != nil {
+		return nil, err
+	}
 	var box *display.Box
-	if hasManualTag(formula.Tags) {
+	if tag != nil {
 		// Tagged display output is single-line phase-1 metadata. Avoid a
 		// multi-line wrap that cannot own one unambiguous tag.
-		box, err = state.flattenFragment(rootFragment)
-		if err == nil && mode == ir.Display && style.MaxWidth > 0 {
-			box, err = state.constrainedFallbackBox(box)
+		if mode == ir.Display && style.MaxWidth > 0 {
+			width, widthErr := state.host(rootFragment.Width)
+			if widthErr != nil {
+				return nil, widthErr
+			}
+			formulaFrame := maxFloat(0, style.MaxWidth-tag.width)
+			offsetX, offsetErr := state.displayLineOffsetWithin(width, formulaFrame)
+			if offsetErr != nil {
+				return nil, offsetErr
+			}
+			box, err = state.flattenSingleDisplayLine(rootFragment, offsetX)
+		} else {
+			box, err = state.flattenFragment(rootFragment)
 		}
 	} else {
 		box, err = state.flatten(rootFragment)
@@ -141,9 +155,11 @@ func (r *Renderer) layoutFormulaContext(
 	if err != nil {
 		return nil, err
 	}
-	box, err = state.attachSingleLineTag(box, formula.Tags, env)
-	if err != nil {
-		return nil, err
+	if tag != nil {
+		box, err = state.attachPreparedSingleLineTag(box, tag)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if err := box.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)

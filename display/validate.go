@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"reflect"
 	"strings"
 	"unicode/utf8"
 
@@ -18,10 +17,6 @@ var ErrInvalidAlt = errors.New("display: invalid alternative text")
 
 // Validate checks structural and numeric output invariants.
 func (b *Box) Validate() error {
-	return b.validate(true)
-}
-
-func (b *Box) validate(allowLines bool) error {
 	if b == nil {
 		return fmt.Errorf("%w: nil box", ErrInvalidBox)
 	}
@@ -56,22 +51,18 @@ func (b *Box) validate(allowLines bool) error {
 		return fmt.Errorf("%w: alt: %v", ErrInvalidBox, err)
 	}
 	if b.Tag != nil {
-		if err := validateTagBox(b.Tag, "tag"); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
+		if err := validateTagBox(b.Tag, len(b.Items), len(b.Hits)); err != nil {
+			return fmt.Errorf("%w: tag: %v", ErrInvalidBox, err)
 		}
-		if !closeCoordinate(b.Italic, b.Tag.Box.Italic) {
-			return fmt.Errorf("%w: parent italic %v, want rightmost tag run %v", ErrInvalidBox, b.Italic, b.Tag.Box.Italic)
+		if !closeCoordinate(b.Italic, b.Tag.Italic) {
+			return fmt.Errorf("%w: parent italic %v, want rightmost tag run %v", ErrInvalidBox, b.Italic, b.Tag.Italic)
 		}
 	}
 	if len(b.Lines) > 0 {
-		if !allowLines {
-			return fmt.Errorf("%w: nested lines", ErrInvalidBox)
-		}
 		if err := validateLines(b); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
 		}
-	}
-	if b.Tag != nil && len(b.Lines) == 0 {
+	} else if b.Tag != nil {
 		if err := validateUnwrappedTagAggregate(b); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
 		}
@@ -80,228 +71,223 @@ func (b *Box) validate(allowLines bool) error {
 }
 
 func validateLines(box *Box) error {
-	itemCount := 0
-	hitCount := 0
-	lineTagCount := 0
-	targetTagLine := 0
+	itemLimit := len(box.Items)
+	hitLimit := len(box.Hits)
 	if box.Tag != nil {
-		if targetTagLine >= len(box.Lines) {
-			return fmt.Errorf("parent tag targets line %d with only %d lines", box.Tag.Line, len(box.Lines))
-		}
+		itemLimit = box.Tag.Items.Start
+		hitLimit = box.Tag.Hits.Start
 	}
+
+	itemOffset := 0
+	hitOffset := 0
+	lineTagCount := 0
 	for i, line := range box.Lines {
-		if !finite(line.Baseline) || line.Baseline < 0 {
-			return fmt.Errorf("line %d baseline is %v", i, line.Baseline)
+		if err := validateLineMetrics(line, i, box); err != nil {
+			return err
 		}
-		if !finite(line.OffsetX) || line.OffsetX < 0 {
-			return fmt.Errorf("line %d offset-x is %v", i, line.OffsetX)
+		if err := validateItemRange(line.Items, len(box.Items), fmt.Sprintf("line %d items", i)); err != nil {
+			return err
 		}
-		if line.Box == nil {
-			return fmt.Errorf("line %d has nil box", i)
+		if err := validateHitRange(line.Hits, len(box.Hits), fmt.Sprintf("line %d hits", i)); err != nil {
+			return err
 		}
-		if line.Box.Tag != nil {
-			return fmt.Errorf("line %d box contains a nested tag; use LineBox.Tag", i)
+		if line.Items.Start != itemOffset {
+			return fmt.Errorf("line %d item range starts at %d, want %d", i, line.Items.Start, itemOffset)
+		}
+		if line.Hits.Start != hitOffset {
+			return fmt.Errorf("line %d hit range starts at %d, want %d", i, line.Hits.Start, hitOffset)
 		}
 		if i > 0 {
 			previous := box.Lines[i-1]
-			want := previous.Baseline + previous.Box.Descent + line.Box.Ascent
+			want := previous.Baseline + previous.Descent + line.Ascent
 			if absFloat(line.Baseline-want) > lineTolerance(want) {
 				return fmt.Errorf("line %d baseline %v, want %v", i, line.Baseline, want)
 			}
 		}
-		if err := line.Box.validate(false); err != nil {
-			return fmt.Errorf("line %d: %v", i, err)
+		if err := validateLineOverflow(box.Items, line, box.Width, i); err != nil {
+			return err
 		}
 		if line.Tag != nil {
 			lineTagCount++
 			if box.Tag == nil {
 				return fmt.Errorf("line %d has a tag but parent tag is nil", i)
 			}
-			if i != targetTagLine {
-				return fmt.Errorf("line %d has a tag but parent targets line %d", i, targetTagLine)
+			if i != 0 {
+				return fmt.Errorf("line %d has a tag outside the phase-1 target line", i)
 			}
 			if !sameTagMetadata(*line.Tag, *box.Tag) {
 				return fmt.Errorf("line %d tag metadata differs from parent tag", i)
 			}
 		}
-		if line.Box.Width > box.Width+lineTolerance(box.Width) {
-			if line.OffsetX != 0 || line.Box.Overflow <= 0 {
-				return fmt.Errorf("line %d overflows parent frame without a zero offset and overflow", i)
-			}
-		} else if line.OffsetX+line.Box.Width > box.Width+lineTolerance(box.Width) {
-			return fmt.Errorf("line %d exceeds parent frame", i)
-		}
-		top := line.Baseline - line.Box.Ascent
-		bottom := line.Baseline + line.Box.Descent
-		if top < -box.Ascent-lineTolerance(box.Ascent) ||
-			bottom > box.Descent+lineTolerance(box.Descent) {
-			return fmt.Errorf("line %d extent [%v,%v] exceeds parent [%v,%v]", i, top, bottom, -box.Ascent, box.Descent)
-		}
-		itemCount += len(line.Box.Items)
-		hitCount += len(line.Box.Hits)
+		itemOffset = line.Items.End()
+		hitOffset = line.Hits.End()
+	}
+	if itemOffset != itemLimit {
+		return fmt.Errorf("line item ranges cover %d records, want %d before tag", itemOffset, itemLimit)
+	}
+	if hitOffset != hitLimit {
+		return fmt.Errorf("line hit ranges cover %d records, want %d before tag", hitOffset, hitLimit)
 	}
 	if lineTagCount > 1 {
 		return fmt.Errorf("line tag count %d exceeds single-line phase-1 contract", lineTagCount)
 	}
-	if box.Tag != nil && box.Lines[targetTagLine].Tag == nil {
-		return fmt.Errorf("parent tag targets line %d without matching line tag", targetTagLine)
+	if box.Tag != nil && box.Lines[0].Tag == nil {
+		return fmt.Errorf("parent tag targets line 0 without matching line tag")
 	}
 	if box.Tag != nil {
-		itemCount += len(box.Tag.Box.Items)
-		hitCount += len(box.Tag.Box.Hits)
-	}
-	if len(box.Items) != itemCount {
-		return fmt.Errorf("parent item count %d, want line aggregate %d", len(box.Items), itemCount)
-	}
-	if len(box.Hits) != hitCount {
-		return fmt.Errorf("parent hit count %d, want line aggregate %d", len(box.Hits), hitCount)
-	}
-	itemOffset := 0
-	hitOffset := 0
-	for i, line := range box.Lines {
-		for j, item := range line.Box.Items {
-			if err := validateTranslatedItem(box.Items[itemOffset+j], item, line.OffsetX, line.Baseline); err != nil {
-				return fmt.Errorf("line %d item %d aggregate: %v", i, j, err)
-			}
-		}
-		for j, hit := range line.Box.Hits {
-			if err := validateTranslatedHit(box.Hits[hitOffset+j], hit, line.OffsetX, line.Baseline); err != nil {
-				return fmt.Errorf("line %d hit %d aggregate: %v", i, j, err)
-			}
-		}
-		itemOffset += len(line.Box.Items)
-		hitOffset += len(line.Box.Hits)
-	}
-	if box.Tag != nil {
-		for j, item := range box.Tag.Box.Items {
-			if err := validateTranslatedItem(box.Items[itemOffset+j], item, box.Tag.X, box.Tag.Y); err != nil {
-				return fmt.Errorf("tag item %d aggregate: %v", j, err)
-			}
-		}
-		for j, hit := range box.Tag.Box.Hits {
-			if err := validateTranslatedHit(box.Hits[hitOffset+j], hit, box.Tag.X, box.Tag.Y); err != nil {
-				return fmt.Errorf("tag hit %d aggregate: %v", j, err)
-			}
+		if err := validateTagRangeSuffix(box.Tag, len(box.Items), len(box.Hits)); err != nil {
+			return err
 		}
 	}
-	if err := validateWrappedOverflow(box); err != nil {
+	return validateWrappedOverflow(box)
+}
+
+func validateLineMetrics(line LineBox, index int, box *Box) error {
+	for _, field := range []struct {
+		name  string
+		value float32
+	}{
+		{"baseline", line.Baseline},
+		{"offset-x", line.OffsetX},
+		{"width", line.Width},
+		{"ascent", line.Ascent},
+		{"descent", line.Descent},
+		{"overflow", line.Overflow},
+	} {
+		if !finite(field.value) || field.value < 0 {
+			return fmt.Errorf("line %d %s is %v", index, field.name, field.value)
+		}
+	}
+	if line.Width > box.Width+lineTolerance(box.Width) {
+		if line.OffsetX != 0 || line.Overflow <= 0 {
+			return fmt.Errorf("line %d overflows parent frame without a zero offset and overflow", index)
+		}
+	} else if line.OffsetX+line.Width > box.Width+lineTolerance(box.Width) {
+		return fmt.Errorf("line %d exceeds parent frame", index)
+	}
+	top := line.Baseline - line.Ascent
+	bottom := line.Baseline + line.Descent
+	if top < -box.Ascent-lineTolerance(box.Ascent) ||
+		bottom > box.Descent+lineTolerance(box.Descent) {
+		return fmt.Errorf("line %d extent [%v,%v] exceeds parent [%v,%v]",
+			index, top, bottom, -box.Ascent, box.Descent)
+	}
+	return nil
+}
+
+func validateLineOverflow(items []Item, line LineBox, parentWidth float32, index int) error {
+	extent, err := inkExtentForRange(items, line.Items, line.OffsetX, line.Baseline)
+	if err != nil {
+		return fmt.Errorf("line %d overflow scan: %v", index, err)
+	}
+	ink := extent.overflow(line.Width, line.Ascent, line.Descent)
+	logical := maxFloat(0, line.Width-parentWidth)
+	required := maxFloat(ink, logical)
+	if !overflowAtLeast(line.Overflow, required) {
+		return fmt.Errorf("line %d overflow %v is below required %v", index, line.Overflow, required)
+	}
+	return nil
+}
+
+func validateTagBox(tag *TagBox, itemCount, hitCount int) error {
+	if !tag.Source.IsValid() || tag.Source.IsDetached() {
+		return errors.New("source range is invalid")
+	}
+	if tag.Line != FormulaTagLine {
+		return fmt.Errorf("line is %d, want formula-level %d", tag.Line, FormulaTagLine)
+	}
+	if !tag.Manual {
+		return errors.New("tag must be manual in the Phase-1 contract")
+	}
+	for _, field := range []struct {
+		name  string
+		value float32
+	}{
+		{"x", tag.X},
+		{"y", tag.Y},
+		{"width", tag.Width},
+		{"ascent", tag.Ascent},
+		{"descent", tag.Descent},
+	} {
+		if !finite(field.value) {
+			return fmt.Errorf("%s is %v", field.name, field.value)
+		}
+	}
+	if tag.X < 0 || tag.Width < 0 || tag.Ascent < 0 || tag.Descent < 0 {
+		return errors.New("tag geometry contains a negative size")
+	}
+	if !finite(tag.Italic) {
+		return fmt.Errorf("italic is %v", tag.Italic)
+	}
+	if err := validateItemRange(tag.Items, itemCount, "items"); err != nil {
+		return err
+	}
+	if err := validateHitRange(tag.Hits, hitCount, "hits"); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateTagBox(tag *TagBox, path string) error {
-	if tag.Box == nil {
-		return fmt.Errorf("%s has nil box", path)
+func validateItemRange(r ItemRange, length int, path string) error {
+	if r.Start < 0 || r.Count < 0 || r.Start > length || r.Count > length-r.Start {
+		return fmt.Errorf("%s range [%d,%d) exceeds length %d", path, r.Start, r.End(), length)
 	}
-	if !tag.Source.IsValid() || tag.Source.IsDetached() {
-		return fmt.Errorf("%s source range is invalid", path)
-	}
-	if tag.Line != FormulaTagLine {
-		return fmt.Errorf("%s line is %d, want formula-level %d", path, tag.Line, FormulaTagLine)
-	}
-	if !tag.Manual {
-		return fmt.Errorf("%s must be manual in the Phase-1 contract", path)
-	}
-	if !finite(tag.X) || tag.X < 0 {
-		return fmt.Errorf("%s x is %v", path, tag.X)
-	}
-	if !finite(tag.Y) {
-		return fmt.Errorf("%s y is %v", path, tag.Y)
-	}
-	if tag.Box.Tag != nil {
-		return fmt.Errorf("%s contains a nested tag", path)
-	}
-	if err := tag.Box.validate(false); err != nil {
-		return fmt.Errorf("%s box: %v", path, err)
+	return nil
+}
+
+func validateHitRange(r HitRange, length int, path string) error {
+	if r.Start < 0 || r.Count < 0 || r.Start > length || r.Count > length-r.Start {
+		return fmt.Errorf("%s range [%d,%d) exceeds length %d", path, r.Start, r.End(), length)
 	}
 	return nil
 }
 
 func sameTagMetadata(left, right TagBox) bool {
-	if left.Box == nil || right.Box == nil {
-		return left.Box == right.Box
-	}
-	if left.Box == right.Box {
-		return true
-	}
 	return left.Source == right.Source &&
 		left.Manual == right.Manual &&
 		left.Starred == right.Starred &&
 		left.Line == right.Line &&
 		left.X == right.X &&
 		left.Y == right.Y &&
-		reflect.DeepEqual(canonicalBoxValue(left.Box, false), canonicalBoxValue(right.Box, false))
+		left.Width == right.Width &&
+		left.Ascent == right.Ascent &&
+		left.Descent == right.Descent &&
+		left.Italic == right.Italic &&
+		left.Items == right.Items &&
+		left.Hits == right.Hits
+}
+
+func validateTagRangeSuffix(tag *TagBox, itemCount, hitCount int) error {
+	if tag.Items.End() != itemCount {
+		return fmt.Errorf("tag item range ends at %d, want parent length %d", tag.Items.End(), itemCount)
+	}
+	if tag.Hits.End() != hitCount {
+		return fmt.Errorf("tag hit range ends at %d, want parent length %d", tag.Hits.End(), hitCount)
+	}
+	return nil
 }
 
 func validateUnwrappedTagAggregate(box *Box) error {
-	if box.Tag == nil || box.Tag.Box == nil {
-		return nil
+	if err := validateTagRangeSuffix(box.Tag, len(box.Items), len(box.Hits)); err != nil {
+		return err
 	}
-	itemStart := len(box.Items) - len(box.Tag.Box.Items)
-	hitStart := len(box.Hits) - len(box.Tag.Box.Hits)
-	if itemStart < 0 || hitStart < 0 {
-		return errors.New("tag aggregate exceeds parent output")
-	}
-	for i, item := range box.Tag.Box.Items {
-		if err := validateTranslatedItem(box.Items[itemStart+i], item, box.Tag.X, box.Tag.Y); err != nil {
-			return fmt.Errorf("tag item %d aggregate: %v", i, err)
-		}
-	}
-	for i, hit := range box.Tag.Box.Hits {
-		if err := validateTranslatedHit(box.Hits[hitStart+i], hit, box.Tag.X, box.Tag.Y); err != nil {
-			return fmt.Errorf("tag hit %d aggregate: %v", i, err)
-		}
-	}
-	translated := make([]Item, len(box.Tag.Box.Items))
-	for i, item := range box.Tag.Box.Items {
-		translated[i] = translateItemForValidation(item, box.Tag.X, box.Tag.Y)
-	}
-	required := inkExtentForItems(translated).overflow(box.Width, box.Ascent, box.Descent)
-	required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width))
+	frame := inkExtentForItems(box.Items)
+	required := frame.overflow(box.Width, box.Ascent, box.Descent)
+	required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Width-box.Width))
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below tag requirement %v", box.Overflow, required)
 	}
 	return nil
 }
 
-func translateItemForValidation(item Item, dx, dy float32) Item {
-	if len(item.Path) > 0 {
-		item.Path = append([]geometry.Segment(nil), item.Path...)
-	}
-	item.Bound.X += dx
-	item.Bound.Y += dy
-	item.Rect.X += dx
-	item.Rect.Y += dy
-	item.At.X += dx
-	item.At.Y += dy
-	for i := range item.Path {
-		for j := range item.Path[i].Points {
-			item.Path[i].Points[j].X += dx
-			item.Path[i].Points[j].Y += dy
-		}
-	}
-	return item
-}
-
 func validateWrappedOverflow(box *Box) error {
-	for i, line := range box.Lines {
-		local := inkExtentForItems(line.Box.Items)
-		ink := local.overflow(line.Box.Width, line.Box.Ascent, line.Box.Descent)
-		logical := maxFloat(0, line.Box.Width-box.Width)
-		required := maxFloat(ink, logical)
-		if !overflowAtLeast(line.Box.Overflow, required) {
-			return fmt.Errorf("line %d overflow %v is below required %v", i, line.Box.Overflow, required)
-		}
-	}
-
 	frame := inkExtentForItems(box.Items)
 	required := frame.overflow(box.Width, box.Ascent, box.Descent)
 	for _, line := range box.Lines {
-		required = maxFloat(required, maxFloat(0, line.Box.Width-box.Width))
+		required = maxFloat(required, maxFloat(0, line.Width-box.Width))
 	}
-	if box.Tag != nil && box.Tag.Box != nil {
-		required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width))
+	if box.Tag != nil {
+		required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Width-box.Width))
 	}
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below required %v", box.Overflow, required)
@@ -331,9 +317,50 @@ func inkExtentForItems(items []Item) inkExtent {
 	return extent
 }
 
+func inkExtentForRange(items []Item, itemRange ItemRange, dx, dy float32) (inkExtent, error) {
+	var extent inkExtent
+	for i := itemRange.Start; i < itemRange.End(); i++ {
+		item := items[i]
+		if err := extent.addTranslatedRect(item.Bound, dx, dy); err != nil {
+			return inkExtent{}, err
+		}
+		for _, segment := range item.Path {
+			points, _ := segmentPointCount(segment.Op)
+			for j := 0; j < points; j++ {
+				if err := extent.addTranslatedPoint(segment.Points[j], dx, dy); err != nil {
+					return inkExtent{}, err
+				}
+			}
+		}
+	}
+	return extent, nil
+}
+
 func (e *inkExtent) addRect(rect geometry.Rect) {
 	e.addPoint(geometry.Point{X: rect.X, Y: rect.Y})
 	e.addPoint(geometry.Point{X: rect.X + rect.Width, Y: rect.Y + rect.Height})
+}
+
+func (e *inkExtent) addTranslatedRect(rect geometry.Rect, dx, dy float32) error {
+	if err := e.addTranslatedPoint(geometry.Point{X: rect.X, Y: rect.Y}, dx, dy); err != nil {
+		return err
+	}
+	return e.addTranslatedPoint(
+		geometry.Point{X: rect.X + rect.Width, Y: rect.Y + rect.Height},
+		dx,
+		dy,
+	)
+}
+
+func (e *inkExtent) addTranslatedPoint(point geometry.Point, dx, dy float32) error {
+	x := float64(point.X) - float64(dx)
+	y := float64(point.Y) - float64(dy)
+	if math.IsNaN(x) || math.IsInf(x, 0) || math.IsNaN(y) || math.IsInf(y, 0) ||
+		math.Abs(x) > math.MaxFloat32 || math.Abs(y) > math.MaxFloat32 {
+		return errors.New("local coordinate overflow")
+	}
+	e.addPoint(geometry.Point{X: float32(x), Y: float32(y)})
+	return nil
 }
 
 func (e *inkExtent) addPoint(point geometry.Point) {
@@ -362,61 +389,6 @@ func (e inkExtent) overflow(width, ascent, descent float32) float32 {
 
 func overflowAtLeast(actual, required float32) bool {
 	return actual+lineTolerance(required) >= required
-}
-
-func validateTranslatedItem(got, local Item, dx, dy float32) error {
-	if got.Kind != local.Kind || got.Paint != local.Paint ||
-		got.FontID != local.FontID || got.Glyph != local.Glyph || got.Em != local.Em {
-		return errors.New("item metadata differs from line-local item")
-	}
-	if err := validateTranslatedRect(got.Bound, local.Bound, dx, dy); err != nil {
-		return fmt.Errorf("bound: %v", err)
-	}
-	if err := validateTranslatedRect(got.Rect, local.Rect, dx, dy); err != nil {
-		return fmt.Errorf("rect: %v", err)
-	}
-	if !closeCoordinate(got.At.X, local.At.X+dx) || !closeCoordinate(got.At.Y, local.At.Y+dy) {
-		return errors.New("placement differs from line-local item")
-	}
-	if len(got.Path) != len(local.Path) {
-		return errors.New("path length differs from line-local item")
-	}
-	for i := range local.Path {
-		if got.Path[i].Op != local.Path[i].Op {
-			return fmt.Errorf("path segment %d op differs from line-local item", i)
-		}
-		for j, point := range local.Path[i].Points {
-			if !closeCoordinate(got.Path[i].Points[j].X, point.X+dx) ||
-				!closeCoordinate(got.Path[i].Points[j].Y, point.Y+dy) {
-				return fmt.Errorf("path segment %d point %d differs from line-local item: got (%v,%v), want (%v,%v)",
-					i, j, got.Path[i].Points[j].X, got.Path[i].Points[j].Y, point.X+dx, point.Y+dy)
-			}
-		}
-	}
-	return nil
-}
-
-func validateTranslatedHit(got, local Hit, dx, dy float32) error {
-	if got.Source != local.Source || got.Depth != local.Depth || got.Kind != local.Kind {
-		return errors.New("hit metadata differs from line-local hit")
-	}
-	return validateTranslatedRect(got.Area, local.Area, dx, dy)
-}
-
-func validateTranslatedRect(got, local geometry.Rect, dx, dy float32) error {
-	want := geometry.Rect{
-		X:      local.X + dx,
-		Y:      local.Y + dy,
-		Width:  local.Width,
-		Height: local.Height,
-	}
-	if !closeCoordinate(got.X, want.X) ||
-		!closeCoordinate(got.Y, want.Y) ||
-		!closeCoordinate(got.Width, want.Width) ||
-		!closeCoordinate(got.Height, want.Height) {
-		return fmt.Errorf("rectangle %+v differs from translated line-local rectangle %+v", got, want)
-	}
-	return nil
 }
 
 func closeCoordinate(got, want float32) bool {

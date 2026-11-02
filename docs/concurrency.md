@@ -108,8 +108,8 @@ share one immutable `Style` value across workers.
 Each successful layout returns a new `Box` and new item/path storage. Reusing
 an engine does not alias boxes from earlier calls.
 
-`Box.Clone()` copies the public display tree, including line boxes, nested
-paths, item slices, hits, breaks, tags, and alternative text. It does not clone
+`Box.Clone()` copies the public display data, including paths, item and hit
+slices, line/tag ranges, breaks, tags, and alternative text. It does not clone
 the font set or engine.
 
 Treat a `Box` as read-only after handing it to another goroutine. If a host

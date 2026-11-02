@@ -90,7 +90,7 @@ func TestTeXEquationTagGeometryMatchesPinnedRelativeLayout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("layoutFormula() error = %v", err)
 	}
-	if box.Tag == nil || box.Tag.Box == nil {
+	if box.Tag == nil || box.Tag.Items.Count == 0 {
 		t.Fatal("TeX tag layout omitted TagBox")
 	}
 	withoutTag := untie.ParseTeX("E=mc^2", mode, untie.ParseOptions{Limits: source.DefaultLimits()})
@@ -102,16 +102,17 @@ func TestTeXEquationTagGeometryMatchesPinnedRelativeLayout(t *testing.T) {
 	if absFloat64(float64(box.Tag.X-untagged.Width)) > toleranceDIP {
 		t.Fatalf("tag X = %v, want formula width %v", box.Tag.X, untagged.Width)
 	}
-	if absFloat64(float64(box.Width-(untagged.Width+box.Tag.Box.Width))) > toleranceDIP {
-		t.Fatalf("tagged width = %v, want additive %v", box.Width, untagged.Width+box.Tag.Box.Width)
+	if absFloat64(float64(box.Width-(untagged.Width+box.Tag.Width))) > toleranceDIP {
+		t.Fatalf("tagged width = %v, want additive %v", box.Width, untagged.Width+box.Tag.Width)
 	}
-	if len(box.Tag.Box.Items) != 3 {
-		t.Fatalf("tag items = %d, want non-starred parentheses and body", len(box.Tag.Box.Items))
+	if box.Tag.Items.Count != 3 {
+		t.Fatalf("tag items = %d, want non-starred parentheses and body", box.Tag.Items.Count)
 	}
 	pinnedTagLeft := 68.132
 	pinnedTagWidth := 82.19 - pinnedTagLeft
 	for i, want := range []float64{0, (72.411 - pinnedTagLeft) / pinnedTagWidth, (77.911 - pinnedTagLeft) / pinnedTagWidth} {
-		got := float64(box.Tag.Box.Items[i].At.X) / float64(box.Tag.Box.Width)
+		item := box.Items[box.Tag.Items.Start+i]
+		got := float64(item.At.X-box.Tag.X) / float64(box.Tag.Width)
 		if absFloat64(got-want) > 0.002 {
 			t.Fatalf("tag item %d relative x = %v, want pinned ratio %v", i, got, want)
 		}
