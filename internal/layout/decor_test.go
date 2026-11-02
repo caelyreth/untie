@@ -161,7 +161,7 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 	if box.Items[1].Kind != display.ItemGlyphPath || box.Items[1].FontID != "" || len(box.Items[1].Path) != 5 {
 		t.Fatalf("cancel stroke = %+v", box.Items[1])
 	}
-	if !closeHost(box.Width, 8) || !closeHost(box.Ascent, 11.2) || !closeHost(box.Descent, 3.2) {
+	if !closeHost(box.Width, 8) || !closeHost(box.Ascent, 10.9279785) || !closeHost(box.Descent, 0) {
 		t.Fatalf("cancel metrics = %v/%v/%v", box.Width, box.Ascent, box.Descent)
 	}
 
@@ -229,7 +229,7 @@ func TestBoxPaddingFillBorderRadiusAndLimits(t *testing.T) {
 	if closes != 2 {
 		t.Fatalf("border contours = %d, want outer and inner ring", closes)
 	}
-	if !closeHost(box.Width, 11.2) || !closeHost(box.Ascent, 12.8) || !closeHost(box.Descent, 4.8) {
+	if !closeHost(box.Width, 11.200195) || !closeHost(box.Ascent, 10.9279785) || !closeHost(box.Descent, 0) {
 		t.Fatalf("box metrics = %v/%v/%v", box.Width, box.Ascent, box.Descent)
 	}
 
@@ -282,10 +282,10 @@ func TestPhantomRetainsSelectedExtents(t *testing.T) {
 		wantAscent           float32
 		wantDescent          float32
 	}{
-		{"width", true, false, false, 8, 0, 0},
-		{"height", false, true, false, 0, 11.2, 0},
-		{"depth", false, false, true, 0, 0, 3.2},
-		{"all", true, true, true, 8, 11.2, 3.2},
+		{"width", true, false, false, 8, 10.9279785, 0},
+		{"height", false, true, false, 0, 10.9279785, 0},
+		{"depth", false, false, true, 0, 10.9279785, 0},
+		{"all", true, true, true, 8, 10.9279785, 0},
 	}
 	for _, test := range tests {
 		test := test

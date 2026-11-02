@@ -13,8 +13,11 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.TextLike = true
 
 	type atom struct {
-		env      environment
-		fragment *Fragment
+		env        environment
+		node       ir.Node
+		fragment   *Fragment
+		leftClass  ir.MathClass
+		rightClass ir.MathClass
 	}
 	atoms := make([]atom, 0, len(nodes))
 	rawClasses := make([]ir.MathClass, 0, len(nodes))
@@ -28,12 +31,20 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		if err != nil {
 			return nil, err
 		}
-		atoms = append(atoms, atom{env: nodeEnv, fragment: fragment})
-		rawClasses = append(rawClasses, fragment.Class)
+		atoms = append(atoms, atom{
+			env:        nodeEnv,
+			node:       node,
+			fragment:   fragment,
+			leftClass:  effectiveLeftClass(node, fragment.Class),
+			rightClass: effectiveRightClass(node, fragment.Class),
+		})
+		rawClasses = append(rawClasses, effectiveNodeClass(node, fragment.Class))
 	}
 	normalized := normalizeRowClasses(rawClasses)
 	for i := range atoms {
 		atoms[i].fragment.Class = normalized[i]
+		atoms[i].leftClass = spacingLeftClass(atoms[i].node, normalized[i])
+		atoms[i].rightClass = spacingRightClass(atoms[i].node, normalized[i])
 	}
 
 	var x, ascent, descent, italic geometry.Em
@@ -120,7 +131,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		atomIndex++
 		nodeEnv := current.env
 		fragment := current.fragment
-		class := fragment.Class
+		leftClass := current.leftClass
 
 		var explicitBefore geometry.Em
 		var hasExplicit bool
@@ -135,14 +146,16 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 				hasExplicit = true
 			}
 		}
-		if value, ok, err := s.leftSpacing(node, nodeEnv); err != nil {
-			return nil, err
-		} else if ok {
-			explicitBefore, err = add(explicitBefore, value)
-			if err != nil {
+		if atomIndex != 1 || !nodeEnv.SkipLeadingExplicit {
+			if value, ok, err := s.leftSpacing(node, nodeEnv); err != nil {
 				return nil, err
+			} else if ok {
+				explicitBefore, err = add(explicitBefore, value)
+				if err != nil {
+					return nil, err
+				}
+				hasExplicit = true
 			}
-			hasExplicit = true
 		}
 
 		if pendingVisible {
@@ -151,7 +164,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			}
 		} else if !hasExplicit && !afterExplicitSpace && previousClass != nil &&
 			!previousNode.NodeBase().IgnoreAsSpace && !node.NodeBase().IgnoreAsSpace {
-			local := MathSpacing(*previousClass, class, nodeEnv.Style)
+			local := MathSpacing(*previousClass, leftClass, nodeEnv.Style)
 			if local != 0 {
 				auto, err := s.metricAt(local, nodeEnv.Style)
 				if err != nil {
@@ -186,7 +199,8 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		if fragment.Width != 0 {
 			italic = fragment.Italic
 		}
-		previousClass = &class
+		spacingClass := current.rightClass
+		previousClass = &spacingClass
 		previousNode = node
 		previousEnv = nodeEnv
 		afterExplicitSpace = false
@@ -222,6 +236,58 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.AccentTop = row.Width / 2
 	row.AccentBottom = row.Width / 2
 	return row, nil
+}
+
+func effectiveLeftClass(node ir.Node, fallback ir.MathClass) ir.MathClass {
+	return spacingLeftClass(node, effectiveNodeClass(node, fallback))
+}
+
+func spacingLeftClass(node ir.Node, fallback ir.MathClass) ir.MathClass {
+	if fenced, ok := node.(*ir.Fenced); ok && fenced.Open != nil {
+		if base := fenced.Open.NodeBase(); base != nil && base.Class != ir.ClassNormal {
+			return base.Class
+		}
+	}
+	return fallback
+}
+
+func effectiveRightClass(node ir.Node, fallback ir.MathClass) ir.MathClass {
+	return spacingRightClass(node, effectiveNodeClass(node, fallback))
+}
+
+func spacingRightClass(node ir.Node, fallback ir.MathClass) ir.MathClass {
+	if fenced, ok := node.(*ir.Fenced); ok && fenced.Close != nil {
+		if base := fenced.Close.NodeBase(); base != nil && base.Class != ir.ClassNormal {
+			return base.Class
+		}
+	}
+	return fallback
+}
+
+func effectiveNodeClass(node ir.Node, fallback ir.MathClass) ir.MathClass {
+	if node == nil {
+		return fallback
+	}
+	if base := node.NodeBase(); base != nil && base.Class != ir.ClassNormal {
+		return base.Class
+	}
+	switch value := node.(type) {
+	case *ir.Scripts:
+		return effectiveNodeClass(value.BaseItem, fallback)
+	case *ir.Style:
+		return effectiveNodeClass(value.Body, fallback)
+	case *ir.Color:
+		return effectiveNodeClass(value.Body, fallback)
+	case *ir.Box:
+		return effectiveNodeClass(value.Body, fallback)
+	case *ir.Phantom:
+		return effectiveNodeClass(value.Body, fallback)
+	case *ir.Row:
+		if len(value.Items) == 1 {
+			return effectiveNodeClass(value.Items[0], fallback)
+		}
+	}
+	return fallback
 }
 
 func (s *layoutState) leftSpacing(node ir.Node, env environment) (geometry.Em, bool, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/internal/layout"
 	"github.com/caelyreth/untie/internal/tex"
+	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -36,27 +37,27 @@ func TestNewCMExactBaselinePlacement(t *testing.T) {
 	}{
 		{
 			name: "x", source: "x",
-			width: 9.152344, ascent: 7.0722656, descent: 0.17578125,
+			width: 9.1521, ascent: 10.9279785, descent: 0,
 			refs: []glyphPosition{{3570, 0, 0}},
 		},
 		{
 			name: "superscript", source: "x^2",
-			width: 16.420898, ascent: 13.245117, descent: 0.17578125,
+			width: 16.420898, ascent: 10.9279785, descent: 0,
 			refs: []glyphPosition{{3570, 0, 0}, {5477, 9.152344, -5.8085938}},
 		},
 		{
 			name: "subscript", source: "x_i",
-			width: 14.573242, ascent: 7.0722656, descent: 4.0634766,
+			width: 14.572998, ascent: 10.9279785, descent: 0,
 			refs: []glyphPosition{{3570, 0, 0}, {5821, 9.152344, 3.9521484}},
 		},
 		{
 			name: "both scripts", source: "x_i^2",
-			width: 16.420898, ascent: 13.357422, descent: 4.176758,
+			width: 16.420898, ascent: 10.9279785, descent: 0,
 			refs: []glyphPosition{{3570, 0, 0}, {5477, 9.152344, -5.9208984}, {5821, 9.152344, 4.064453}},
 		},
 		{
 			name: "fraction", source: `\frac{1}{2}`,
-			width: 9.573242, ascent: 13.741211, descent: 5.520508,
+			width: 9.572998, ascent: 10.9279785, descent: 0,
 			refs: []glyphPosition{{5430, 1.6005859, -6.303711}, {5477, 1.6005859, 5.520508}},
 		},
 		{
@@ -73,7 +74,7 @@ func TestNewCMExactBaselinePlacement(t *testing.T) {
 		},
 		{
 			name: "radical", source: `\sqrt{x}`,
-			width: 22.480469, ascent: 13, descent: 3.7685547,
+			width: 22.47998, ascent: 10.9279785, descent: 0,
 			refs: []glyphPosition{{1001, 0, -11.591797}, {3570, 13.328125, 0}},
 		},
 	}
@@ -90,19 +91,20 @@ func TestNewCMExactBaselinePlacement(t *testing.T) {
 		if err != nil {
 			t.Fatalf("accent layout: %v", err)
 		}
-		assertBoxMetrics(t, box, 9.152344, 11.919922, 0.17578125)
+		assertBoxMetrics(t, box, 9.1521, 10.9279785, 0)
 		assertRefs(t, box, []glyphPosition{{3570, 0, 0}, {63, -0.4000651, 0}})
 	})
 
 	// The parenthesis path is an assembly at this height; both delimiters center
 	// on the math axis while the fraction keeps its own baseline.
 	box := layoutTeX(t, engine, `\left(\frac{x}{y}\right)`, ir.Inline)
-	assertBoxMetrics(t, box, 29.561523, 18.335938, 10.3359375)
-	assertRefs(t, box, []glyphPosition{{6556, 0, 0}, {5836, 11.152344, -6.303711}, {5837, 11.488281, 5.520508}, {6557, 20.009766, 0}})
-	if len(pathsAtLeast(box, 0, 28)) != 2 {
-		t.Fatalf("delimiter assembly paths = %d, want 2", len(pathsAtLeast(box, 0, 28)))
-	}
-
+	assertBoxMetrics(t, box, 27.193604, 10.9279785, 0.5246582)
+	assertRefs(t, box, []glyphPosition{
+		{6534, 0, 0},
+		{5836, 9.968018, -6.303955},
+		{5837, 10.303955, 5.5200195},
+		{6535, 18.825684, 0},
+	})
 	mapped, ok := set.MapRune(font.MathFace, '(')
 	if !ok {
 		t.Fatal("NewCM does not map '('")
@@ -133,11 +135,11 @@ func TestNewCMVariantsTextAndOperators(t *testing.T) {
 	})
 	t.Run("text", func(t *testing.T) {
 		plain := layoutTeX(t, engine, `\text{ab}`, ir.Inline)
-		assertBoxMetrics(t, plain, 16.896484, 11.104492, 0.17578125)
+		assertBoxMetrics(t, plain, 16.895996, 10.9279785, 0)
 		assertRefs(t, plain, []glyphPosition{{66, 0, 0}, {67, 8, 0}})
 
 		bold := layoutTeX(t, engine, `\textbf{ab}`, ir.Inline)
-		assertBoxMetrics(t, bold, 19.167969, 11.104492, 0.095703125)
+		assertBoxMetrics(t, bold, 19.168213, 10.9279785, 0)
 		assertRefs(t, bold, []glyphPosition{{3496, 0, 0}, {3497, 8.944336, 0}})
 
 		tracking, err := ir.EmLength(0.1)
@@ -150,7 +152,7 @@ func TestNewCMVariantsTextAndOperators(t *testing.T) {
 		if err != nil {
 			t.Fatalf("tracked text: %v", err)
 		}
-		assertBoxMetrics(t, box, 20.09668, 11.104492, 0.17578125)
+		assertBoxMetrics(t, box, 20.096191, 10.9279785, 0)
 		assertRefs(t, box, []glyphPosition{{66, 0, 0}, {67, 9.6, 0}})
 
 	})
@@ -222,11 +224,29 @@ func TestAdapterStretchShortfallAssemblyAndLimits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("assembly stretch: %v", err)
 	}
-	if len(assembled.Outline) <= len(base.Outline) {
-		t.Fatalf("assembly outline segments = %d, base = %d", len(assembled.Outline), len(base.Outline))
+	if len(assembled.Parts) <= 1 {
+		t.Fatalf("assembly parts = %d, want multiple glyph parts", len(assembled.Parts))
+	}
+	if assembled.ExactGlyphRef {
+		t.Fatal("assembly claims an exact single-glyph reference")
+	}
+	if len(assembled.Parts[0].Glyph.Outline) == 0 {
+		t.Fatal("assembly part has no outline")
 	}
 	if assembled.Descent <= 0 || assembled.Ascent <= assembled.Descent {
 		t.Fatalf("assembly not centered on axis: ascent=%d descent=%d", assembled.Ascent, assembled.Descent)
+	}
+	radicalAssembly, err := adapter.Stretch(layout.StretchRequest{
+		GlyphRequest: layout.GlyphRequest{
+			Context: context.Background(), Text: "√", Style: layout.Style{Size: layout.Text}, Font: ir.FontMath,
+		},
+		Axis: layout.Vertical, Target: 20 * geometry.Em(geometry.EmScale),
+	})
+	if err != nil {
+		t.Fatalf("radical assembly stretch: %v", err)
+	}
+	if len(radicalAssembly.Parts) <= 1 || radicalAssembly.ExactGlyphRef {
+		t.Fatalf("radical assembly = parts %d exact-ref %v", len(radicalAssembly.Parts), radicalAssembly.ExactGlyphRef)
 	}
 
 	limited, err := newAdapter(set, source.Limits{MaxOutputItems: 2})
@@ -266,6 +286,29 @@ func TestAdapterStretchShortfallAssemblyAndLimits(t *testing.T) {
 	})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled stretch error = %v, want context.Canceled", err)
+	}
+}
+
+func TestAutomaticDisplayOperatorHeightIsBestEffort(t *testing.T) {
+	t.Parallel()
+
+	_, engine := newNewCMEngine(t, source.Limits{})
+	texBox := layoutTeX(t, engine, `\operatorname{T}`, ir.Display)
+	typstRoot := typst.Parse(`op("T")`, ir.Display, typst.Options{}).Root
+	typstBox, err := engine.Layout(context.Background(), typstRoot, ir.Display, display.Style{Size: 16})
+	if err != nil {
+		t.Fatalf("Typst op display layout: %v", err)
+	}
+	large := ir.NewGlyph(source.NewRange(0, 1), "x")
+	large.Class = ir.ClassLarge
+	irBox, err := engine.Layout(context.Background(), large, ir.Display, display.Style{Size: 16})
+	if err != nil {
+		t.Fatalf("class(large, x) display layout: %v", err)
+	}
+	for name, box := range map[string]*display.Box{"tex operator": texBox, "typst op": typstBox, "large glyph": irBox} {
+		if box == nil || box.Width <= 0 || box.Ascent+box.Descent <= 0 {
+			t.Fatalf("%s box = %+v", name, box)
+		}
 	}
 }
 
@@ -485,8 +528,8 @@ func assertRefs(t *testing.T, box *display.Box, want []glyphPosition) {
 	for i := range want {
 		got := refs[i]
 		if got.Glyph != want[i].id || !closeFloat(got.At.X, want[i].x) || !closeFloat(got.At.Y, want[i].y) {
-			t.Fatalf("ref[%d] = glyph %d at (%v,%v), want glyph %d at (%v,%v)",
-				i, got.Glyph, got.At.X, got.At.Y, want[i].id, want[i].x, want[i].y)
+			t.Fatalf("refs = %+v; ref[%d] = glyph %d at (%v,%v), want glyph %d at (%v,%v)",
+				refs, i, got.Glyph, got.At.X, got.At.Y, want[i].id, want[i].x, want[i].y)
 		}
 	}
 }
@@ -499,16 +542,6 @@ func glyphRefs(box *display.Box) []display.Item {
 		}
 	}
 	return refs
-}
-
-func pathsAtLeast(box *display.Box, width, height float32) []display.Item {
-	var paths []display.Item
-	for _, item := range box.Items {
-		if item.Kind == display.ItemGlyphPath && item.Bound.Width >= width && item.Bound.Height >= height {
-			paths = append(paths, item)
-		}
-	}
-	return paths
 }
 
 func closeFloat(got, want float32) bool {

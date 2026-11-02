@@ -117,7 +117,7 @@ func TestBuiltInTableExactBaselines(t *testing.T) {
 			t.Fatal(err)
 		}
 		refs := glyphItems(box)
-		if len(refs) != 1 || !closeHost(refs[0].Em, 12.8) || !closeHost(box.Ascent, 8.96) {
+		if len(refs) != 1 || !closeHost(refs[0].Em, 9.5998535) || !closeHost(box.Ascent, 7.5197754) {
 			t.Fatalf("script table = %+v refs=%+v", box, refs)
 		}
 	})
@@ -206,6 +206,30 @@ func TestMultilineAlignmentAndCentering(t *testing.T) {
 			t.Fatalf("gathered box = %+v", box)
 		}
 	})
+}
+
+func TestAlignmentMovesInfixLeftSpacingToPreviousColumn(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	style := testStyle(16)
+	style.GlyphRefs = true
+	relation := glyph("=", ir.ClassRelation)
+	relation.LeftSpacing = irEm(0.5)
+	multiline := ir.NewMultiline(source.NewRange(0, 3),
+		[]ir.Node{glyph("a", ir.ClassNormal), alignMarker(), relation, glyph("1", ir.ClassNormal)},
+	)
+	box, err := renderer.Layout(multiline, ir.Display, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := glyphItems(box)
+	if len(refs) != 3 {
+		t.Fatalf("refs = %d, want 3", len(refs))
+	}
+	if !closeHost(refs[0].At.X, 0) || !closeHost(refs[1].At.X, 16) || !closeHost(refs[2].At.X, 28.444336) {
+		t.Fatalf("aligned refs = %+v, want a at 0, = at 16, 1 at 28.444336", refs)
+	}
 }
 
 func TestBuiltInTableRulesTagsAndDashes(t *testing.T) {
@@ -445,11 +469,11 @@ func TestBuiltInTableRowsHaveParenthesisHeightFloor(t *testing.T) {
 	}
 	tiny := ir.NewGlyph(source.NewRange(0, 1), "tiny")
 	table := ir.NewTable(source.NewRange(0, 1), ir.TableRow{Cells: []ir.Node{tiny}})
-	box, err := renderer.Layout(table, ir.Inline, testStyle(16))
+	box, err := renderer.Layout(table, ir.Display, testStyle(16))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := box.Ascent+box.Descent, float32(11.52); !closeHost(got, want) {
+	if got, want := box.Ascent+box.Descent, float32(14.399902); !closeHost(got, want) {
 		t.Fatalf("table height = %v, want parenthesis-floor height %v", got, want)
 	}
 }

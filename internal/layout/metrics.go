@@ -17,6 +17,8 @@ type MathMetrics struct {
 
 	SpaceWidth geometry.Em
 	XHeight    geometry.Em
+	// CapHeight drives the minimum inline equation ascent.
+	CapHeight geometry.Em
 	// AccentBaseHeight and FlattenedAccentBaseHeight come from the font's
 	// typographic metrics. Zero uses the New Computer Modern-compatible
 	// fallbacks in normalized.
@@ -93,6 +95,9 @@ func (m MathMetrics) normalized() MathMetrics {
 	}
 	if m.FlattenedAccentBaseHeight <= 0 {
 		m.FlattenedAccentBaseHeight = 43_516 // 0.664 em
+	}
+	if m.CapHeight <= 0 {
+		m.CapHeight = 44_761 // 0.683 em
 	}
 	return m
 }

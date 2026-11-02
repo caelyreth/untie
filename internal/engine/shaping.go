@@ -180,10 +180,12 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 		}
 	}
 	extended := false
+	stretchableHorizontal := false
 	if mathText {
 		if value, ok := a.fonts.IsExtendedShape(mapped); ok {
 			extended = value
 		}
+		_, stretchableHorizontal = a.fonts.MathConstruction(mapped, font.HorizontalAxis)
 	}
 	advanceIncludesItalic := mathText && !extended
 	if advanceIncludesItalic {
@@ -205,6 +207,8 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 		Descent:               descent,
 		Italic:                italic,
 		AdvanceIncludesItalic: advanceIncludesItalic,
+		StretchableHorizontal: stretchableHorizontal,
+		ExactGlyphRef:         true,
 		TextLike:              mathText && isTextLike(text),
 		Outline:               path,
 	}

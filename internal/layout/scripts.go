@@ -86,7 +86,14 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	topLimitShift, bottomLimitShift, err := s.limitShifts(env.Style, base, top, bottom, metrics)
+	topLimitShift, bottomLimitShift, err := s.limitShifts(
+		env.Style,
+		base,
+		top,
+		bottom,
+		metrics,
+		base.StretchableHorizontal,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -484,42 +491,87 @@ func (s *layoutState) scriptShifts(
 	return shiftUp, shiftDown, nil
 }
 
-func (s *layoutState) limitShifts(style Style, base, top, bottom *Fragment, metrics MathMetrics) (geometry.Em, geometry.Em, error) {
+func (s *layoutState) limitShifts(
+	style Style,
+	base, top, bottom *Fragment,
+	metrics MathMetrics,
+	stretchy bool,
+) (geometry.Em, geometry.Em, error) {
 	var topShift, bottomShift geometry.Em
 	if top != nil {
-		rise, err := s.metricAt(metrics.UpperLimitBaselineRiseMin, style)
-		if err != nil {
-			return 0, 0, err
-		}
-		gap, err := s.metricAt(metrics.UpperLimitGapMin, style)
-		if err != nil {
-			return 0, 0, err
-		}
-		gapPart, err := add(gap, top.Descent)
-		if err != nil {
-			return 0, 0, err
-		}
-		topShift, err = add(base.Ascent, max(rise, gapPart))
-		if err != nil {
-			return 0, 0, err
+		if stretchy {
+			shiftUp, err := s.metricAt(metrics.StretchStackTopShiftUp, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gapAbove, err := s.metricAt(metrics.StretchStackGapAboveMin, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gap, err := sub(shiftUp, base.Ascent, top.Descent)
+			if err != nil {
+				return 0, 0, err
+			}
+			gap = max(gap, gapAbove)
+			topShift, err = sum(base.Ascent, gap, top.Descent)
+			if err != nil {
+				return 0, 0, err
+			}
+		} else {
+			rise, err := s.metricAt(metrics.UpperLimitBaselineRiseMin, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gap, err := s.metricAt(metrics.UpperLimitGapMin, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gapPart, err := add(gap, top.Descent)
+			if err != nil {
+				return 0, 0, err
+			}
+			topShift, err = add(base.Ascent, max(rise, gapPart))
+			if err != nil {
+				return 0, 0, err
+			}
 		}
 	}
 	if bottom != nil {
-		drop, err := s.metricAt(metrics.LowerLimitBaselineDropMin, style)
-		if err != nil {
-			return 0, 0, err
-		}
-		gap, err := s.metricAt(metrics.LowerLimitGapMin, style)
-		if err != nil {
-			return 0, 0, err
-		}
-		gapPart, err := add(gap, bottom.Ascent)
-		if err != nil {
-			return 0, 0, err
-		}
-		bottomShift, err = add(base.Descent, max(drop, gapPart))
-		if err != nil {
-			return 0, 0, err
+		if stretchy {
+			shiftDown, err := s.metricAt(metrics.StretchStackBottomShiftDown, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gapBelow, err := s.metricAt(metrics.StretchStackGapBelowMin, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gap, err := sub(shiftDown, base.Descent, bottom.Ascent)
+			if err != nil {
+				return 0, 0, err
+			}
+			gap = max(gap, gapBelow)
+			bottomShift, err = sum(base.Descent, gap, bottom.Ascent)
+			if err != nil {
+				return 0, 0, err
+			}
+		} else {
+			drop, err := s.metricAt(metrics.LowerLimitBaselineDropMin, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gap, err := s.metricAt(metrics.LowerLimitGapMin, style)
+			if err != nil {
+				return 0, 0, err
+			}
+			gapPart, err := add(gap, bottom.Ascent)
+			if err != nil {
+				return 0, 0, err
+			}
+			bottomShift, err = add(base.Descent, max(drop, gapPart))
+			if err != nil {
+				return 0, 0, err
+			}
 		}
 	}
 	return topShift, bottomShift, nil

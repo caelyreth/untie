@@ -84,10 +84,6 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 	if !ok {
 		return layout.Glyph{}, fmt.Errorf("%w: no %s construction", layout.ErrInsufficientStretch, axisName(req.Axis))
 	}
-	target, err := a.toDesignUnits(req.Target, info.UnitsPerEm)
-	if err != nil {
-		return layout.Glyph{}, err
-	}
 	shortTarget, err := subNonNegative(req.Target, req.ShortFall)
 	if err != nil {
 		return layout.Glyph{}, err
@@ -132,7 +128,7 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 		}
 	}
 	if construction.Assembly != nil {
-		assembled, err := a.assembleGlyph(req.Context, base, mapped, construction, target, req.Target, axis, text)
+		assembled, err := a.assembleGlyph(req.Context, base, mapped, construction, req.Target, axis, text)
 		if err != nil {
 			return layout.Glyph{}, err
 		}

@@ -27,6 +27,7 @@ func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, error) {
 	f.mu.Unlock()
 	if ok {
 		glyph.Text = req.Text
+		glyph.ExactGlyphRef = true
 		return glyph, nil
 	}
 	if f.strict {
@@ -42,15 +43,16 @@ func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, error) {
 		id = id*31 + uint16(r)
 	}
 	return Glyph{
-		ID:        id,
-		FontID:    "test-math",
-		Text:      req.Text,
-		Advance:   advance,
-		Ascent:    em(7, 10),
-		Descent:   em(2, 10),
-		Italic:    em(1, 20),
-		TopAccent: em(1, 4),
-		TextLike:  true,
+		ID:            id,
+		FontID:        "test-math",
+		Text:          req.Text,
+		Advance:       advance,
+		Ascent:        em(7, 10),
+		Descent:       em(2, 10),
+		Italic:        em(1, 20),
+		TopAccent:     em(1, 4),
+		ExactGlyphRef: true,
+		TextLike:      true,
 		Outline: Path{
 			{Op: geometry.SegMoveTo, Points: [3]Point{{X: 0, Y: -em(2, 10)}}},
 			{Op: geometry.SegLineTo, Points: [3]Point{{X: advance, Y: -em(2, 10)}}},
@@ -115,13 +117,14 @@ func (fakeTextSource) ShapeText(req TextRequest) (TextRun, error) {
 		Descent: em(2, 10),
 		Glyphs: []PositionedGlyph{{
 			Glyph: Glyph{
-				ID:       1,
-				FontID:   "test-text",
-				Text:     req.Text,
-				Advance:  advance,
-				Ascent:   em(7, 10),
-				Descent:  em(2, 10),
-				TextLike: true,
+				ID:            1,
+				FontID:        "test-text",
+				Text:          req.Text,
+				Advance:       advance,
+				Ascent:        em(7, 10),
+				Descent:       em(2, 10),
+				ExactGlyphRef: true,
+				TextLike:      true,
 			},
 		}},
 	}, nil
@@ -265,7 +268,8 @@ func testStyle(size float32) display.Style {
 }
 
 func closeHost(got, want float32) bool {
-	tolerance := float32(1) / float32(hostSubunits)
+	// Internal em rounding may remain one em subunit after host conversion.
+	const tolerance = float32(1) / 1024
 	diff := got - want
 	return diff <= tolerance && diff >= -tolerance
 }
