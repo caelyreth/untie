@@ -3,8 +3,8 @@ package typst
 import (
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
+	"github.com/caelyreth/untie/internal/mathdata"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -17,7 +17,7 @@ var typstSymbols = map[string]symbolDef{
 	// Greek.
 	"alpha": {text: "α", class: ir.ClassAlphabetic}, "beta": {text: "β", class: ir.ClassAlphabetic},
 	"gamma": {text: "γ", class: ir.ClassAlphabetic}, "delta": {text: "δ", class: ir.ClassAlphabetic},
-	"epsilon": {text: "ϵ", class: ir.ClassAlphabetic}, "epsilon.alt": {text: "ε", class: ir.ClassAlphabetic},
+	"epsilon": {text: "ε", class: ir.ClassAlphabetic}, "epsilon.alt": {text: "ϵ", class: ir.ClassAlphabetic},
 	"zeta": {text: "ζ", class: ir.ClassAlphabetic}, "eta": {text: "η", class: ir.ClassAlphabetic},
 	"theta": {text: "θ", class: ir.ClassAlphabetic}, "theta.alt": {text: "ϑ", class: ir.ClassAlphabetic},
 	"iota": {text: "ι", class: ir.ClassAlphabetic}, "kappa": {text: "κ", class: ir.ClassAlphabetic},
@@ -27,8 +27,8 @@ var typstSymbols = map[string]symbolDef{
 	"pi.alt": {text: "ϖ", class: ir.ClassAlphabetic}, "rho": {text: "ρ", class: ir.ClassAlphabetic},
 	"rho.alt": {text: "ϱ", class: ir.ClassAlphabetic}, "sigma": {text: "σ", class: ir.ClassAlphabetic},
 	"sigma.alt": {text: "ς", class: ir.ClassAlphabetic}, "tau": {text: "τ", class: ir.ClassAlphabetic},
-	"upsilon": {text: "υ", class: ir.ClassAlphabetic}, "phi": {text: "ϕ", class: ir.ClassAlphabetic},
-	"phi.alt": {text: "φ", class: ir.ClassAlphabetic}, "chi": {text: "χ", class: ir.ClassAlphabetic},
+	"upsilon": {text: "υ", class: ir.ClassAlphabetic}, "phi": {text: "φ", class: ir.ClassAlphabetic},
+	"phi.alt": {text: "ϕ", class: ir.ClassAlphabetic}, "chi": {text: "χ", class: ir.ClassAlphabetic},
 	"psi": {text: "ψ", class: ir.ClassAlphabetic}, "omega": {text: "ω", class: ir.ClassAlphabetic},
 	"Gamma": {text: "Γ", class: ir.ClassAlphabetic}, "Delta": {text: "Δ", class: ir.ClassAlphabetic},
 	"Theta": {text: "Θ", class: ir.ClassAlphabetic}, "Lambda": {text: "Λ", class: ir.ClassAlphabetic},
@@ -139,17 +139,32 @@ func builtinEmLength(value float64) ir.Length {
 var accentAliases = map[string]string{
 	"hat": "̂", "tilde": "̃", "macron": "̄", "bar": "¯", "breve": "̆",
 	"acute": "́", "grave": "̀", "caron": "̌", "dot": "̇", "dot.double": "̈",
+	"dot.triple": "⃛", "dot.quad": "⃜",
 	"arrow": "⃗", "arrow.l": "⃖", "arrow.l.r": "⃡", "circle": "̊",
 }
 
 func symbol(name string) (symbolDef, bool) {
 	name = strings.TrimPrefix(name, "sym.")
 	name = strings.TrimPrefix(name, "math.")
-	def, ok := typstSymbols[name]
-	return def, ok
+	// Typst 0.15.1 renamed center dots to dots.h.c and retains dots.c as a
+	// compatibility spelling in its symbol catalogue.
+	if name == "dots.c" {
+		name = "dots.h.c"
+	}
+	if def, ok := typstSymbols[name]; ok {
+		return def, true
+	}
+	entry, ok := mathdata.LookupTypstSymbol(name)
+	if !ok || entry.Value == "" {
+		return symbolDef{}, false
+	}
+	return symbolDef{text: entry.Value, class: classForText(entry.Value)}, true
 }
 
 func classForRune(r rune) ir.MathClass {
+	// Resolve Unicode's context-dependent ASCII operators using TeX's neutral
+	// atom classes. A plus or minus in the token stream is normalized as a
+	// binary atom by layout when it is unary or adjacent to another atom.
 	switch {
 	case unicode.IsLetter(r):
 		return ir.ClassAlphabetic
@@ -167,15 +182,68 @@ func classForRune(r rune) ir.MathClass {
 		return ir.ClassPunctuation
 	case strings.ContainsRune("∑∏∐∫∬∭∮⋃⋂", r):
 		return ir.ClassLarge
+	}
+	if class, ok := mathdata.DefaultClass(r); ok {
+		return irClassForMathdata(class)
+	}
+	return ir.ClassNormal
+}
+
+func irClassForMathdata(class mathdata.Class) ir.MathClass {
+	switch class {
+	case mathdata.ClassAlphabetic:
+		return ir.ClassAlphabetic
+	case mathdata.ClassBinary:
+		return ir.ClassBinary
+	case mathdata.ClassClosing:
+		return ir.ClassClosing
+	case mathdata.ClassDiacritic:
+		return ir.ClassDiacritic
+	case mathdata.ClassFence:
+		return ir.ClassFence
+	case mathdata.ClassLarge:
+		return ir.ClassLarge
+	case mathdata.ClassOpening:
+		return ir.ClassOpening
+	case mathdata.ClassPunctuation:
+		return ir.ClassPunctuation
+	case mathdata.ClassRelation:
+		return ir.ClassRelation
+	case mathdata.ClassSpace:
+		return ir.ClassSpace
+	case mathdata.ClassUnary:
+		return ir.ClassUnary
+	case mathdata.ClassVary:
+		return ir.ClassVarying
+	case mathdata.ClassSpecial:
+		return ir.ClassSpecial
 	default:
+		// Glyph-part and unknown classes have no distinct neutral class.
 		return ir.ClassNormal
 	}
 }
 
 func classForText(text string) ir.MathClass {
-	if utf8.RuneCountInString(text) == 1 {
-		r, _ := utf8.DecodeRuneInString(text)
+	for _, r := range text {
+		if isVariationSelector(r) {
+			continue
+		}
 		return classForRune(r)
 	}
 	return ir.ClassNormal
+}
+
+func limitsForSymbol(name string, class ir.MathClass) ir.LimitsPlacement {
+	if class != ir.ClassLarge {
+		return ir.LimitsAuto
+	}
+	name = strings.TrimPrefix(name, "sym.")
+	if name == "integral" || strings.HasPrefix(name, "integral.") {
+		return ir.LimitsNever
+	}
+	return ir.LimitsAuto
+}
+
+func isVariationSelector(r rune) bool {
+	return r >= '\ufe00' && r <= '\ufe0f'
 }

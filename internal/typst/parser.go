@@ -380,12 +380,15 @@ func (p *parser) parsePrimary() *astNode {
 		if p.current().kind == tokLParen && !p.current().spaceBefore {
 			return p.parseCall(callee)
 		}
+		if p.current().kind == tokLBracket && !p.current().spaceBefore {
+			return p.parseTrailingContentCall(callee)
+		}
 		return callee
 	case tokNumber:
 		p.advance()
 		lit := p.node(tok.span, astNumber)
 		lit.text = tok.text
-		if v, ok := parseNumericLiteral(tok.text); ok {
+		if v, ok := parseScalarLiteral(tok.text); ok {
 			lit.value = v
 		}
 		return lit
@@ -402,7 +405,12 @@ func (p *parser) parsePrimary() *astNode {
 		return short
 	case tokHash:
 		return p.parseCode()
-	case tokLParen, tokLBracket, tokLBrace:
+	case tokLParen:
+		if p.startsCodeDictionary() {
+			return p.parseCodeParen()
+		}
+		return p.parseDelimited()
+	case tokLBracket, tokLBrace:
 		return p.parseDelimited()
 	case tokDollar:
 		p.advance()
@@ -451,6 +459,17 @@ func (p *parser) parsePrimary() *astNode {
 		return glyph
 	}
 	return nil
+}
+
+func (p *parser) startsCodeDictionary() bool {
+	if p.current().kind != tokLParen || p.peek(1).kind != tokIdent {
+		return false
+	}
+	if p.peek(2).kind == tokColon {
+		return true
+	}
+	return p.peek(2).kind == tokShorthand && p.peek(2).literal == "−" &&
+		p.peek(3).kind == tokIdent && p.peek(4).kind == tokColon
 }
 
 func (p *parser) parseIdentOrField() *astNode {
@@ -670,6 +689,9 @@ func (p *parser) parseCodeAtom() *astNode {
 		if p.current().kind == tokLParen && !p.current().spaceBefore {
 			return p.parseCall(ident)
 		}
+		if p.current().kind == tokLBracket && !p.current().spaceBefore {
+			return p.parseTrailingContentCall(ident)
+		}
 		return ident
 	case tokNumber:
 		p.advance()
@@ -700,7 +722,7 @@ func (p *parser) parseCodeAtom() *astNode {
 			lit.value = lengthValue(length)
 			return lit
 		}
-		if v, ok := parseNumericLiteral(tok.text); ok {
+		if v, ok := parseScalarLiteral(tok.text); ok {
 			lit.value = v
 			lit.text = tok.text
 			return lit
@@ -760,6 +782,26 @@ func (p *parser) parseCodeAtom() *astNode {
 		return p.parseCode()
 	}
 	return p.parsePrimary()
+}
+
+// parseTrailingContentCall recognizes functions with a single content-block
+// argument, such as hide[...], strong[...], and link("...")[...].
+func (p *parser) parseTrailingContentCall(callee *astNode) *astNode {
+	content := p.parseDelimited()
+	if content == nil {
+		return callee
+	}
+	content.open = ""
+	content.close = ""
+	content.raw = "content"
+	call := p.node(source.Merge(callee.span, content.span), astCall)
+	call.base = callee
+	call.args = []astArg{{
+		kind: argPositional,
+		span: content.span,
+		node: content,
+	}}
+	return call
 }
 
 func (p *parser) unsupportedCodeBlock() *astNode {

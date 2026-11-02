@@ -119,6 +119,18 @@ func parseNumericLiteral(text string) (value, bool) {
 	return integerValue(v), true
 }
 
+func parseScalarLiteral(text string) (value, bool) {
+	for _, unit := range []string{"em", "ex", "pt", "mm", "cm", "in"} {
+		if !strings.HasSuffix(text, unit) || len(text) == len(unit) {
+			continue
+		}
+		if length, ok := lengthFromParts(strings.TrimSuffix(text, unit), unit); ok {
+			return lengthValue(length), true
+		}
+	}
+	return parseNumericLiteral(text)
+}
+
 func lengthFromParts(number, unit string) (ir.Length, bool) {
 	v, err := strconv.ParseFloat(number, 64)
 	if err != nil || math.IsInf(v, 0) || math.IsNaN(v) {

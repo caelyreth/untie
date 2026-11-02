@@ -1,7 +1,9 @@
 package typst
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
@@ -66,6 +68,41 @@ func (l *lowerer) lowerText(call *astNode) ir.Node {
 			l.warningAt(arg.span, source.CodeUnsupported, "text %s is not represented by the neutral Text node", arg.name)
 		}
 	}
+	return body
+}
+
+func (l *lowerer) lowerContentEmphasis(call *astNode, name string) ir.Node {
+	body := l.contentArg(call, "body", 0, true)
+	switch name {
+	case "strong":
+		if delta := namedArgument(call, "delta"); delta != nil {
+			l.warningAt(delta.span, source.CodeUnsupported, "strong text weight delta is not represented by the neutral Text node")
+		}
+		applyVariant(body, ir.VariantBold)
+	case "emph":
+		applyVariant(body, ir.VariantItalic)
+	}
+	return body
+}
+
+func (l *lowerer) lowerLink(call *astNode) ir.Node {
+	positional := l.positionalArguments(call)
+	var body ir.Node
+	if named := l.contentNamed(call, "body"); named != nil {
+		body = named
+	} else if len(positional) >= 2 {
+		body = l.lowerArgument(positional[len(positional)-1].node)
+	} else if len(positional) == 1 {
+		// Typst displays the URL itself when a URL link has no explicit body.
+		if text, ok := l.valueString(positional[0].node); ok {
+			body = l.text(positional[0].span, text)
+		}
+	}
+	if body == nil {
+		l.errorAt(call.span, source.CodeMissingArgument, "missing argument: body")
+		return l.placeholder(call.span, "missing link body")
+	}
+	l.warningAt(call.span, source.CodeUnsupported, "link destination is not represented by the neutral math IR")
 	return body
 }
 
@@ -177,19 +214,19 @@ func (l *lowerer) lowerBox(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
 	box := ir.NewBox(call.span, body)
 	if arg := namedArgument(call, "inset"); arg != nil {
-		if padding, ok := l.valueLength(arg.node); ok {
-			box.Padding = [4]ir.Length{padding, padding, padding, padding}
+		if padding, ok := l.valueSides(arg.node); ok {
+			box.Padding = padding
 		} else {
-			l.errorAt(arg.span, source.CodeInvalidValue, "expected length, found %s", l.valueType(arg.node))
+			l.errorAt(arg.span, source.CodeInvalidValue, "expected length or side dictionary, found %s", l.valueType(arg.node))
 		}
 	}
 	if arg := namedArgument(call, "stroke"); arg != nil {
-		if paint, ok := l.valuePaint(arg.node); ok {
+		if stroke, ok := l.valueStroke(arg.node); ok {
 			box.HasBorder = true
-			box.Border = paint
-			box.BorderWidth = builtinEmLength(0.05)
+			box.Border = stroke.paint
+			box.BorderWidth = stroke.width
 		} else if !isNoneAST(arg.node) {
-			l.errorAt(arg.span, source.CodeInvalidValue, "expected color or stroke")
+			l.errorAt(arg.span, source.CodeInvalidValue, "expected color, length, or stroke")
 		}
 	} else if arg := namedArgument(call, "border"); arg != nil {
 		if paint, ok := l.valuePaint(arg.node); ok {
@@ -220,6 +257,92 @@ func (l *lowerer) lowerBox(call *astNode) ir.Node {
 		}
 	}
 	return box
+}
+
+type strokeValue struct {
+	paint ir.Paint
+	width ir.Length
+}
+
+func (l *lowerer) valueStroke(n *astNode) (strokeValue, bool) {
+	if width, ok := l.valueLength(n); ok {
+		return strokeValue{paint: ir.Paint{Role: ir.PaintInk}, width: width}, true
+	}
+	if paint, ok := l.valuePaint(n); ok {
+		return strokeValue{paint: paint, width: builtinEmLength(0.05)}, true
+	}
+	v, ok := l.evalValue(n)
+	if !ok || v.kind != valueDictionary {
+		return strokeValue{}, false
+	}
+	stroke := strokeValue{paint: ir.Paint{Role: ir.PaintInk}, width: builtinEmLength(0.05)}
+	if thickness, ok := v.entry("thickness"); ok {
+		switch thickness.kind {
+		case valueLength:
+			stroke.width = thickness.length
+		case valueAuto:
+		default:
+			return strokeValue{}, false
+		}
+	}
+	if value, ok := v.entry("paint"); ok {
+		switch value.kind {
+		case valueColor:
+			stroke.paint = value.color
+		case valueAuto:
+		default:
+			return strokeValue{}, false
+		}
+	}
+	return stroke, true
+}
+
+func (l *lowerer) valueSides(n *astNode) ([4]ir.Length, bool) {
+	if length, ok := l.valueLength(n); ok {
+		return [4]ir.Length{length, length, length, length}, true
+	}
+	v, ok := l.evalValue(n)
+	if !ok || v.kind != valueDictionary {
+		return [4]ir.Length{}, false
+	}
+	var sides [4]ir.Length
+	read := func(name string, target *ir.Length) bool {
+		value, ok := v.entry(name)
+		if !ok {
+			return true
+		}
+		if value.kind == valueNone || value.kind == valueAuto {
+			return true
+		}
+		if value.kind != valueLength {
+			return false
+		}
+		*target = value.length
+		return true
+	}
+	if !read("left", &sides[0]) || !read("top", &sides[1]) ||
+		!read("right", &sides[2]) || !read("bottom", &sides[3]) {
+		return [4]ir.Length{}, false
+	}
+	if value, ok := v.entry("x"); ok {
+		if value.kind != valueLength {
+			return [4]ir.Length{}, false
+		}
+		sides[0], sides[2] = value.length, value.length
+	}
+	if value, ok := v.entry("y"); ok {
+		if value.kind != valueLength {
+			return [4]ir.Length{}, false
+		}
+		sides[1], sides[3] = value.length, value.length
+	}
+	if value, ok := v.entry("rest"); ok {
+		if value.kind != valueLength {
+			return [4]ir.Length{}, false
+		}
+		sides = [4]ir.Length{value.length, value.length, value.length, value.length}
+	}
+	return sides, true
 }
 
 func (l *lowerer) lowerHSpace(call *astNode) ir.Node {
@@ -291,12 +414,62 @@ func (l *lowerer) lowerValueContent(span source.Range, v value) ir.Node {
 	case valueContent:
 		return l.lower(v.content)
 	case valueColor:
-		l.errorAt(span, source.CodeInvalidValue, "color used where content was expected")
-		return l.errNode(span, l.sourceText(span), source.CodeInvalidValue)
-	case valueArray, valueDictionary, valueLength:
-		l.errorAt(span, source.CodeInvalidValue, "%s used where content was expected", v.typeName())
-		return l.errNode(span, l.sourceText(span), source.CodeInvalidValue)
+		return l.monospaceValueText(span, formatColor(v.color))
+	case valueLength:
+		text := l.sourceText(span)
+		if text == "" {
+			text = formatLength(v.length)
+		}
+		return l.monospaceValueText(span, text)
+	case valueArray:
+		text := l.sourceText(span)
+		if text == "" {
+			text = formatArray(v.array)
+		}
+		return l.monospaceValueText(span, text)
+	case valueDictionary:
+		return l.monospaceValueText(span, l.sourceText(span))
 	default:
 		return l.placeholder(span, v.typeName()+" used where content was expected")
 	}
+}
+
+func (l *lowerer) monospaceValueText(span source.Range, text string) ir.Node {
+	if text == "" {
+		return l.placeholder(span, "empty value representation")
+	}
+	node := l.text(span, text)
+	if rendered, ok := node.(*ir.Text); ok {
+		rendered.Font = ir.FontText
+		rendered.Variant = ir.VariantMonospace
+	}
+	return node
+}
+
+func formatColor(paint ir.Paint) string {
+	if !paint.HasExplicit {
+		return "rgb(\"#000000\")"
+	}
+	return fmt.Sprintf("rgb(\"#%02x%02x%02x\")", paint.Explicit.R, paint.Explicit.G, paint.Explicit.B)
+}
+
+func formatLength(length ir.Length) string {
+	units := map[ir.LengthUnit]string{
+		ir.LengthZero: "0", ir.LengthEm: "em", ir.LengthEx: "ex", ir.LengthMu: "mu",
+		ir.LengthPt: "pt", ir.LengthDip: "pt", ir.LengthPercent: "%",
+	}
+	return strconv.FormatFloat(length.Float(), 'g', -1, 64) + units[length.Unit]
+}
+
+func formatArray(values []value) string {
+	var builder strings.Builder
+	builder.WriteByte('(')
+	for i, item := range values {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString(valueText(item))
+	}
+	builder.WriteByte(')')
+	return builder.String()
 }

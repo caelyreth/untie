@@ -144,14 +144,6 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 
 	var body ir.Node = table
 	if openText != "" || closeText != "" {
-		if closeText == "" {
-			// The sealed IR currently treats a nil closing fence as an invalid
-			// child. Preserve the visible one-sided delimiter without creating
-			// malformed Fenced output.
-			body = ir.NewRow(call.span)
-			body.(*ir.Row).Items = []ir.Node{table, l.glyph(source.NewRange(call.span.Start, call.span.Start), openText)}
-			return body
-		}
 		fenced := ir.NewFenced(call.span, table)
 		if openText != "" {
 			open := l.glyph(source.NewRange(call.span.Start, call.span.Start), openText)
@@ -163,7 +155,7 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 			closeGlyph.Class = ir.ClassClosing
 			fenced.Close = closeGlyph
 		}
-		fenced.Balanced = true
+		fenced.Balanced = openText != "" && closeText != ""
 		fenced.Class = ir.ClassInner
 		body = fenced
 	}
