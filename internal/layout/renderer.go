@@ -133,7 +133,7 @@ func (r *Renderer) layoutFormulaContext(
 		// multi-line wrap that cannot own one unambiguous tag.
 		box, err = state.flattenFragment(rootFragment)
 		if err == nil && mode == ir.Display && style.MaxWidth > 0 {
-			box, err = state.constrainedFallback(box)
+			box, err = state.constrainedFallbackBox(box)
 		}
 	} else {
 		box, err = state.flatten(rootFragment)

@@ -33,7 +33,7 @@ func TestDisplayLineOffsetsAndAggregateTranslation(t *testing.T) {
 			for i, width := range widths {
 				lines[i] = alignmentLine(width, maxWidth)
 			}
-			box, err := state.assembleDisplayLines(&display.Box{}, lines)
+			box, err := state.assembleDisplayLines(lines)
 			if err != nil {
 				t.Fatalf("assembleDisplayLines() error = %v", err)
 			}
@@ -219,7 +219,7 @@ func TestDisplayAlignmentFrameHonorsMaxDimension(t *testing.T) {
 
 	state := alignmentLayoutState(display.AlignCenter, 10)
 	state.limits.MaxDimension = 9
-	_, err := state.assembleDisplayLines(&display.Box{}, []display.LineBox{alignmentLine(4, 10)})
+	_, err := state.assembleDisplayLines([]display.LineBox{alignmentLine(4, 10)})
 	if !errors.Is(err, ErrLimit) {
 		t.Fatalf("assembleDisplayLines() error = %v, want ErrLimit", err)
 	}

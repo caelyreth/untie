@@ -10,14 +10,10 @@ import (
 )
 
 func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
-	box, err := s.flattenFragment(root)
-	if err != nil {
-		return nil, err
-	}
 	if s.mode == ir.Display && s.request.MaxWidth > 0 {
-		return s.flattenDisplayLines(root, box)
+		return s.flattenDisplayLines(root)
 	}
-	return box, nil
+	return s.flattenFragment(root)
 }
 
 func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {

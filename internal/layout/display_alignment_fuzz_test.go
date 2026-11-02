@@ -46,7 +46,7 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 			}}
 		}
 		state := alignmentLayoutState(align, maxWidth)
-		box, err := state.assembleDisplayLines(&display.Box{}, lines)
+		box, err := state.assembleDisplayLines(lines)
 		if lineCount == 0 {
 			if err == nil {
 				t.Fatal("empty input assembled a box")

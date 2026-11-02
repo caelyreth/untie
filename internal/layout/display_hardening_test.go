@@ -46,7 +46,7 @@ func TestLayoutPreservesNegativeItalicCorrection(t *testing.T) {
 	}
 }
 
-func TestDisplayFallbackCopyCancellation(t *testing.T) {
+func TestDisplayFallbackReusesLineStorage(t *testing.T) {
 	t.Parallel()
 
 	path := make(geometry.Path, 300)
@@ -56,39 +56,35 @@ func TestDisplayFallbackCopyCancellation(t *testing.T) {
 			Points: [3]geometry.Point{{X: 1, Y: 2}},
 		}
 	}
-	tests := []struct {
-		name      string
-		items     []display.Item
-		remaining int
-	}{
-		{
-			name:      "item copy",
-			items:     make([]display.Item, 130),
-			remaining: 1,
-		},
-		{
-			name: "path copy",
-			items: []display.Item{{
-				Kind: display.ItemGlyphPath,
-				Path: path,
-			}},
-			remaining: 2,
-		},
+	base := &display.Box{
+		Items: []display.Item{{
+			Kind: display.ItemGlyphPath,
+			Path: path,
+		}},
+		Hits: []display.Hit{{Source: source.NewRange(0, 1)}},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			state := &layoutState{
-				ctx:      &countdownContext{Context: context.Background(), remaining: tc.remaining},
-				request:  display.Style{MaxWidth: 1},
-				hostSize: hostSubunits,
-				limits:   source.DefaultLimits(),
-			}
-			_, err := state.singleDisplayLine(&display.Box{Items: tc.items}, 1)
-			if !errors.Is(err, context.Canceled) {
-				t.Fatalf("singleDisplayLine() error = %v, want context.Canceled", err)
-			}
-		})
+	state := &layoutState{
+		ctx:      context.Background(),
+		request:  display.Style{MaxWidth: 1},
+		hostSize: hostSubunits,
+		limits:   source.DefaultLimits(),
+	}
+	line, err := state.singleDisplayLine(base, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if &line.Items[0] != &base.Items[0] || &line.Items[0].Path[0] != &base.Items[0].Path[0] {
+		t.Fatal("singleDisplayLine copied item or path storage")
+	}
+	if &line.Hits[0] != &base.Hits[0] {
+		t.Fatal("singleDisplayLine copied hit storage")
+	}
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	state.ctx = canceled
+	if _, err := state.singleDisplayLine(base, 1); !errors.Is(err, context.Canceled) {
+		t.Fatalf("singleDisplayLine(canceled) error = %v", err)
 	}
 }
 
@@ -123,7 +119,7 @@ func TestDisplayParentItalicComesFromFinalLine(t *testing.T) {
 		limits:   source.DefaultLimits(),
 		request:  display.Style{MaxWidth: 10},
 	}
-	parent, err := state.assembleDisplayLines(&display.Box{}, []display.LineBox{
+	parent, err := state.assembleDisplayLines([]display.LineBox{
 		{Box: &display.Box{Ascent: 1, Descent: 1, Italic: 0.25}},
 		{Box: &display.Box{Ascent: 1, Descent: 1, Italic: -0.5}},
 	})

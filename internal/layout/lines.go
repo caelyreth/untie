@@ -18,12 +18,16 @@ type linePlan struct {
 	end   int
 }
 
-func (s *layoutState) flattenDisplayLines(root *Fragment, base *display.Box) (*display.Box, error) {
+func (s *layoutState) flattenDisplayLines(root *Fragment) (*display.Box, error) {
 	if err := s.ctx.Err(); err != nil {
 		return nil, err
 	}
-	if base.Width <= s.request.MaxWidth || len(root.breaks) == 0 {
-		return s.constrainedFallback(base)
+	width, err := s.host(root.Width)
+	if err != nil {
+		return nil, err
+	}
+	if width <= s.request.MaxWidth || len(root.breaks) == 0 {
+		return s.constrainedFallback(root)
 	}
 
 	boundaries, ok, err := s.displayLineBoundaries(root)
@@ -31,17 +35,14 @@ func (s *layoutState) flattenDisplayLines(root *Fragment, base *display.Box) (*d
 		return nil, err
 	}
 	if !ok {
-		return s.constrainedFallback(base)
+		return s.constrainedFallback(root)
 	}
 	plans, err := s.greedyLinePlans(boundaries)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.checkLineOutputLimit(root, base, len(plans)); err != nil {
-		return nil, err
-	}
 	if len(plans) == 1 {
-		return s.constrainedFallback(base)
+		return s.constrainedFallback(root)
 	}
 
 	lines := make([]display.LineBox, 0, len(plans))
@@ -71,18 +72,23 @@ func (s *layoutState) flattenDisplayLines(root *Fragment, base *display.Box) (*d
 		}
 		lines = append(lines, display.LineBox{Box: line})
 	}
-	return s.assembleDisplayLines(base, lines)
+	return s.assembleDisplayLines(lines)
 }
 
-func (s *layoutState) constrainedFallback(base *display.Box) (*display.Box, error) {
-	if err := s.checkLineOutputLimit(nil, base, 1); err != nil {
+func (s *layoutState) constrainedFallback(root *Fragment) (*display.Box, error) {
+	base, err := s.flattenFragment(root)
+	if err != nil {
 		return nil, err
 	}
+	return s.constrainedFallbackBox(base)
+}
+
+func (s *layoutState) constrainedFallbackBox(base *display.Box) (*display.Box, error) {
 	line, err := s.singleDisplayLine(base, s.request.MaxWidth)
 	if err != nil {
 		return nil, err
 	}
-	return s.assembleDisplayLines(base, []display.LineBox{{Box: line}})
+	return s.assembleDisplayLines([]display.LineBox{{Box: line}})
 }
 
 func (s *layoutState) singleDisplayLine(base *display.Box, maxWidth float32) (*display.Box, error) {
@@ -93,45 +99,9 @@ func (s *layoutState) singleDisplayLine(base *display.Box, maxWidth float32) (*d
 		return nil, err
 	}
 	line := *base
-	line.Items = nil
-	line.Hits = nil
 	line.Breaks = nil
 	line.Alt = display.Alt{}
 	line.Lines = nil
-	if len(base.Items) > 0 {
-		line.Items = make([]display.Item, len(base.Items))
-		for i, item := range base.Items {
-			if i%64 == 0 {
-				if err := s.ctx.Err(); err != nil {
-					return nil, err
-				}
-			}
-			copied := item
-			if len(item.Path) > 0 {
-				copied.Path = make([]geometry.Segment, len(item.Path))
-				for j := range item.Path {
-					if j%256 == 0 {
-						if err := s.ctx.Err(); err != nil {
-							return nil, err
-						}
-					}
-					copied.Path[j] = item.Path[j]
-				}
-			}
-			line.Items[i] = copied
-		}
-	}
-	if len(base.Hits) > 0 {
-		line.Hits = make([]display.Hit, len(base.Hits))
-		for i := range base.Hits {
-			if i%64 == 0 {
-				if err := s.ctx.Err(); err != nil {
-					return nil, err
-				}
-			}
-			line.Hits[i] = base.Hits[i]
-		}
-	}
 	if len(base.Breaks) > 0 {
 		line.Breaks = make([]display.Break, len(base.Breaks))
 		for i := range base.Breaks {
@@ -392,49 +362,22 @@ func (s *layoutState) appendLineOwnHit(root *Fragment, line *display.Box) error 
 	return nil
 }
 
-func (s *layoutState) checkLineOutputLimit(root *Fragment, base *display.Box, lines int) error {
-	maxOutput := int64(s.limits.MaxOutputItems)
-	items := int64(len(base.Items))
-	lineCount := int64(lines)
-	if lineCount > maxOutput {
-		return fmt.Errorf("%w: line count %d", ErrLimit, lineCount)
-	}
-	if items > (maxOutput-lineCount)/2 {
-		return fmt.Errorf("%w: line output count", ErrLimit)
-	}
-	pathSegments := int64(0)
-	for i, item := range base.Items {
-		if i%64 == 0 {
-			if err := s.ctx.Err(); err != nil {
-				return err
-			}
-		}
-		pathSegments += int64(len(item.Path))
-	}
-	if pathSegments > int64(s.limits.MaxPathSegments)/2 {
-		return fmt.Errorf("%w: line path segment count", ErrLimit)
-	}
-	parentHits := int64(len(base.Hits))
-	if root != nil && root.ownHit >= 0 && lines > 1 {
-		parentHits += lineCount - 1
-	}
-	if parentHits > int64(s.limits.MaxNodes) {
-		return fmt.Errorf("%w: line source hit count %d", ErrLimit, parentHits)
-	}
-	return nil
-}
-
-func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.LineBox) (*display.Box, error) {
+func (s *layoutState) assembleDisplayLines(lines []display.LineBox) (*display.Box, error) {
 	if len(lines) == 0 {
 		return nil, fmt.Errorf("%w: display lines are empty", ErrInvalidInput)
 	}
 	if _, err := s.addHost(s.request.MaxWidth, 0); err != nil {
 		return nil, err
 	}
+	if lines[0].Box == nil {
+		return nil, fmt.Errorf("%w: nil first display line", ErrInvalidInput)
+	}
+	maxOutput := int64(s.limits.MaxOutputItems)
+	physicalItems := int64(len(lines))
+	physicalPathSegments := int64(0)
 	parent := &display.Box{
 		Width:      s.request.MaxWidth,
-		AxisHeight: base.AxisHeight,
-		Alt:        base.Alt,
+		AxisHeight: lines[0].Box.AxisHeight,
 		Lines:      make([]display.LineBox, len(lines)),
 	}
 	var baseline float32
@@ -493,6 +436,14 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 				return nil, err
 			}
 			parent.Items = append(parent.Items, translated)
+			physicalItems += 2
+			physicalPathSegments += 2 * int64(len(item.Path))
+			if physicalItems > maxOutput {
+				return nil, fmt.Errorf("%w: display output item count", ErrLimit)
+			}
+			if physicalPathSegments > int64(s.limits.MaxPathSegments) {
+				return nil, fmt.Errorf("%w: display path segment count", ErrLimit)
+			}
 		}
 		for hitIndex, hit := range lines[i].Box.Hits {
 			if hitIndex%64 == 0 {

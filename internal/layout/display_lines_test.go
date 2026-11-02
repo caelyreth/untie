@@ -563,7 +563,7 @@ func TestDisplayParentOverflowIsGlobal(t *testing.T) {
 			}},
 		}},
 	}
-	parent, err := state.assembleDisplayLines(&display.Box{}, lines)
+	parent, err := state.assembleDisplayLines(lines)
 	if err != nil {
 		t.Fatal(err)
 	}
