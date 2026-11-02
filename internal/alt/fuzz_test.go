@@ -231,7 +231,7 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 		case 1:
 			return ir.NewError(span, text(), source.CodeSyntax)
 		case 2:
-			return ir.NewBreak(span, ir.BreakKind(cursor.next()%3), 0)
+			return ir.NewBreak(span, ir.BreakKind(cursor.next()%3))
 		default:
 			return ir.NewAlignMarker(span)
 		}

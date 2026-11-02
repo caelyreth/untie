@@ -480,6 +480,36 @@ func TestFallbackIRValidates(t *testing.T) {
 	}
 }
 
+func TestHostMacroURLProducesValidSourceIR(t *testing.T) {
+	t.Parallel()
+
+	const src = `\site`
+	expr := ParseTeX(src, Inline, ParseOptions{
+		Macros: map[string]Macro{
+			"site": {Body: `\url{https://example.org/a%20b}`},
+		},
+	})
+	if err := ir.ValidateSource(expr.Root(), src, source.Limits{}); err != nil {
+		t.Fatalf("ValidateSource() error = %v", err)
+	}
+	var text *ir.Text
+	ir.Walk(expr.Root().Root, func(node ir.Node) bool {
+		if candidate, ok := node.(*ir.Text); ok {
+			text = candidate
+		}
+		return true
+	})
+	if text == nil {
+		t.Fatalf("host macro URL root = %T, want text", expr.Root())
+	}
+	if text.Text != "https://example.org/a%20b" {
+		t.Fatalf("host macro URL text = %q", text.Text)
+	}
+	if text.Span != source.NewRange(0, len(src)) || text.Origin != text.Span {
+		t.Fatalf("host macro URL span/origin = %v/%v, want invocation", text.Span, text.Origin)
+	}
+}
+
 func TestLayoutEmitsSourceAndMacroOriginHits(t *testing.T) {
 	t.Parallel()
 

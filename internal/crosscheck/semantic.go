@@ -383,7 +383,6 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 	case *ir.Break:
 		baseValue["kind"] = "break"
 		baseValue["break"] = breakKindName(node.Break)
-		baseValue["penalty"] = node.Penalty
 		return baseValue, nil
 	case *ir.AlignMarker:
 		baseValue["kind"] = "align-marker"

@@ -311,7 +311,7 @@ func TestGenerateTablesMultilineBreaksAndMarkers(t *testing.T) {
 
 	row := ir.NewRow(testSpan,
 		glyph("x"),
-		ir.NewBreak(testSpan, ir.BreakRelation, 0),
+		ir.NewBreak(testSpan, ir.BreakRelation),
 		glyph("y"),
 		ir.NewAlignMarker(testSpan),
 		glyph("z"),

@@ -138,9 +138,8 @@ type canonicalHit struct {
 }
 
 type canonicalBreak struct {
-	X       float32 `json:"x"`
-	Penalty int     `json:"penalty"`
-	Kind    string  `json:"kind"`
+	X    float32 `json:"x"`
+	Kind string  `json:"kind"`
 }
 
 func canonicalHits(hits []Hit) []canonicalHit {
@@ -166,9 +165,8 @@ func canonicalBreaks(breaks []Break) []canonicalBreak {
 	out := make([]canonicalBreak, len(breaks))
 	for i, breakPoint := range breaks {
 		out[i] = canonicalBreak{
-			X:       breakPoint.X,
-			Penalty: breakPoint.Penalty,
-			Kind:    breakKindName(breakPoint.Kind),
+			X:    breakPoint.X,
+			Kind: breakKindName(breakPoint.Kind),
 		}
 	}
 	return out

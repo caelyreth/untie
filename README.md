@@ -87,6 +87,7 @@ go run ./cmd/dailyreport -allow-known-issues # diagnostic mode only
 - source-linked hit rectangles emitted from placed layout fragments
 - deterministic inline break metadata and constrained display line boxes
 - TeX display equation-tag metadata and independently drawable tag boxes
+- text-only link bodies with explicit unsupported destination diagnostics
 - deterministic text/speech alternative output with bounded fallbacks
 - a tracked daily-STEM acceptance corpus that outranks rare reference cases
 - no reference project is compiled or executed by the test suite

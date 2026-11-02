@@ -261,10 +261,12 @@ changes formula layout.
 Alternative output honors the per-field stricter intersection of Engine and
 expression resource limits; `Box.Alt` may therefore be a bounded fallback that
 differs from `Expr.Alt` when the Engine contract is tighter.
-The greedy pass chooses the furthest cut that fits. Penalty is consulted only
-when distinct cuts project to the same width; this is not TeX badness
-optimization. If exact source topology cannot be proven, display wrapping
-returns one complete overfull line instead of guessing from paint order.
+The greedy pass chooses the furthest cut that fits. Break entries carry only an
+X position and kind; they do not invent a numeric penalty. When distinct cuts
+project to the same width, the earliest source cut is selected deterministically.
+This is not TeX badness optimization. If exact source topology cannot be proven,
+display wrapping returns one complete overfull line instead of guessing from
+paint order.
 Wrapped output charges the parent and line draw items plus `LineBox` records to
 `MaxOutputItems`; parent and line path copies remain bounded by
 `MaxPathSegments`; aggregated parent hits remain bounded by `MaxNodes`. Parent
@@ -311,6 +313,24 @@ Tag-box validation rejects nil or nested tags, invalid source ranges, malformed
 placement, and aggregate item/hit disagreement. Parent aggregates include tag
 items and hits; constrained parent and line tag metadata must agree. Clone and
 canonical output own every tag box path and line record independently.
+
+Links are a deliberate text-only boundary. TeX `\href`/`\url` and Typst `link`
+retain rendered body content and its source spans, discard the destination, and
+create no neutral link metadata. A warning is emitted only when the destination
+and body pass the frontend's bounded argument checks. The TeX lexer switches its
+URL group to catcode-neutral scanning, preserving `%`, `~`, `#`, whitespace, and
+balanced braces without leaking destination tokens into the formula. `\url`
+accepts a braced group or one token; an empty group is valid; an
+unclosed group reports `unclosed-group`. Typst destinations are non-empty string
+values; labels, references, and document-level resolution are outside the
+current evaluator. Full `hyperref` behavior and clickable output belong to a
+future backend rather than the math IR.
+
+URL catcodes are lexical rather than a second macro evaluator. Preservation
+therefore applies to a literal braced group present in source or host-macro
+text. A bare `%` after `\url` remains a TeX comment, and a URL assembled only
+from tokens already lexed as macro arguments cannot recover characters that the
+outer lexer removed as comments.
 
 ## Public Orchestration
 

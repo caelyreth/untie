@@ -9538,7 +9538,7 @@
           "severity": 1,
           "start": 0,
           "end": 5,
-          "message": "hyperlinks are outside the formula IR; link target was discarded"
+          "message": "hyperlinks are outside the formula IR; link destination was discarded"
         }
       ]
     },
@@ -15887,6 +15887,18 @@
       ],
       "commands": [
         "\\url"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 1,
+          "start": 0,
+          "end": 4,
+          "message": "hyperlinks are outside the formula IR; link destination was discarded"
+        }
       ]
     },
     {

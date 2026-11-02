@@ -98,10 +98,17 @@ func TestCallableSymbolsAndContentFunctions(t *testing.T) {
 		t.Fatalf("strong text = %#v", bold)
 	}
 
-	link := parse(t, `#link("https://typst.app", $x^2$)`)
-	find[*ir.Scripts](t, link.Root)
+	const linkSource = `#link("https://typst.app", $x^2$)`
+	link := parse(t, linkSource)
+	scripts := find[*ir.Scripts](t, link.Root)
+	if got := string(scripts.NodeBase().Span.Slice(linkSource)); got != `x^2` {
+		t.Fatalf("link body span = %q, want %q", got, `x^2`)
+	}
 	if len(link.Diagnostics) != 1 || string(link.Diagnostics[0].Code) != "unsupported" {
 		t.Fatalf("link diagnostics = %#v", link.Diagnostics)
+	}
+	if got := link.Diagnostics[0].Message; got != "link destination is not represented by the neutral math IR" {
+		t.Fatalf("link diagnostic = %q", got)
 	}
 }
 

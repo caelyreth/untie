@@ -8,7 +8,8 @@ is not a compatibility claim.
 
 - Repository state: post engine hardening, generated/fixture import, neutral
   delimiter sizing, synthetic moustache assembly, TeX single-line equation-tag
-  metadata/layout, and TeX/Typst conformance baselines
+  metadata/layout, break/link API-boundary cleanup, and TeX/Typst conformance
+  baselines
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
@@ -47,6 +48,15 @@ tests and migration notes.
   parent/line metadata. Parent output includes translated tag items and hits;
   tag source semantics do not enter formula root breaks. Alternative text
   appends a deterministic equation-tag phrase.
+- Break metadata carries position and kind, not an invented relative cost.
+- Link syntax is text-only across both frontends: visible body content and source
+  spans survive parsing/layout, destinations are intentionally discarded, and
+  an unsupported warning is emitted only after argument validation. TeX braced
+  URL groups preserve raw `%`, `~`, `#`, whitespace, and balanced braces;
+  single-token `\url` is accepted, empty `{}` is valid, and unclosed groups use
+  the normal recovery diagnostic. Typst destinations are limited to non-empty
+  strings in the bounded evaluator. The neutral IR has no link node or target
+  metadata.
 - Parsing facade with dialect selection, TeX macro options, diagnostics, stable
   parse keys, cancellation checks, and a panic containment boundary. Typst
   preamble/code definitions are intentionally unsupported and no longer appear
@@ -216,8 +226,13 @@ The following are genuine gaps, not hidden behavior:
 - Inline break metadata, alternative text, width-constrained display line boxes
   with start/center/end alignment, and TeX single-line manual tags are
   implemented. Re-layout split pieces, host/Typst document numbering,
-  multiline/row equation tags, links, MathML output, rasterization, and SVG
-  export are not product features. SVG support is test-only.
+  multiline/row equation tags, link destinations, Typst label/reference
+  destinations, full `hyperref` behavior, MathML output, rasterization, and SVG
+  export are not product features. `\nobreak` and cost-based line breaking are
+  explicitly unsupported. TeX URL catcodes apply to a literal braced group in
+  source or a host macro body; bare `\url%...` remains a comment, and macro
+  arguments that were already lexed are not reparsed as raw URLs. SVG support
+  is test-only.
 - The daily corpus prioritizes ordinary STEM notation over reference-project
   completeness. Its content digest and exact expectations pass with no tracked
   issue entries, including four explicit missing-glyph boundaries. Chinese text

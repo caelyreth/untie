@@ -361,13 +361,12 @@ func NewPlaceholder(span source.Range, reason string) *Placeholder {
 // Break marks a legal line break point.
 type Break struct {
 	Base
-	Break   BreakKind
-	Penalty int
+	Break BreakKind
 }
 
 // NewBreak constructs a break marker.
-func NewBreak(span source.Range, kind BreakKind, penalty int) *Break {
-	return &Break{Base: NewBase(KindBreak, span), Break: kind, Penalty: penalty}
+func NewBreak(span source.Range, kind BreakKind) *Break {
+	return &Break{Base: NewBase(KindBreak, span), Break: kind}
 }
 
 // AlignMarker marks a Typst/TeX alignment point.

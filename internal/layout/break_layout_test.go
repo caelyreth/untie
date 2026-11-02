@@ -48,8 +48,8 @@ func TestTopLevelRelationAndBinaryBreaks(t *testing.T) {
 				t.Fatalf("Breaks = %+v, want one", box.Breaks)
 			}
 			got := box.Breaks[0]
-			if got.Kind != test.kind || got.Penalty != 0 {
-				t.Fatalf("break = %+v, want kind %v and penalty 0", got, test.kind)
+			if got.Kind != test.kind {
+				t.Fatalf("break = %+v, want kind %v", got, test.kind)
 			}
 			// The post-operator automatic space belongs to the preceding piece.
 			if want := box.Items[test.nextAt].At.X; !closeHost(got.X, want) {
@@ -121,7 +121,7 @@ func TestExplicitBreakIncludesFollowingSpaceAndWinsTies(t *testing.T) {
 	root := ir.NewRow(source.NewRange(0, 4),
 		glyph("x", ir.ClassNormal),
 		before,
-		ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit, 123),
+		ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit),
 		after,
 		glyph("y", ir.ClassNormal),
 	)
@@ -132,8 +132,8 @@ func TestExplicitBreakIncludesFollowingSpaceAndWinsTies(t *testing.T) {
 	if len(box.Breaks) != 1 {
 		t.Fatalf("Breaks = %+v, want one", box.Breaks)
 	}
-	if got := box.Breaks[0]; got.Kind != display.BreakExplicit || got.Penalty != 123 {
-		t.Fatalf("break = %+v, want explicit with source penalty", got)
+	if got := box.Breaks[0]; got.Kind != display.BreakExplicit {
+		t.Fatalf("break = %+v, want explicit", got)
 	}
 	if want := box.Items[1].At.X; !closeHost(box.Breaks[0].X, want) {
 		t.Fatalf("explicit break X = %v, want %v after following space", box.Breaks[0].X, want)
@@ -142,20 +142,20 @@ func TestExplicitBreakIncludesFollowingSpaceAndWinsTies(t *testing.T) {
 	tied := ir.NewRow(source.NewRange(0, 4),
 		glyph("x", ir.ClassNormal),
 		glyph("=", ir.ClassRelation),
-		ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit, 123),
+		ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit),
 		glyph("y", ir.ClassNormal),
 	)
 	box, err = renderer.Layout(tied, ir.Inline, testStyle(16))
 	if err != nil {
 		t.Fatalf("Layout(tied) error = %v", err)
 	}
-	if len(box.Breaks) != 1 || box.Breaks[0].Kind != display.BreakExplicit || box.Breaks[0].Penalty != 123 {
-		t.Fatalf("tied Breaks = %+v, want one explicit opportunity with source penalty", box.Breaks)
+	if len(box.Breaks) != 1 || box.Breaks[0].Kind != display.BreakExplicit {
+		t.Fatalf("tied Breaks = %+v, want one explicit opportunity", box.Breaks)
 	}
 
 	semantic := ir.NewRow(source.NewRange(0, 3),
 		glyph("x", ir.ClassNormal),
-		ir.NewBreak(source.NewRange(1, 2), ir.BreakRelation, 0),
+		ir.NewBreak(source.NewRange(1, 2), ir.BreakRelation),
 		glyph("y", ir.ClassNormal),
 	)
 	box, err = renderer.Layout(semantic, ir.Inline, testStyle(16))
@@ -262,7 +262,7 @@ func TestNestedConstructsDoNotLeakBreaks(t *testing.T) {
 		return ir.NewRow(source.NewRange(0, 3), glyph("x", ir.ClassNormal), glyph("=", ir.ClassRelation), glyph("y", ir.ClassNormal))
 	}
 	rowWithExplicit := func() ir.Node {
-		return ir.NewRow(source.NewRange(0, 3), glyph("x", ir.ClassNormal), ir.NewBreak(source.NewRange(1, 2), ir.BreakExplicit, 0), glyph("y", ir.ClassNormal))
+		return ir.NewRow(source.NewRange(0, 3), glyph("x", ir.ClassNormal), ir.NewBreak(source.NewRange(1, 2), ir.BreakExplicit), glyph("y", ir.ClassNormal))
 	}
 	tests := []struct {
 		name string

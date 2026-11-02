@@ -950,19 +950,27 @@ func parseLengthString(text string) (ir.Length, bool) {
 }
 
 func (p *parser) consumeRawGroupText() string {
+	text, _, _, _ := p.consumeRawGroupTextRange()
+	return text
+}
+
+func (p *parser) consumeRawGroupTextRange() (string, source.Range, source.Range, bool) {
 	p.exp.consumeSpaces()
 	open := p.exp.popRaw()
 	if !open.is(tokBeginGroup) {
 		p.exp.push(open)
-		return ""
+		return "", source.Detached(), source.Detached(), false
 	}
 	var b strings.Builder
 	depth := 1
+	start := open.span.End
+	end := start
 	for {
 		t := p.exp.popRaw()
 		if t.isEOF() {
 			break
 		}
+		end = t.span.End
 		if t.is(tokBeginGroup) {
 			depth++
 			if depth > 1 {
@@ -973,6 +981,7 @@ func (p *parser) consumeRawGroupText() string {
 		if t.is(tokEndGroup) {
 			depth--
 			if depth == 0 {
+				end = t.span.Start
 				break
 			}
 			b.WriteString("}")
@@ -980,7 +989,7 @@ func (p *parser) consumeRawGroupText() string {
 		}
 		b.WriteString(t.text)
 	}
-	return b.String()
+	return b.String(), source.NewRange(start, end), open.span, true
 }
 
 func newGlyphAST(span source.Range, text string, class ir.MathClass) *astGlyphNode {

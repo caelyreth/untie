@@ -503,7 +503,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	case *astPlaceholderNode:
 		return l.placeholder(n.span, n.reason)
 	case *astBreakNode:
-		out := ir.NewBreak(n.span, n.kind, 0)
+		out := ir.NewBreak(n.span, n.kind)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassSpecial)
 		return out
 	case *astAlignNode:

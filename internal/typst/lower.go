@@ -99,7 +99,7 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 		marker.Class = ir.ClassSpecial
 		return marker
 	case astLinebreak:
-		return ir.NewBreak(n.span, ir.BreakExplicit, 0)
+		return ir.NewBreak(n.span, ir.BreakExplicit)
 	case astEquation:
 		if len(n.items) == 0 {
 			return ir.NewRow(n.span)
