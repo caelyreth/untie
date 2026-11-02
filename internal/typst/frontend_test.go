@@ -525,6 +525,34 @@ func TestNonFunctionContentCallPunctuationSpans(t *testing.T) {
 	}
 }
 
+func TestTrailingContentCallUsesSourcePunctuation(t *testing.T) {
+	t.Parallel()
+
+	src := `f[x]`
+	result := parse(t, src)
+	want := map[string]source.Range{
+		"[": source.NewRange(1, 2),
+		"]": source.NewRange(3, 4),
+	}
+	found := make(map[string]source.Range)
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		glyph, ok := node.(*ir.Glyph)
+		if ok {
+			found[glyph.Text] = glyph.Span
+		}
+		return true
+	})
+	for text, span := range want {
+		if found[text] != span {
+			t.Fatalf("glyph %q span = %v, want %v; all glyph spans = %#v",
+				text, found[text], span, found)
+		}
+	}
+	if _, ok := found["("]; ok {
+		t.Fatal("trailing content call synthesized parenthesis")
+	}
+}
+
 func TestUnsupportedParametersAreDiagnosed(t *testing.T) {
 	t.Parallel()
 

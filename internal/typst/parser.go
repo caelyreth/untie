@@ -647,19 +647,21 @@ func (p *parser) parseDelimited() *astNode {
 	}
 	body := p.parseRow(stops)
 	end := p.current().span.End
-	closed := false
 	if p.current().kind == closeKind {
-		p.advance()
-		closed = true
-	} else {
-		p.errorAt(open.span, source.CodeUnclosedGroup, "unclosed delimiter")
-		end = p.current().span.Start
-	}
-	delim := p.node(source.NewRange(open.span.Start, end), astDelimited)
-	delim.open = openText
-	if closed {
+		close := p.advance()
+		delim := p.node(source.NewRange(open.span.Start, close.span.End), astDelimited)
+		delim.openSpan = open.span
+		delim.closeSpan = close.span
+		delim.open = openText
 		delim.close = closeText
+		delim.items = []*astNode{body}
+		return delim
 	}
+	p.errorAt(open.span, source.CodeUnclosedGroup, "unclosed delimiter")
+	end = p.current().span.Start
+	delim := p.node(source.NewRange(open.span.Start, end), astDelimited)
+	delim.openSpan = open.span
+	delim.open = openText
 	delim.items = []*astNode{body}
 	return delim
 }
@@ -848,12 +850,18 @@ func (p *parser) parseTrailingContentCall(callee *astNode) *astNode {
 	if content == nil {
 		return callee
 	}
+	openText, closeText := content.open, content.close
+	openSpan, closeSpan := content.openSpan, content.closeSpan
 	content.open = ""
 	content.close = ""
 	content.raw = "content"
 	call := p.node(source.Merge(callee.span, content.span), astCall)
 	call.base = callee
 	call.inCode = callee.inCode
+	call.openSpan = openSpan
+	call.closeSpan = closeSpan
+	call.open = openText
+	call.close = closeText
 	call.args = []astArg{{
 		kind: argPositional,
 		span: content.span,

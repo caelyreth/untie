@@ -868,11 +868,18 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 	if fenced == nil {
 		return nil
 	}
-	open := l.glyph(punctuationSpan(call.openSpan, call.span.Start), "(")
+	openText, closeText := call.open, call.close
+	if openText == "" {
+		openText = "("
+	}
+	if closeText == "" {
+		closeText = ")"
+	}
+	open := l.glyph(punctuationSpan(call.openSpan, call.span.Start), openText)
 	if open == nil {
 		return nil
 	}
-	closeGlyph := l.glyph(punctuationSpan(call.closeSpan, call.span.End), ")")
+	closeGlyph := l.glyph(punctuationSpan(call.closeSpan, call.span.End), closeText)
 	if closeGlyph == nil {
 		return nil
 	}
