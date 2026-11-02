@@ -368,6 +368,9 @@ func (e engineEvaluator) Evaluate(ctx context.Context, testCase Case) CaseResult
 		if problem := validateHits(root.Root, testCase, box); problem != "" {
 			return fail(problem)
 		}
+		if problem := validateTag(testCase, box); problem != "" {
+			return fail(problem)
+		}
 		if problem := validateLines(testCase, style, box); problem != "" {
 			return fail(problem)
 		}
@@ -612,6 +615,9 @@ func validateLines(testCase Case, style untie.Style, box *untie.Box) string {
 		}
 		return ""
 	}
+	if testCase.Expect.RequireFits && box.Overflow > 0 {
+		return fmt.Sprintf("constrained box overflow = %v, want a fitting frame", box.Overflow)
+	}
 	minLines := testCase.Expect.MinLines
 	if minLines < 1 {
 		minLines = 1
@@ -620,9 +626,16 @@ func validateLines(testCase Case, style untie.Style, box *untie.Box) string {
 		return fmt.Sprintf("box lines %d, want at least %d", len(box.Lines), minLines)
 	}
 	for i, line := range box.Lines {
+		frameWidth := style.MaxWidth
+		if line.Tag != nil {
+			frameWidth -= line.Tag.Box.Width
+			if frameWidth < 0 {
+				frameWidth = 0
+			}
+		}
 		wantOffset := float32(0)
-		if line.Box.Width < style.MaxWidth {
-			remaining := style.MaxWidth - line.Box.Width
+		if line.Box.Width < frameWidth {
+			remaining := frameWidth - line.Box.Width
 			switch style.Align {
 			case untie.AlignStart:
 			case untie.AlignCenter:
@@ -651,6 +664,29 @@ func validateLines(testCase Case, style untie.Style, box *untie.Box) string {
 		}
 		if !lineOverflow {
 			return "no constrained line reports overflow"
+		}
+	}
+	return ""
+}
+
+func validateTag(testCase Case, box *untie.Box) string {
+	if !testCase.Expect.RequireTag {
+		return ""
+	}
+	if box.Tag == nil || box.Tag.Box == nil {
+		return "required equation tag is absent"
+	}
+	if !box.Tag.Manual || box.Tag.Line != untie.FormulaTagLine {
+		return fmt.Sprintf("equation tag metadata = manual:%v line:%d",
+			box.Tag.Manual, box.Tag.Line)
+	}
+	if len(box.Lines) != 0 {
+		if len(box.Lines) != 1 || box.Lines[0].Tag == nil {
+			return "constrained equation tag is not attached to its line"
+		}
+		if box.Lines[0].Tag.Line != untie.FormulaTagLine {
+			return fmt.Sprintf("line tag line = %d, want %d",
+				box.Lines[0].Tag.Line, untie.FormulaTagLine)
 		}
 	}
 	return ""

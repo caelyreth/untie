@@ -38,8 +38,8 @@ func TestTrackedDailyCorpusPasses(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Summary{
-		Total: 87, Pass: 87, KnownIssueFailures: 0, UnexpectedFailures: 0,
-		Rendered: 77, Recovered: 5, MissingGlyph: 4, LayoutError: 1, Failure: 0,
+		Total: 92, Pass: 92, KnownIssueFailures: 0, UnexpectedFailures: 0,
+		Rendered: 80, Recovered: 7, MissingGlyph: 4, LayoutError: 1, Failure: 0,
 	}
 	if report.Summary != want {
 		t.Fatalf("summary = %+v, want %+v", report.Summary, want)

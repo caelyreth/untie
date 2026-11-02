@@ -9,6 +9,14 @@ import (
 	"github.com/caelyreth/untie/ir"
 )
 
+func TestFormulaTagLinePublicContract(t *testing.T) {
+	t.Parallel()
+
+	if FormulaTagLine != ir.FormulaTagLine {
+		t.Fatalf("public FormulaTagLine = %d, neutral = %d", FormulaTagLine, ir.FormulaTagLine)
+	}
+}
+
 func TestExprCarriesImmutableEquationTags(t *testing.T) {
 	t.Parallel()
 
@@ -58,7 +66,7 @@ func TestEquationTagLayoutAndAltContract(t *testing.T) {
 	if box.Tag == nil || box.Tag.Box == nil {
 		t.Fatal("Box.Tag = nil")
 	}
-	if !box.Tag.Manual || box.Tag.Starred || box.Tag.Line != 0 {
+	if !box.Tag.Manual || box.Tag.Starred || box.Tag.Line != FormulaTagLine {
 		t.Fatalf("TagBox metadata = %+v", box.Tag)
 	}
 	if box.Tag.X <= 0 || box.Tag.Box.Width <= 0 || len(box.Tag.Box.Items) == 0 {
@@ -121,6 +129,23 @@ func TestEquationTagConstrainedAlignmentAndOverflow(t *testing.T) {
 		t.Fatalf("fitting tag overflow = %v, want zero", fitting.Overflow)
 	}
 
+	end, err := engine.LayoutContext(context.Background(), expr, Style{
+		Size: 16, MaxWidth: 120, Align: AlignEnd, GlyphRefs: true,
+	})
+	if err != nil {
+		t.Fatalf("LayoutContext(end) error = %v", err)
+	}
+	if end.Overflow != 0 {
+		t.Fatalf("end-aligned tag overflow = %v, want zero", end.Overflow)
+	}
+	if !closeFloat(end.Tag.X+end.Tag.Box.Width, 120) {
+		t.Fatalf("end-aligned tag right edge = %v, want 120", end.Tag.X+end.Tag.Box.Width)
+	}
+	if !closeFloat(end.Lines[0].OffsetX+end.Lines[0].Box.Width, end.Tag.X) {
+		t.Fatalf("end-aligned formula right edge = %v, want tag left edge %v",
+			end.Lines[0].OffsetX+end.Lines[0].Box.Width, end.Tag.X)
+	}
+
 	overfull, err := engine.LayoutContext(context.Background(), expr, Style{
 		Size: 16, MaxWidth: 1, Align: AlignEnd, GlyphRefs: true,
 	})
@@ -174,7 +199,7 @@ func TestEquationTagLayoutRejectsInlineButAllowsNestedMultilineValues(t *testing
 		Span:   Range{Start: 0, End: 1},
 		Origin: Range{Start: 0, End: 1},
 		Manual: true,
-		Line:   0,
+		Line:   FormulaTagLine,
 	}}
 	if _, err := engine.Layout(inline, Style{Size: 16}); !errors.Is(err, ErrInvalidStyle) && !strings.Contains(err.Error(), "display mode") {
 		t.Fatalf("inline tag layout error = %v, want display-mode rejection", err)

@@ -14,14 +14,16 @@ func TestTrackedCorpusMatchesExactManifest(t *testing.T) {
 	if err := ValidateCorpus(cases, manifest); err != nil {
 		t.Fatal(err)
 	}
-	if len(cases) != 87 {
-		t.Fatalf("case count = %d, want 87", len(cases))
+	if len(cases) != 92 {
+		t.Fatalf("case count = %d, want 92", len(cases))
 	}
 	wantCategories := map[string]int{
 		"algebra":                10,
 		"calculus":               12,
 		"delimiters":             6,
 		"display-wrapping":       5,
+		"equation-tags":          3,
+		"links":                  2,
 		"linear-algebra":         10,
 		"malformed-input":        4,
 		"multiline-cases":        6,
@@ -34,14 +36,14 @@ func TestTrackedCorpusMatchesExactManifest(t *testing.T) {
 	if !mapsEqual(manifest.Categories, wantCategories) {
 		t.Fatalf("categories = %v, want %v", manifest.Categories, wantCategories)
 	}
-	if manifest.Count != 87 || manifest.CoverageGroups != 34 || manifest.SourceSpecific != 19 {
+	if manifest.Count != 92 || manifest.CoverageGroups != 35 || manifest.SourceSpecific != 22 {
 		t.Fatalf("manifest counts = total %d, groups %d, specific %d",
 			manifest.Count, manifest.CoverageGroups, manifest.SourceSpecific)
 	}
-	if manifest.Dialects["tex"] != 47 || manifest.Dialects["typst"] != 40 {
+	if manifest.Dialects["tex"] != 51 || manifest.Dialects["typst"] != 41 {
 		t.Fatalf("dialect counts = %v", manifest.Dialects)
 	}
-	if manifest.Modes["inline"] != 35 || manifest.Modes["display"] != 52 {
+	if manifest.Modes["inline"] != 37 || manifest.Modes["display"] != 55 {
 		t.Fatalf("mode counts = %v", manifest.Modes)
 	}
 	if len(manifest.ExpectedIssues) != 0 {

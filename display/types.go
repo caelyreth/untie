@@ -18,6 +18,10 @@ const (
 	AlignEnd
 )
 
+// FormulaTagLine identifies a tag that belongs to the complete formula rather
+// than one rendered display line. It is the only Phase-1 TagBox line value.
+const FormulaTagLine = -1
+
 // Style is a layout request in host units.
 type Style struct {
 	Size float32
@@ -39,7 +43,10 @@ type Style struct {
 // MaxWidth-wide alignment frame. Box uses line-local coordinates: hosts draw it
 // at (OffsetX, Baseline). Box must not contain nested Lines. Box.Overflow is
 // max(line-local ink overflow, line width minus the parent frame width); the
-// parent Box.Overflow covers the assembled aligned aggregate.
+// parent Box.Overflow covers the assembled aligned aggregate. When Tag is
+// non-nil, line alignment is computed in the reduced frame
+// MaxWidth-Tag.Box.Width; an overfull formula line uses zero offset and the tag
+// follows the formula.
 type LineBox struct {
 	Baseline float32
 	OffsetX  float32
@@ -53,15 +60,18 @@ type LineBox struct {
 // TagBox is an independently drawable equation tag. Box uses tag-local
 // coordinates; draw it at (X, Y) in the owning Box's coordinate space. For a
 // LineBox.Tag, X and Y are still parent-frame coordinates and do not move with
-// OffsetX. Tag boxes never contain nested tags or lines.
+// OffsetX. Line is FormulaTagLine for the formula-level Phase-1 contract. Tag
+// boxes never contain nested tags or lines.
 type TagBox struct {
 	Box     *Box
 	Source  source.Range
 	Manual  bool
 	Starred bool
-	Line    int
-	X       float32
-	Y       float32
+	// Line is FormulaTagLine. Zero-based row tags are reserved for future
+	// multiline equation-tag support and are not emitted by Phase 1.
+	Line int
+	X    float32
+	Y    float32
 }
 
 // Role is a theme-resolved paint role.

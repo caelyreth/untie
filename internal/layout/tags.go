@@ -38,7 +38,7 @@ func (s *layoutState) attachSingleLineTag(
 	if s.mode != ir.Display {
 		return nil, fmt.Errorf("%w: equation tags require display mode", ErrUnsupported)
 	}
-	if manual.Line != 0 && manual.Line != -1 {
+	if manual.Line != ir.FormulaTagLine {
 		return nil, fmt.Errorf("%w: equation tag line %d is deferred", ErrUnsupported, manual.Line)
 	}
 	if len(base.Lines) > 1 {
@@ -85,22 +85,51 @@ func (s *layoutState) attachSingleLineTag(
 	x := float32(0)
 	if len(base.Lines) == 1 {
 		line := &base.Lines[0]
-		rightEdge, err := s.subHost(base.Width, tagBox.Width)
+		formulaFrame, err := s.subHost(base.Width, tagBox.Width)
 		if err != nil {
 			return nil, err
 		}
-		if rightEdge < 0 {
-			rightEdge = 0
+		if formulaFrame < 0 {
+			formulaFrame = 0
+		}
+		lineOffset, err := s.displayLineOffsetWithin(line.Box.Width, formulaFrame)
+		if err != nil {
+			return nil, err
+		}
+		if lineOffset != line.OffsetX {
+			delta, err := s.subHost(lineOffset, line.OffsetX)
+			if err != nil {
+				return nil, err
+			}
+			for i := range base.Items {
+				if i%64 == 0 {
+					if err := s.ctx.Err(); err != nil {
+						return nil, err
+					}
+				}
+				base.Items[i], err = s.translateItem(base.Items[i], delta, 0)
+				if err != nil {
+					return nil, err
+				}
+			}
+			for i := range base.Hits {
+				if i%64 == 0 {
+					if err := s.ctx.Err(); err != nil {
+						return nil, err
+					}
+				}
+				base.Hits[i].Area.X, err = s.addHost(base.Hits[i].Area.X, delta)
+				if err != nil {
+					return nil, err
+				}
+			}
+			line.OffsetX = lineOffset
 		}
 		formulaRight, err := s.addHost(line.Box.Width, line.OffsetX)
 		if err != nil {
 			return nil, err
 		}
-		afterFormula, err := s.addHost(formulaRight, 0)
-		if err != nil {
-			return nil, err
-		}
-		x = maxFloat(rightEdge, afterFormula)
+		x = maxFloat(formulaFrame, formulaRight)
 	} else {
 		x, err = s.addHost(base.Width, 0)
 		if err != nil {

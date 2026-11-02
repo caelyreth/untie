@@ -20,7 +20,7 @@ func TestFormulaTagsValidateCloneWalkAndCanonicalize(t *testing.T) {
 			Span:   span,
 			Origin: span,
 			Manual: true,
-			Line:   0,
+			Line:   FormulaTagLine,
 		}},
 	}
 	if err := ValidateSource(formula, `x\tag{1}`, source.Limits{}); err != nil {
@@ -106,7 +106,7 @@ func TestFormulaTagsShareNodeAndSourceLimits(t *testing.T) {
 			Span:   span,
 			Origin: span,
 			Manual: true,
-			Line:   0,
+			Line:   FormulaTagLine,
 		}},
 	}
 	if err := Validate(formula, source.Limits{MaxNodes: 1}); !errors.Is(err, ErrTraversalLimit) {
@@ -133,7 +133,7 @@ func TestFormulaAllowsSuppressionWithoutBody(t *testing.T) {
 			Span:       span,
 			Origin:     span,
 			Suppressed: true,
-			Line:       0,
+			Line:       FormulaTagLine,
 		}},
 	}
 	if err := Validate(formula, source.Limits{}); err != nil {
