@@ -17,7 +17,7 @@ type fakeGlyphSource struct {
 	mu     sync.Mutex
 }
 
-func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, bool) {
+func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, error) {
 	f.mu.Lock()
 	if f.seen == nil {
 		f.seen = make(map[string][]string)
@@ -27,10 +27,10 @@ func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, bool) {
 	f.mu.Unlock()
 	if ok {
 		glyph.Text = req.Text
-		return glyph, true
+		return glyph, nil
 	}
 	if f.strict {
-		return Glyph{}, false
+		return Glyph{}, ErrMissingGlyph
 	}
 	extra := len(req.Text) - 1
 	if extra < 0 {
@@ -58,7 +58,7 @@ func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, bool) {
 			{Op: geometry.SegLineTo, Points: [3]Point{{X: 0, Y: em(7, 10)}}},
 			{Op: geometry.SegClose},
 		},
-	}, true
+	}, nil
 }
 
 type fakeStyleFont struct{}
@@ -72,11 +72,11 @@ type fakeStretcher struct {
 	calls int
 }
 
-func (f *fakeStretcher) Stretch(req StretchRequest) (Glyph, bool) {
+func (f *fakeStretcher) Stretch(req StretchRequest) (Glyph, error) {
 	f.calls++
-	glyph, ok := f.base.Glyph(req.GlyphRequest)
-	if !ok {
-		return Glyph{}, false
+	glyph, err := f.base.Glyph(req.GlyphRequest)
+	if err != nil {
+		return Glyph{}, err
 	}
 	if req.Axis == Horizontal && req.Target > glyph.Advance {
 		glyph.Advance = req.Target
@@ -99,12 +99,12 @@ func (f *fakeStretcher) Stretch(req StretchRequest) (Glyph, bool) {
 			{Op: geometry.SegClose},
 		}
 	}
-	return glyph, true
+	return glyph, nil
 }
 
 type fakeTextSource struct{}
 
-func (fakeTextSource) ShapeText(req TextRequest) (TextRun, bool) {
+func (fakeTextSource) ShapeText(req TextRequest) (TextRun, error) {
 	advance := em(1, 2)
 	if len(req.Text) > 0 {
 		advance = geometry.Em(int64(len([]rune(req.Text))) * geometry.EmScale / 2)
@@ -124,7 +124,7 @@ func (fakeTextSource) ShapeText(req TextRequest) (TextRun, bool) {
 				TextLike: true,
 			},
 		}},
-	}, true
+	}, nil
 }
 
 type fakeTableLayouter struct {

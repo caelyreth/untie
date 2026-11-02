@@ -115,30 +115,38 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	bottomLeftKern := mathKern(base, bottomLeft, subShift, KernBottomLeft)
 	topRightKern := mathKern(base, topRight, supShift, KernTopRight)
 	bottomRightKern := mathKern(base, bottomRight, subShift, KernBottomRight)
-
-	preTop, err := sum(spaceAfter, widthOf(topLeft), topLeftKern)
-	if err != nil {
-		return nil, err
-	}
-	preBottom, err := sum(spaceAfter, widthOf(bottomLeft), bottomLeftKern)
-	if err != nil {
-		return nil, err
-	}
-	postTop, err := sum(spaceAfter, widthOf(topRight), topRightKern)
-	if err != nil {
-		return nil, err
-	}
-	postBottom, err := sum(spaceAfter, widthOf(bottomRight), bottomRightKern)
-	if err != nil {
-		return nil, err
-	}
-	// The base's tracked width includes italic correction. Move a bottom-right
-	// subscript left by that correction, matching the MATH kerning algorithm.
-	postBottom, err = sub(postBottom, base.Italic)
-	if err != nil {
-		return nil, err
+	if base.TextLike && bottomRight != nil {
+		bottomRightKern, err = sub(bottomRightKern, base.Italic)
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	var preTop, preBottom, postTop, postBottom geometry.Em
+	if topLeft != nil {
+		preTop, err = sum(spaceAfter, topLeft.Width, topLeftKern)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if bottomLeft != nil {
+		preBottom, err = sum(spaceAfter, bottomLeft.Width, bottomLeftKern)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if topRight != nil {
+		postTop, err = sum(spaceAfter, topRight.Width, topRightKern)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if bottomRight != nil {
+		postBottom, err = sum(spaceAfter, bottomRight.Width, bottomRightKern)
+		if err != nil {
+			return nil, err
+		}
+	}
 	delta := midpoint(base.Italic)
 	topPre, topPost, err := limitWidths(base.Width, widthOf(top), delta, false)
 	if err != nil {
@@ -180,7 +188,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
-		y, err := sub(ascent, supShift, topLeft.Ascent)
+		y, err := sub(0, supShift)
 		if err != nil {
 			return nil, err
 		}
@@ -197,14 +205,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
-		shifted, err := add(ascent, subShift)
-		if err != nil {
-			return nil, err
-		}
-		y, err := sub(shifted, bottomLeft.Ascent)
-		if err != nil {
-			return nil, err
-		}
+		y := subShift
 		if err := fragment.pushGroup(x, y, bottomLeft); err != nil {
 			return nil, err
 		}
@@ -214,7 +215,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
-		y, err := sub(ascent, supShift, topRight.Ascent)
+		y, err := sub(0, supShift)
 		if err != nil {
 			return nil, err
 		}
@@ -227,14 +228,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
-		shifted, err := add(ascent, subShift)
-		if err != nil {
-			return nil, err
-		}
-		y, err := sub(shifted, bottomRight.Ascent)
-		if err != nil {
-			return nil, err
-		}
+		y := subShift
 		if err := fragment.pushGroup(x, y, bottomRight); err != nil {
 			return nil, err
 		}
@@ -244,7 +238,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
-		y, err := sub(ascent, topLimitShift, top.Ascent)
+		y, err := sub(0, topLimitShift)
 		if err != nil {
 			return nil, err
 		}
@@ -257,14 +251,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
-		shifted, err := add(ascent, bottomLimitShift)
-		if err != nil {
-			return nil, err
-		}
-		y, err := sub(shifted, bottom.Ascent)
-		if err != nil {
-			return nil, err
-		}
+		y := bottomLimitShift
 		if err := fragment.pushGroup(x, y, bottom); err != nil {
 			return nil, err
 		}

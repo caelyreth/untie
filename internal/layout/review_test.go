@@ -50,13 +50,13 @@ func TestScriptAndLimitPlacementPolicy(t *testing.T) {
 				t.Fatalf("items = %d, want base and script", len(box.Items))
 			}
 			scriptX := box.Items[1].At.X
-			baseWidth := box.Items[0].Bound.Width
+			baseCenter := box.Items[0].Bound.Width / 2
 			if test.wantLimits {
-				if scriptX >= baseWidth {
-					t.Fatalf("limit x = %v, base width = %v; want centered limit", scriptX, baseWidth)
+				if scriptX >= baseCenter {
+					t.Fatalf("limit x = %v, base center = %v; want centered limit", scriptX, baseCenter)
 				}
-			} else if scriptX < baseWidth {
-				t.Fatalf("side script x = %v, base width = %v; want side placement", scriptX, baseWidth)
+			} else if scriptX < baseCenter {
+				t.Fatalf("side script x = %v, base center = %v; want side placement", scriptX, baseCenter)
 			}
 		})
 	}
@@ -77,13 +77,13 @@ func TestForcedSideScriptCoexistsWithLimit(t *testing.T) {
 	if len(box.Items) != 3 {
 		t.Fatalf("items = %d, want base, limit, and forced side script", len(box.Items))
 	}
-	baseWidth := box.Items[0].Bound.Width
+	baseCenter := box.Items[0].Bound.Width / 2
 	sawLimit, sawSide := false, false
 	for _, item := range box.Items[1:] {
-		if item.At.X < baseWidth {
+		if item.At.X < baseCenter {
 			sawLimit = true
 		}
-		if item.At.X > baseWidth {
+		if item.At.X > baseCenter {
 			sawSide = true
 		}
 	}
