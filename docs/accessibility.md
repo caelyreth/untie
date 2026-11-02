@@ -188,4 +188,3 @@ copyText := alt.Text
 - Alt validation: [`display/validate.go`](../display/validate.go)
 - Determinism and semantic tests: [`api_test.go`](../api_test.go),
   [`internal/alt/alt_test.go`](../internal/alt/alt_test.go)
-

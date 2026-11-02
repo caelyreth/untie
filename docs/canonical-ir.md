@@ -280,4 +280,3 @@ production host.
 - Canonical IR layout test: [`api_test.go`](../api_test.go)
 - Tag contracts: [`ir/tags_test.go`](../ir/tags_test.go),
   [`internal/tex/tags_test.go`](../internal/tex/tags_test.go)
-

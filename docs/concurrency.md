@@ -213,4 +213,3 @@ See the evidence links below before inventing a weaker locking scheme around
 - Display clone: [`display/types.go`](../display/types.go)
 - Canonical IR validation and clone: [`ir/validate.go`](../ir/validate.go),
   [`ir/clone.go`](../ir/clone.go)
-

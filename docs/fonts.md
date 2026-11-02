@@ -204,4 +204,3 @@ license material under `testdata/upstream`.
 - Fallback-order implementation: [`internal/engine/ports.go`](../internal/engine/ports.go)
 - Shaping path: [`internal/engine/shaping.go`](../internal/engine/shaping.go)
 - Missing-glyph corpus cases: [`testdata/daily-stem/cases.jsonl`](../testdata/daily-stem/cases.jsonl)
-

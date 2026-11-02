@@ -162,4 +162,3 @@ Use the supported-syntax pages together with the baseline policies:
 The higher-level rule is simple: a feature is user-documented only when it is
 present in public code and backed by a test, a tracked fixture, or an explicit
 reviewed limitation.
-

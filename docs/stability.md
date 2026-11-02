@@ -159,4 +159,3 @@ version, migration, and validation layer.
 - Diagnostic code contract: [`source/diagnostic.go`](../source/diagnostic.go)
 - Architecture allowlist:
   [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go)
-

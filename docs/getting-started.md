@@ -216,4 +216,3 @@ reuse or modify its slice after `LayoutContext` returns.
 - End-to-end examples: [`example_test.go`](../example_test.go)
 - Lifecycle and style tests: [`layout_lifecycle_test.go`](../layout_lifecycle_test.go)
 - Drawing example: [`examples/mygo/mathview.go`](../examples/mygo/mathview.go)
-

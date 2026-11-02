@@ -316,4 +316,3 @@ For constrained display:
 - Hits: [`internal/layout/hit_test.go`](../internal/layout/hit_test.go),
   [`display/types_test.go`](../display/types_test.go)
 - Coordinate tests: [`internal/layout/coordinate_test.go`](../internal/layout/coordinate_test.go)
-

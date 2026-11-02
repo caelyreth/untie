@@ -212,4 +212,3 @@ limits, unsupported layout shapes, or an invalid host call.
 - TeX macro tests: [`internal/tex/macro_test.go`](../internal/tex/macro_test.go)
 - Link behavior: [`internal/tex/url_test.go`](../internal/tex/url_test.go),
   [`internal/typst/link_test.go`](../internal/typst/link_test.go)
-

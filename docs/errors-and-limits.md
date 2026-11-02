@@ -206,4 +206,3 @@ draw(diagnostics, box)
 - Engine validation: [`internal/engine/engine.go`](../internal/engine/engine.go)
 - Layout accounting: [`internal/layout/renderer.go`](../internal/layout/renderer.go),
   [`internal/layout/flatten.go`](../internal/layout/flatten.go)
-

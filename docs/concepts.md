@@ -181,4 +181,3 @@ limits, and `Version()`. It never caches a rendered `Box`.
   [`ir/nodes.go`](../ir/nodes.go)
 - Import boundaries:
   [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go)
-

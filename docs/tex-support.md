@@ -173,4 +173,3 @@ visual edge case of TeX is implemented.
 - Link tests: [`internal/tex/url_test.go`](../internal/tex/url_test.go)
 - Conformance policy:
   [`testdata/conformance/tex-policy.json`](../testdata/conformance/tex-policy.json)
-

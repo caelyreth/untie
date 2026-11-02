@@ -76,4 +76,3 @@ text, and its source metadata.
 The bundled `examples/mygo` application is a complete drawing integration for
 the public display list. The example module is separate from the library; the
 library itself has no UI dependency.
-

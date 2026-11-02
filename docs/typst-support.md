@@ -194,4 +194,3 @@ retroactively turn those cases into supported behavior.
   [`testdata/conformance/typst-policy.json`](../testdata/conformance/typst-policy.json)
 - Known-bug ratchet:
   [`internal/quality/typst_bug_budget_test.go`](../internal/quality/typst_bug_budget_test.go)
-

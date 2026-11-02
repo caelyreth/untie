@@ -163,4 +163,3 @@ layout or lets a host import internals.
 - Acceptance corpora: [`testdata/README.md`](../testdata/README.md)
 - Architecture boundaries:
   [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go)
-
