@@ -93,9 +93,9 @@ At the `codex/crosscheck` base commit:
 
 ```text
 pass                         0
-semantic-ir-mismatch        74
-layout-mismatch              0
-fixture-mismatch             5
+semantic-ir-mismatch        71
+layout-mismatch              1
+fixture-mismatch             7
 documented-pair-difference   2
 unexplained                  0
 ```
@@ -103,9 +103,9 @@ unexplained                  0
 This is a conformance inventory, not a claim that the paired corpus currently
 passes. The reasons are recorded per case in the baseline. All non-fixture cases
 currently stop at a semantic or frontend-diagnostic difference before reaching
-the cross-dialect layout comparison. The largest gaps are unresolved Typst
-symbol/function lowering, fence and compound-atom metadata, math-alphabet atom
-classes, style metadata, and static-frame metric drift.
+the cross-dialect layout comparison. The largest remaining gaps are compound
+atom classes, balanced-fence representation, operator limits and stretch
+metadata, math-alphabet structure, spacing units, and static-frame metric drift.
 
 Supplementary-plane spans and long repeated runs are tested separately from the
 upstream 81-case count so the pinned corpus remains exact.

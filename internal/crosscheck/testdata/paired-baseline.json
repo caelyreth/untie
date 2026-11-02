@@ -4,9 +4,9 @@
   "toleranceDIP": 0.002,
   "total": 81,
   "pass": 0,
-  "semanticIRMismatch": 73,
-  "layoutMismatch": 0,
-  "fixtureMismatch": 6,
+  "semanticIRMismatch": 71,
+  "layoutMismatch": 1,
+  "fixtureMismatch": 7,
   "documentedPairDifference": 2,
   "unexplained": 0,
   "cases": [
@@ -30,9 +30,9 @@
       "id": "primes",
       "index": 3,
       "category": "basics",
-      "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
-      "reason": "Typst parenthesized groups lower to balanced fences while TeX fixed delimiters do not carry fence-balance semantics."
+      "kind": "layout-mismatch",
+      "detail": "output.width: expected 132.262695, got 127.373047",
+      "reason": "Literal parentheses now have equivalent neutral semantics, but the TeX fixed-delimiter construction and Typst balanced-fence construction still differ in advance."
     },
     {
       "id": "quadratic",
@@ -87,8 +87,8 @@
       "index": 10,
       "category": "fractions",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: partial; unknown-variable: unknown variable: partial; unknown-variable: unknown variable: nabla",
-      "reason": "Typst dotted names partial and nabla are rejected as unknown variables instead of lowering to symbols."
+      "detail": "root[0].class: expected \"inner\", got \"normal\"",
+      "reason": "A fraction inside the PDE expression remains ClassInner in TeX but ClassNormal in Typst, changing neutral spacing semantics."
     },
     {
       "id": "sum",
@@ -103,24 +103,24 @@
       "index": 12,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].limit-bottom: expected null, got {\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"0\",\"variant\":\"auto\"}",
-      "reason": "Typst integral retains automatic limits while TeX lowers the generic integral to LimitsNever."
+      "detail": "root[2].amount: expected [\"mu\",3000000], got null",
+      "reason": "TeX emits explicit 3mu spacing in this integral expression that Typst does not emit."
     },
     {
       "id": "oint",
       "index": 13,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].limit-bottom: expected null, got {\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"C\",\"variant\":\"auto\"}",
-      "reason": "Typst contour-integral symbols retain automatic limits while the TeX commands lower to LimitsNever."
+      "detail": "root[1].stretchy: expected false, got true",
+      "reason": "The contour-integral pair disagrees on stretch intent for the following operator."
     },
     {
       "id": "iiint",
       "index": 14,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].limit-bottom: expected null, got {\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"V\",\"variant\":\"auto\"}",
-      "reason": "Typst multiple-integral symbols retain automatic limits while the TeX commands lower to LimitsNever."
+      "detail": "root[2].amount: expected [\"mu\",3000000], got null",
+      "reason": "TeX emits explicit 3mu spacing in this multiple-integral expression that Typst does not emit."
     },
     {
       "id": "euler-product",
@@ -135,8 +135,8 @@
       "index": 16,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].main.body[2].class: expected \"inner\", got \"normal\"",
-      "reason": "The limit argument contains a fraction whose atom class differs between the frontends."
+      "detail": "root[1].main: expected {\"balanced\":true,\"body\":[{\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"1\",\"variant\":\"auto\"},{\"class\":\"binary\"...<sha256:5e20008a7b1695b0>, got [{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"(\",\"variant\":\"normal-or-auto\"},{\"class\":\"normal\",\"cramped\":fa...<sha256:d9caafd50ba7de78>",
+      "reason": "TeX lowers the limited parenthesized fraction as a balanced fence while Typst preserves an explicit delimiter sequence."
     },
     {
       "id": "substack",
@@ -159,16 +159,16 @@
       "index": 19,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: integral.surf",
-      "reason": "Typst dotted symbol integral.surf is rejected as an unknown variable."
+      "detail": "root[1].items: expected [{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"E\",\"variant\":\"bold\"}], got null",
+      "reason": "The integral-surface pair represents an upright E through different semantic structures, leaving one normalized item sequence empty."
     },
     {
       "id": "auto-paren",
       "index": 20,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].main.body[0].class: expected \"inner\", got \"normal\"",
-      "reason": "A compound child inside the fenced fraction receives different atom classes from the frontends."
+      "detail": "root[0].main: expected {\"balanced\":true,\"body\":[{\"bar\":true,\"class\":\"inner\",\"cramped\":false,\"denominator\":{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"...<sha256:009a872079567c91>, got [{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"(\",\"variant\":\"normal-or-auto\"},{\"bar\":true,\"class\":\"normal\",\"...<sha256:59827513a9676aff>",
+      "reason": "TeX lowers the parenthesized fraction as a balanced fence while Typst preserves an explicit delimiter sequence."
     },
     {
       "id": "middle",
@@ -206,17 +206,17 @@
       "id": "braket",
       "index": 25,
       "category": "delimiters",
-      "kind": "fixture-mismatch",
-      "detail": "Typst: fixture.width: expected 34.804000, got 34.027344",
-      "reason": "Current angle-delimiter advances differ from the static Typlet Typst frame beyond the fixture-rounding tolerance."
+      "kind": "semantic-ir-mismatch",
+      "detail": "root[1].text: expected \"ϕ\", got \"φ\"",
+      "reason": "The pinned pair uses Typst phi (ϕ) against TeX \\phi (φ); the pair needs source correction or an explicit compatibility decision before geometry comparison."
     },
     {
       "id": "null-delim",
       "index": 26,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: zws",
-      "reason": "Typst zws is rejected as an unknown variable rather than lowering to a null delimiter."
+      "detail": "root.main.body[0].class: expected \"inner\", got \"normal\"",
+      "reason": "A null-delimited row remains ClassInner in TeX but ClassNormal in Typst, changing neutral row semantics."
     },
     {
       "id": "pmatrix",
@@ -231,8 +231,8 @@
       "index": 28,
       "category": "matrices",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: dots.c; unknown-variable: unknown variable: dots.c; unknown-variable: unknown variable: dots.c",
-      "reason": "Typst dotted symbol dots.c is rejected as an unknown variable."
+      "detail": "root.body[0].class: expected \"inner\", got \"normal\"",
+      "reason": "The matrix body row remains ClassInner in TeX but ClassNormal in Typst."
     },
     {
       "id": "vmatrix",
@@ -327,16 +327,16 @@
       "index": 40,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].accent.class: expected \"diacritic\", got \"normal\"",
-      "reason": "The frontends assign different atom classes to accent marks."
+      "detail": "root[0].accent.text: expected \"^\", got \"̂\"",
+      "reason": "TeX uses an ASCII caret accent while Typst lowers the combining U+0302 mark; accent semantics still need canonical harmonization."
     },
     {
       "id": "wide-accents",
       "index": 41,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].accent.class: expected \"diacritic\", got \"normal\"",
-      "reason": "The frontends assign different atom classes to stretchy accent marks."
+      "detail": "root[0].accent.text: expected \"^\", got \"̂\"",
+      "reason": "TeX uses an ASCII caret accent while Typst lowers the combining U+0302 mark; wide-accent semantics still need canonical harmonization."
     },
     {
       "id": "over-under-line",
@@ -351,15 +351,15 @@
       "index": 43,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: dots.c; unknown-variable: unknown variable: dots.c",
-      "reason": "Typst dotted symbol dots.c is rejected as an unknown variable."
+      "detail": "root[0].limit-bottom: expected null, got null",
+      "reason": "The overbrace/underbrace pair retains a null-versus-empty structural difference that the scalar comparison detail cannot render."
     },
     {
       "id": "overset",
       "index": 44,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].accent: expected [{\"class\":\"normal\",\"cramped\":false,\"font\":\"text\",\"ignore-as-space\":false,\"kind\":\"text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"d\",\"tracking\":null,\"variant\":\"auto\"},{\"class\":\"norm...\u003csha256:0ef8d07c802215e7\u003e, got null",
+      "detail": "root[1].accent: expected [{\"class\":\"normal\",\"cramped\":false,\"font\":\"text\",\"ignore-as-space\":false,\"kind\":\"text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"d\",\"tracking\":null,\"variant\":\"auto\"},{\"class\":\"norm...<sha256:0ef8d07c802215e7>, got null",
       "reason": "The TeX frontend does not implement overset or stackrel."
     },
     {
@@ -367,80 +367,80 @@
       "index": 45,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: dot.triple",
-      "reason": "Typst dot.triple is rejected as an unknown variable instead of lowering to an accent call."
+      "detail": "root.stretchy: expected false, got true",
+      "reason": "The triple-dot accent pair still disagrees on stretch intent."
     },
     {
       "id": "bb",
       "index": 46,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: RR; unknown-variable: unknown variable: NN; unknown-variable: unknown variable: ZZ",
-      "reason": "Typst math-font shorthands RR, NN, and ZZ are rejected as unknown variables."
+      "detail": "root[0].class: expected \"normal\", got \"alphabetic\"",
+      "reason": "Typst classifies the blackboard-bold alphabet as Alphabetic while TeX uses Normal; the neutral math-alphabet class rule still differs."
     },
     {
       "id": "cal-scr-frak",
       "index": 47,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].class: expected \"normal\", got \"alphabetic\"",
-      "reason": "The frontends assign different atom classes to math-alphabet glyphs."
+      "detail": "root[0].items: expected [{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"L\",\"variant\":\"script\"}], got null",
+      "reason": "TeX preserves a script-alphabet item sequence where the Typst side reduces to an empty normalized sequence."
     },
     {
       "id": "bold-sym",
       "index": 48,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].class: expected \"normal\", got \"alphabetic\"",
-      "reason": "The frontends assign different atom classes to bold math glyphs."
+      "detail": "root[0].items: expected [{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"bold\"}], got null",
+      "reason": "TeX preserves a bold-alphabet item sequence where the Typst side reduces to an empty normalized sequence."
     },
     {
       "id": "font-variants",
       "index": 49,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].class: expected \"normal\", got \"alphabetic\"",
-      "reason": "The frontends assign different atom classes to explicit math-alphabet glyphs."
+      "detail": "root[0].items: expected [{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"d\",\"variant\":\"normal\"}], got null",
+      "reason": "TeX preserves an explicit normal-variant item sequence where the Typst side reduces to an empty normalized sequence."
     },
     {
       "id": "text-in-math",
       "index": 50,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: strong; unknown-variable: unknown variable: bold",
-      "reason": "Typst strong content and its bold text argument are rejected before text lowering."
+      "detail": "root[3].text: expected \" \", got \"if\"",
+      "reason": "TeX preserves an interword space separately where Typst folds the following word into a text run."
     },
     {
       "id": "operatorname",
       "index": 51,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].class: expected \"large\", got \"normal\"",
-      "reason": "TeX and Typst assign different atom classes to the argmax operator."
+      "detail": "root[0].limits: expected \"always\", got \"auto\"",
+      "reason": "TeX marks the named operator with always limits while Typst retains automatic placement."
     },
     {
       "id": "greek",
       "index": 52,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[6].text: expected \"φ\", got \"ϕ\"",
-      "reason": "TeX varphi and the Typst phi alias select different semantic Greek codepoints."
+      "detail": "root[4].text: expected \"ε\", got \"ϵ\"",
+      "reason": "TeX epsilon (ϵ) and Typst epsilon (ε) select different semantic Greek variants."
     },
     {
       "id": "misc-symbols",
       "index": 53,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: nabla; unknown-variable: unknown variable: partial; unknown-variable: unknown variable: planck; unknown-variable: unknown variable: ell; unknown-variable: unknown variable: Re; unknown-variable: unknown variable: pee",
-      "reason": "Typst named symbols such as nabla, partial, and planck are rejected as unknown variables."
+      "detail": "root[0].class: expected \"normal\", got \"unary\"",
+      "reason": "Typst classifies the leading named symbol as Unary where TeX uses Normal."
     },
     {
       "id": "arrows",
       "index": 54,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: arrow.r.hook; unknown-variable: unknown variable: arrow.r.squiggly",
-      "reason": "Typst dotted arrow names are rejected as unknown variables."
+      "detail": "root[3].text: expected \"⟺\", got \"⇔\"",
+      "reason": "The long double-iff arrows select different Unicode codepoints between the pinned spellings."
     },
     {
       "id": "relations",
@@ -455,31 +455,31 @@
       "index": 56,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: supset.neq; unknown-variable: unknown variable: without; unknown-variable: unknown variable: inter",
-      "reason": "Typst dotted and named set symbols are rejected as unknown variables."
+      "detail": "root[6].amount: expected null, got null",
+      "reason": "The set-expression pair retains a null-versus-empty structural difference that the scalar comparison detail cannot render."
     },
     {
       "id": "logic",
       "index": 57,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: forall; unknown-variable: unknown variable: exists; unknown-variable: unknown variable: not; unknown-variable: unknown variable: tack.r",
-      "reason": "Typst named logic symbols are rejected as unknown variables."
+      "detail": "root[0].class: expected \"normal\", got \"unary\"",
+      "reason": "Typst classifies the leading named logic symbol as Unary where TeX uses Normal."
     },
     {
       "id": "negations",
       "index": 58,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: equiv.not; unknown-variable: unknown variable: lt.eq.not; unknown-variable: unknown variable: subset.eq.not",
-      "reason": "Typst dotted negated-relation names are rejected as unknown variables."
+      "detail": "root[1].body: expected {\"class\":\"relation\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"≡\",\"variant\":\"normal-or-auto\"}, got null",
+      "reason": "The negated-relation spellings lower to different structures; one side has no body at the compared node."
     },
     {
       "id": "xarrow",
       "index": 59,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].accent: expected [{\"class\":\"normal\",\"cramped\":false,\"font\":\"text\",\"ignore-as-space\":false,\"kind\":\"text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"u\",\"tracking\":null,\"variant\":\"auto\"},{\"class\":\"norm...\u003csha256:90a8d81bf38186c4\u003e, got null",
+      "detail": "root[1].accent: expected [{\"class\":\"normal\",\"cramped\":false,\"font\":\"text\",\"ignore-as-space\":false,\"kind\":\"text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"u\",\"tracking\":null,\"variant\":\"auto\"},{\"class\":\"norm...<sha256:90a8d81bf38186c4>, got null",
       "reason": "The TeX frontend does not implement xrightarrow or xleftarrow."
     },
     {
@@ -487,23 +487,23 @@
       "index": 60,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: invalid-value: expected length, found content",
-      "reason": "Typst rejects the mixed length expression inside the h call before lowering it."
+      "detail": "root[1].amount[0]: expected \"mu\", got \"em\"",
+      "reason": "Typst expresses the fixture spacing in em while TeX lowers the equivalent gap in mu."
     },
     {
       "id": "phantom",
       "index": 61,
       "category": "layout",
-      "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: hide",
-      "reason": "Typst hide is rejected as an unknown variable instead of lowering to a phantom node."
+      "kind": "fixture-mismatch",
+      "detail": "Typst: fixture.ascent: expected 10.017333, got 10.178711",
+      "reason": "Typst hide now lowers to a phantom node, but the current ascent differs from the static Typlet Typst frame beyond tolerance."
     },
     {
       "id": "displaystyle",
       "index": 62,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "root: expected {\"body\":[{\"class\":\"large\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"scripts\",\"left-spacing\":null,\"limit-bottom\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[...\u003csha256:f9e7f0b8af9ffb8c\u003e, got [{\"body\":{\"class\":\"large\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"scripts\",\"left-spacing\":null,\"limit-bottom\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[...\u003csha256:2625d35322850df7\u003e",
+      "detail": "root: expected {\"body\":[{\"class\":\"large\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"scripts\",\"left-spacing\":null,\"limit-bottom\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[...<sha256:f9e7f0b8af9ffb8c>, got [{\"body\":{\"class\":\"large\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"scripts\",\"left-spacing\":null,\"limit-bottom\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[...<sha256:2625d35322850df7>",
       "reason": "Explicit style wrappers differ in atom class and TeX collapses a nested style chain."
     },
     {
@@ -519,15 +519,15 @@
       "index": 64,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: invalid-value: expected color or stroke; invalid-value: expected length, found content",
-      "reason": "The Typst evaluator rejects the box stroke and inset argument forms used by this fixture."
+      "detail": "root.border-width: expected null, got [\"pt\",500000]",
+      "reason": "TeX leaves boxed border width implicit while Typst lowers an explicit 0.5pt stroke width."
     },
     {
       "id": "color",
       "index": 65,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "root: expected {\"body\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},{\"class\":\"binary\",\"cramped\":fals...\u003csha256:0ca8140b8f096e3c\u003e, got [{\"body\":{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},\"class\":\"normal\",\"cramped\":false...\u003csha256:5594450ee848d729\u003e",
+      "detail": "root: expected {\"body\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},{\"class\":\"binary\",\"cramped\":fals...<sha256:0ca8140b8f096e3c>, got [{\"body\":{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},\"class\":\"normal\",\"cramped\":false...<sha256:5594450ee848d729>",
       "reason": "TeX color commands are unimplemented and its nested text-color forms are diagnosed unsupported."
     },
     {
@@ -543,8 +543,8 @@
       "index": 67,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: nabla; unknown-variable: unknown variable: partial; unknown-variable: unknown variable: partial",
-      "reason": "Typst names nabla and partial are rejected as unknown variables."
+      "detail": "root[0].class: expected \"normal\", got \"unary\"",
+      "reason": "Typst classifies the leading nabla symbol as Unary where TeX uses Normal."
     },
     {
       "id": "taylor",
@@ -559,16 +559,16 @@
       "index": 69,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: planck; unknown-variable: unknown variable: partial; unknown-variable: unknown variable: partial; unknown-variable: unknown variable: Psi; unknown-variable: unknown variable: planck; unknown-variable: unknown variable: nabla; unknown-variable: unknown variable: Psi",
-      "reason": "Typst names planck, partial, Psi, and nabla are rejected as unknown variables."
+      "detail": "root[1].class: expected \"normal\", got \"alphabetic\"",
+      "reason": "Typst classifies the planck constant glyph as Alphabetic while TeX uses Normal."
     },
     {
       "id": "fourier",
       "index": 70,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].accent.class: expected \"diacritic\", got \"normal\"",
-      "reason": "The frontends assign different atom classes to the accent node."
+      "detail": "root[0].accent.text: expected \"^\", got \"̂\"",
+      "reason": "TeX uses an ASCII caret accent while Typst lowers the combining U+0302 mark; Fourier accent semantics still differ."
     },
     {
       "id": "bayes",
@@ -591,16 +591,16 @@
       "index": 73,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[4].main.body[0].class: expected \"inner\", got \"normal\"",
-      "reason": "The frontends assign different atom classes to the fraction inside the fenced group."
+      "detail": "root[4].main: expected {\"balanced\":true,\"body\":[{\"bar\":true,\"class\":\"inner\",\"cramped\":false,\"denominator\":{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"...<sha256:1345a900e4d60299>, got [{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"(\",\"variant\":\"normal-or-auto\"},{\"bar\":true,\"class\":\"normal\",\"...<sha256:9f8f8eafd5463c53>",
+      "reason": "TeX lowers the parenthesized fraction as a balanced fence while Typst preserves an explicit delimiter sequence."
     },
     {
       "id": "cd",
       "index": 74,
       "category": "extensions",
       "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: arrow.b; unknown-variable: unknown variable: arrow.b",
-      "reason": "Typst arrow.b is rejected as an unknown variable."
+      "detail": "TeX diagnostics: unsupported: commutative-diagram (CD) environments are outside the neutral math IR",
+      "reason": "The CD fixture is outside the neutral math IR and the TeX side reports it explicitly."
     },
     {
       "id": "mhchem",
@@ -622,9 +622,9 @@
       "id": "href",
       "index": 77,
       "category": "extensions",
-      "kind": "semantic-ir-mismatch",
-      "detail": "Typst diagnostics: unknown-variable: unknown variable: link",
-      "reason": "Typst link content is rejected as an unknown variable before lowering the wrapped expression."
+      "kind": "fixture-mismatch",
+      "detail": "Typst: fixture.ascent: expected 10.017333, got 12.141602",
+      "reason": "Typst link content now lowers with a visible unsupported-diagnostic boundary, but the current ascent differs from the static Typlet Typst frame beyond tolerance."
     },
     {
       "id": "loop-matrix",
