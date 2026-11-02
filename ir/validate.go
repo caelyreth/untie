@@ -180,6 +180,12 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		if n.Style > FractionHorizontal {
 			return fmt.Errorf("%w: %s: invalid fraction style", ErrInvalidIR, path)
 		}
+		if n.Role > FractionRoleStacked {
+			return fmt.Errorf("%w: %s: invalid fraction role", ErrInvalidIR, path)
+		}
+		if n.Role != FractionRoleFraction && n.Style != FractionNoBar {
+			return fmt.Errorf("%w: %s: semantic fraction role requires no-bar style", ErrInvalidIR, path)
+		}
 		if n.Style != FractionVertical && n.Bar {
 			return fmt.Errorf("%w: %s: non-vertical fraction has a bar", ErrInvalidIR, path)
 		}
@@ -193,6 +199,9 @@ func validateNode(n Node, path string, limits source.Limits) error {
 	case *Scripts:
 		if n.BaseItem == nil {
 			return fmt.Errorf("%w: %s: missing script base", ErrInvalidIR, path)
+		}
+		if n.Role > ScriptRoleBraceLabel {
+			return fmt.Errorf("%w: %s: invalid script role", ErrInvalidIR, path)
 		}
 	case *Fenced:
 		if len(n.Body) == 0 && n.Open == nil && n.Close == nil {
@@ -227,6 +236,12 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		}
 		if err := validateNonNegative(n.Thickness, limits, path+".thickness"); err != nil {
 			return err
+		}
+		if n.Role > CancelRoleNegation {
+			return fmt.Errorf("%w: %s: invalid cancel role", ErrInvalidIR, path)
+		}
+		if n.Role == CancelRoleNegation && (n.Cross || n.Inverted) {
+			return fmt.Errorf("%w: %s: negation cannot use cross or inverted cancellation", ErrInvalidIR, path)
 		}
 	case *Table:
 		if err := validateTable(n, path, limits); err != nil {
@@ -348,6 +363,9 @@ func paintIsZero(paint Paint) bool {
 }
 
 func validateTable(table *Table, path string, limits source.Limits) error {
+	if table.Role > TableRoleVector {
+		return fmt.Errorf("%w: %s: invalid table role", ErrInvalidIR, path)
+	}
 	cells := 0
 	maxColumns := len(table.Columns)
 	for _, row := range table.Rows {

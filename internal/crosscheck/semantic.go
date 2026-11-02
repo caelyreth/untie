@@ -106,6 +106,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["denominator"] = denominator
 		baseValue["bar"] = node.Bar
 		baseValue["style"] = fractionStyleName(node.Style)
+		baseValue["role"] = fractionRoleName(node.Role)
 		baseValue["padding"] = normalizedLength(node.Padding)
 		return baseValue, nil
 	case *ir.Radical:
@@ -165,6 +166,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 			baseValue["class"] = mathClassName(main.NodeBase().Class)
 		}
 		baseValue["kind"] = "scripts"
+		baseValue["role"] = scriptRoleName(node.Role)
 		for name, value := range children {
 			baseValue[name] = value
 		}
@@ -231,6 +233,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["body"] = body
 		baseValue["cross"] = node.Cross
 		baseValue["inverted"] = node.Inverted
+		baseValue["role"] = cancelRoleName(node.Role)
 		baseValue["thickness"] = normalizedLength(node.Thickness)
 		return baseValue, nil
 	case *ir.Table:
@@ -252,6 +255,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		}
 		baseValue["kind"] = "table"
 		baseValue["rows"] = rows
+		baseValue["role"] = tableRoleName(node.Role)
 		baseValue["columns"] = normalizedColumns(node.Columns)
 		baseValue["row-gap"] = normalizedLength(node.RowGap)
 		baseValue["column-gap"] = normalizedLength(node.ColumnGap)
@@ -625,6 +629,22 @@ func spaceKindName(v ir.SpaceKind) string {
 
 func fractionStyleName(v ir.FractionStyle) string {
 	return enumName(v, []string{"vertical", "no-bar", "skewed", "horizontal"})
+}
+
+func fractionRoleName(v ir.FractionRole) string {
+	return enumName(v, []string{"fraction", "binomial", "stacked"})
+}
+
+func scriptRoleName(v ir.ScriptRole) string {
+	return enumName(v, []string{"ordinary", "limits", "overlay", "brace-label"})
+}
+
+func cancelRoleName(v ir.CancelRole) string {
+	return enumName(v, []string{"strike", "negation"})
+}
+
+func tableRoleName(v ir.TableRole) string {
+	return enumName(v, []string{"matrix", "array", "cases", "vector"})
 }
 
 func positionName(v ir.Position) string {

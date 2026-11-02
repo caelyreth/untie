@@ -2,6 +2,7 @@ package ir
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/source"
@@ -43,6 +44,39 @@ func TestValidateRejectsBadNodes(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsInvalidSemanticRoles(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	glyph := NewGlyph(span, "x")
+	fraction := NewFraction(span, glyph, NewGlyph(span, "y"))
+	fraction.Role = FractionRoleStacked
+
+	scripts := NewScripts(span, glyph)
+	scripts.Role = ScriptRoleBraceLabel + 1
+
+	cancel := NewCancel(span, glyph)
+	cancel.Role = CancelRoleNegation
+	cancel.Cross = true
+
+	table := NewTable(span, TableRow{Cells: []Node{glyph}})
+	table.Role = TableRoleVector + 1
+
+	for name, root := range map[string]Node{
+		"fraction role without no-bar style": fraction,
+		"script role":                        scripts,
+		"negation with strike":               cancel,
+		"table role":                         table,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if err := Validate(&Formula{Root: root}, source.Limits{}); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+		})
+	}
+}
+
 func TestMarshalCanonicalIsStable(t *testing.T) {
 	t.Parallel()
 
@@ -66,5 +100,32 @@ func TestMarshalCanonicalIsStable(t *testing.T) {
 	}
 	if !json.Valid(a) {
 		t.Fatalf("canonical output is not JSON: %s", a)
+	}
+}
+
+func TestMarshalCanonicalIncludesSemanticRoles(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	fraction := NewFraction(span, NewGlyph(span, "n"), NewGlyph(span, "k"))
+	fraction.Role = FractionRoleBinomial
+	fraction.Style = FractionNoBar
+	fraction.Bar = false
+	scripts := NewScripts(span, NewGlyph(span, "x"))
+	scripts.Role = ScriptRoleOverlay
+	scripts.Top = NewGlyph(span, "a")
+	cancel := NewCancel(span, NewGlyph(span, "="))
+	cancel.Role = CancelRoleNegation
+	table := NewTable(span, TableRow{Cells: []Node{NewGlyph(span, "x")}})
+	table.Role = TableRoleCases
+
+	for _, root := range []Node{fraction, scripts, cancel, table} {
+		encoded, err := MarshalCanonical(&Formula{Root: root})
+		if err != nil {
+			t.Fatalf("MarshalCanonical(%T) error = %v", root, err)
+		}
+		if !strings.Contains(string(encoded), `"role":`) {
+			t.Fatalf("MarshalCanonical(%T) omitted role: %s", root, encoded)
+		}
 	}
 }

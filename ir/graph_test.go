@@ -138,20 +138,32 @@ func TestCloneFormulaCoversAllNodeKinds(t *testing.T) {
 	span := source.NewRange(0, 1)
 	glyph := func(text string) Node { return NewGlyph(span, text) }
 	body := func() Node { return NewRow(span, glyph("x")) }
+	fraction := NewFraction(span, glyph("1"), glyph("2"))
+	fraction.Role = FractionRoleBinomial
+	fraction.Style = FractionNoBar
+	fraction.Bar = false
+	scripts := &Scripts{Base: NewBase(KindScripts, span), BaseItem: glyph("x"), Top: glyph("2"), Role: ScriptRoleLimits}
+	cancel := NewCancel(span, glyph("x"))
+	cancel.Role = CancelRoleNegation
+	table := &Table{
+		Base: NewBase(KindTable, span),
+		Rows: []TableRow{{Cells: []Node{glyph("x")}}},
+		Role: TableRoleCases,
+	}
 	nodes := map[string]Node{
 		"row":         body(),
 		"glyph":       glyph("x"),
 		"text":        NewText(span, "x"),
 		"operator":    NewOperator(span, "sin"),
 		"space":       NewSpace(span, SpaceExplicit, RawLength(LengthEm, 1_000_000)),
-		"fraction":    NewFraction(span, glyph("1"), glyph("2")),
+		"fraction":    fraction,
 		"radical":     NewRadical(span, glyph("x"), nil),
-		"scripts":     &Scripts{Base: NewBase(KindScripts, span), BaseItem: glyph("x"), Top: glyph("2")},
+		"scripts":     scripts,
 		"fenced":      &Fenced{Base: NewBase(KindFenced, span), Open: glyph("("), Close: glyph(")"), Body: []Node{glyph("x")}, Balanced: true},
 		"accent":      NewAccent(span, glyph("x"), glyph("^"), PositionAbove),
 		"line":        NewLine(span, glyph("x"), PositionAbove),
-		"cancel":      NewCancel(span, glyph("x")),
-		"table":       &Table{Base: NewBase(KindTable, span), Rows: []TableRow{{Cells: []Node{glyph("x")}}}, Columns: []ColumnAlign{AlignCenter}},
+		"cancel":      cancel,
+		"table":       table,
 		"multiline":   NewMultiline(span, []Node{glyph("x")}),
 		"style":       NewStyle(span, glyph("x")),
 		"color":       NewColor(span, glyph("x"), Paint{Explicit: RGBA{A: 255}, HasExplicit: true}),

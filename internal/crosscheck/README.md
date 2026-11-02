@@ -51,6 +51,9 @@ The semantic comparison removes source evidence only:
   erasing a limits decision.
 - A scripts node's own class is derived from its base node, so the base class is
   compared once rather than a second time on the wrapper.
+- Semantic roles on fractions, scripts, cancellation overlays, and tables are
+  compared explicitly. Two otherwise-identical trees with different quotient,
+  limit, negation, or table-role semantics are not equivalent.
 
 Everything else remains strict, including atom class, math variant, paint, math
 limits, explicit spacing, fraction padding/style/bar state, fence balance,

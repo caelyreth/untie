@@ -142,6 +142,62 @@ func TestSemanticNormalizationRejectsMaterialDifference(t *testing.T) {
 	}
 }
 
+func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	glyph := func(text string) *ir.Glyph {
+		return ir.NewGlyph(span, text)
+	}
+	fractionDefault := ir.NewFraction(span, glyph("a"), glyph("b"))
+	fractionStacked := ir.NewFraction(span, glyph("a"), glyph("b"))
+	fractionStacked.Style = ir.FractionNoBar
+	fractionStacked.Bar = false
+	fractionStacked.Role = ir.FractionRoleStacked
+
+	scriptsDefault := ir.NewScripts(span, glyph("x"))
+	scriptsDefault.Top = glyph("2")
+	scriptsLimits := ir.NewScripts(span, glyph("x"))
+	scriptsLimits.Top = glyph("2")
+	scriptsLimits.Role = ir.ScriptRoleLimits
+
+	cancelDefault := ir.NewCancel(span, glyph("="))
+	cancelNegation := ir.NewCancel(span, glyph("="))
+	cancelNegation.Role = ir.CancelRoleNegation
+
+	tableDefault := ir.NewTable(span, ir.TableRow{Cells: []ir.Node{glyph("x")}})
+	tableCases := ir.NewTable(span, ir.TableRow{Cells: []ir.Node{glyph("x")}})
+	tableCases.Role = ir.TableRoleCases
+
+	tests := []struct {
+		name     string
+		original ir.Node
+		changed  ir.Node
+	}{
+		{"fraction", fractionDefault, fractionStacked},
+		{"scripts", scriptsDefault, scriptsLimits},
+		{"cancel", cancelDefault, cancelNegation},
+		{"table", tableDefault, tableCases},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			left, err := normalizeFormula(&ir.Formula{Root: tc.original}, ir.Inline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			right, err := normalizeFormula(&ir.Formula{Root: tc.changed}, ir.Inline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if CompareSemantic(left, right) == nil {
+				t.Fatalf("%s semantic role difference normalized as equal", tc.name)
+			}
+		})
+	}
+}
+
 func TestSemanticNormalizationPreservesLetterVariants(t *testing.T) {
 	italic := requireValidRoot(t, untie.ParseTeX(`\mathit{x}`, ir.Inline, untie.ParseOptions{}))
 	upright := requireValidRoot(t, untie.ParseTeX(`\mathrm{x}`, ir.Inline, untie.ParseOptions{}))

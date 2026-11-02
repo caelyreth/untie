@@ -273,7 +273,7 @@
       "index": 36,
       "category": "alignment",
       "kind": "semantic-ir-mismatch",
-      "detail": "root.rows[0][0]: expected [{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"(\",\"variant\":\"normal-or-auto\"},{\"class\":\"alphabetic\",\"cramped...\u003csha256:81e939a94f64bbfd\u003e, got {\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"scripts\",\"left-spacing\":null,\"limits\":\"auto\",\"main\":[{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"ro...\u003csha256:c15ea59a8890ed91\u003e",
+      "detail": "root.rows[0][0]: expected [{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"(\",\"variant\":\"normal-or-auto\"},{\"class\":\"alphabetic\",\"cramped...\u003csha256:a25a7d27bfcf40a8\u003e, got {\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"scripts\",\"left-spacing\":null,\"limits\":\"auto\",\"main\":[{\"class\":\"opening\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"ro...\u003csha256:528ba7c7c2244489\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {

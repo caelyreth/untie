@@ -70,9 +70,10 @@ type astTextNode struct {
 
 type astOperatorNode struct {
 	astBase
-	text    string
-	variant ir.Variant
-	limits  ir.LimitsPlacement
+	text           string
+	variant        ir.Variant
+	limits         ir.LimitsPlacement
+	semanticLimits bool
 }
 
 type astSpaceNode struct {
@@ -87,6 +88,7 @@ type astFractionNode struct {
 	denominator astNode
 	bar         bool
 	style       ir.FractionStyle
+	role        ir.FractionRole
 	size        ir.MathSize
 	infix       bool
 }
@@ -107,6 +109,7 @@ type astScriptsNode struct {
 	topRight    astNode
 	bottomRight astNode
 	limits      ir.LimitsPlacement
+	role        ir.ScriptRole
 }
 
 type astFencedNode struct {
@@ -139,6 +142,7 @@ type astCancelNode struct {
 	body     astNode
 	cross    bool
 	inverted bool
+	role     ir.CancelRole
 }
 
 type astColorNode struct {
@@ -205,6 +209,7 @@ type astTableNode struct {
 	columnGap  ir.Length
 	vertical   []ir.TableLine
 	horizontal []ir.TableLine
+	role       ir.TableRole
 	size       ir.MathSize
 }
 

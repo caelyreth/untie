@@ -89,8 +89,9 @@ func TestFenceRolesAndMatrixSemantics(t *testing.T) {
 		t.Error("binom fence is balanced, want independent matrix-style fences")
 	}
 	fraction := requireKind[*ir.Fraction](t, binom.Body[0])
-	if fraction.Style != ir.FractionNoBar || fraction.Bar {
-		t.Errorf("binom fraction style/bar = %v/%v, want no-bar/false", fraction.Style, fraction.Bar)
+	if fraction.Style != ir.FractionNoBar || fraction.Bar || fraction.Role != ir.FractionRoleBinomial {
+		t.Errorf("binom fraction style/bar/role = %v/%v/%v, want no-bar/false/binomial",
+			fraction.Style, fraction.Bar, fraction.Role)
 	}
 
 	small := requireKind[*ir.Fenced](t, rowItems(t, parseTest(

@@ -310,6 +310,7 @@ func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionI
 		denominator: right,
 		bar:         infix.bar,
 		style:       infix.style,
+		role:        infix.role,
 		size:        ir.SizeInherit,
 		infix:       true,
 	}
@@ -340,6 +341,8 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 	var top astNode
 	var bottom astNode
 	var limits ir.LimitsPlacement
+	// Capture meaning before \limits or \nolimits changes visual placement.
+	role := scriptSemanticRole(base)
 	var scriptSpan source.Range
 	hasScriptSpan := false
 	setScriptSpan := func(span source.Range) {
@@ -449,6 +452,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 				top:     top,
 				bottom:  bottom,
 				limits:  scriptLimits(base, limits),
+				role:    role,
 			}
 			return scripts
 		}
@@ -466,6 +470,65 @@ func isLimitBase(node astNode) bool {
 	default:
 		return false
 	}
+}
+
+func scriptSemanticRole(node astNode) ir.ScriptRole {
+	if hasBraceDecoration(node) {
+		return ir.ScriptRoleBraceLabel
+	}
+	if hasLimitScriptBase(node) {
+		return ir.ScriptRoleLimits
+	}
+	return ir.ScriptRoleOrdinary
+}
+
+func hasBraceDecoration(node astNode) bool {
+	switch n := node.(type) {
+	case *astClassNode:
+		return hasBraceDecoration(n.body)
+	case *astVariantNode:
+		return hasBraceDecoration(n.body)
+	case *astAccentNode:
+		glyph, ok := n.mark.(*astGlyphNode)
+		return ok && strings.ContainsAny(glyph.text, "⏞⏟⎴⎵⏜⏝⏠⏡")
+	default:
+		return false
+	}
+}
+
+func hasLimitScriptBase(node astNode) bool {
+	switch n := node.(type) {
+	case *astClassNode:
+		return n.class == ir.ClassLarge || containsIntegral(n.body)
+	case *astVariantNode:
+		return hasLimitScriptBase(n.body)
+	case *astOperatorNode:
+		return n.semanticLimits || containsIntegralText(n.text)
+	case *astGlyphNode:
+		return n.class == ir.ClassLarge || containsIntegralText(n.text)
+	default:
+		return false
+	}
+}
+
+func containsIntegral(node astNode) bool {
+	switch n := node.(type) {
+	case *astGlyphNode:
+		return containsIntegralText(n.text)
+	case *astOperatorNode:
+		return containsIntegralText(n.text)
+	case *astRowNode:
+		for _, item := range n.items {
+			if containsIntegral(item) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func containsIntegralText(text string) bool {
+	return strings.ContainsAny(text, "∫∬∭∮∯∰")
 }
 
 func scriptLimits(base astNode, explicit ir.LimitsPlacement) ir.LimitsPlacement {

@@ -1,6 +1,7 @@
 package untie
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/font"
+	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/tex"
 	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
@@ -39,6 +41,7 @@ type (
 	Diagnostic = source.Diagnostic
 	Severity   = source.Severity
 	Box        = display.Box
+	Alt        = display.Alt
 	Item       = display.Item
 	ItemKind   = display.ItemKind
 	Paint      = display.Paint
@@ -119,6 +122,12 @@ type Expr struct {
 var (
 	// ErrInvalidExpr reports a nil expression.
 	ErrInvalidExpr = errors.New("untie: nil expression")
+	// ErrAltInvalidRoot reports malformed alternative-text input.
+	ErrAltInvalidRoot = internalalt.ErrInvalidRoot
+	// ErrAltLimitExceeded reports an alternative-text traversal or output limit.
+	ErrAltLimitExceeded = internalalt.ErrLimitExceeded
+	// ErrAltUnsupportedNode reports an IR node that alternative text cannot explain.
+	ErrAltUnsupportedNode = internalalt.ErrUnsupportedNode
 )
 
 // Parse parses source into an expression. Malformed source produces diagnostics
@@ -316,6 +325,37 @@ func (e *Expr) Diagnostics() []Diagnostic {
 		out[i] = d.Clone()
 	}
 	return out
+}
+
+// Alt returns deterministic plain text and speech derived from the neutral IR.
+// If generation cannot complete, it returns a bounded, validated fallback.
+// MathML is deferred and remains empty. Use AltContext to observe the error.
+func (e *Expr) Alt() Alt {
+	if e == nil {
+		return Alt{}
+	}
+	out, _ := e.AltContext(context.Background())
+	return out
+}
+
+// AltContext returns alternative text with cooperative cancellation.
+//
+// Nil contexts and cancellation return a zero Alt. Non-context failures return
+// a bounded, validated visible fallback together with an error. Unsupported
+// nested nodes may return partially generated output containing visible
+// markers. Use ErrAltInvalidRoot, ErrAltLimitExceeded, and
+// ErrAltUnsupportedNode to classify those errors.
+func (e *Expr) AltContext(ctx context.Context) (Alt, error) {
+	if ctx == nil {
+		return Alt{}, ErrInvalidContext
+	}
+	if err := ctx.Err(); err != nil {
+		return Alt{}, err
+	}
+	if e == nil || e.root == nil || e.root.Root == nil {
+		return Alt{}, ErrInvalidExpr
+	}
+	return internalalt.GenerateContext(ctx, e.root.Root, e.mode, e.limits)
 }
 
 // Key returns a stable convenience cache key for the parsed expression.

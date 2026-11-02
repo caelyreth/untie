@@ -63,9 +63,10 @@ func (p *parser) parseOperatorName(command token) astNode {
 		return newPlaceholderAST(normalizeRange(body.base().span), "unsupported operator name")
 	}
 	return &astOperatorNode{
-		astBase: newASTBaseAt(astOperator, source.Merge(command.span, body.base().span), tokenOrigin(command)),
-		text:    text,
-		limits:  limits,
+		astBase:        newASTBaseAt(astOperator, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		text:           text,
+		limits:         limits,
+		semanticLimits: limits != ir.LimitsNever,
 	}
 }
 

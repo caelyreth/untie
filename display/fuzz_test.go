@@ -30,7 +30,28 @@ func FuzzBoxOperations(f *testing.F) {
 		if !bytes.Equal(first, second) {
 			t.Fatal("clone changed canonical output")
 		}
+		alt := randomAlt(data)
+		if err := alt.Validate(); err == nil {
+			altFirst, err := alt.MarshalCanonical()
+			if err != nil {
+				t.Fatalf("alt canonicalization: %v", err)
+			}
+			altSecond, err := alt.Clone().MarshalCanonical()
+			if err != nil {
+				t.Fatalf("alt clone canonicalization: %v", err)
+			}
+			if !bytes.Equal(altFirst, altSecond) {
+				t.Fatal("alt clone changed canonical output")
+			}
+		}
 	})
+}
+
+func randomAlt(data []byte) Alt {
+	return Alt{
+		Speech: string(data),
+		Text:   string(data),
+	}
 }
 
 func randomBox(data []byte) *Box {

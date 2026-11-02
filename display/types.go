@@ -89,6 +89,19 @@ type Box struct {
 	Breaks []Break
 }
 
+// Alt is semantic alternative text derived from the neutral expression tree.
+// MathML is reserved until a host requires it and remains empty for now.
+type Alt struct {
+	Speech string
+	Text   string
+	MathML string
+}
+
+// Clone returns an independent copy of the alternative text.
+func (a Alt) Clone() Alt {
+	return a
+}
+
 // Clone returns an independent copy of the box.
 func (b *Box) Clone() *Box {
 	if b == nil {
