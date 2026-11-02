@@ -86,4 +86,4 @@ Untie is dual-licensed under either:
 
 You may choose either license at your option. The SPDX expression for original
 project material is `MIT OR Apache-2.0`. Third-party material remains under
-its own license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+its own license.
