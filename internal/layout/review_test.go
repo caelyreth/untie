@@ -101,9 +101,9 @@ func TestSignedExplicitSpacing(t *testing.T) {
 		space *ir.Space
 		want  float32
 	}{
-		{"TeX negative thin space", ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, ir.EmLength(-1.0/6)), float32(16 * 5.0 / 6.0)},
-		{"negative mkern", ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, ir.MuLength(-3)), float32(16 * 5.0 / 6.0)},
-		{"zero explicit space", ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, ir.EmLength(0)), 16},
+		{"TeX negative thin space", ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, irEm(-1.0/6)), float32(16 * 5.0 / 6.0)},
+		{"negative mkern", ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, mustMuLength(-3)), float32(16 * 5.0 / 6.0)},
+		{"zero explicit space", ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, irEm(0)), 16},
 	}
 	for _, test := range tests {
 		test := test
@@ -235,6 +235,7 @@ func TestDistinctHorizontalAndSkewedFractions(t *testing.T) {
 	horizontalRenderer, _, horizontalStretch := newTestRenderer(t)
 	horizontal := ir.NewFraction(source.NewRange(0, 3), glyph("1", ir.ClassNormal), glyph("2", ir.ClassNormal))
 	horizontal.Style = ir.FractionHorizontal
+	horizontal.Bar = false
 	horizontalBox, err := horizontalRenderer.Layout(horizontal, ir.Inline, testStyle(16))
 	if err != nil {
 		t.Fatalf("Layout(horizontal fraction) error = %v", err)
@@ -249,6 +250,7 @@ func TestDistinctHorizontalAndSkewedFractions(t *testing.T) {
 	skewedRenderer, _, skewedStretch := newTestRenderer(t)
 	skewed := ir.NewFraction(source.NewRange(0, 3), glyph("1", ir.ClassNormal), glyph("2", ir.ClassNormal))
 	skewed.Style = ir.FractionSkewed
+	skewed.Bar = false
 	skewedBox, err := skewedRenderer.Layout(skewed, ir.Inline, testStyle(16))
 	if err != nil {
 		t.Fatalf("Layout(skewed fraction) error = %v", err)

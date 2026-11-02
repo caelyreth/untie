@@ -36,6 +36,10 @@ var allowedProjectImports = map[string][]string{
 		modulePath,
 		modulePath + "/ir",
 	},
+	modulePath + "/cmd/formula-preview": {
+		modulePath,
+		modulePath + "/internal/testrender",
+	},
 	modulePath + "/display": {
 		modulePath + "/geometry",
 	},
@@ -64,6 +68,7 @@ var allowedProjectImports = map[string][]string{
 		modulePath + "/source",
 	},
 	modulePath + "/internal/layout": {
+		modulePath + "/internal/layout",
 		modulePath + "/display",
 		modulePath + "/geometry",
 		modulePath + "/ir",

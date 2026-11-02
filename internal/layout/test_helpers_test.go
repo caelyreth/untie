@@ -238,6 +238,22 @@ func em(n, d int64) geometry.Em {
 	return value
 }
 
+func irEm(value float64) ir.Length {
+	length, err := ir.EmLength(value)
+	if err != nil {
+		panic(err)
+	}
+	return length
+}
+
+func mustMuLength(value float64) ir.Length {
+	length, err := ir.MuLength(value)
+	if err != nil {
+		panic(err)
+	}
+	return length
+}
+
 func glyph(text string, class ir.MathClass) *ir.Glyph {
 	node := ir.NewGlyph(source.NewRange(0, 1), text)
 	node.Class = class

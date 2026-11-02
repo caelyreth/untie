@@ -20,8 +20,8 @@ func TestTableRequestPreservesStyleLinesTagsAndCellStyle(t *testing.T) {
 		Cells: []ir.Node{glyph("x", ir.ClassNormal)},
 		Tag:   glyph("1", ir.ClassNormal),
 	})
-	table.Horizontal = []ir.TableLine{{Position: 0, Count: 1, Dashed: true, Thickness: ir.EmLength(0.02)}}
-	table.Vertical = []ir.TableLine{{Position: 1, Count: 2, Thickness: ir.EmLength(0.03)}}
+	table.Horizontal = []ir.TableLine{{Position: 0, Count: 1, Dashed: true, Thickness: irEm(0.02)}}
+	table.Vertical = []ir.TableLine{{Position: 1, Count: 2, Thickness: irEm(0.03)}}
 	style := ir.NewStyle(source.NewRange(0, 4), table)
 	style.SetSize = true
 	style.NewSize = ir.SizeScript

@@ -81,7 +81,7 @@ func TestExternalTableAdapterCanConstructResult(t *testing.T) {
 	table := ir.NewTable(source.NewRange(0, 1), ir.TableRow{
 		Cells: []ir.Node{ir.NewGlyph(source.NewRange(0, 1), "x")},
 	})
-	table.Horizontal = []ir.TableLine{{Count: 1, Thickness: ir.EmLength(0.02)}}
+	table.Horizontal = []ir.TableLine{{Count: 1, Thickness: mustExternalLength(0.02)}}
 	box, err := renderer.Layout(table, ir.Inline, display.Style{Size: 16})
 	if err != nil {
 		t.Fatalf("Layout() error = %v", err)
@@ -99,4 +99,12 @@ func maxEm(a, b geometry.Em) geometry.Em {
 		return a
 	}
 	return b
+}
+
+func mustExternalLength(value float64) ir.Length {
+	length, err := ir.EmLength(value)
+	if err != nil {
+		panic(err)
+	}
+	return length
 }

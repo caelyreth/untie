@@ -77,7 +77,11 @@ func (s *layoutState) layoutBox(node *ir.Box, env environment, depth int) (*Frag
 	if node.HasBorder {
 		borderWidth := node.BorderWidth
 		if borderWidth.IsZero() {
-			borderWidth = ir.EmLength(float64(defaultBoxBorderWidth) / float64(geometry.EmScale))
+			var err error
+			borderWidth, err = ir.EmLength(float64(defaultBoxBorderWidth) / float64(geometry.EmScale))
+			if err != nil {
+				return nil, fmt.Errorf("%w: default box border width: %v", ErrInvalidInput, err)
+			}
 		}
 		thickness, err := s.length(borderWidth, env.Style, metrics)
 		if err != nil {

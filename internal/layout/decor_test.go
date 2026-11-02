@@ -186,7 +186,7 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 	}
 
 	bad := ir.NewCancel(source.NewRange(0, 2), glyph("x", ir.ClassNormal))
-	bad.Thickness = ir.EmLength(-0.05)
+	bad.Thickness = irEm(-0.05)
 	if _, err := renderer.Layout(bad, ir.Inline, testStyle(16)); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("negative cancel thickness error = %v", err)
 	}
@@ -197,13 +197,13 @@ func TestBoxPaddingFillBorderRadiusAndLimits(t *testing.T) {
 
 	renderer, _, _ := newTestRenderer(t)
 	boxNode := ir.NewBox(source.NewRange(0, 3), glyph("x", ir.ClassNormal))
-	boxNode.Padding = [4]ir.Length{ir.EmLength(0.1), ir.EmLength(0.1), ir.EmLength(0.1), ir.EmLength(0.1)}
+	boxNode.Padding = [4]ir.Length{irEm(0.1), irEm(0.1), irEm(0.1), irEm(0.1)}
 	boxNode.HasFill = true
 	boxNode.Fill = ir.Paint{Explicit: ir.RGBA{R: 1, G: 2, B: 3, A: 255}, HasExplicit: true}
 	boxNode.HasBorder = true
-	boxNode.BorderWidth = ir.EmLength(0.05)
+	boxNode.BorderWidth = irEm(0.05)
 	boxNode.Border = ir.Paint{Role: ir.PaintError}
-	boxNode.Radius = ir.EmLength(0.1)
+	boxNode.Radius = irEm(0.1)
 	box, err := renderer.Layout(boxNode, ir.Inline, testStyle(16))
 	if err != nil {
 		t.Fatalf("Layout(box) error = %v", err)
@@ -245,7 +245,7 @@ func TestBoxPaddingFillBorderRadiusAndLimits(t *testing.T) {
 	}
 
 	bad := ir.NewBox(source.NewRange(0, 1), glyph("x", ir.ClassNormal))
-	bad.Radius = ir.EmLength(-0.1)
+	bad.Radius = irEm(-0.1)
 	if _, err := renderer.Layout(bad, ir.Inline, testStyle(16)); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("negative radius error = %v", err)
 	}
@@ -407,10 +407,10 @@ func BenchmarkLayoutCancel(b *testing.B) {
 func BenchmarkLayoutBox(b *testing.B) {
 	renderer, _, _ := newTestRenderer(b)
 	root := ir.NewBox(source.NewRange(0, 3), glyph("x", ir.ClassNormal))
-	root.Padding = [4]ir.Length{ir.EmLength(0.1), ir.EmLength(0.1), ir.EmLength(0.1), ir.EmLength(0.1)}
+	root.Padding = [4]ir.Length{irEm(0.1), irEm(0.1), irEm(0.1), irEm(0.1)}
 	root.HasFill = true
 	root.HasBorder = true
-	root.Radius = ir.EmLength(0.1)
+	root.Radius = irEm(0.1)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := renderer.Layout(root, ir.Inline, testStyle(16)); err != nil {
