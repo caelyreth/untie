@@ -439,6 +439,18 @@ func TestSemanticNormalizationPreservesExplicitLimitOverrides(t *testing.T) {
 	}
 }
 
+func TestSemanticDifferenceDistinguishesAbsentFields(t *testing.T) {
+	t.Parallel()
+
+	difference := CompareSemantic(
+		map[string]any{"space": map[string]any{"type": "interword"}},
+		map[string]any{"space": map[string]any{"type": "interword", "amount": nil}},
+	)
+	if difference == nil || !strings.Contains(difference.String(), `expected <absent>, got null`) {
+		t.Fatalf("semantic difference = %v, want absent field", difference)
+	}
+}
+
 func TestOutputComparisonUsesFixtureTolerance(t *testing.T) {
 	want := &display.Box{Width: 10, Ascent: 4, Descent: 1}
 	within := &display.Box{Width: 10 + toleranceDIP*0.9, Ascent: 4, Descent: 1}

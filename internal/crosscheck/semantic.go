@@ -210,6 +210,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["accent"] = accent
 		baseValue["position"] = positionName(node.Position)
 		baseValue["stretchy"] = node.Stretchy
+		baseValue["natural-fit"] = node.NaturalFit
 		baseValue["dotless"] = node.Dotless
 		baseValue["exact-width"] = node.ExactFrameWidth
 		return baseValue, nil
@@ -462,6 +463,8 @@ func usesLimits(node *ir.Scripts, size ir.MathSize) bool {
 		return true
 	case ir.LimitsNever:
 		return false
+	case ir.LimitsDisplay:
+		return size == ir.SizeDisplay
 	}
 	return size == ir.SizeDisplay && class == ir.ClassLarge
 }
@@ -501,6 +504,9 @@ type SemanticDifference struct {
 }
 
 func shortJSON(value any) string {
+	if _, ok := value.(absentValue); ok {
+		return "<absent>"
+	}
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Sprintf("<json error: %v>", err)
@@ -547,7 +553,13 @@ func firstDifference(path string, want, got any) (string, any, any) {
 		for _, key := range keys {
 			wv, wok := w[key]
 			gv, gok := g[key]
-			if wok != gok || !reflect.DeepEqual(wv, gv) {
+			if !wok {
+				return firstDifference(path+"."+key, absentValue{}, gv)
+			}
+			if !gok {
+				return firstDifference(path+"."+key, wv, absentValue{})
+			}
+			if !reflect.DeepEqual(wv, gv) {
 				return firstDifference(path+"."+key, wv, gv)
 			}
 		}
@@ -567,6 +579,12 @@ func firstDifference(path string, want, got any) (string, any, any) {
 		}
 	}
 	return path, want, got
+}
+
+type absentValue struct{}
+
+func (absentValue) MarshalJSON() ([]byte, error) {
+	return []byte(`"<absent>"`), nil
 }
 
 func normalizedLength(length ir.Length) any {
@@ -612,7 +630,7 @@ func variantName(v ir.Variant) string {
 }
 
 func limitsName(v ir.LimitsPlacement) string {
-	return enumName(v, []string{"auto", "always", "never"})
+	return enumName(v, []string{"auto", "always", "never", "display"})
 }
 
 func paintRoleName(v ir.PaintRole) string {

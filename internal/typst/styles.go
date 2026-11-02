@@ -217,7 +217,7 @@ func (l *lowerer) lowerPrimes(call *astNode) ir.Node {
 	}
 	if count < 0 {
 		l.errorAt(call.span, source.CodeInvalidValue, "expected non-negative integer")
-		count = 0
+		return l.placeholder(call.span, "invalid prime count")
 	}
 	if count > int64(l.limits.MaxTextBytes) {
 		l.errorAt(call.span, source.CodeLimitExceeded, "prime count exceeds configured limit")
@@ -227,8 +227,8 @@ func (l *lowerer) lowerPrimes(call *astNode) ir.Node {
 }
 
 func (l *lowerer) primeRow(span source.Range, count int) ir.Node {
-	if count <= 0 {
-		return l.glyph(span, "′")
+	if count == 0 {
+		return ir.NewRow(span)
 	}
 	if count <= 4 {
 		primes := [...]string{"′", "″", "‴", "⁗"}

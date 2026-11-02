@@ -317,11 +317,6 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 		space.Class = ir.ClassSpace
 		return space
 	}
-	if name == "space" {
-		space := ir.NewSpace(n.span, ir.SpaceInterword, ir.Length{})
-		space.Class = ir.ClassSpace
-		return space
-	}
 	if def, ok := symbol(name); ok {
 		g := l.glyph(n.span, def.text)
 		g.Class = def.class
@@ -482,7 +477,7 @@ func inheritScriptLimits(scripts *ir.Scripts) {
 	}
 	base := scripts.BaseItem.NodeBase()
 	if scripts.Limits == ir.LimitsAuto {
-		scripts.Limits = base.Limits
+		scripts.Limits = effectiveNodeLimits(scripts.BaseItem)
 	}
 	if scripts.Limits == ir.LimitsAuto && base.Class == ir.ClassRelation {
 		scripts.Limits = ir.LimitsAlways
@@ -490,6 +485,20 @@ func inheritScriptLimits(scripts *ir.Scripts) {
 			base.Limits = ir.LimitsAlways
 		}
 	}
+}
+
+func effectiveNodeLimits(node ir.Node) ir.LimitsPlacement {
+	if node == nil || node.NodeBase() == nil {
+		return ir.LimitsAuto
+	}
+	base := node.NodeBase()
+	if base.Limits != ir.LimitsAuto {
+		return base.Limits
+	}
+	if scripts, ok := node.(*ir.Scripts); ok {
+		return effectiveNodeLimits(scripts.BaseItem)
+	}
+	return ir.LimitsAuto
 }
 
 func (l *lowerer) lowerOptional(n *astNode) ir.Node {

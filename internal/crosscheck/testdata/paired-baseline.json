@@ -4,9 +4,9 @@
   "toleranceDIP": 0.002,
   "total": 81,
   "pass": 21,
-  "semanticIRMismatch": 52,
-  "layoutMismatch": 2,
-  "fixtureMismatch": 4,
+  "semanticIRMismatch": 56,
+  "layoutMismatch": 0,
+  "fixtureMismatch": 2,
   "documentedPairDifference": 2,
   "unexplained": 0,
   "cases": [
@@ -79,7 +79,7 @@
       "index": 11,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[3].numerator[1].balanced: expected null, got true",
+      "detail": "root[3].numerator[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -95,8 +95,8 @@
       "index": 13,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[3].amount: expected null, got [\"mu\",3000000]",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root[1].natural-fit: expected false, got true",
+      "reason": "Reviewed: Typst accents now carry NaturalFit separately from TeX simple-accent stretch intent; this is a reviewed source-policy difference before the later differential-spacing mismatch."
     },
     {
       "id": "iiint",
@@ -127,7 +127,7 @@
       "index": 17,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].balanced: expected null, got true",
+      "detail": "root[2].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -173,7 +173,7 @@
       "index": 23,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].balanced: expected null, got true",
+      "detail": "root[0].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -181,7 +181,7 @@
       "index": 24,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[0].balanced: expected null, got true",
+      "detail": "root[0].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -197,7 +197,7 @@
       "index": 26,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "root.main.body[0].denominator[0].amount: expected null, got [\"mu\",3000000]",
+      "detail": "root.main.body[0].denominator[0].amount: expected \u003cabsent\u003e, got [\"mu\",3000000]",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -249,7 +249,7 @@
       "index": 34,
       "category": "matrices",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
+      "detail": "root[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -295,32 +295,32 @@
       "index": 40,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].amount[0]: expected \"mu\", got \"em\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root[0].natural-fit: expected false, got true",
+      "reason": "Reviewed: Typst named accents carry NaturalFit while TeX simple accents are non-stretchy; the exact narrow geometry is covered by TestTypstAccentNaturalFitGeometry."
     },
     {
       "id": "wide-accents",
       "index": 41,
       "category": "accents",
-      "kind": "layout-mismatch",
-      "detail": "TeX layout: layout: insufficient stretch: no horizontal construction",
-      "reason": "Reviewed: Typst compound accents preserve natural fitting and exact space semantics; the remaining layout error is missing horizontal stretch construction for the TeX wide accent."
+      "kind": "semantic-ir-mismatch",
+      "detail": "root[0].natural-fit: expected false, got true",
+      "reason": "Reviewed: Typst distinguishes NaturalFit from source Stretchy; these accents are naturally fitted while the TeX pair uses explicit wide accents, so semantic comparison records the source-policy difference. Pinned width-fitting geometry is covered by TestTypstAccentNaturalFitGeometry."
     },
     {
       "id": "over-under-line",
       "index": 42,
       "category": "accents",
-      "kind": "fixture-mismatch",
-      "detail": "Typst: fixture.glyphs: expected 5, got 4",
-      "reason": "Reviewed: Typst space semantics now align; the remaining difference is static line and glyph geometry in the pinned frame."
+      "kind": "semantic-ir-mismatch",
+      "detail": "root[1].amount: expected null, got \u003cabsent\u003e",
+      "reason": "Reviewed: Typst named `space` is now a real U+0020 class-space glyph, while TeX `\\ ` lowers to an interword Space node. The item topology intentionally differs by source; fixture glyph identity/placement and punctuation-class spacing are asserted directly."
     },
     {
       "id": "braces",
       "index": 43,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].limit-bottom: expected [{\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"5\",\"variant\":\"auto\"},{\"class\":\"normal\",\"cramped\":false,\"ignore...\u003csha256:8ea8061b938fa75b\u003e, got {\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"operator-text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"5050\",\"variant\":\"auto\"}",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root[0].main.natural-fit: expected false, got true",
+      "reason": "Reviewed: Typst structural braces carry both explicit Stretchy and NaturalFit, while TeX records explicit stretch without the Typst natural-fit policy; structural class, limits, and fitting are covered by focused tests."
     },
     {
       "id": "overset",
@@ -334,9 +334,9 @@
       "id": "dddot",
       "index": 45,
       "category": "accents",
-      "kind": "layout-mismatch",
-      "detail": "output.overflow: expected 0.337250, got 0.190674",
-      "reason": "Reviewed: a simple atomic accent now carries narrow source intent; the remaining output overflow is a layout metric difference."
+      "kind": "semantic-ir-mismatch",
+      "detail": "root.natural-fit: expected false, got true",
+      "reason": "Reviewed: Typst uses NaturalFit for the atomic accent while TeX records a simple non-stretchy accent. The separate layout contract is covered by TestTypstAccentNaturalFitGeometry."
     },
     {
       "id": "bb",
@@ -383,7 +383,7 @@
       "index": 51,
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].balanced: expected null, got true",
+      "detail": "root[2].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -415,16 +415,16 @@
       "index": 55,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[9].balanced: expected true, got null",
+      "detail": "root[9].balanced: expected true, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
       "id": "sets",
       "index": 56,
       "category": "symbols",
-      "kind": "fixture-mismatch",
-      "detail": "Typst: fixture.width: expected 251.664000, got 246.774994",
-      "reason": "Reviewed: named interword-space semantics and canonical union variants now align; the remaining difference is static-frame width."
+      "kind": "semantic-ir-mismatch",
+      "detail": "root[6].amount: expected null, got \u003cabsent\u003e",
+      "reason": "Reviewed: Typst named `space` is now a real class-space source glyph rather than a synthetic interword space; TeX retains an interword Space node. Pinned glyph identity/placement and class spacing are asserted directly."
     },
     {
       "id": "logic",
@@ -439,7 +439,7 @@
       "index": 58,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].body: expected {\"class\":\"relation\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"≡\",\"variant\":\"normal-or-auto\"}, got null",
+      "detail": "root[1].body: expected {\"class\":\"relation\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"≡\",\"variant\":\"normal-or-auto\"}, got \u003cabsent\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -513,7 +513,7 @@
       "index": 68,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
+      "detail": "root[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -529,15 +529,15 @@
       "index": 70,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[7].balanced: expected null, got true",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root[0].natural-fit: expected false, got true",
+      "reason": "Reviewed: Typst `hat` records NaturalFit while TeX records a simple non-stretchy accent; the exact narrow accent geometry is covered by TestTypstAccentNaturalFitGeometry."
     },
     {
       "id": "bayes",
       "index": 71,
       "category": "realistic",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].balanced: expected null, got true",
+      "detail": "root[1].balanced: expected \u003cabsent\u003e, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {

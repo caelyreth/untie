@@ -39,6 +39,23 @@ func TestFractionDeparenthesizesOneLeftOperandPair(t *testing.T) {
 	if !ok || inner.Span != source.NewRange(1, 6) {
 		t.Fatalf("nested numerator = %#v, want outer body span", nestedFraction.Numerator)
 	}
+
+	denominatorSrc := `a/(b+c)`
+	denominatorResult := parse(t, denominatorSrc)
+	requireNoDiagnostics(t, denominatorSrc, denominatorResult)
+	denominatorFraction := find[*ir.Fraction](t, denominatorResult.Root)
+	denominator, ok := denominatorFraction.Denominator.(*ir.Row)
+	if !ok || denominator.Span != source.NewRange(3, 6) {
+		t.Fatalf("denominator = %#v, want row spanning b+c", denominatorFraction.Denominator)
+	}
+	if denominatorFraction.Span != source.NewRange(0, len(denominatorSrc)) {
+		t.Fatalf("denominator fraction span = %#v, want full expression", denominatorFraction.Span)
+	}
+	for _, delimiter := range []string{"(", ")"} {
+		if glyphs := glyphTextCount(denominatorResult.Root, delimiter); glyphs != 0 {
+			t.Fatalf("denominator retained %d %q delimiters", glyphs, delimiter)
+		}
+	}
 }
 
 func TestNamedSpacesLowerBeforeSymbolLookup(t *testing.T) {
@@ -49,7 +66,6 @@ func TestNamedSpacesLowerBeforeSymbolLookup(t *testing.T) {
 		kind   ir.SpaceKind
 		amount ir.Length
 	}{
-		{"space", ir.SpaceInterword, ir.Length{}},
 		{"thin", ir.SpaceExplicit, builtinEmLength(1.0 / 6.0)},
 		{"med", ir.SpaceExplicit, builtinEmLength(2.0 / 9.0)},
 		{"thick", ir.SpaceExplicit, builtinEmLength(5.0 / 18.0)},
@@ -68,6 +84,16 @@ func TestNamedSpacesLowerBeforeSymbolLookup(t *testing.T) {
 				t.Fatalf("%s = %#v, want class-space %v/%v", test.name, space, test.kind, test.amount)
 			}
 		})
+	}
+
+	result := parse(t, "space")
+	requireNoDiagnostics(t, "space", result)
+	if spaces := countNodes[*ir.Space](result.Root); spaces != 0 {
+		t.Fatalf("space lowered to %d neutral spaces, want a source glyph", spaces)
+	}
+	glyph := find[*ir.Glyph](t, result.Root)
+	if glyph.Text != " " || glyph.Class != ir.ClassSpace || glyph.Span != source.NewRange(0, 5) {
+		t.Fatalf("space glyph = %#v, want class-space source glyph", glyph)
 	}
 }
 
@@ -138,6 +164,26 @@ func TestPrimeRunsPrecomposeThroughFour(t *testing.T) {
 	if got := nodeText(explicit.Root); got != "f″" {
 		t.Fatalf("explicit two primes = %q, want f with double prime", got)
 	}
+
+	zero := parse(t, `f primes(0)`)
+	requireNoDiagnostics(t, "zero primes", zero)
+	if got := nodeText(zero.Root); got != "f" {
+		t.Fatalf("zero primes = %q, want no prime glyph", got)
+	}
+
+	negative := parse(t, `f primes(-1)`)
+	var invalidCount bool
+	for _, diagnostic := range negative.Diagnostics {
+		if diagnostic.Code == source.CodeInvalidValue && diagnostic.Severity == source.SeverityError {
+			invalidCount = true
+		}
+	}
+	if !invalidCount {
+		t.Fatalf("negative prime diagnostics = %#v, want invalid-value", negative.Diagnostics)
+	}
+	if _, ok := findPlaceholder(negative.Root, "invalid prime count"); !ok {
+		t.Fatalf("negative prime root = %#v, want visible fallback", negative.Root)
+	}
 }
 
 func TestAccentStretchAndStructuralBraceMetadata(t *testing.T) {
@@ -147,24 +193,25 @@ func TestAccentStretchAndStructuralBraceMetadata(t *testing.T) {
 		result := parse(t, src)
 		requireNoDiagnostics(t, src, result)
 		accent := find[*ir.Accent](t, result.Root)
-		if accent.Stretchy {
-			t.Fatalf("%s should retain narrow atomic accent intent", src)
+		if accent.Stretchy || !accent.NaturalFit {
+			t.Fatalf("%s accent policy = stretchy %v natural-fit %v", src, accent.Stretchy, accent.NaturalFit)
 		}
 	}
 
-	for _, src := range []string{`hat(a b c)`, `arrow(A B)`, `accent(C D, arrow.l.r)`} {
+	for _, src := range []string{`hat(a b c)`, `hat(sum)`, `hat(integral)`, `hat(op("sin"))`, `arrow(A B)`, `accent(C D, arrow.l.r)`} {
 		result := parse(t, src)
 		requireNoDiagnostics(t, src, result)
 		accent := find[*ir.Accent](t, result.Root)
-		if !accent.Stretchy {
-			t.Fatalf("%s should preserve natural fitting for a compound base", src)
+		if accent.Stretchy || !accent.NaturalFit {
+			t.Fatalf("%s accent policy = stretchy %v natural-fit %v", src, accent.Stretchy, accent.NaturalFit)
 		}
 	}
 
 	brace := parse(t, `overbrace(a+b)`)
 	requireNoDiagnostics(t, "plain structural brace", brace)
 	decoration := find[*ir.Accent](t, brace.Root)
-	if !decoration.Stretchy || decoration.Class != ir.ClassInner || decoration.Limits != ir.LimitsAlways {
+	if !decoration.Stretchy || !decoration.NaturalFit ||
+		decoration.Class != ir.ClassInner || decoration.Limits != ir.LimitsAlways {
 		t.Fatalf("structural brace = %#v, want stretchy inner limits", decoration)
 	}
 
@@ -225,8 +272,31 @@ func TestLimitWrappersRecordExplicitPlacementWithoutForcingAuto(t *testing.T) {
 	requireNoDiagnostics(t, "inline limits false", inline)
 	inlineScripts := firstScripts(t, inline.Root)
 	base, ok := inlineScripts.BaseItem.(*ir.Glyph)
-	if !ok || inlineScripts.Limits == ir.LimitsAlways || base.Limits == ir.LimitsAlways {
-		t.Fatalf("contextual limits were forced to always: %#v", inlineScripts)
+	if !ok || inlineScripts.Limits != ir.LimitsDisplay || base.Limits != ir.LimitsDisplay {
+		t.Fatalf("display-only limits = wrapper %v base %v, want display", inlineScripts.Limits, base.Limits)
+	}
+}
+
+func TestNestedCornerAttachmentsKeepEffectiveLimits(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		src   string
+		limit ir.LimitsPlacement
+	}{
+		{`attach(attach(limits(A), tl:b), t:x)`, ir.LimitsAlways},
+		{`attach(attach(scripts(sum), tl:b), t:x)`, ir.LimitsNever},
+	}
+	for _, test := range tests {
+		result := parse(t, test.src)
+		requireNoDiagnostics(t, test.src, result)
+		outer := firstScripts(t, result.Root)
+		if outer.Limits != test.limit {
+			t.Fatalf("%s outer limits = %v, want %v", test.src, outer.Limits, test.limit)
+		}
+		if got := effectiveNodeLimits(outer.BaseItem); got != test.limit {
+			t.Fatalf("%s inner effective limits = %v, want %v", test.src, got, test.limit)
+		}
 	}
 }
 
@@ -255,6 +325,19 @@ func glyphTextCount(root ir.Node, text string) int {
 		return true
 	})
 	return count
+}
+
+func findPlaceholder(root ir.Node, reason string) (*ir.Placeholder, bool) {
+	var found *ir.Placeholder
+	ir.Walk(root, func(node ir.Node) bool {
+		placeholder, ok := node.(*ir.Placeholder)
+		if ok && placeholder.Reason == reason {
+			found = placeholder
+			return false
+		}
+		return true
+	})
+	return found, found != nil
 }
 
 func repeated(text string, count int) string {

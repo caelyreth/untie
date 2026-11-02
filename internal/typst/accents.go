@@ -35,7 +35,8 @@ func (l *lowerer) lowerAccentCall(call *astNode) ir.Node {
 		position = ir.PositionBelow
 	}
 	out := ir.NewAccent(call.span, body, accent, position)
-	out.Stretchy = accentRequiresStretch(body)
+	out.Stretchy = false
+	out.NaturalFit = true
 	if arg := namedArgument(call, "dotless"); arg != nil {
 		if dotless, ok := l.valueBool(arg.node); ok {
 			out.Dotless = dotless
@@ -60,7 +61,8 @@ func (l *lowerer) lowerAccentWithMark(call *astNode, mark string) ir.Node {
 		position = ir.PositionBelow
 	}
 	out := ir.NewAccent(call.span, body, accent, position)
-	out.Stretchy = accentRequiresStretch(body)
+	out.Stretchy = false
+	out.NaturalFit = true
 	if arg := namedArgument(call, "dotless"); arg != nil {
 		if dotless, ok := l.valueBool(arg.node); ok {
 			out.Dotless = dotless
@@ -135,6 +137,7 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 	accent.Class = ir.ClassDiacritic
 	decor := ir.NewAccent(call.span, body, accent, position)
 	decor.Stretchy = true
+	decor.NaturalFit = true
 	decor.Class = ir.ClassInner
 	decor.Limits = ir.LimitsAlways
 	var annotation ir.Node
@@ -159,30 +162,4 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 	scripts.Limits = ir.LimitsAlways
 	scripts.Role = ir.ScriptRoleBraceLabel
 	return scripts
-}
-
-// Typst models every accent as a naturally fitting decoration, while the
-// neutral IR also represents TeX's explicit narrow/wide accent distinction.
-// Keep atomic simple accents narrow, but preserve natural fitting for any
-// structurally compound base where a fixed mark would no longer fit.
-func accentRequiresStretch(body ir.Node) bool {
-	switch node := body.(type) {
-	case nil:
-		return false
-	case *ir.Row:
-		switch len(node.Items) {
-		case 0:
-			return false
-		case 1:
-			return accentRequiresStretch(node.Items[0])
-		default:
-			return true
-		}
-	case *ir.Style:
-		return accentRequiresStretch(node.Body)
-	case *ir.Glyph, *ir.Operator, *ir.Text:
-		return false
-	default:
-		return true
-	}
 }

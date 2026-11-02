@@ -129,7 +129,7 @@ func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 		scripts.Role = baseScriptRole(body)
 		if inlineArg := namedArgument(call, "inline"); inlineArg != nil {
 			if inline, ok := l.valueBool(inlineArg.node); ok && !inline {
-				scripts.Limits = ir.LimitsAuto
+				scripts.Limits = ir.LimitsDisplay
 			}
 		}
 	}
@@ -175,10 +175,13 @@ func nodeUsesLimits(node ir.Node) bool {
 		return false
 	}
 	base := node.NodeBase()
-	if base.Limits == ir.LimitsAlways {
+	switch effectiveNodeLimits(node) {
+	case ir.LimitsAlways, ir.LimitsDisplay:
 		return true
+	case ir.LimitsNever:
+		return false
 	}
-	return base.Class == ir.ClassRelation && base.Limits != ir.LimitsNever
+	return base.Class == ir.ClassRelation
 }
 
 func (l *lowerer) lowerLR(call *astNode) ir.Node {
