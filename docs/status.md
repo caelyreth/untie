@@ -161,7 +161,7 @@ tables.
   placeholders, and text through narrow ports;
 - baseline-origin placement verified with real NewCM outputs;
 - signed explicit spacing, binary lookahead/demotion, and MATH corner kerning;
-- optional table and stretch ports;
+- built-in table/multiline layout and an optional glyph-stretch port;
 - fragment bounds, output quantization, overflow measurement, cancellation, and
   resource limits;
 - flattening to `display.Box` using real and mocked font ports;
