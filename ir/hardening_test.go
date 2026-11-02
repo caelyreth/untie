@@ -112,10 +112,6 @@ func TestValidateRejectsKindAndFieldMismatches(t *testing.T) {
 			}(),
 		},
 		{
-			name: "table row without cells",
-			root: NewTable(span, TableRow{}),
-		},
-		{
 			name: "table line position",
 			root: func() Node {
 				node := NewTable(span, TableRow{Cells: []Node{NewGlyph(span, "x")}})

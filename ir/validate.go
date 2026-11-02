@@ -236,11 +236,6 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		if len(n.Rows) == 0 {
 			return fmt.Errorf("%w: %s: empty multiline", ErrInvalidIR, path)
 		}
-		for i, row := range n.Rows {
-			if len(row) == 0 {
-				return fmt.Errorf("%w: %s: empty multiline row %d", ErrInvalidIR, path, i)
-			}
-		}
 	case *Style:
 		if n.Body == nil {
 			return fmt.Errorf("%w: %s: missing style body", ErrInvalidIR, path)
@@ -355,10 +350,7 @@ func paintIsZero(paint Paint) bool {
 func validateTable(table *Table, path string, limits source.Limits) error {
 	cells := 0
 	maxColumns := len(table.Columns)
-	for i, row := range table.Rows {
-		if len(row.Cells) == 0 {
-			return fmt.Errorf("%w: %s: row %d has no cells", ErrInvalidIR, path, i)
-		}
+	for _, row := range table.Rows {
 		cells += len(row.Cells)
 		maxColumns = max(maxColumns, len(row.Cells))
 	}
