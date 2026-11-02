@@ -11,8 +11,8 @@ import (
 )
 
 type assemblyMeasure struct {
-	full     int64
-	growable int64
+	full     geometry.Em
+	growable geometry.Em
 	count    int
 }
 
@@ -21,7 +21,6 @@ func (a *adapter) assembleGlyph(
 	base layout.Glyph,
 	mapped font.Glyph,
 	construction font.MathConstruction,
-	target int32,
 	targetEm geometry.Em,
 	axis font.MathAxis,
 	text string,
@@ -39,8 +38,12 @@ func (a *adapter) assembleGlyph(
 	}
 	parts := assembly.Parts
 	maxRepeats := a.limits.MaxAssemblyRepeats
+	minOverlap, err := a.emFromUnits(int64(assembly.MinConnectorOverlap), info.UnitsPerEm)
+	if err != nil {
+		return layout.Glyph{}, err
+	}
 	measure := func(repeat int) (assemblyMeasure, error) {
-		return a.measureAssembly(ctx, parts, repeat, int64(assembly.MinConnectorOverlap))
+		return a.measureAssembly(ctx, parts, repeat, minOverlap, info.UnitsPerEm)
 	}
 
 	repeat := 0
@@ -48,23 +51,42 @@ func (a *adapter) assembleGlyph(
 	if err != nil {
 		return layout.Glyph{}, err
 	}
-	if !assemblyReaches(current, int64(target)) {
+	if !assemblyReaches(current, targetEm) {
 		one, err := measure(1)
 		if err != nil {
 			return layout.Glyph{}, err
 		}
-		perRepeat := int64(0)
+		var perRepeat geometry.Em
 		if maxRepeats > 1 {
 			two, err := measure(2)
 			if err != nil {
 				return layout.Glyph{}, err
 			}
-			perRepeat = (two.full + two.growable) - (one.full + one.growable)
+			twoReach, err := two.full.Add(two.growable)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			oneReach, err := one.full.Add(one.growable)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			perRepeat, err = subEm(twoReach, oneReach)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
 		}
 		if perRepeat <= 0 {
 			repeat = maxRepeats
 		} else {
-			needed := int64(1) + ceilDiv64(int64(target)-(one.full+one.growable), perRepeat)
+			reach, err := one.full.Add(one.growable)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			deficit, err := subEm(targetEm, reach)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			needed := int64(1) + ceilDiv64(int64(deficit), int64(perRepeat))
 			if needed < 1 {
 				needed = 1
 			}
@@ -78,7 +100,7 @@ func (a *adapter) assembleGlyph(
 			if err != nil {
 				return layout.Glyph{}, err
 			}
-			if !assemblyReaches(previous, int64(target)) {
+			if !assemblyReaches(previous, targetEm) {
 				break
 			}
 			repeat--
@@ -87,7 +109,7 @@ func (a *adapter) assembleGlyph(
 		if err != nil {
 			return layout.Glyph{}, err
 		}
-		for !assemblyReaches(current, int64(target)) && repeat < maxRepeats {
+		for !assemblyReaches(current, targetEm) && repeat < maxRepeats {
 			repeat++
 			current, err = measure(repeat)
 			if err != nil {
@@ -95,19 +117,19 @@ func (a *adapter) assembleGlyph(
 			}
 		}
 	}
-	if !assemblyReaches(current, int64(target)) {
+	if !assemblyReaches(current, targetEm) {
 		if repeat >= maxRepeats {
 			return layout.Glyph{}, fmt.Errorf(
 				"%w: assembly reached repeat limit %d before target %d",
 				layout.ErrLimit,
 				maxRepeats,
-				target,
+				targetEm,
 			)
 		}
 		return layout.Glyph{}, fmt.Errorf(
 			"%w: assembly did not reach %d after %d repeats",
 			layout.ErrInsufficientStretch,
-			target,
+			targetEm,
 			repeat,
 		)
 	}
@@ -119,8 +141,8 @@ func (a *adapter) assembleGlyph(
 	if len(sequence) > a.limits.MaxOutputItems {
 		return layout.Glyph{}, fmt.Errorf("%w: assembly part count %d", layout.ErrLimit, len(sequence))
 	}
-	advances := make([]int64, len(sequence))
-	overlaps := make([]int64, max(0, len(sequence)-1))
+	advances := make([]geometry.Em, len(sequence))
+	overlaps := make([]geometry.Em, max(0, len(sequence)-1))
 	for i, part := range sequence {
 		if err := checkEvery(ctx, i, 16); err != nil {
 			return layout.Glyph{}, err
@@ -128,7 +150,10 @@ func (a *adapter) assembleGlyph(
 		if part.FullAdvance < 0 {
 			return layout.Glyph{}, fmt.Errorf("%w: negative assembly part advance", layout.ErrInvalidInput)
 		}
-		advances[i] = int64(part.FullAdvance)
+		advances[i], err = a.emFromUnits(int64(part.FullAdvance), info.UnitsPerEm)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
 		if i+1 < len(sequence) {
 			overlap, err := connectorOverlap(part, sequence[i+1])
 			if err != nil {
@@ -142,14 +167,23 @@ func (a *adapter) assembleGlyph(
 					assembly.MinConnectorOverlap,
 				)
 			}
-			overlaps[i] = overlap
-			advances[i] -= overlap
+			overlaps[i], err = a.emFromUnits(overlap, info.UnitsPerEm)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			advances[i], err = advances[i].Add(-overlaps[i])
+			if err != nil {
+				return layout.Glyph{}, err
+			}
 		}
 		if advances[i] < 0 {
 			return layout.Glyph{}, fmt.Errorf("%w: negative assembly advance", layout.ErrInvalidInput)
 		}
 	}
-	spread := int64(target) - current.full
+	spread, err := subEm(targetEm, current.full)
+	if err != nil {
+		return layout.Glyph{}, err
+	}
 	if spread < 0 {
 		spread = 0
 	}
@@ -158,21 +192,47 @@ func (a *adapter) assembleGlyph(
 	}
 	remaining := spread
 	for i, overlap := range overlaps {
-		capacity := overlap - int64(assembly.MinConnectorOverlap)
+		capacity, err := overlap.Add(-minOverlap)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
 		if capacity <= 0 || current.growable == 0 {
 			continue
 		}
-		share := capacity * spread / current.growable
+		share, err := capacity.MulDiv(int64(spread), int64(current.growable))
+		if err != nil {
+			return layout.Glyph{}, err
+		}
 		if share > remaining {
 			share = remaining
 		}
-		advances[i] += share
-		remaining -= share
+		advances[i], err = advances[i].Add(share)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
+		remaining, err = remaining.Add(-share)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
 	}
 	for remaining > 0 {
 		for i, overlap := range overlaps {
-			capacity := overlap - int64(assembly.MinConnectorOverlap)
-			used := advances[i] - (int64(sequence[i].FullAdvance) - overlap)
+			capacity, err := overlap.Add(-minOverlap)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			fullAdvance, err := a.emFromUnits(int64(sequence[i].FullAdvance), info.UnitsPerEm)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			baseAdvance, err := fullAdvance.Add(-overlap)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			used, err := advances[i].Add(-baseAdvance)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
 			if used < capacity && remaining > 0 {
 				advances[i]++
 				remaining--
@@ -180,88 +240,67 @@ func (a *adapter) assembleGlyph(
 		}
 	}
 
-	outlines := make([]font.Outline, len(sequence))
-	totalSegments := 0
-	for i, part := range sequence {
-		if err := checkEvery(ctx, i, 16); err != nil {
-			return layout.Glyph{}, err
-		}
-		outline, ok := a.fonts.Outline(font.Glyph{Face: mapped.Face, ID: part.Glyph})
-		if !ok {
-			return layout.Glyph{}, fmt.Errorf("%w: assembly part %d", layout.ErrMissingGlyph, part.Glyph)
-		}
-		if err := reserveSegments(&totalSegments, len(outline.Segments), a.limits.MaxPathSegments); err != nil {
-			return layout.Glyph{}, err
-		}
-		outlines[i] = outline
+	placed := make([]layout.PositionedGlyph, len(sequence))
+	var cursor geometry.Em
+	var maxAscent, maxDescent geometry.Em
+	var maxAdvance geometry.Em
+	fullExtent, err := current.full.Add(spread)
+	if err != nil {
+		return layout.Glyph{}, err
 	}
-
-	combined := make([]font.Segment, 0, totalSegments)
-	var cursor int64
-	var minX, minY, maxX, maxY int32
-	havePoint := false
-	var maxVerticalAdvance int64
 	for i, part := range sequence {
 		if err := checkEvery(ctx, i, 16); err != nil {
 			return layout.Glyph{}, err
 		}
-		outline := outlines[i]
-		dx, dy := int64(0), int64(0)
-		if axis == font.HorizontalAxis {
-			dx = cursor
-		} else {
-			dy = -cursor - int64(outline.Bounds.YMax)
+		glyph, err := a.glyphFromFont(
+			font.Glyph{Face: mapped.Face, ID: part.Glyph},
+			layout.Style{},
+			true,
+			text,
+		)
+		if err != nil {
+			return layout.Glyph{}, fmt.Errorf("%w: assembly part %d", err, part.Glyph)
 		}
-		for _, segment := range outline.Segments {
-			out := segment
-			for j := range out.Points {
-				x, err := checkedAdd32(out.Points[j].X, dx)
-				if err != nil {
-					return layout.Glyph{}, err
-				}
-				y, err := checkedAdd32(out.Points[j].Y, dy)
-				if err != nil {
-					return layout.Glyph{}, err
-				}
-				out.Points[j].X = x
-				out.Points[j].Y = y
-				if !havePoint {
-					minX, maxX, minY, maxY = x, x, y, y
-					havePoint = true
-				} else {
-					minX = min32(minX, x)
-					maxX = max32(maxX, x)
-					minY = min32(minY, y)
-					maxY = max32(maxY, y)
-				}
+		var at layout.Point
+		switch axis {
+		case font.HorizontalAxis:
+			at.X = cursor
+			maxAscent = max(maxAscent, glyph.Ascent)
+			maxDescent = max(maxDescent, glyph.Descent)
+		case font.VerticalAxis:
+			half, err := fullExtent.MulDiv(1, 2)
+			if err != nil {
+				return layout.Glyph{}, err
 			}
-			combined = append(combined, out)
+			top, err := half.Add(-a.metrics.AxisHeight)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			top, err = top.Add(-cursor)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			at.Y, err = top.Add(-glyph.Descent)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			maxAdvance = max(maxAdvance, glyph.Advance)
+		default:
+			return layout.Glyph{}, fmt.Errorf("%w: unknown assembly axis", layout.ErrInvalidInput)
 		}
-		advance, err := checkedAdd64(cursor, advances[i])
+		placed[i] = layout.PositionedGlyph{Glyph: glyph, At: at}
+		cursor, err = cursor.Add(advances[i])
 		if err != nil {
 			return layout.Glyph{}, err
 		}
-		cursor = advance
-		if axis == font.VerticalAxis {
-			metrics, ok := a.fonts.GlyphMetrics(font.Glyph{Face: mapped.Face, ID: part.Glyph})
-			if !ok {
-				return layout.Glyph{}, fmt.Errorf("%w: assembly metrics", layout.ErrMissingGlyph)
-			}
-			maxVerticalAdvance = max64(maxVerticalAdvance, int64(metrics.Advance))
-		}
-	}
-	if !havePoint {
-		return layout.Glyph{}, fmt.Errorf("%w: empty assembly outline", layout.ErrInvalidInput)
-	}
-	path, err := a.designPath(combined, info.UnitsPerEm)
-	if err != nil {
-		return layout.Glyph{}, err
 	}
 	result := base
 	result.FontID = info.ID
 	result.ID = uint16(mapped.ID)
 	result.Text = text
-	result.Outline = path
+	result.Outline = nil
+	result.Parts = placed
+	result.ExactGlyphRef = false
 	result.Italic, err = a.emFromUnits(int64(assembly.ItalicCorrection), info.UnitsPerEm)
 	if err != nil {
 		return layout.Glyph{}, err
@@ -275,46 +314,48 @@ func (a *adapter) assembleGlyph(
 	result.InkBottom = 0
 	result.HasInkBottom = false
 	result.TextLike = false
-	ascent, err := a.emFromUnits(-int64(minY), info.UnitsPerEm)
-	if err != nil {
-		return layout.Glyph{}, err
-	}
-	descent := geometry.Em(0)
-	if maxY > 0 {
-		descent, err = a.emFromUnits(int64(maxY), info.UnitsPerEm)
-		if err != nil {
-			return layout.Glyph{}, err
-		}
-	}
-	result.Ascent = ascent
-	result.Descent = descent
 	switch axis {
 	case font.HorizontalAxis:
-		result.Advance, err = a.emFromUnits(cursor, info.UnitsPerEm)
-		if err != nil {
-			return layout.Glyph{}, err
-		}
+		result.Advance = cursor
+		result.Ascent = maxAscent
+		result.Descent = maxDescent
 		result.TopAccent = result.Advance / 2
 		result.HasTopAccent = true
 	case font.VerticalAxis:
-		result.Advance, err = a.emFromUnits(maxVerticalAdvance, info.UnitsPerEm)
+		half, err := fullExtent.MulDiv(1, 2)
 		if err != nil {
 			return layout.Glyph{}, err
 		}
-		// Vertical assembly extent is defined by the spread part advances, not
-		// by the union of part ink. Typst sets the assembled frame height to the
-		// resolved target before centering it on the math axis.
-		result.Ascent = targetEm
-		result.Descent = 0
+		result.Ascent, err = half.Add(a.metrics.AxisHeight)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
+		result.Descent, err = half.Add(-a.metrics.AxisHeight)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
+		if result.Descent < 0 {
+			result.Ascent = fullExtent
+			result.Descent = 0
+		}
+		result.Advance = maxAdvance
 	}
 	return result, nil
+}
+
+func subEm(a, b geometry.Em) (geometry.Em, error) {
+	if b == math.MinInt64 {
+		return 0, geometry.ErrOverflow
+	}
+	return a.Add(-b)
 }
 
 func (a *adapter) measureAssembly(
 	ctx context.Context,
 	parts []font.AssemblyPart,
 	repeat int,
-	minOverlap int64,
+	minOverlap geometry.Em,
+	upem uint16,
 ) (assemblyMeasure, error) {
 	if repeat < 0 {
 		return assemblyMeasure{}, fmt.Errorf("%w: negative assembly repeat", layout.ErrInvalidInput)
@@ -330,7 +371,7 @@ func (a *adapter) measureAssembly(
 		if part.Extender {
 			count = repeat
 		}
-		for j := 0; j < count; j++ {
+		for range count {
 			if measure.count%64 == 0 {
 				if err := ctx.Err(); err != nil {
 					return assemblyMeasure{}, err
@@ -340,7 +381,11 @@ func (a *adapter) measureAssembly(
 				return assemblyMeasure{}, fmt.Errorf("%w: assembly part count", layout.ErrLimit)
 			}
 			if previous != nil {
-				overlap, err := connectorOverlap(*previous, *part)
+				overlapUnits, err := connectorOverlap(*previous, *part)
+				if err != nil {
+					return assemblyMeasure{}, err
+				}
+				overlap, err := a.emFromUnits(overlapUnits, upem)
 				if err != nil {
 					return assemblyMeasure{}, err
 				}
@@ -352,11 +397,23 @@ func (a *adapter) measureAssembly(
 						minOverlap,
 					)
 				}
-				measure.full, err = checkedAdd64(measure.full, int64(previous.FullAdvance)-overlap)
+				advance, err := a.emFromUnits(int64(previous.FullAdvance), upem)
 				if err != nil {
 					return assemblyMeasure{}, err
 				}
-				measure.growable, err = checkedAdd64(measure.growable, overlap-minOverlap)
+				advance, err = advance.Add(-overlap)
+				if err != nil {
+					return assemblyMeasure{}, err
+				}
+				measure.full, err = measure.full.Add(advance)
+				if err != nil {
+					return assemblyMeasure{}, err
+				}
+				growth, err := overlap.Add(-minOverlap)
+				if err != nil {
+					return assemblyMeasure{}, err
+				}
+				measure.growable, err = measure.growable.Add(growth)
 				if err != nil {
 					return assemblyMeasure{}, err
 				}
@@ -366,8 +423,11 @@ func (a *adapter) measureAssembly(
 		}
 	}
 	if previous != nil {
-		var err error
-		measure.full, err = checkedAdd64(measure.full, int64(previous.FullAdvance))
+		advance, err := a.emFromUnits(int64(previous.FullAdvance), upem)
+		if err != nil {
+			return assemblyMeasure{}, err
+		}
+		measure.full, err = measure.full.Add(advance)
 		if err != nil {
 			return assemblyMeasure{}, err
 		}
@@ -375,14 +435,17 @@ func (a *adapter) measureAssembly(
 	return measure, nil
 }
 
-func assemblyReaches(measure assemblyMeasure, target int64) bool {
+func assemblyReaches(measure assemblyMeasure, target geometry.Em) bool {
 	full := measure.full
 	if full < target {
-		growth := target - full
-		if growth > measure.growable {
+		growth, err := subEm(target, full)
+		if err != nil || growth > measure.growable {
 			growth = measure.growable
 		}
-		full += growth
+		full, err = full.Add(growth)
+		if err != nil {
+			return false
+		}
 	}
 	return target <= full
 }
@@ -429,40 +492,8 @@ func ceilDiv64(a, b int64) int64 {
 	return 1 + (a-1)/b
 }
 
-func checkedAdd64(a, b int64) (int64, error) {
-	if b > 0 && a > math.MaxInt64-b || b < 0 && a < math.MinInt64-b {
-		return 0, geometry.ErrOverflow
-	}
-	return a + b, nil
-}
-
-func checkedAdd32(a int32, b int64) (int32, error) {
-	value, err := checkedAdd64(int64(a), b)
-	if err != nil {
-		return 0, err
-	}
-	if value < math.MinInt32 || value > math.MaxInt32 {
-		return 0, geometry.ErrOverflow
-	}
-	return int32(value), nil
-}
-
 func min32(a, b int32) int32 {
 	if a < b {
-		return a
-	}
-	return b
-}
-
-func max32(a, b int32) int32 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func max64(a, b int64) int64 {
-	if a > b {
 		return a
 	}
 	return b

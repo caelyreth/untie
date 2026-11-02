@@ -43,22 +43,12 @@ func (s *layoutState) layoutMultiline(node *ir.Multiline, env environment, depth
 	rowWidth := make([]geometry.Em, len(node.Rows))
 	for rowIndex, items := range node.Rows {
 		parts := splitRowAlignmentParts(items)
-		rows[rowIndex] = make([]measuredPart, len(parts))
-		for cellIndex, part := range parts {
-			if err := s.ctx.Err(); err != nil {
-				return nil, err
-			}
-			fragment, err := s.layoutNode(part, env, depth)
-			if err != nil {
-				return nil, err
-			}
-			cell := measuredPart{
-				fragment: fragment,
-				width:    fragment.Width,
-				ascent:   fragment.Ascent,
-				descent:  fragment.Descent,
-			}
-			rows[rowIndex][cellIndex] = cell
+		measured, err := s.layoutAlignmentNodes(parts, env, depth)
+		if err != nil {
+			return nil, err
+		}
+		rows[rowIndex] = measured
+		for _, cell := range measured {
 			rowAscent[rowIndex] = max(rowAscent[rowIndex], cell.ascent)
 			rowDescent[rowIndex] = max(rowDescent[rowIndex], cell.descent)
 			rowWidth[rowIndex], err = add(rowWidth[rowIndex], cell.width)

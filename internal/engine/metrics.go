@@ -44,8 +44,13 @@ func (a *adapter) extractMathMetrics() (layout.MathMetrics, error) {
 		}
 	}
 	var xHeight geometry.Em
+	var capHeight geometry.Em
 	if value, ok := a.fonts.VerticalMetrics(font.MathFace); ok {
 		xHeight, err = a.emFromUnits(int64(value.XHeight), info.UnitsPerEm)
+		if err != nil {
+			return layout.MathMetrics{}, err
+		}
+		capHeight, err = a.emFromUnits(int64(value.CapHeight), info.UnitsPerEm)
 		if err != nil {
 			return layout.MathMetrics{}, err
 		}
@@ -117,6 +122,7 @@ func (a *adapter) extractMathMetrics() (layout.MathMetrics, error) {
 		ScriptScriptPercentScaleDown:  percent(font.ScriptScriptPercentScaleDown, 50),
 		SpaceWidth:                    spaceWidth,
 		XHeight:                       xHeight,
+		CapHeight:                     capHeight,
 		AccentBaseHeight:              values[font.AccentBaseHeight],
 		FlattenedAccentBaseHeight:     values[font.FlattenedAccentBaseHeight],
 		DisplayOperatorMinHeight:      values[font.DisplayOperatorMinHeight],

@@ -13,15 +13,36 @@ func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
 	if root == nil {
 		return nil, fmt.Errorf("%w: nil root fragment", ErrInvalidInput)
 	}
+	rootAscent, rootDescent := root.Ascent, root.Descent
+	if s.mode == ir.Inline {
+		// Typst lays inline equations into paragraph line boxes with the font's
+		// cap height as a floor and subtracts the line-leading slack from ink
+		// extents. Item positions remain baseline-relative.
+		capHeight, err := s.metricAt(s.metrics.CapHeight, s.rootStyle)
+		if err != nil {
+			return nil, err
+		}
+		const inlineSlackPercent = int64(455) // 0.65 leading * 0.7
+		slack, err := mulDiv(geometry.Em(geometry.EmScale), inlineSlackPercent, 1000)
+		if err != nil {
+			return nil, err
+		}
+		slack, err = s.metricAt(slack, s.rootStyle)
+		if err != nil {
+			return nil, err
+		}
+		rootAscent = max(capHeight, root.Ascent-slack)
+		rootDescent = max(0, root.Descent-slack)
+	}
 	width, err := s.host(root.Width)
 	if err != nil {
 		return nil, err
 	}
-	ascent, err := s.host(root.Ascent)
+	ascent, err := s.host(rootAscent)
 	if err != nil {
 		return nil, err
 	}
-	descent, err := s.host(root.Descent)
+	descent, err := s.host(rootDescent)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +88,17 @@ type flattenState struct {
 	layout     *layoutState
 	box        *display.Box
 	stack      map[*Fragment]struct{}
+	visits     int
 	operations int
 }
 
 func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	if fragment == nil {
 		return fmt.Errorf("%w: nil fragment in flatten", ErrInvalidInput)
+	}
+	f.visits++
+	if f.visits > f.layout.limits.MaxNodes {
+		return fmt.Errorf("%w: fragment visit count %d", ErrLimit, f.visits)
 	}
 	if _, exists := f.stack[fragment]; exists {
 		return fmt.Errorf("%w: cyclic fragment graph", ErrInvalidInput)
@@ -106,27 +132,33 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 				return err
 			}
 		case drawGlyph:
-			item, err := f.glyphItem(itemX, itemY, draw.glyph)
-			if err != nil {
-				return err
+			glyph := draw.glyph
+			if glyph == nil {
+				return fmt.Errorf("%w: nil glyph", ErrInvalidInput)
 			}
-			if item.Kind == display.ItemGlyphPath {
-				f.box.Items = append(f.box.Items, item)
-			}
-			if f.layout.request.GlyphRefs || item.Kind == display.ItemGlyphRef {
-				ref := display.Item{
-					Kind:   display.ItemGlyphRef,
-					Paint:  toDisplayPaint(draw.glyph.Paint),
-					Bound:  item.Bound,
-					FontID: draw.glyph.Glyph.FontID,
-					Glyph:  draw.glyph.Glyph.ID,
-					At:     item.At,
-					Em:     item.Em,
+			if len(glyph.Glyph.Parts) == 0 {
+				if err := f.appendGlyphItem(itemX, itemY, glyph, glyph.Glyph.ExactGlyphRef); err != nil {
+					return err
 				}
-				f.box.Items = append(f.box.Items, ref)
+				continue
 			}
-			if len(f.box.Items) > f.layout.limits.MaxOutputItems {
-				return fmt.Errorf("%w: output item count", ErrLimit)
+			for _, part := range glyph.Glyph.Parts {
+				partX, err := add(itemX, part.At.X)
+				if err != nil {
+					return err
+				}
+				partY, err := add(itemY, part.At.Y)
+				if err != nil {
+					return err
+				}
+				partGlyph := &GlyphFragment{
+					Glyph: part.Glyph,
+					Scale: glyph.Scale,
+					Paint: glyph.Paint,
+				}
+				if err := f.appendGlyphItem(partX, partY, partGlyph, false); err != nil {
+					return err
+				}
 			}
 		case drawRule:
 			item, err := f.ruleItem(itemX, itemY, draw.rule)
@@ -149,6 +181,35 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 		default:
 			return fmt.Errorf("%w: unknown draw kind %d", ErrInvalidInput, draw.kind)
 		}
+	}
+	return nil
+}
+
+func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, exactRef bool) error {
+	item, err := f.glyphItem(x, y, glyph)
+	if err != nil {
+		return err
+	}
+	if !exactRef && item.Kind == display.ItemGlyphRef {
+		return fmt.Errorf("%w: inexact glyph reference without an outline", ErrInvalidInput)
+	}
+	if item.Kind == display.ItemGlyphPath {
+		f.box.Items = append(f.box.Items, item)
+	}
+	if exactRef && (f.layout.request.GlyphRefs || item.Kind == display.ItemGlyphRef) {
+		ref := display.Item{
+			Kind:   display.ItemGlyphRef,
+			Paint:  toDisplayPaint(glyph.Paint),
+			Bound:  item.Bound,
+			FontID: glyph.Glyph.FontID,
+			Glyph:  glyph.Glyph.ID,
+			At:     item.At,
+			Em:     item.Em,
+		}
+		f.box.Items = append(f.box.Items, ref)
+	}
+	if len(f.box.Items) > f.layout.limits.MaxOutputItems {
+		return fmt.Errorf("%w: output item count", ErrLimit)
 	}
 	return nil
 }

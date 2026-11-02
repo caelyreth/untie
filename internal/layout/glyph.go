@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/caelyreth/untie/geometry"
@@ -11,6 +12,9 @@ type stretchSpec struct {
 	axis      Axis
 	target    geometry.Em
 	shortFall geometry.Em
+	// bestEffort keeps an unstretched glyph when the font has no usable
+	// construction. Explicit delimiter and accent requests remain strict.
+	bestEffort bool
 }
 
 func (s *layoutState) automaticDisplayStretch(class ir.MathClass, env environment) *stretchSpec {
@@ -21,7 +25,7 @@ func (s *layoutState) automaticDisplayStretch(class ir.MathClass, env environmen
 	if target <= 0 {
 		return nil
 	}
-	return &stretchSpec{axis: Vertical, target: target}
+	return &stretchSpec{axis: Vertical, target: target, bestEffort: true}
 }
 
 func (s *layoutState) layoutClassGlyphText(
@@ -69,6 +73,7 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 	}
 	fragment.Italic = scaled.Glyph.Italic
 	fragment.TextLike = scaled.Glyph.TextLike
+	fragment.StretchableHorizontal = scaled.Glyph.StretchableHorizontal
 	fragment.BaseAscent = scaled.Glyph.Ascent
 	fragment.BaseDescent = scaled.Glyph.Descent
 	fragment.AccentTop = (fragment.Width + fragment.Italic) / 2
@@ -122,6 +127,9 @@ func (s *layoutState) glyph(req GlyphRequest, stretch *stretchSpec) (Glyph, erro
 			ShortFall:    shortFall,
 		})
 		if err != nil {
+			if stretch.bestEffort && errors.Is(err, ErrInsufficientStretch) {
+				return glyph, nil
+			}
 			return Glyph{}, err
 		}
 		glyph = stretched
@@ -135,6 +143,9 @@ func (s *layoutState) glyph(req GlyphRequest, stretch *stretchSpec) (Glyph, erro
 		return Glyph{}, err
 	}
 	if extent < required {
+		if stretch.bestEffort {
+			return glyph, nil
+		}
 		axis := "horizontal"
 		if stretch.axis == Vertical {
 			axis = "vertical"
@@ -192,6 +203,30 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 	}
 	if scaled.Kerns, err = scaleKernInfo(glyph.Kerns, factor); err != nil {
 		return nil, err
+	}
+	if len(glyph.Parts) > 0 {
+		scaled.Parts = make([]PositionedGlyph, len(glyph.Parts))
+		for i, part := range glyph.Parts {
+			if err := s.ctx.Err(); err != nil {
+				return nil, err
+			}
+			scaledPart, err := s.scaleGlyph(part.Glyph, style, paint)
+			if err != nil {
+				return nil, err
+			}
+			atX, err := scale(part.At.X, factor)
+			if err != nil {
+				return nil, err
+			}
+			atY, err := scale(part.At.Y, factor)
+			if err != nil {
+				return nil, err
+			}
+			scaled.Parts[i] = PositionedGlyph{
+				Glyph: scaledPart.Glyph,
+				At:    Point{X: atX, Y: atY},
+			}
+		}
 	}
 	if err := s.reservePathSegments(len(glyph.Outline)); err != nil {
 		return nil, err
