@@ -129,10 +129,6 @@ func (s *layoutState) layoutRadical(node *ir.Radical, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	lineTop, err := sub(radicandTop, gap, thickness/2)
-	if err != nil {
-		return nil, err
-	}
 	width, err := add(radicandX, radicand.Width)
 	if err != nil {
 		return nil, err
@@ -161,7 +157,7 @@ func (s *layoutState) layoutRadical(node *ir.Radical, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	lineY, err := sub(lineTop, ascent)
+	lineY, err := sub(signTop, ascent)
 	if err != nil {
 		return nil, err
 	}
