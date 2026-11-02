@@ -35,6 +35,12 @@ if err != nil {
 // Draw box.Items as filled paths/rules and use box.Hits for source mapping.
 ```
 
+Display layout with a positive `Style.MaxWidth` returns baseline-offset
+`box.Lines`; draw each line's independent items at that line baseline. The
+parent `box.Items` are the already-translated aggregate, so a host must draw
+either the parent items or the per-line items, never both. Inline layout ignores
+`MaxWidth`.
+
 `NewEngine` is the caller-owned lifecycle API for repeated layouts. The
 package-level `Layout` and `LayoutContext` helpers use a bounded process-wide
 engine cache that can be released with `ClearLayoutEngineCache`.

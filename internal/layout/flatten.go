@@ -10,6 +10,17 @@ import (
 )
 
 func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
+	box, err := s.flattenFragment(root)
+	if err != nil {
+		return nil, err
+	}
+	if s.mode == ir.Display && s.request.MaxWidth > 0 {
+		return s.flattenDisplayLines(root, box)
+	}
+	return box, nil
+}
+
+func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 	if root == nil {
 		return nil, fmt.Errorf("%w: nil root fragment", ErrInvalidInput)
 	}
@@ -83,10 +94,6 @@ func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
 		}
 	}
 	state.box.Overflow = state.overflow()
-	if state.layout.mode == ir.Display && state.layout.request.MaxWidth > 0 {
-		state.box.Overflow = maxFloat(state.box.Overflow, state.box.Width-state.layout.request.MaxWidth)
-		state.box.Overflow = maxFloat(0, state.box.Overflow)
-	}
 	return state.box, nil
 }
 

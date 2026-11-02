@@ -25,11 +25,22 @@ func TestCloneIndependent(t *testing.T) {
 		}},
 		Breaks: []Break{{X: 1, Kind: BreakRelation}},
 		Alt:    Alt{Text: "x", Speech: "x"},
+		Lines: []LineBox{{
+			Baseline: 1,
+			Box: &Box{
+				Width: 1,
+				Items: []Item{{
+					Kind: ItemGlyphPath,
+					Path: geometry.Path{{Op: geometry.SegMoveTo}},
+				}},
+			},
+		}},
 	}
 	got := box.Clone()
 	got.Items[0].Path[0].Op = geometry.SegClose
 	got.Hits[0].Area.Width = 2
 	got.Breaks[0].X = 2
+	got.Lines[0].Box.Items[0].Path[0].Op = geometry.SegLineTo
 	if box.Items[0].Path[0].Op != geometry.SegMoveTo {
 		t.Fatal("Clone shared path storage")
 	}
@@ -38,6 +49,9 @@ func TestCloneIndependent(t *testing.T) {
 	}
 	if box.Breaks[0].X != 1 {
 		t.Fatal("Clone shared break storage")
+	}
+	if box.Lines[0].Box.Items[0].Path[0].Op != geometry.SegMoveTo {
+		t.Fatal("Clone shared line box storage")
 	}
 	if box.Alt != (Alt{Text: "x", Speech: "x"}) {
 		t.Fatal("Clone changed alternative text")
@@ -48,8 +62,9 @@ func TestMarshalCanonical(t *testing.T) {
 	t.Parallel()
 
 	box := &Box{
-		Width:  1,
-		Ascent: 2,
+		Width:   1,
+		Ascent:  2,
+		Descent: 1,
 		Items: []Item{{
 			Kind:  ItemRule,
 			Paint: Paint{Role: RoleInk},
@@ -63,6 +78,17 @@ func TestMarshalCanonical(t *testing.T) {
 		}},
 		Breaks: []Break{{X: 0.5, Penalty: 10, Kind: BreakRelation}},
 		Alt:    Alt{Text: "x", Speech: "x"},
+		Lines: []LineBox{{
+			Baseline: 1,
+			Box: &Box{
+				Width: 1,
+				Items: []Item{{
+					Kind:  ItemRule,
+					Paint: Paint{Role: RoleInk},
+					Rect:  geometry.Rect{Width: 1, Height: 0.1},
+				}},
+			},
+		}},
 	}
 	first, err := box.MarshalCanonical()
 	if err != nil {
@@ -80,8 +106,9 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 	if !strings.Contains(string(first), `"hits"`) ||
 		!strings.Contains(string(first), `"breaks"`) ||
-		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x","mathml":""}`) {
-		t.Fatalf("canonical output omitted hits, breaks, or alt: %s", first)
+		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x","mathml":""}`) ||
+		!strings.Contains(string(first), `"lines":[{"baseline":1,"box":`) {
+		t.Fatalf("canonical output omitted hits, breaks, alt, or lines: %s", first)
 	}
 	if _, err := (*Box)(nil).MarshalCanonical(); err == nil {
 		t.Fatal("nil box MarshalCanonical() error = nil")
@@ -251,6 +278,44 @@ func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
 		{
 			name: "alt",
 			box:  &Box{Alt: Alt{Text: "x\x00y"}},
+		},
+		{
+			name: "negative line baseline",
+			box:  &Box{Lines: []LineBox{{Baseline: -1, Box: &Box{}}}},
+		},
+		{
+			name: "nil line box",
+			box:  &Box{Lines: []LineBox{{}}},
+		},
+		{
+			name: "nested lines",
+			box: &Box{Lines: []LineBox{{
+				Box: &Box{Lines: []LineBox{{Box: &Box{}}}},
+			}}},
+		},
+		{
+			name: "line wider than parent",
+			box:  &Box{Lines: []LineBox{{Box: &Box{Width: 1}}}},
+		},
+		{
+			name: "decreasing baselines",
+			box: &Box{
+				Width: 1, Ascent: 2,
+				Lines: []LineBox{
+					{Baseline: 1, Box: &Box{}},
+					{Baseline: 0, Box: &Box{}},
+				},
+			},
+		},
+		{
+			name: "inconsistent baseline spacing",
+			box: &Box{
+				Width: 1, Ascent: 4, Descent: 4,
+				Lines: []LineBox{
+					{Baseline: 0, Box: &Box{Ascent: 1, Descent: 2}},
+					{Baseline: 4, Box: &Box{Ascent: 1}},
+				},
+			},
 		},
 	}
 	for _, tc := range tests {

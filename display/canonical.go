@@ -22,6 +22,32 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 	if b == nil {
 		return nil, fmt.Errorf("display: nil box")
 	}
+	if err := b.Validate(); err != nil {
+		return nil, err
+	}
+	return json.Marshal(canonicalBoxValue(b, true))
+}
+
+type canonicalBoxSnapshot struct {
+	Width      float32          `json:"width"`
+	Ascent     float32          `json:"ascent"`
+	Descent    float32          `json:"descent"`
+	Italic     float32          `json:"italic"`
+	AxisHeight float32          `json:"axisHeight"`
+	Overflow   float32          `json:"overflow"`
+	Items      []canonicalItem  `json:"items"`
+	Hits       []canonicalHit   `json:"hits,omitempty"`
+	Breaks     []canonicalBreak `json:"breaks,omitempty"`
+	Alt        *canonicalAlt    `json:"alt,omitempty"`
+	Lines      []canonicalLine  `json:"lines,omitempty"`
+}
+
+type canonicalLine struct {
+	Baseline float32              `json:"baseline"`
+	Box      canonicalBoxSnapshot `json:"box"`
+}
+
+func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 	items := make([]canonicalItem, len(b.Items))
 	for i, item := range b.Items {
 		items[i] = canonicalItem{
@@ -36,24 +62,12 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 			Em:     item.Em,
 		}
 	}
-	type boxSnapshot struct {
-		Width      float32          `json:"width"`
-		Ascent     float32          `json:"ascent"`
-		Descent    float32          `json:"descent"`
-		Italic     float32          `json:"italic"`
-		AxisHeight float32          `json:"axisHeight"`
-		Overflow   float32          `json:"overflow"`
-		Items      []canonicalItem  `json:"items"`
-		Hits       []canonicalHit   `json:"hits,omitempty"`
-		Breaks     []canonicalBreak `json:"breaks,omitempty"`
-		Alt        *canonicalAlt    `json:"alt,omitempty"`
-	}
 	var alt *canonicalAlt
 	if b.Alt != (Alt{}) {
 		snapshot := canonicalAlt(b.Alt)
 		alt = &snapshot
 	}
-	return json.Marshal(boxSnapshot{
+	out := canonicalBoxSnapshot{
 		Width:      b.Width,
 		Ascent:     b.Ascent,
 		Descent:    b.Descent,
@@ -64,7 +78,17 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		Hits:       canonicalHits(b.Hits),
 		Breaks:     canonicalBreaks(b.Breaks),
 		Alt:        alt,
-	})
+	}
+	if includeLines && len(b.Lines) > 0 {
+		out.Lines = make([]canonicalLine, len(b.Lines))
+		for i, line := range b.Lines {
+			out.Lines[i] = canonicalLine{
+				Baseline: line.Baseline,
+				Box:      canonicalBoxValue(line.Box, false),
+			}
+		}
+	}
+	return out
 }
 
 type canonicalAlt struct {

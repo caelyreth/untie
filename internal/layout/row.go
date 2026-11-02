@@ -89,6 +89,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			x:       x,
 			penalty: pending.penalty,
 			kind:    pending.kind,
+			cut:     len(row.items),
 		})
 		pending = pendingBreak{}
 	}

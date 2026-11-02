@@ -63,3 +63,41 @@ func ExampleEngine_layoutAtTwoSizes() {
 	// alt present: true
 	// first box unchanged: true
 }
+
+func ExampleEngine_displayLines() {
+	fontBytes, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		panic(err)
+	}
+	fonts, err := untie.LoadFonts(untie.Fonts{
+		Math: untie.FontData{Bytes: fontBytes, ID: "NewCMMath-Book"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	engine, err := untie.NewEngine(fonts, untie.Limits{})
+	if err != nil {
+		panic(err)
+	}
+
+	expr := untie.ParseTeX(`a+b+c+d`, untie.Display, untie.ParseOptions{})
+	box, err := engine.Layout(expr, untie.Style{Size: 24, MaxWidth: 60})
+	if err != nil {
+		panic(err)
+	}
+	allValid := box.Validate() == nil
+	for _, line := range box.Lines {
+		allValid = allValid && line.Box.Validate() == nil
+	}
+	fmt.Println("wrapped:", len(box.Lines) > 1)
+	fmt.Println("lines valid:", allValid)
+	fmt.Println("first baseline:", displayLineBaseline(box.Lines[0]))
+	// Output:
+	// wrapped: true
+	// lines valid: true
+	// first baseline: 0
+}
+
+func displayLineBaseline(line untie.LineBox) float32 {
+	return line.Baseline
+}

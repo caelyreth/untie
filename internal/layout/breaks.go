@@ -86,17 +86,17 @@ func normalizeFragmentBreaks(breaks []fragmentBreak) []fragmentBreak {
 		return breaks
 	}
 	slices.SortStableFunc(breaks, func(a, b fragmentBreak) int {
-		if a.x < b.x {
+		if a.cut < b.cut {
 			return -1
 		}
-		if a.x > b.x {
+		if a.cut > b.cut {
 			return 1
 		}
 		return 0
 	})
 	out := breaks[:0]
 	for _, candidate := range breaks {
-		if len(out) > 0 && out[len(out)-1].x == candidate.x {
+		if len(out) > 0 && out[len(out)-1].cut == candidate.cut {
 			last := &out[len(out)-1]
 			if breakPriority(candidate.kind) > breakPriority(last.kind) {
 				*last = candidate
@@ -112,8 +112,24 @@ func (s *layoutState) displayBreaks(ctx context.Context, breaks []fragmentBreak)
 	if len(breaks) > s.limits.MaxOutputItems {
 		return nil, fmt.Errorf("%w: break point count %d", ErrLimit, len(breaks))
 	}
-	out := make([]display.Break, 0, len(breaks))
-	for i, breakPoint := range breaks {
+	ordered := slices.Clone(breaks)
+	slices.SortStableFunc(ordered, func(a, b fragmentBreak) int {
+		if a.x < b.x {
+			return -1
+		}
+		if a.x > b.x {
+			return 1
+		}
+		if a.cut < b.cut {
+			return -1
+		}
+		if a.cut > b.cut {
+			return 1
+		}
+		return 0
+	})
+	out := make([]display.Break, 0, len(ordered))
+	for i, breakPoint := range ordered {
 		if i%64 == 0 {
 			if err := ctx.Err(); err != nil {
 				return nil, err
