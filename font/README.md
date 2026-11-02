@@ -41,6 +41,9 @@ the NewCM fixture used by the tests.
 
 - The host supplies bytes and IDs. There is no system font lookup, family
   matching, or environment-dependent fallback.
+- Every face ID must be nonblank and unique across the math, text, and fallback
+  faces. IDs are the host's stable glyph-cache identities and cannot be
+  reconstructed from colliding faces.
 - The primary math face must contain OpenType MATH constants.
 - `ssty` and `dtls` are parsed locally because `ssty` requires alternate-feature
   values. Lookup flags on those math features are rejected at load rather than

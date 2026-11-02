@@ -154,6 +154,46 @@ func TestTextAndFallbacks(t *testing.T) {
 	}
 }
 
+func TestFaceIDsMustBeUniqueAndNonEmpty(t *testing.T) {
+	t.Parallel()
+	data := readTestFont(t)
+	tests := []struct {
+		name  string
+		fonts Fonts
+	}{
+		{
+			name:  "empty math",
+			fonts: Fonts{Math: FontData{Bytes: data}},
+		},
+		{
+			name:  "blank math",
+			fonts: Fonts{Math: FontData{Bytes: data, ID: " \t"}},
+		},
+		{
+			name: "duplicate text",
+			fonts: func() Fonts {
+				text := FontData{Bytes: data, ID: "same"}
+				return Fonts{Math: FontData{Bytes: data, ID: "same"}, Text: &text}
+			}(),
+		},
+		{
+			name: "duplicate fallback",
+			fonts: Fonts{
+				Math:      FontData{Bytes: data, ID: "same"},
+				Fallbacks: []FontData{{Bytes: data, ID: "same"}},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := Load(tc.fonts); err == nil {
+				t.Fatal("Load() error = nil")
+			}
+		})
+	}
+}
+
 func TestMalformedInputFailsAtLoad(t *testing.T) {
 	t.Parallel()
 	data := readTestFont(t)
@@ -251,6 +291,6 @@ func FuzzLoad(f *testing.F) {
 	f.Add([]byte("ttcf\x00\x01\x00\x00\x00\x00\x00\x01\x00\x00\x00\x0c"))
 	f.Add([]byte("not a font"))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = Load(Fonts{Math: FontData{Bytes: data}})
+		_, _ = Load(Fonts{Math: FontData{Bytes: data, ID: "fuzz"}})
 	})
 }
