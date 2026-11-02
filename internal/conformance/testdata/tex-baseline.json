@@ -45,9 +45,9 @@
   },
   "summary": {
     "total": 1111,
-    "pass": 1047,
+    "pass": 1045,
     "diagnostic": 26,
-    "unsupported": 38,
+    "unsupported": 40,
     "bug": 0,
     "unexplained": 0
   },
@@ -18712,7 +18712,9 @@
       "id": "line:000994",
       "corpus": "ratex-core",
       "index": 994,
-      "status": "pass",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Row-scoped \\nonumber events inside alignment environments are deferred until multiline equation-tag metadata is implemented.",
       "families": [
         "command:\\\\",
         "command:\\begin",
@@ -18738,18 +18740,21 @@
       "diagnostics": [
         {
           "code": "unsupported",
-          "severity": 1,
+          "severity": 0,
           "start": 21,
           "end": 30,
-          "message": "equation numbering is outside the formula IR"
+          "message": "\\nonumber inside a nested group or environment is deferred"
         }
-      ]
+      ],
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000995",
       "corpus": "ratex-core",
       "index": 995,
-      "status": "pass",
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Row-scoped \\tag values inside alignment environments are deferred until multiline equation-tag metadata is implemented.",
       "families": [
         "command:\\\\",
         "command:\\begin",
@@ -18775,12 +18780,13 @@
       "diagnostics": [
         {
           "code": "unsupported",
-          "severity": 1,
+          "severity": 0,
           "start": 21,
-          "end": 25,
-          "message": "equation tags are outside the formula IR"
+          "end": 33,
+          "message": "equation tags inside a nested group or environment are deferred"
         }
-      ]
+      ],
+      "detail": "frontend reports an unsupported construct"
     },
     {
       "id": "line:000996",

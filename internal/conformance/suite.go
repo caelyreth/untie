@@ -110,7 +110,7 @@ func BuildTeXReport(ctx context.Context, options SuiteOptions) (*Report, error) 
 // preambles are not part of the imported corpus and are intentionally ignored.
 func ParseTeX(_ context.Context, request Request) (FrontendResult, error) {
 	result := tex.Parse(request.Source, request.Mode, tex.Options{Limits: request.Limits})
-	return FrontendResult{Root: result.Root, Diagnostics: result.Diagnostics}, nil
+	return FrontendResult{Root: result.Root, Tags: result.Tags, Diagnostics: result.Diagnostics}, nil
 }
 
 func teXInput(corpus string, testCase fixture.Case, policy *Policy) (Input, error) {

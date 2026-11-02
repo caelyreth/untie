@@ -10,6 +10,7 @@ import (
 func FuzzParseNoPanicAndValidIR(f *testing.F) {
 	f.Add("x")
 	f.Add(`\frac{1}{2}`)
+	f.Add(`x\tag{1}`)
 	f.Add(`\def\a#1{#1^2}\a{x}`)
 	f.Add(`\begin{matrix}a&b\\c&d\end{matrix}`)
 	f.Add(string([]byte{0xff, '{', '}'}))
@@ -24,9 +25,11 @@ func FuzzParseNoPanicAndValidIR(f *testing.F) {
 		limits.MaxNodes = 8_192
 		limits.MaxMacroExpansions = 1_024
 		limits.MaxExpandedTokens = 8_192
-		result := Parse(src, ir.Inline, Options{Limits: limits})
-		if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
-			t.Fatalf("invalid IR for %q: %v", src, err)
+		for _, mode := range []ir.Mode{ir.Inline, ir.Display} {
+			result := Parse(src, mode, Options{Limits: limits})
+			if err := ir.Validate(&ir.Formula{Root: result.Root, Tags: result.Tags}, limits); err != nil {
+				t.Fatalf("invalid IR for %q in mode %d: %v", src, mode, err)
+			}
 		}
 	})
 }

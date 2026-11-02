@@ -86,6 +86,11 @@ func validateFontSet(fonts *font.FontSet) error {
 
 // Layout lays root out with mode and style.
 func (e *Engine) Layout(ctx context.Context, root ir.Node, mode ir.Mode, style display.Style) (*display.Box, error) {
+	return e.LayoutFormula(ctx, &ir.Formula{Root: root}, mode, style)
+}
+
+// LayoutFormula lays out a complete formula, including formula-scoped metadata.
+func (e *Engine) LayoutFormula(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
 	if e == nil || e.renderer == nil {
 		return nil, fmt.Errorf("%w: nil engine", ErrInvalidInput)
 	}
@@ -98,6 +103,9 @@ func (e *Engine) Layout(ctx context.Context, root ir.Node, mode ir.Mode, style d
 	if err := ValidateStyle(style); err != nil {
 		return nil, err
 	}
+	if formula == nil || formula.Root == nil {
+		return nil, fmt.Errorf("%w: nil formula", ErrInvalidInput)
+	}
 	style.Features = append([]string(nil), style.Features...)
-	return e.renderer.LayoutContext(ctx, root, mode, style)
+	return e.renderer.LayoutFormulaContext(ctx, formula, mode, style)
 }

@@ -39,6 +39,7 @@ type canonicalBoxSnapshot struct {
 	Hits       []canonicalHit   `json:"hits,omitempty"`
 	Breaks     []canonicalBreak `json:"breaks,omitempty"`
 	Alt        *canonicalAlt    `json:"alt,omitempty"`
+	Tag        *canonicalTagBox `json:"tag,omitempty"`
 	Lines      []canonicalLine  `json:"lines,omitempty"`
 }
 
@@ -46,6 +47,17 @@ type canonicalLine struct {
 	Baseline float32              `json:"baseline"`
 	OffsetX  float32              `json:"offsetX"`
 	Box      canonicalBoxSnapshot `json:"box"`
+	Tag      *canonicalTagBox     `json:"tag,omitempty"`
+}
+
+type canonicalTagBox struct {
+	Box     canonicalBoxSnapshot `json:"box"`
+	Source  [2]int               `json:"source"`
+	Manual  bool                 `json:"manual"`
+	Starred bool                 `json:"starred"`
+	Line    int                  `json:"line"`
+	X       float32              `json:"x"`
+	Y       float32              `json:"y"`
 }
 
 func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
@@ -80,6 +92,10 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 		Breaks:     canonicalBreaks(b.Breaks),
 		Alt:        alt,
 	}
+	if b.Tag != nil {
+		tag := canonicalTag(b.Tag)
+		out.Tag = &tag
+	}
 	if includeLines && len(b.Lines) > 0 {
 		out.Lines = make([]canonicalLine, len(b.Lines))
 		for i, line := range b.Lines {
@@ -88,9 +104,25 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 				OffsetX:  line.OffsetX,
 				Box:      canonicalBoxValue(line.Box, false),
 			}
+			if line.Tag != nil {
+				tag := canonicalTag(line.Tag)
+				out.Lines[i].Tag = &tag
+			}
 		}
 	}
 	return out
+}
+
+func canonicalTag(tag *TagBox) canonicalTagBox {
+	return canonicalTagBox{
+		Box:     canonicalBoxValue(tag.Box, false),
+		Source:  [2]int{tag.Source.Start, tag.Source.End},
+		Manual:  tag.Manual,
+		Starred: tag.Starred,
+		Line:    tag.Line,
+		X:       tag.X,
+		Y:       tag.Y,
+	}
 }
 
 type canonicalAlt struct {

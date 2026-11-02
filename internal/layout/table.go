@@ -114,14 +114,6 @@ func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, dept
 			setOwnHitKind(fragment, display.HitTableCell)
 			rows[rowIndex].Cells[columnIndex] = *fragment
 		}
-		if row.Tag != nil {
-			tag, err := s.layoutNode(row.Tag, cellEnv, depth)
-			if err != nil {
-				return nil, err
-			}
-			setOwnHitKind(tag, display.HitTableCell)
-			rows[rowIndex].Tag = tag
-		}
 	}
 	metrics := s.fontMetrics(env.Style, env.Variant)
 	rowGap, err := s.length(node.RowGap, env.Style, metrics)
@@ -175,7 +167,6 @@ type measuredCell struct {
 
 type measuredTableRow struct {
 	cells   []measuredCell
-	tag     *Fragment
 	ascent  geometry.Em
 	descent geometry.Em
 }
@@ -215,16 +206,6 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			rows[rowIndex].cells[columnIndex] = measured
 			rows[rowIndex].ascent = max(rows[rowIndex].ascent, measured.ascent)
 			rows[rowIndex].descent = max(rows[rowIndex].descent, measured.descent)
-		}
-		if row.Tag != nil {
-			tag, err := s.layoutNode(row.Tag, cellEnv, depth)
-			if err != nil {
-				return nil, err
-			}
-			setOwnHitKind(tag, display.HitTableCell)
-			rows[rowIndex].tag = tag
-			rows[rowIndex].ascent = max(rows[rowIndex].ascent, tag.Ascent)
-			rows[rowIndex].descent = max(rows[rowIndex].descent, tag.Descent)
 		}
 	}
 	paren, err := s.layoutClassGlyphText("(", ir.ClassOpening, cellEnv, nil)

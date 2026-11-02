@@ -28,7 +28,7 @@ var (
 
 // Generate derives alternative text with a background context.
 func Generate(root ir.Node, mode ir.Mode, limits source.Limits) display.Alt {
-	out, _ := GenerateContext(context.Background(), root, mode, limits)
+	out, _ := GenerateFormulaContext(context.Background(), &ir.Formula{Root: root}, mode, limits)
 	return out
 }
 
@@ -36,6 +36,18 @@ func Generate(root ir.Node, mode ir.Mode, limits source.Limits) display.Alt {
 // traversal/output limits. It returns a visible fallback alongside non-context
 // errors so callers that ignore the error still never receive invented text.
 func GenerateContext(ctx context.Context, root ir.Node, mode ir.Mode, limits source.Limits) (out display.Alt, err error) {
+	return GenerateFormulaContext(ctx, &ir.Formula{Root: root}, mode, limits)
+}
+
+// GenerateFormula derives alternative text for a formula root and its
+// formula-scoped equation tags.
+func GenerateFormula(root *ir.Formula, mode ir.Mode, limits source.Limits) display.Alt {
+	out, _ := GenerateFormulaContext(context.Background(), root, mode, limits)
+	return out
+}
+
+// GenerateFormulaContext is GenerateContext with equation-tag metadata.
+func GenerateFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, limits source.Limits) (out display.Alt, err error) {
 	effectiveLimits := limits.WithDefaults()
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -49,7 +61,7 @@ func GenerateContext(ctx context.Context, root ir.Node, mode ir.Mode, limits sou
 	if err := ctx.Err(); err != nil {
 		return display.Alt{}, err
 	}
-	if nilNode(root) {
+	if formula == nil || nilNode(formula.Root) {
 		return failedAlt(ErrInvalidRoot, effectiveLimits.MaxTextBytes), ErrInvalidRoot
 	}
 	if mode != ir.Inline && mode != ir.Display {
@@ -62,12 +74,49 @@ func GenerateContext(ctx context.Context, root ir.Node, mode ir.Mode, limits sou
 		limits: effectiveLimits,
 		active: make(map[ir.Node]bool),
 	}
-	parts, err := r.render(root, renderEnv{display: mode == ir.Display}, 0)
+	parts, err := r.render(formula.Root, renderEnv{display: mode == ir.Display}, 0)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return display.Alt{}, ctxErr
 		}
 		return failedAlt(err, r.limits.MaxTextBytes), err
+	}
+	for i, tag := range formula.Tags {
+		r.count++
+		if r.count > r.limits.MaxNodes {
+			err := fmt.Errorf("%w: tag %d metadata count %d", ErrLimitExceeded, i, r.count)
+			return failedAlt(err, r.limits.MaxTextBytes), err
+		}
+		if tag.Suppressed || tag.Body == nil {
+			continue
+		}
+		tagPart, err := r.render(tag.Body, renderEnv{display: mode == ir.Display}, 1)
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return display.Alt{}, ctxErr
+			}
+			return failedAlt(err, r.limits.MaxTextBytes), err
+		}
+		text := "equation"
+		if tagPart.text != "" {
+			text += " (" + tagPart.text + ")"
+		}
+		speech := "equation"
+		if tagPart.speech != "" {
+			speech += " " + tagPart.speech
+		}
+		if parts.text != "" && text != "" {
+			parts.text += " "
+		}
+		parts.text += text
+		if parts.speech != "" && speech != "" {
+			parts.speech += " "
+		}
+		parts.speech += speech
+		if len(parts.text) > r.limits.MaxTextBytes || len(parts.speech) > r.limits.MaxTextBytes {
+			err := fmt.Errorf("%w: text output exceeds %d bytes", ErrLimitExceeded, r.limits.MaxTextBytes)
+			return failedAlt(err, r.limits.MaxTextBytes), err
+		}
 	}
 	out = display.Alt{
 		Speech: strings.TrimSpace(parts.speech),
@@ -720,17 +769,6 @@ func (r *renderer) table(n *ir.Table, env renderEnv, depth int) (piece, error) {
 		if text == "" {
 			text = "empty"
 			speech = "empty row"
-		}
-		if row.Tag != nil {
-			tag, err := r.render(row.Tag, env, depth+1)
-			if err != nil {
-				return piece{}, err
-			}
-			text += " [tag: " + tag.text + "]"
-			if len(text) > r.limits.MaxTextBytes {
-				return piece{}, fmt.Errorf("%w: table text exceeds %d bytes", ErrLimitExceeded, r.limits.MaxTextBytes)
-			}
-			speech = "tagged " + tag.speech + ": " + speech
 		}
 		if emptyCells == len(row.Cells) && len(row.Cells) > 0 {
 			speech = "empty cells"

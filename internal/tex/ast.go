@@ -247,6 +247,16 @@ type astAlignNode struct {
 	astBase
 }
 
+type astEquationTag struct {
+	body       astNode
+	span       source.Range
+	origin     source.Range
+	manual     bool
+	suppressed bool
+	starred    bool
+	line       int
+}
+
 func newASTBase(kind astKind, span source.Range) astBase {
 	return astBase{kind: kind, span: span, origin: span}
 }

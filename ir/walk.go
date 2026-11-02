@@ -45,9 +45,6 @@ func Children(n Node) []Node {
 		var out []Node
 		for _, row := range n.Rows {
 			out = append(out, row.Cells...)
-			if row.Tag != nil {
-				out = append(out, row.Tag)
-			}
 		}
 		return out
 	case *Multiline:
@@ -67,6 +64,41 @@ func Children(n Node) []Node {
 	default:
 		return nil
 	}
+}
+
+// WalkFormula visits the formula root followed by every equation tag body in
+// source order. Traversal budgets and cycle checks are shared across all
+// entries, so tags cannot bypass the formula's node or nesting limits.
+func WalkFormula(f *Formula, limits source.Limits, fn func(Node) bool) error {
+	if f == nil {
+		return fmt.Errorf("%w: nil formula", ErrInvalidIR)
+	}
+	if nodeIsNil(f.Root) {
+		return fmt.Errorf("%w: nil root", ErrInvalidIR)
+	}
+	if fn == nil {
+		return fmt.Errorf("%w: nil walk callback", ErrInvalidIR)
+	}
+	state := walkState{
+		limits: limits.WithDefaults(),
+		active: make(map[Node]bool),
+	}
+	if err := state.visit(f.Root, 0, fn); err != nil {
+		return err
+	}
+	for i, tag := range f.Tags {
+		state.count++
+		if state.count > state.limits.MaxNodes {
+			return fmt.Errorf("%w: %w: tag %d metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, i)
+		}
+		if tag.Body == nil {
+			continue
+		}
+		if err := state.visit(tag.Body, 0, fn); err != nil {
+			return fmt.Errorf("tag %d: %w", i, err)
+		}
+	}
+	return nil
 }
 
 // Walk visits n and its descendants depth-first in deterministic order. If fn

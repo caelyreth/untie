@@ -2,9 +2,26 @@ package ir
 
 import "github.com/caelyreth/untie/source"
 
-// Formula is the validated root returned by a frontend lowering pass.
+// Formula is the validated root returned by a frontend lowering pass. Tags are
+// formula metadata rather than synthetic root children.
 type Formula struct {
 	Root Node
+	Tags []EquationTag
+}
+
+// EquationTag is one formula-scoped tag or numbering-suppression event.
+//
+// Body is normal math IR and is nil only for a suppression-only event. Line is
+// -1 for a tag associated with the complete formula, or a zero-based source
+// row for future multiline output. Document counters never enter this type.
+type EquationTag struct {
+	Body       Node
+	Span       source.Range
+	Origin     source.Range
+	Manual     bool
+	Suppressed bool
+	Starred    bool
+	Line       int
 }
 
 // Row is a horizontal sequence. It may contain break and alignment markers.
@@ -211,7 +228,6 @@ func NewCancel(span source.Range, body Node) *Cancel {
 // TableRow is one row of a table. Cells may contain AlignMarker nodes.
 type TableRow struct {
 	Cells []Node
-	Tag   Node
 }
 
 // TableLine is a horizontal or vertical rule boundary.

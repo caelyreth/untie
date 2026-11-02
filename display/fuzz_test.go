@@ -3,6 +3,7 @@ package display
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 	"testing"
 
 	"github.com/caelyreth/untie/geometry"
@@ -131,6 +132,44 @@ func randomBox(data []byte) *Box {
 			OffsetX:  fuzzAbsFloat(number()),
 			Box:      line,
 		}}
+	} else if next()%4 == 0 {
+		tag := &TagBox{
+			Box: &Box{
+				Width:  1,
+				Ascent: 1,
+				Items: []Item{{
+					Kind:  ItemRule,
+					Paint: Paint{Role: RoleInk},
+					Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
+					Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
+				}},
+				Hits: []Hit{{
+					Source: source.NewRange(0, 1),
+					Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
+					Kind:   HitAtom,
+				}},
+			},
+			Source: source.NewRange(0, 1),
+			Manual: true,
+			Line:   0,
+			X:      fuzzAbsFloat(number()),
+		}
+		for _, item := range tag.Box.Items {
+			translated := item
+			translated.Bound.X += tag.X
+			translated.Rect.X += tag.X
+			translated.At.X += tag.X
+			box.Items = append(box.Items, translated)
+		}
+		for _, hit := range tag.Box.Hits {
+			translated := hit
+			translated.Area.X += tag.X
+			box.Hits = append(box.Hits, translated)
+		}
+		box.Tag = tag
+		box.Width = maxFloat(box.Width, tag.X+tag.Box.Width)
+		box.Ascent = maxFloat(box.Ascent, tag.Box.Ascent)
+		box.Overflow = math.MaxFloat32 / 4
 	}
 	return box
 }

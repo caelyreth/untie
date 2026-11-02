@@ -40,6 +40,8 @@ var (
 )
 
 func (p *parser) parseEnvironment(command token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	name, nameSpan := p.consumeEnvironmentName(command)
 	if name == "" {
 		return astErr(command.span, command.text, source.CodeInvalidEnvironment)

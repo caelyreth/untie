@@ -204,6 +204,18 @@
     },
     {
       "corpus": "ratex-core",
+      "ids": ["line:000994"],
+      "codes": ["unsupported"],
+      "reason": "Row-scoped \\nonumber events inside alignment environments are deferred until multiline equation-tag metadata is implemented."
+    },
+    {
+      "corpus": "ratex-core",
+      "ids": ["line:000995"],
+      "codes": ["unsupported"],
+      "reason": "Row-scoped \\tag values inside alignment environments are deferred until multiline equation-tag metadata is implemented."
+    },
+    {
+      "corpus": "ratex-core",
       "families": [
         "command:\\tiny",
         "command:\\sixptsize",

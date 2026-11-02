@@ -44,6 +44,24 @@ type LineBox struct {
 	Baseline float32
 	OffsetX  float32
 	Box      *Box
+	// Tag is parent-frame metadata for a tag associated with this line. It does
+	// not move with OffsetX. A host drawing per-line items must draw this tag
+	// separately; it is not part of Box.Items. Nil means no rendered tag.
+	Tag *TagBox
+}
+
+// TagBox is an independently drawable equation tag. Box uses tag-local
+// coordinates; draw it at (X, Y) in the owning Box's coordinate space. For a
+// LineBox.Tag, X and Y are still parent-frame coordinates and do not move with
+// OffsetX. Tag boxes never contain nested tags or lines.
+type TagBox struct {
+	Box     *Box
+	Source  source.Range
+	Manual  bool
+	Starred bool
+	Line    int
+	X       float32
+	Y       float32
 }
 
 // Role is a theme-resolved paint role.
@@ -111,6 +129,11 @@ type Box struct {
 	Hits   []Hit
 	Breaks []Break
 	Alt    Alt
+	// Tag is a single-line display equation tag in parent coordinates. Its
+	// translated items already appear in Items and Hits, so drawing the parent
+	// aggregate must not draw Tag separately. It is excluded from formula-root
+	// breaks.
+	Tag *TagBox
 	// Lines is populated only for display layout with a positive Style.MaxWidth.
 	// A constrained display result always has at least one line, including when
 	// the complete formula fits. Its Width is the requested MaxWidth, even when
@@ -140,12 +163,21 @@ func (b *Box) Clone() *Box {
 	return cloneBox(b, true)
 }
 
-func cloneBox(b *Box, cloneLines bool) *Box {
+func cloneBox(b *Box, cloneNested bool) *Box {
 	out := *b
 	out.Items = cloneItems(b.Items)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
-	if !cloneLines || len(b.Lines) == 0 {
+	if !cloneNested {
+		out.Tag = nil
+	} else if b.Tag != nil {
+		tag := *b.Tag
+		if b.Tag.Box != nil {
+			tag.Box = cloneBox(b.Tag.Box, false)
+		}
+		out.Tag = &tag
+	}
+	if !cloneNested || len(b.Lines) == 0 {
 		out.Lines = nil
 		return &out
 	}
@@ -153,6 +185,13 @@ func cloneBox(b *Box, cloneLines bool) *Box {
 	for i, line := range b.Lines {
 		out.Lines[i].Baseline = line.Baseline
 		out.Lines[i].OffsetX = line.OffsetX
+		if line.Tag != nil {
+			tag := *line.Tag
+			if line.Tag.Box != nil {
+				tag.Box = cloneBox(line.Tag.Box, false)
+			}
+			out.Lines[i].Tag = &tag
+		}
 		if line.Box != nil {
 			// Nested Lines are invalid, so a line's box is copied without
 			// descending again. This also makes Clone safe on malformed graphs.

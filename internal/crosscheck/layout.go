@@ -36,7 +36,11 @@ func newLayoutHarness(fontBytes []byte) (*layoutHarness, error) {
 }
 
 func (h *layoutHarness) layout(ctx context.Context, root ir.Node, mode ir.Mode, size float64) (*display.Box, error) {
-	return h.engine.Layout(ctx, root, mode, display.Style{Size: float32(size)})
+	return h.layoutFormula(ctx, &ir.Formula{Root: root}, mode, size)
+}
+
+func (h *layoutHarness) layoutFormula(ctx context.Context, formula *ir.Formula, mode ir.Mode, size float64) (*display.Box, error) {
+	return h.engine.LayoutFormula(ctx, formula, mode, display.Style{Size: float32(size)})
 }
 
 type glyphView struct {

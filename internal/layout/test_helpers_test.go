@@ -148,11 +148,6 @@ func (f *fakeTableLayouter) LayoutTable(req TableRequest) (Fragment, bool) {
 			ascent = max(ascent, cell.Ascent)
 			descent = max(descent, cell.Descent)
 		}
-		if row.Tag != nil {
-			width = max(width, row.Tag.Width)
-			ascent = max(ascent, row.Tag.Ascent)
-			descent = max(descent, row.Tag.Descent)
-		}
 	}
 	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassInner, Text, geometry.Em(geometry.EmScale))
 	if err != nil {

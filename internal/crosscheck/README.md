@@ -55,6 +55,9 @@ The semantic comparison removes source evidence only:
   compared explicitly. Two otherwise-identical trees with different quotient,
   limit, negation, or table-role semantics are not equivalent.
 - Display-only script placement is distinct from class-dependent `auto`.
+- Formula-scoped equation tags compare manual/suppression/star/line metadata and
+  their normal IR bodies. TeX manual tags are not erased merely because the
+  Typst side uses document-level numbering outside the bounded formula input.
 - Accent source-stretch intent and natural width fitting are compared
   separately, so Typst and TeX policy differences are visible before layout.
 - A standalone explicitly sized delimiter remains a leaf with strict text,
@@ -108,9 +111,9 @@ Current reviewed baseline:
 
 ```text
 pass                        22
-semantic-ir-mismatch        54
+semantic-ir-mismatch        55
 layout-mismatch              0
-fixture-mismatch             3
+fixture-mismatch             2
 documented-pair-difference   2
 unexplained                  0
 ```
@@ -121,9 +124,11 @@ semantic cases mostly stop at a frontend-diagnostic or compound IR difference
 before cross-dialect layout comparison. The largest remaining gaps are
 unrestricted Typst code, font-sizing commands, chemistry/commutative-diagram
 pairs, compound atom structure, math alphabets, and the two remaining
-static-frame differences. `big-sizes` remains a reviewed semantic difference
-because TeX lowers discrete absolute tiers while the Typst source requests a
-content-relative percentage.
+static-frame differences. `tag` is a reviewed semantic difference because TeX
+manual tags are formula metadata while the paired Typst source relies on
+document-level numbering outside its bounded formula input. `big-sizes` remains
+a reviewed semantic difference because TeX lowers discrete absolute tiers while
+the Typst source requests a content-relative percentage.
 
 Baseline details can be refreshed with an explicit review file:
 

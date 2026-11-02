@@ -348,15 +348,10 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	case "\\allowbreak":
 		return &astBreakNode{astBase: newASTBaseAt(astBreak, t.span, tokenOrigin(t)), kind: ir.BreakExplicit}
 	case "\\nonumber", "\\notag":
-		p.reportEquationMetadata(t, "equation numbering is outside the formula IR")
+		p.parseEquationSuppression(t)
 		return nil
 	case "\\tag", "\\tag*":
-		p.exp.consumeSpaces()
-		if star := p.exp.peek(); star.is(tokChar) && star.text == "*" {
-			p.exp.next()
-		}
-		p.parseRequiredArgument(t)
-		p.reportEquationMetadata(t, "equation tags are outside the formula IR")
+		p.parseEquationTag(t)
 		return nil
 	case "\\nobreak":
 		p.report(source.Diagnostic{
@@ -443,6 +438,8 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 }
 
 func (p *parser) parseBeginGroup(command token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.beginScope()
 	defer p.exp.endScope()
 	body := p.parseSequence(stopEndgroup)
@@ -463,12 +460,100 @@ func (p *parser) parseBeginGroup(command token) astNode {
 	return body
 }
 
-func (p *parser) reportEquationMetadata(command token, message string) {
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(command.span),
-		Severity: source.SeverityWarning,
-		Code:     source.CodeUnsupported,
-		Message:  message,
+func (p *parser) parseEquationSuppression(command token) {
+	if p.mode != ir.Display {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnsupported,
+			Message:  command.text + " is only meaningful in display mode",
+		})
+		return
+	}
+	if p.metadataDepth != 0 {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnsupported,
+			Message:  command.text + " inside a nested group or environment is deferred",
+		})
+		return
+	}
+	span := normalizeRange(command.span)
+	p.tags = append(p.tags, astEquationTag{
+		span:       span,
+		origin:     tokenOrigin(command),
+		suppressed: true,
+		line:       0,
+	})
+}
+
+func (p *parser) parseEquationTag(command token) {
+	start := command.span
+	p.exp.consumeSpaces()
+	starred := command.text == "\\tag*"
+	if star := p.exp.peek(); star.is(tokChar) && star.text == "*" {
+		p.exp.next()
+		starred = true
+		start = source.Merge(start, star.span)
+	}
+	body := p.parseRequiredArgument(command)
+	span := source.Merge(start, body.base().span)
+	origin := tokenOrigin(command)
+	if origin.IsDetached() {
+		origin = span
+	} else if origin != command.span {
+		// Macro-expanded syntax keeps call-site provenance. Do not expose a
+		// span that stitches definition bytes to invocation bytes.
+		span = origin
+	} else {
+		origin = source.Merge(origin, body.base().origin)
+	}
+	if p.mode != ir.Display {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnsupported,
+			Message:  "equation tags are only supported in display mode",
+		})
+		return
+	}
+	if p.metadataDepth != 0 {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnsupported,
+			Message:  "equation tags inside a nested group or environment are deferred",
+		})
+		return
+	}
+	for _, tag := range p.tags {
+		if tag.manual {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  "multiple equation tags are not allowed",
+			})
+			return
+		}
+	}
+	if row, ok := body.(*astRowNode); ok && len(row.items) == 0 {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(span),
+			Severity: source.SeverityError,
+			Code:     source.CodeInvalidValue,
+			Message:  "equation tag body is empty",
+		})
+		body = astErr(span, "empty equation tag", source.CodeInvalidValue)
+	}
+	p.tags = append(p.tags, astEquationTag{
+		body:    body,
+		span:    span,
+		origin:  origin,
+		manual:  true,
+		starred: starred,
+		line:    0,
 	})
 }
 
@@ -622,6 +707,8 @@ func (p *parser) parseRadical(command token) astNode {
 }
 
 func (p *parser) parseLeftRight(command token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.leftDepth++
 	defer func() { p.leftDepth-- }()
 	open := p.parseDelimiter(command, ir.ClassOpening)

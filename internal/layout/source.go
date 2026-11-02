@@ -213,12 +213,11 @@ type TableLine struct {
 	Thickness geometry.Em
 }
 
-// TableRow contains measured cells and an optional measured tag. Cell and tag
-// Fragments use the same baseline-relative coordinates as every other group;
-// a TableLayouter must place their baseline origins, not their top edges.
+// TableRow contains measured cells. Fragments use the same baseline-relative
+// coordinates as every other group; a TableLayouter must place their baseline
+// origins, not their top edges.
 type TableRow struct {
 	Cells []Fragment
-	Tag   *Fragment
 }
 
 // TableRequest is the measured-cell extension point for table layout. Row

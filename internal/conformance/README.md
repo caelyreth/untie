@@ -59,11 +59,14 @@ Current TeX baseline:
 | RaTeX 0.1.15 core | 1,075 |
 | Selected KaTeX 0.19.1 errors and parses | 36 |
 
-The TeX baseline currently records 1,047 passes, 26 expected diagnostics, 38
+The TeX baseline currently records 1,045 passes, 26 expected diagnostics, 40
 unsupported cases, and 0 reviewed parser gaps. Unsupported cases are explicit
 scope exclusions such as math font-size declarations, chemistry,
 commutative diagrams, and document-layout commands; they are not relabeled
-passes. All 16 explicit `\big...` delimiter commands are now in-scope:
+passes. TeX display `\tag`/`\tag*` and top-level suppression are represented as
+formula metadata; row-scoped tags inside alignment environments remain an
+explicit multiline scope exclusion. All 16 explicit `\big...` delimiter commands
+are now in-scope:
 standalone sized delimiters preserve their class and an absolute target policy
 in neutral IR. The TeX adapter maps its four command tiers to 1.2em, 1.8em,
 2.4em, and 3.0em; the neutral IR does not encode TeX tier names.

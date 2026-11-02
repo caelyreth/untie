@@ -305,6 +305,8 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 func (p *parser) parseInlineMathText(open token) astNode {
 	// KaTeX math.ts switches text groups back to math mode for \(...\),
 	// resets the font, and then returns to the outer text mode.
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	body := p.parseSequence(stopParen)
 	span := source.Merge(open.span, body.base().span)
 	close := p.exp.peek()

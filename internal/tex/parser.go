@@ -11,15 +11,17 @@ import (
 )
 
 type parser struct {
-	src         string
-	mode        ir.Mode
-	exp         *expander
-	limits      source.Limits
-	diagnostics []source.Diagnostic
-	depth       int
-	iterations  int
-	limitHit    bool
-	leftDepth   int
+	src           string
+	mode          ir.Mode
+	exp           *expander
+	limits        source.Limits
+	diagnostics   []source.Diagnostic
+	depth         int
+	iterations    int
+	limitHit      bool
+	leftDepth     int
+	tags          []astEquationTag
+	metadataDepth int
 }
 
 type stopMode uint8
@@ -63,12 +65,12 @@ func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.
 	return p
 }
 
-func (p *parser) parse() ir.Node {
-	root := p.parseSequence(stopEOF)
+func (p *parser) parse() (ir.Node, []ir.EquationTag) {
+	parsedRoot := p.parseSequence(stopEOF)
 	lower := newLowerer(p.limits, p.report)
 	// Parsing and lowering share one resource-limit diagnostic per parse.
 	lower.limitHit = p.limitHit
-	node := lower.lower(root, lowerContext{})
+	node := lower.lower(parsedRoot, lowerContext{})
 	if node == nil {
 		node = ir.NewRow(source.NewRange(0, len(p.src)))
 	}
@@ -79,7 +81,75 @@ func (p *parser) parse() ir.Node {
 	} else {
 		node.NodeBase().Size = ir.SizeText
 	}
-	return node
+	parsedTags := p.tags
+	if len(parsedTags) > 0 && containsMultilineNode(parsedRoot) {
+		for _, tag := range parsedTags {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(tag.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeUnsupported,
+				Message:  "multiline equation tags are deferred; tag metadata was discarded",
+			})
+		}
+		parsedTags = nil
+	}
+	return node, lower.lowerTags(parsedTags)
+}
+
+func containsMultilineNode(node astNode) bool {
+	switch n := node.(type) {
+	case *astMultilineNode:
+		return true
+	case *astRowNode:
+		for _, item := range n.items {
+			if containsMultilineNode(item) {
+				return true
+			}
+		}
+	case *astFractionNode:
+		return containsMultilineNode(n.numerator) || containsMultilineNode(n.denominator)
+	case *astRadicalNode:
+		return containsMultilineNode(n.radicand) || containsMultilineNode(n.index)
+	case *astScriptsNode:
+		return containsMultilineNode(n.main) || containsMultilineNode(n.top) ||
+			containsMultilineNode(n.bottom) || containsMultilineNode(n.topLeft) ||
+			containsMultilineNode(n.bottomLeft) || containsMultilineNode(n.topRight) ||
+			containsMultilineNode(n.bottomRight)
+	case *astFencedNode:
+		if containsMultilineNode(n.open) || containsMultilineNode(n.close) {
+			return true
+		}
+		for _, child := range n.body {
+			if containsMultilineNode(child) {
+				return true
+			}
+		}
+	case *astTableNode:
+		for _, row := range n.rows {
+			for _, cell := range row.cells {
+				if containsMultilineNode(cell) {
+					return true
+				}
+			}
+		}
+	case *astStyleNode:
+		return containsMultilineNode(n.body)
+	case *astVariantNode:
+		return containsMultilineNode(n.body)
+	case *astClassNode:
+		return containsMultilineNode(n.body)
+	case *astColorNode:
+		return containsMultilineNode(n.body)
+	case *astBoxNode:
+		return containsMultilineNode(n.body)
+	case *astAccentNode:
+		return containsMultilineNode(n.body)
+	case *astLineNode:
+		return containsMultilineNode(n.body)
+	case *astCancelNode:
+		return containsMultilineNode(n.body)
+	}
+	return false
 }
 
 func (p *parser) parseSequence(stop stopMode) astNode {
@@ -617,6 +687,8 @@ func (p *parser) parseDollarMath(open token) astNode {
 }
 
 func (p *parser) parseGroup(open token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.beginScope()
 	defer p.exp.endScope()
 
@@ -704,6 +776,8 @@ func (p *parser) parseRequiredArgument(owner token) astNode {
 }
 
 func (p *parser) parseOptionalArgument(owner token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if !t.is(tokChar) || t.text != "[" {

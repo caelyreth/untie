@@ -36,32 +36,35 @@ const (
 
 // Limits, diagnostics, and output types are aliases of their owning packages.
 type (
-	Limits     = source.Limits
-	Range      = source.Range
-	Diagnostic = source.Diagnostic
-	Severity   = source.Severity
-	Box        = display.Box
-	LineBox    = display.LineBox
-	Alt        = display.Alt
-	Item       = display.Item
-	ItemKind   = display.ItemKind
-	Paint      = display.Paint
-	Role       = display.Role
-	RGBA       = display.RGBA
-	Hit        = display.Hit
-	HitKind    = display.HitKind
-	Break      = display.Break
-	BreakKind  = display.BreakKind
-	Align      = display.Align
-	FontData   = font.FontData
-	Fonts      = font.Fonts
-	FontSet    = font.FontSet
+	Limits      = source.Limits
+	Range       = source.Range
+	Diagnostic  = source.Diagnostic
+	Severity    = source.Severity
+	Box         = display.Box
+	LineBox     = display.LineBox
+	Alt         = display.Alt
+	Item        = display.Item
+	ItemKind    = display.ItemKind
+	Paint       = display.Paint
+	Role        = display.Role
+	RGBA        = display.RGBA
+	Hit         = display.Hit
+	HitKind     = display.HitKind
+	Break       = display.Break
+	TagBox      = display.TagBox
+	BreakKind   = display.BreakKind
+	Align       = display.Align
+	FontData    = font.FontData
+	Fonts       = font.Fonts
+	FontSet     = font.FontSet
+	EquationTag = ir.EquationTag
 )
 
 // Style is a display.Style layout request. Display layout with a positive
 // MaxWidth emits Box.Lines in a MaxWidth-wide alignment frame. Align positions
 // each line within that frame; line items remain line-local and expose OffsetX.
-// Inline layout ignores both MaxWidth and Align.
+// Single-line display tags populate Box.Tag and the associated LineBox.Tag.
+// Inline layout ignores both MaxWidth and Align and rejects manual tags.
 type Style = display.Style
 
 const (
@@ -145,7 +148,7 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 				macros[name] = tex.Macro{Body: macro.Body, Args: macro.Args}
 			}
 			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
-			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
+			return frontendResult{root: result.Root, tags: result.Tags, diagnostics: result.Diagnostics}
 		case Typst:
 			result := typst.Parse(src, mode, typst.Options{Limits: limits})
 			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
@@ -166,6 +169,7 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 
 type frontendResult struct {
 	root        ir.Node
+	tags        []ir.EquationTag
 	diagnostics []source.Diagnostic
 }
 
@@ -204,7 +208,7 @@ func parseRecovered(
 		})
 	} else {
 		result := parser(limits)
-		candidate := &ir.Formula{Root: result.root}
+		candidate := &ir.Formula{Root: result.root, Tags: result.tags}
 		if result.root == nil {
 			diagnostics = append(diagnostics, result.diagnostics...)
 			diagnostics = append(diagnostics, source.Diagnostic{
@@ -309,6 +313,22 @@ func (e *Expr) RootSnapshot() (*ir.Formula, error) {
 	return ir.CloneFormula(e.root, e.limits)
 }
 
+// Tags returns an independent copy of formula-level tag metadata. Manual tags
+// keep their normal math-IR bodies, while suppression-only events have a nil
+// body. The returned body nodes are deep clones and never alias the expression.
+// Phase 1 exposes top-level TeX display tags; multiline and host numbering are
+// outside this contract.
+func (e *Expr) Tags() []EquationTag {
+	if e == nil || e.root == nil {
+		return nil
+	}
+	root, err := ir.CloneFormula(e.root, e.limits)
+	if err != nil {
+		return nil
+	}
+	return root.Tags
+}
+
 // rootForLayout exposes the owned tree to the in-package layout orchestration.
 // The tree must be treated as immutable for the duration of layout.
 func (e *Expr) rootForLayout() *ir.Formula {
@@ -358,7 +378,7 @@ func (e *Expr) AltContext(ctx context.Context) (Alt, error) {
 	if e == nil || e.root == nil || e.root.Root == nil {
 		return Alt{}, ErrInvalidExpr
 	}
-	return internalalt.GenerateContext(ctx, e.root.Root, e.mode, e.limits)
+	return internalalt.GenerateFormulaContext(ctx, e.root, e.mode, e.limits)
 }
 
 // Key returns a stable convenience cache key for the parsed expression.

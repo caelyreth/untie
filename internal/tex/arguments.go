@@ -34,6 +34,8 @@ func (p *parser) parseDelimitedArgument(command token) astNode {
 }
 
 func (p *parser) parseSubstack(command token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	open := p.exp.peek()
 	if !open.is(tokBeginGroup) {

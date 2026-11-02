@@ -99,7 +99,7 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if root == nil || root.Root == nil {
 		return nil, ErrInvalidExpr
 	}
-	box, err := e.inner.Layout(ctx, root.Root, expr.mode, style)
+	box, err := e.inner.LayoutFormula(ctx, root, expr.mode, style)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 		return nil, fmt.Errorf("untie: layout returned a nil box")
 	}
 	altLimits := intersectLimits(e.limits, expr.limits)
-	alt, altErr := internalalt.GenerateContext(ctx, root.Root, expr.mode, altLimits)
+	alt, altErr := internalalt.GenerateFormulaContext(ctx, root, expr.mode, altLimits)
 	if altErr != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr

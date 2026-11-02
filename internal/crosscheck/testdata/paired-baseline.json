@@ -4,9 +4,9 @@
   "toleranceDIP": 0.002,
   "total": 81,
   "pass": 22,
-  "semanticIRMismatch": 54,
+  "semanticIRMismatch": 55,
   "layoutMismatch": 0,
-  "fixtureMismatch": 3,
+  "fixtureMismatch": 2,
   "documentedPairDifference": 2,
   "unexplained": 0,
   "cases": [
@@ -284,9 +284,9 @@
       "id": "tag",
       "index": 39,
       "category": "alignment",
-      "kind": "fixture-mismatch",
-      "detail": "Typst: fixture.width: expected 109.586667, got 57.432449",
-      "reason": "Reviewed NewCM geometry difference from the pinned static Typlet frame; the exact metric or glyph difference is recorded in detail."
+      "kind": "semantic-ir-mismatch",
+      "detail": "root: expected {\"root\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"E\",\"variant\":\"auto\"},{\"class\":\"relation\",\"cramped\"...\u003csha256:e3f62e16bcaa16d1\u003e, got [{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"E\",\"variant\":\"auto\"},{\"class\":\"relation\",\"cramped\":false,\"...\u003csha256:f0a4110ffb8a83cc\u003e",
+      "reason": "Reviewed: TeX manual \\tag values now remain formula-scoped metadata while Typst equation numbering remains host/preamble input; the paired sources intentionally differ."
     },
     {
       "id": "accents",
