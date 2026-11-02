@@ -238,6 +238,28 @@ func TestNodeLimitAffectsParse(t *testing.T) {
 	}
 }
 
+func TestLayoutLimitsFlowThroughFacade(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	tests := []struct {
+		name   string
+		limits source.Limits
+	}{
+		{name: "output items", limits: source.Limits{MaxOutputItems: 1}},
+		{name: "path segments", limits: source.Limits{MaxPathSegments: 1}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			expr := Parse("x+y", TeX, Inline, ParseOptions{Limits: tc.limits})
+			if box, err := LayoutContext(context.Background(), expr, fonts, Style{Size: 16}); err == nil || box != nil {
+				t.Fatalf("LayoutContext() = %v, %v, want limit error", box, err)
+			}
+		})
+	}
+}
+
 func TestFallbackIRValidates(t *testing.T) {
 	t.Parallel()
 
