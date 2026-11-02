@@ -1,6 +1,8 @@
 package layout
 
 import (
+	"fmt"
+
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
@@ -41,6 +43,10 @@ func (s *layoutState) layoutFenced(node *ir.Fenced, env environment, depth int) 
 		if err != nil {
 			return nil, err
 		}
+	}
+	target, err = s.delimiterSizingTarget(node.Sizing, target, env)
+	if err != nil {
+		return nil, err
 	}
 	open, err := s.fenceDelimiter(node.Open, env, depth, target)
 	if err != nil {
@@ -85,6 +91,28 @@ func (s *layoutState) layoutFenced(node *ir.Fenced, env environment, depth int) 
 		}
 	}
 	return withClass(fragment, node.Class), nil
+}
+
+func (s *layoutState) delimiterSizingTarget(
+	sizing ir.DelimiterSizing,
+	contentTarget geometry.Em,
+	env environment,
+) (geometry.Em, error) {
+	if !sizing.Valid() {
+		return 0, fmt.Errorf("%w: invalid delimiter sizing", ErrInvalidInput)
+	}
+	switch sizing.Kind {
+	case ir.DelimiterSizingContent:
+		return contentTarget, nil
+	case ir.DelimiterSizingRelative:
+		const percentScale = int64(100 * 1_000_000)
+		return mulDiv(contentTarget, sizing.Value.Value, percentScale)
+	case ir.DelimiterSizingAbsolute:
+		metrics := s.fontMetrics(env.Style, env.Variant)
+		return s.length(sizing.Value, env.Style, metrics)
+	default:
+		return 0, fmt.Errorf("%w: unknown delimiter sizing kind %d", ErrInvalidInput, sizing.Kind)
+	}
 }
 
 func matrixFenceBody(node *ir.Fenced) bool {

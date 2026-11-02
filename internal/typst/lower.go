@@ -177,6 +177,7 @@ func (l *lowerer) sourceText(span source.Range) string {
 }
 
 func (l *lowerer) errNode(span source.Range, text string, code source.Code) *ir.ErrorNode {
+	text = sanitizeFrontendText(text)
 	if text == "" {
 		text = "?"
 	}
@@ -184,16 +185,25 @@ func (l *lowerer) errNode(span source.Range, text string, code source.Code) *ir.
 }
 
 func (l *lowerer) placeholder(span source.Range, reason string) *ir.Placeholder {
-	return ir.NewPlaceholder(span, reason)
+	return ir.NewPlaceholder(span, sanitizeFrontendText(reason))
+}
+
+func sanitizeFrontendText(text string) string {
+	if utf8.ValidString(text) {
+		return text
+	}
+	return strings.ToValidUTF8(text, "\ufffd")
 }
 
 func (l *lowerer) glyph(span source.Range, text string) *ir.Glyph {
+	text = sanitizeFrontendText(text)
 	g := ir.NewGlyph(span, text)
 	g.Class = classForText(text)
 	return g
 }
 
 func (l *lowerer) text(span source.Range, text string) ir.Node {
+	text = sanitizeFrontendText(text)
 	if text == "" {
 		return l.placeholder(span, "empty text")
 	}
@@ -808,6 +818,26 @@ func (l *lowerer) positionalArguments(call *astNode) []astArg {
 		}
 	}
 	return callPositional(call)
+}
+
+func (l *lowerer) delimiterSizing(call *astNode, name string) ir.DelimiterSizing {
+	arg := namedArgument(call, "size")
+	if arg == nil {
+		return ir.ContentDelimiterSizing()
+	}
+	length, ok := l.valueLength(arg.node)
+	if !ok || length.Value < 0 {
+		l.errorAt(arg.span, source.CodeInvalidValue, "%s size expects a non-negative relative length, found %s",
+			name, l.valueType(arg.node))
+		return ir.ContentDelimiterSizing()
+	}
+	if length.Unit == ir.LengthPercent {
+		if math.Abs(length.Float()-100) < 1e-9 {
+			return ir.ContentDelimiterSizing()
+		}
+		return ir.RelativeDelimiterSizing(length)
+	}
+	return ir.AbsoluteDelimiterSizing(length)
 }
 
 func isDefaultPercent(l *lowerer, n *astNode, want float64) bool {

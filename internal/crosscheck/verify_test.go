@@ -215,9 +215,11 @@ func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 	tableCases := ir.NewTable(span, ir.TableRow{Cells: []ir.Node{glyph("x")}})
 	tableCases.Role = ir.TableRoleCases
 
-	sizedDefault := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize1)
+	tier1 := ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_200_000))
+	tier2 := ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_800_000))
+	sizedDefault := ir.NewSizedDelimiter(span, "(", tier1)
 	sizedDefault.Class = ir.ClassOpening
-	sizedLarger := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize2)
+	sizedLarger := ir.NewSizedDelimiter(span, "(", tier2)
 	sizedLarger.Class = ir.ClassOpening
 
 	tests := []struct {
@@ -254,9 +256,10 @@ func TestSemanticNormalizationMatchesNeutralSizedDelimiterForms(t *testing.T) {
 	t.Parallel()
 
 	span := source.NewRange(0, 7)
-	texForm := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize2)
+	sizing := ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_800_000))
+	texForm := ir.NewSizedDelimiter(span, "(", sizing)
 	texForm.Class = ir.ClassOpening
-	typstNeutralForm := ir.NewSizedDelimiter(span, "(", ir.DelimiterSize2)
+	typstNeutralForm := ir.NewSizedDelimiter(span, "(", sizing)
 	typstNeutralForm.Class = ir.ClassOpening
 
 	texValue, err := normalizeFormula(&ir.Formula{Root: texForm}, ir.Inline)

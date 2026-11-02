@@ -6,8 +6,9 @@ is not a compatibility claim.
 
 ## Snapshot
 
-- Repository state: post engine hardening, generated/fixture import, explicit
-  delimiter sizing, and TeX/Typst conformance baselines
+- Repository state: post engine hardening, generated/fixture import, neutral
+  delimiter sizing, synthetic moustache assembly, and TeX/Typst conformance
+  baselines
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
@@ -63,7 +64,8 @@ The bounded TeX frontend currently includes:
   style commands represented by the current IR;
 - all 16 `\big`, `\Big`, `\bigg`, `\Bigg` opening, closing, relation, and
   ordinary command variants, lowered as standalone neutral sized-delimiter
-  leaves with KaTeX-validated delimiter arguments and 1-4 source tiers;
+  leaves with KaTeX-validated delimiter arguments and absolute target policies
+  encoded from TeX's 1.2em/1.8em/2.4em/3.0em tiers;
 - matrix, array, cases, aligned, gathered, split, alignedat, and alignat parsing
   into table or multiline IR;
 - recovery diagnostics for malformed groups, missing arguments, invalid UTF-8,
@@ -122,8 +124,9 @@ tables.
 - display, text, script, and script-script styles, normal and cramped;
 - neutral math classes and automatic class spacing;
 - rows, explicit spaces, glyphs, standalone explicitly sized delimiters,
-  scripts, fractions, radicals, fences, accents, cancel, lines, boxes, phantom,
-  styles, colors, placeholders, and text through narrow ports;
+  content/relative/absolute fence sizing, scripts, fractions, radicals,
+  fences, accents, cancel, lines, boxes, phantom, styles, colors,
+  placeholders, and text through narrow ports;
 - baseline-origin placement verified with real NewCM outputs;
 - signed explicit spacing, binary lookahead/demotion, and MATH corner kerning;
 - optional table and stretch ports;
@@ -135,7 +138,9 @@ tables.
 
 `internal/engine` adapts `font.FontSet` to layout, performs rune/class-aware
 variant selection, multi-glyph operator shaping, text tracking and fallback,
-and MATH variant/assembly selection.
+and MATH variant/assembly selection. Moustache delimiters without a native
+vertical construction use the KaTeX-grounded synthetic top/repeat/bottom
+assembly for both explicit tiers and tall `\left...\right` fences.
 
 ### Typst Frontend
 
@@ -149,6 +154,9 @@ The bounded Typst math frontend includes:
   source-glyph interword spaces, grouped-prime precomposition, structural
   spreader metadata, natural accent fitting, and contextual or display-only
   limit placement;
+- `lr(size:)` content, relative-percentage, and absolute-length policies,
+  including invalid-value diagnostics for non-length arguments and active-style
+  geometry for absolute lengths;
 - matrices, vectors, cases, accents, lines, cancel, text, boxes, styles, and
   alphabets, including horizontal and vertical matrix augmentation lines;
 - a deterministic evaluator subset for values required by math calls;

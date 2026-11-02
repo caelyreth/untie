@@ -186,21 +186,21 @@ func nodeUsesLimits(node ir.Node) bool {
 
 func (l *lowerer) lowerLR(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
-	// A default 100% asks lr() to fit its delimiters to the wrapped content,
-	// which Fenced already represents. Other values are relative factors or
-	// absolute lengths, not TeX's discrete delimiter tiers.
-	if size := namedArgument(call, "size"); size != nil && !isDefaultPercent(l, size.node, 100) {
-		l.warningAt(size.span, source.CodeUnsupported,
-			"non-default lr size has relative or absolute semantics and no lossless discrete neutral delimiter size")
-	}
+	sizing := l.delimiterSizing(call, "lr")
 	if fenced, ok := body.(*ir.Fenced); ok {
 		fenced.Class = ir.ClassInner
+		fenced.Sizing = sizing
 		return fenced
 	}
 	if row, ok := body.(*ir.Row); ok && len(row.Items) == 1 {
 		if fenced, ok := row.Items[0].(*ir.Fenced); ok {
+			fenced.Class = ir.ClassInner
+			fenced.Sizing = sizing
 			return fenced
 		}
+	}
+	if node, ok := standaloneSizedDelimiter(body, sizing); ok {
+		return node
 	}
 	if row, ok := body.(*ir.Row); ok && len(row.Items) >= 2 {
 		first, firstOK := delimiterNode(row.Items[0])
@@ -217,17 +217,34 @@ func (l *lowerer) lowerLR(call *astNode) ir.Node {
 			fenced.Close = last
 			fenced.Balanced = true
 			fenced.Class = ir.ClassInner
+			fenced.Sizing = sizing
 			return fenced
-		}
-	}
-	if row, ok := body.(*ir.Row); ok && len(row.Items) == 1 {
-		if g, ok := row.Items[0].(*ir.Glyph); ok && isFenceGlyph(g) {
-			l.warningAt(call.span, source.CodeUnsupported, "a single stretchy delimiter is not represented by the neutral Fenced node")
 		}
 	}
 	// lr() makes delimiters already present in its body stretch. If no fence is
 	// present, the body itself is the complete result.
 	return body
+}
+
+func standaloneSizedDelimiter(node ir.Node, sizing ir.DelimiterSizing) (ir.Node, bool) {
+	if row, ok := node.(*ir.Row); ok && len(row.Items) == 1 {
+		node = row.Items[0]
+	}
+	glyph, ok := node.(*ir.Glyph)
+	if !ok || !isFenceGlyph(glyph) || sizing.Kind == ir.DelimiterSizingContent {
+		return nil, false
+	}
+	out := ir.NewSizedDelimiter(glyph.Span, glyph.Text, sizing)
+	out.Origin = glyph.Origin
+	out.Variant = glyph.Variant
+	out.Paint = glyph.Paint
+	switch glyph.Class {
+	case ir.ClassOpening, ir.ClassClosing, ir.ClassRelation:
+		out.Class = glyph.Class
+	default:
+		out.Class = ir.ClassNormal
+	}
+	return out, true
 }
 
 func delimiterNode(n ir.Node) (ir.Node, bool) {
@@ -254,9 +271,7 @@ func (l *lowerer) lowerMid(call *astNode) ir.Node {
 }
 
 func (l *lowerer) lowerFenceFunction(call *astNode, name string) ir.Node {
-	if size := namedArgument(call, "size"); size != nil && !isDefaultPercent(l, size.node, 100) {
-		l.warningAt(size.span, source.CodeUnsupported, "%s size is not represented by the neutral Fenced node", name)
-	}
+	sizing := l.delimiterSizing(call, name)
 	pairs := map[string][2]string{
 		"abs": {"|", "|"}, "norm": {"‖", "‖"}, "floor": {"⌊", "⌋"},
 		"ceil": {"⌈", "⌉"}, "round": {"(", ")"},
@@ -276,6 +291,7 @@ func (l *lowerer) lowerFenceFunction(call *astNode, name string) ir.Node {
 	fenced.Close = closeGlyph
 	fenced.Balanced = true
 	fenced.Class = ir.ClassInner
+	fenced.Sizing = sizing
 	return fenced
 }
 
@@ -302,6 +318,7 @@ func (l *lowerer) lowerDelimiterFunction(call *astNode, def symbolDef) ir.Node {
 	}
 	fenced.Balanced = true
 	fenced.Class = ir.ClassInner
+	fenced.Sizing = l.delimiterSizing(call, callName(call.base))
 	return fenced
 }
 

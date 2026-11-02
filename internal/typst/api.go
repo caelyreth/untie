@@ -29,7 +29,7 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			span := source.NewRange(0, len(src))
-			text := src
+			text := sanitizeFrontendText(src)
 			if text == "" {
 				text = "internal Typst frontend failure"
 			}

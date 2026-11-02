@@ -154,7 +154,7 @@ func applyClass(n ir.Node, class ir.MathClass) {
 
 func (l *lowerer) lowerOperator(call *astNode) ir.Node {
 	text := l.contentArg(call, "text", 0, true)
-	operator := ir.NewOperator(call.span, nodeText(text))
+	operator := ir.NewOperator(call.span, sanitizeFrontendText(nodeText(text)))
 	operator.Variant = ir.VariantNormal
 	operator.Class = ir.ClassLarge
 	if arg := namedArgument(call, "limits"); arg != nil {

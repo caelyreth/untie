@@ -20,8 +20,8 @@ type delimiterSpec struct {
 }
 
 type sizedDelimiterSpec struct {
-	size  ir.DelimiterSize
-	class ir.MathClass
+	sizing ir.DelimiterSizing
+	class  ir.MathClass
 }
 
 type accentSpec struct {
@@ -342,22 +342,22 @@ smallint ∫`)
 
 func addSizedDelimiters() {
 	for command, spec := range map[string]sizedDelimiterSpec{
-		"\\big":   {size: ir.DelimiterSize1, class: ir.ClassNormal},
-		"\\Big":   {size: ir.DelimiterSize2, class: ir.ClassNormal},
-		"\\bigg":  {size: ir.DelimiterSize3, class: ir.ClassNormal},
-		"\\Bigg":  {size: ir.DelimiterSize4, class: ir.ClassNormal},
-		"\\bigl":  {size: ir.DelimiterSize1, class: ir.ClassOpening},
-		"\\Bigl":  {size: ir.DelimiterSize2, class: ir.ClassOpening},
-		"\\biggl": {size: ir.DelimiterSize3, class: ir.ClassOpening},
-		"\\Biggl": {size: ir.DelimiterSize4, class: ir.ClassOpening},
-		"\\bigr":  {size: ir.DelimiterSize1, class: ir.ClassClosing},
-		"\\Bigr":  {size: ir.DelimiterSize2, class: ir.ClassClosing},
-		"\\biggr": {size: ir.DelimiterSize3, class: ir.ClassClosing},
-		"\\Biggr": {size: ir.DelimiterSize4, class: ir.ClassClosing},
-		"\\bigm":  {size: ir.DelimiterSize1, class: ir.ClassRelation},
-		"\\Bigm":  {size: ir.DelimiterSize2, class: ir.ClassRelation},
-		"\\biggm": {size: ir.DelimiterSize3, class: ir.ClassRelation},
-		"\\Biggm": {size: ir.DelimiterSize4, class: ir.ClassRelation},
+		"\\big":   {sizing: texDelimiterTier(1), class: ir.ClassNormal},
+		"\\Big":   {sizing: texDelimiterTier(2), class: ir.ClassNormal},
+		"\\bigg":  {sizing: texDelimiterTier(3), class: ir.ClassNormal},
+		"\\Bigg":  {sizing: texDelimiterTier(4), class: ir.ClassNormal},
+		"\\bigl":  {sizing: texDelimiterTier(1), class: ir.ClassOpening},
+		"\\Bigl":  {sizing: texDelimiterTier(2), class: ir.ClassOpening},
+		"\\biggl": {sizing: texDelimiterTier(3), class: ir.ClassOpening},
+		"\\Biggl": {sizing: texDelimiterTier(4), class: ir.ClassOpening},
+		"\\bigr":  {sizing: texDelimiterTier(1), class: ir.ClassClosing},
+		"\\Bigr":  {sizing: texDelimiterTier(2), class: ir.ClassClosing},
+		"\\biggr": {sizing: texDelimiterTier(3), class: ir.ClassClosing},
+		"\\Biggr": {sizing: texDelimiterTier(4), class: ir.ClassClosing},
+		"\\bigm":  {sizing: texDelimiterTier(1), class: ir.ClassRelation},
+		"\\Bigm":  {sizing: texDelimiterTier(2), class: ir.ClassRelation},
+		"\\biggm": {sizing: texDelimiterTier(3), class: ir.ClassRelation},
+		"\\Biggm": {sizing: texDelimiterTier(4), class: ir.ClassRelation},
 	} {
 		sizedDelimiterCommands[command] = spec
 	}
@@ -385,6 +385,24 @@ func addSizedDelimiters() {
 		".": ".",
 	} {
 		sizedDelimiterText[source] = text
+	}
+}
+
+// KaTeX sizeToMaxHeight is [1.2em, 1.8em, 2.4em, 3.0em]. Keeping those
+// quantities in the TeX adapter prevents the neutral IR from encoding TeX's
+// discrete command tiers.
+func texDelimiterTier(tier int) ir.DelimiterSizing {
+	switch tier {
+	case 1:
+		return ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_200_000))
+	case 2:
+		return ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_800_000))
+	case 3:
+		return ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 2_400_000))
+	case 4:
+		return ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 3_000_000))
+	default:
+		panic("invalid static TeX delimiter tier")
 	}
 }
 

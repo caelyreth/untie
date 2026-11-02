@@ -129,7 +129,7 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 		}
 		return out
 	}
-	switch cursor.next() % 16 {
+	switch cursor.next() % 17 {
 	case 0:
 		return ir.NewRow(span, children(int(cursor.next()%4))...)
 	case 1:
@@ -204,6 +204,26 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 		default:
 			return ir.NewPhantom(span, randomNode(cursor, depth+1))
 		}
+	case 15:
+		texts := []string{"(", ".", "", "()", string([]byte{0xff})}
+		text := texts[int(cursor.next())%len(texts)]
+		sizings := []ir.DelimiterSizing{
+			ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 1_200_000)),
+			ir.RelativeDelimiterSizing(ir.RawLength(ir.LengthPercent, 150_000_000)),
+			ir.ContentDelimiterSizing(),
+			{Kind: ir.DelimiterSizingAbsolute + 1},
+			ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthPercent, 100_000_000)),
+		}
+		node := ir.NewSizedDelimiter(span, text, sizings[int(cursor.next())%len(sizings)])
+		switch cursor.next() % 4 {
+		case 0:
+			node.Class = ir.ClassOpening
+		case 1:
+			node.Class = ir.ClassClosing
+		case 2:
+			node.Class = ir.ClassRelation
+		}
+		return node
 	default:
 		switch cursor.next() % 4 {
 		case 0:

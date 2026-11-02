@@ -72,21 +72,56 @@ const (
 	SizeScriptScript
 )
 
-// DelimiterSize is an explicit source-requested delimiter size tier. The four
-// tiers correspond to the maximum heights 1.2em, 1.8em, 2.4em, and 3.0em in
-// layout and are independent of the current math style.
-type DelimiterSize uint8
+// DelimiterSizingKind selects how an explicitly sized delimiter resolves its
+// vertical target.
+type DelimiterSizingKind uint8
 
 const (
-	DelimiterSize1 DelimiterSize = iota + 1
-	DelimiterSize2
-	DelimiterSize3
-	DelimiterSize4
+	// DelimiterSizingContent fits delimiters to their wrapped content.
+	DelimiterSizingContent DelimiterSizingKind = iota
+	// DelimiterSizingRelative multiplies the content-derived target by Value,
+	// whose unit must be percent.
+	DelimiterSizingRelative
+	// DelimiterSizingAbsolute uses Value as an absolute target. Font-relative
+	// units still resolve at the active typographic size.
+	DelimiterSizingAbsolute
 )
 
-// Valid reports whether the delimiter size is one of the four explicit tiers.
-func (s DelimiterSize) Valid() bool {
-	return s >= DelimiterSize1 && s <= DelimiterSize4
+// DelimiterSizing is a source-independent delimiter target policy. It never
+// encodes a dialect's command names or discrete size tiers.
+type DelimiterSizing struct {
+	Kind  DelimiterSizingKind
+	Value Length
+}
+
+// ContentDelimiterSizing returns the default content-relative policy.
+func ContentDelimiterSizing() DelimiterSizing {
+	return DelimiterSizing{Kind: DelimiterSizingContent}
+}
+
+// RelativeDelimiterSizing returns a percentage-of-content policy.
+func RelativeDelimiterSizing(value Length) DelimiterSizing {
+	return DelimiterSizing{Kind: DelimiterSizingRelative, Value: value}
+}
+
+// AbsoluteDelimiterSizing returns a target-length policy.
+func AbsoluteDelimiterSizing(value Length) DelimiterSizing {
+	return DelimiterSizing{Kind: DelimiterSizingAbsolute, Value: value}
+}
+
+// Valid reports whether the policy is internally consistent.
+func (s DelimiterSizing) Valid() bool {
+	switch s.Kind {
+	case DelimiterSizingContent:
+		return s.Value.Unit == LengthZero && s.Value.Value == 0
+	case DelimiterSizingRelative:
+		return s.Value.Unit == LengthPercent && s.Value.Value >= 0
+	case DelimiterSizingAbsolute:
+		return s.Value.Unit >= LengthZero && s.Value.Unit < LengthPercent &&
+			s.Value.Value >= 0 && (s.Value.Unit != LengthZero || s.Value.Value == 0)
+	default:
+		return false
+	}
 }
 
 // LimitsPlacement controls visual placement only: whether scripts are rendered

@@ -161,9 +161,9 @@ func TestCloneFormulaCoversAllNodeKinds(t *testing.T) {
 		"scripts":  scripts,
 		"fenced":   &Fenced{Base: NewBase(KindFenced, span), Open: glyph("("), Close: glyph(")"), Body: []Node{glyph("x")}, Balanced: true},
 		"sized-delimiter": &SizedDelimiter{
-			Base: NewBase(KindSizedDelimiter, span),
-			Text: "(",
-			Size: DelimiterSize1,
+			Base:   NewBase(KindSizedDelimiter, span),
+			Text:   "(",
+			Sizing: AbsoluteDelimiterSizing(RawLength(LengthEm, 1_200_000)),
 		},
 		"accent":      NewAccent(span, glyph("x"), glyph("^"), PositionAbove),
 		"line":        NewLine(span, glyph("x"), PositionAbove),

@@ -58,8 +58,9 @@ The semantic comparison removes source evidence only:
 - Accent source-stretch intent and natural width fitting are compared
   separately, so Typst and TeX policy differences are visible before layout.
 - A standalone explicitly sized delimiter remains a leaf with strict text,
-  class, and 1-4 tier fields. It is never normalized into an ordinary atom or a
-  paired fence.
+  class, and neutral sizing policy. A paired fence's content/relative/absolute
+  sizing policy is also compared strictly. Neither form is normalized into an
+  ordinary atom or a different sizing kind.
 - Eight reviewed pairs preserve genuinely different source semantics, such as
   different Greek code points, short versus long arrows, differential spacing,
   preserved text spaces, and color scope. Their baseline reasons identify the
@@ -118,9 +119,11 @@ This is a conformance inventory, not a claim that the paired corpus currently
 passes. The reasons are recorded per case in the baseline. The remaining
 semantic cases mostly stop at a frontend-diagnostic or compound IR difference
 before cross-dialect layout comparison. The largest remaining gaps are
-unrestricted Typst code, non-default Typst `lr(size:)` semantics, font-sizing
-commands, chemistry/commutative-diagram pairs, compound atom structure, math
-alphabets, and the two remaining static-frame differences.
+unrestricted Typst code, font-sizing commands, chemistry/commutative-diagram
+pairs, compound atom structure, math alphabets, and the two remaining
+static-frame differences. `big-sizes` remains a reviewed semantic difference
+because TeX lowers discrete absolute tiers while the Typst source requests a
+content-relative percentage.
 
 Baseline details can be refreshed with an explicit review file:
 

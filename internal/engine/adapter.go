@@ -60,6 +60,17 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 	if err != nil {
 		return layout.Glyph{}, err
 	}
+	if req.Target < 0 {
+		return layout.Glyph{}, fmt.Errorf("%w: negative stretch target", layout.ErrInvalidInput)
+	}
+	if req.ShortFall < 0 {
+		return layout.Glyph{}, fmt.Errorf("%w: negative shortfall", layout.ErrInvalidInput)
+	}
+	// OpenType MATH compares the target after subtracting the shortfall. When
+	// that value is non-positive, the ordinary glyph is already sufficient.
+	if req.Target <= req.ShortFall {
+		return base, nil
+	}
 	required, err := subNonNegative(req.Target, req.ShortFall)
 	if err != nil {
 		return layout.Glyph{}, err
@@ -82,7 +93,7 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 	}
 	construction, ok := a.fonts.MathConstruction(mapped, axis)
 	if !ok {
-		return layout.Glyph{}, fmt.Errorf("%w: no %s construction", layout.ErrInsufficientStretch, axisName(req.Axis))
+		construction = font.MathConstruction{}
 	}
 	shortTarget, err := subNonNegative(req.Target, req.ShortFall)
 	if err != nil {
@@ -144,6 +155,29 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 				}
 			}
 			return assembled, nil
+		}
+	}
+	if req.Axis == layout.Vertical {
+		synthetic, supported, err := a.syntheticDelimiterAssembly(req.Context, mapped, text)
+		if err != nil {
+			return layout.Glyph{}, err
+		}
+		if supported {
+			assembled, err := a.assembleGlyph(req.Context, base, mapped, synthetic, req.Target, axis, text)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			extent, err := glyphExtent(assembled, req.Axis)
+			if err != nil {
+				return layout.Glyph{}, err
+			}
+			if extent >= required {
+				assembled, err = a.centerOnAxis(assembled)
+				if err != nil {
+					return layout.Glyph{}, err
+				}
+				return assembled, nil
+			}
 		}
 	}
 	if bestExtent >= required {

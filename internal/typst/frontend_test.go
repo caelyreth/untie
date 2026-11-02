@@ -44,6 +44,15 @@ func find[T ir.Node](t *testing.T, root ir.Node) T {
 	return found
 }
 
+func builtinPercentLength(t *testing.T, value float64) ir.Length {
+	t.Helper()
+	length, err := ir.PercentLength(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return length
+}
+
 func TestCoreConstructs(t *testing.T) {
 	t.Parallel()
 
@@ -289,17 +298,10 @@ func TestEvaluatorValuesSpreadAndHSpace(t *testing.T) {
 		t.Fatalf("space = %#v", space)
 	}
 	percent := parse(t, `lr([x], size: #150%)`)
-	if percent.Root == nil {
-		t.Fatal("nil percentage-sized root")
-	}
-	var sizeWarning bool
-	for _, diagnostic := range percent.Diagnostics {
-		if diagnostic.Code == source.CodeUnsupported && strings.Contains(diagnostic.Message, "lr size") {
-			sizeWarning = true
-		}
-	}
-	if !sizeWarning {
-		t.Fatalf("percentage size diagnostics = %#v", percent.Diagnostics)
+	requireNoDiagnostics(t, "percentage size", percent)
+	fenced := find[*ir.Fenced](t, percent.Root)
+	if fenced.Sizing.Kind != ir.DelimiterSizingRelative || fenced.Sizing.Value.Float() != 150 {
+		t.Fatalf("percentage sizing = %#v", fenced.Sizing)
 	}
 
 	text := parse(t, `text(#red, "time"^2)`)
@@ -313,35 +315,80 @@ func TestEvaluatorValuesSpreadAndHSpace(t *testing.T) {
 func TestLRSizeDiagnosticBoundary(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		source       string
-		wantWarnings int
+	valid := []struct {
+		source string
+		want   ir.DelimiterSizing
 	}{
-		{source: `lr([x])`},
-		{source: `lr([x], size: #100%)`},
-		{source: `lr([x], size: #150%)`, wantWarnings: 1},
-		{source: `lr([x], size: #3em)`, wantWarnings: 1},
+		{source: `lr([x])`, want: ir.ContentDelimiterSizing()},
+		{source: `lr([x], size: #100%)`, want: ir.ContentDelimiterSizing()},
+		{source: `lr([x], size: #150%)`, want: ir.RelativeDelimiterSizing(builtinPercentLength(t, 150))},
+		{source: `lr([x], size: #3em)`, want: ir.AbsoluteDelimiterSizing(builtinEmLength(3))},
 	}
-	for _, tt := range tests {
+	for _, tt := range valid {
 		tt := tt
 		t.Run(tt.source, func(t *testing.T) {
 			t.Parallel()
 			result := parse(t, tt.source)
-			warnings := 0
-			for _, diagnostic := range result.Diagnostics {
-				if diagnostic.Code != source.CodeUnsupported {
-					t.Fatalf("%s diagnostics = %#v", tt.source, result.Diagnostics)
-				}
-				warnings++
-				if !strings.Contains(diagnostic.Message, "relative or absolute semantics") {
-					t.Fatalf("%s diagnostic = %q", tt.source, diagnostic.Message)
-				}
-			}
-			if warnings != tt.wantWarnings {
-				t.Fatalf("%s warnings = %d, want %d", tt.source, warnings, tt.wantWarnings)
+			requireNoDiagnostics(t, tt.source, result)
+			fenced := find[*ir.Fenced](t, result.Root)
+			if fenced.Sizing != tt.want {
+				t.Fatalf("%s sizing = %#v, want %#v", tt.source, fenced.Sizing, tt.want)
 			}
 		})
 	}
+
+	invalid := []string{
+		`lr([x], size: #1)`,
+		`lr([x], size: #"150%")`,
+		`lr([x], size: #auto)`,
+		`lr([x], size: #none)`,
+		`lr([x], size: #-1em)`,
+	}
+	for _, src := range invalid {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			result := parse(t, src)
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != source.CodeInvalidValue ||
+				result.Diagnostics[0].Severity != source.SeverityError {
+				t.Fatalf("%s diagnostics = %#v, want invalid-value error", src, result.Diagnostics)
+			}
+			fenced := find[*ir.Fenced](t, result.Root)
+			if fenced.Sizing != ir.ContentDelimiterSizing() {
+				t.Fatalf("%s fallback sizing = %#v", src, fenced.Sizing)
+			}
+		})
+	}
+}
+
+func TestLRSingleDelimiterUsesStandaloneSizing(t *testing.T) {
+	t.Parallel()
+
+	result := parse(t, `lr(|, size: #2em)`)
+	requireNoDiagnostics(t, "single sized delimiter", result)
+	node := find[*ir.SizedDelimiter](t, result.Root)
+	if node.Text != "|" || node.Sizing != ir.AbsoluteDelimiterSizing(builtinEmLength(2)) ||
+		node.Size != ir.SizeInherit {
+		t.Fatalf("single sized delimiter = %#v", node)
+	}
+
+	defaultResult := parse(t, `lr(|)`)
+	requireNoDiagnostics(t, "single content delimiter", defaultResult)
+	if hasKind[*ir.SizedDelimiter](defaultResult.Root) {
+		t.Fatal("content-sized single delimiter unexpectedly became an explicit SizedDelimiter")
+	}
+}
+
+func hasKind[T ir.Node](root ir.Node) bool {
+	found := false
+	ir.Walk(root, func(node ir.Node) bool {
+		if _, ok := node.(T); ok {
+			found = true
+			return false
+		}
+		return !found
+	})
+	return found
 }
 
 func TestNonFunctionContentCallPreservesArguments(t *testing.T) {
@@ -373,19 +420,17 @@ func TestUnsupportedParametersAreDiagnosed(t *testing.T) {
 	if result.Root == nil {
 		t.Fatal("nil root")
 	}
-	var unsupported, unexpected bool
+	var unexpected bool
 	for _, diagnostic := range result.Diagnostics {
 		switch diagnostic.Code {
-		case source.CodeUnsupported:
-			unsupported = true
 		case source.CodeSyntax:
 			if strings.Contains(diagnostic.Message, "unexpected argument") {
 				unexpected = true
 			}
 		}
 	}
-	if !unsupported || !unexpected {
-		t.Fatalf("diagnostics = %#v, want unsupported size and unexpected frac argument", result.Diagnostics)
+	if len(result.Diagnostics) != 1 || !unexpected {
+		t.Fatalf("diagnostics = %#v, want only unexpected frac argument", result.Diagnostics)
 	}
 }
 

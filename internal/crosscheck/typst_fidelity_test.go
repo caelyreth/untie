@@ -1,6 +1,7 @@
 package crosscheck
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie"
@@ -9,6 +10,66 @@ import (
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
+
+func TestTypstLRSizingPolicyAndGeometry(t *testing.T) {
+	root, _ := crosscheckPaths(t)
+	harness := testHarness(t, root)
+
+	tests := []struct {
+		source string
+		kind   ir.DelimiterSizingKind
+		value  float64
+	}{
+		{source: `lr((frac(a+b,c)))`, kind: ir.DelimiterSizingContent},
+		{source: `lr((frac(a+b,c)), size: #100%)`, kind: ir.DelimiterSizingContent},
+		{source: `lr((frac(a+b,c)), size: #150%)`, kind: ir.DelimiterSizingRelative, value: 150},
+		{source: `lr((frac(a+b,c)), size: #4em)`, kind: ir.DelimiterSizingAbsolute, value: 4},
+	}
+	var defaultHeights [2]float32
+	for _, test := range tests {
+		expr := untie.ParseTypst(test.source, ir.Inline, untie.ParseOptions{})
+		formula := requireValidRoot(t, expr)
+		fenced := findTypstFenced(t, formula.Root)
+		if fenced.Sizing.Kind != test.kind {
+			t.Fatalf("%s sizing kind = %v, want %v", test.source, fenced.Sizing.Kind, test.kind)
+		}
+		if test.value != 0 && fenced.Sizing.Value.Float() != test.value {
+			t.Fatalf("%s sizing value = %v, want %v", test.source, fenced.Sizing.Value.Float(), test.value)
+		}
+		openAt := strings.Index(test.source, "((") + 1
+		open := source.NewRange(openAt, openAt+1)
+		var modeHeights []float32
+		for _, mode := range []ir.Mode{ir.Inline, ir.Display} {
+			box, err := harness.layout(t.Context(), formula.Root, mode, 16)
+			if err != nil {
+				t.Fatalf("%s mode %v: %v", test.source, mode, err)
+			}
+			left := requireHit(t, box, open, display.HitFence)
+			rightmostFenceHit(t, box)
+			modeHeights = append(modeHeights, left.Area.Height)
+		}
+		for modeIndex, height := range modeHeights {
+			switch test.kind {
+			case ir.DelimiterSizingContent:
+				if defaultHeights[modeIndex] == 0 {
+					defaultHeights[modeIndex] = height
+				} else if !near(float64(defaultHeights[modeIndex]), float64(height)) {
+					t.Fatalf("%s mode %d height = %v, want default %v",
+						test.source, modeIndex, height, defaultHeights[modeIndex])
+				}
+			case ir.DelimiterSizingRelative:
+				if height <= defaultHeights[modeIndex] {
+					t.Fatalf("%s mode %d height = %v, want greater than default %v",
+						test.source, modeIndex, height, defaultHeights[modeIndex])
+				}
+			case ir.DelimiterSizingAbsolute:
+				if !near(float64(height), 64) {
+					t.Fatalf("%s mode %d fence height = %v, want 4em = 64 DIP", test.source, modeIndex, height)
+				}
+			}
+		}
+	}
+}
 
 func TestTypstNamedSpacePreservesGlyphHitAndClassSpacing(t *testing.T) {
 	root, _ := crosscheckPaths(t)
@@ -209,6 +270,36 @@ func requireHit(t *testing.T, box *display.Box, span source.Range, kind display.
 		t.Fatalf("hits = %#v, want kind %v at %v", box.Hits, kind, span)
 	}
 	return hit
+}
+
+func rightmostFenceHit(t *testing.T, box *display.Box) display.Hit {
+	t.Helper()
+	var found display.Hit
+	have := false
+	for _, hit := range box.Hits {
+		if hit.Kind == display.HitFence && (!have || hit.Area.X > found.Area.X) {
+			found, have = hit, true
+		}
+	}
+	if !have {
+		t.Fatalf("hits = %#v, want a closing fence hit", box.Hits)
+	}
+	return found
+}
+
+func findTypstFenced(t *testing.T, root ir.Node) *ir.Fenced {
+	t.Helper()
+	var found *ir.Fenced
+	ir.Walk(root, func(node ir.Node) bool {
+		if fenced, ok := node.(*ir.Fenced); ok && found == nil {
+			found = fenced
+		}
+		return found == nil
+	})
+	if found == nil {
+		t.Fatal("no Fenced in Typst IR")
+	}
+	return found
 }
 
 func caseByID(t *testing.T, corpus *fixture.Corpus, id string) fixture.Case {
