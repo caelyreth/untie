@@ -228,26 +228,29 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 	}
 
 	rows := make([][]ir.Node, 0, 4)
-	current := make([]ir.Node, 0, 4)
+	current := make([]*astNode, 0, 4)
 	flush := func() {
-		rows = append(rows, current)
-		current = make([]ir.Node, 0, 4)
+		rows = append(rows, l.lowerMultilineRow(current, n.span))
+		current = make([]*astNode, 0, 4)
 	}
 	for _, item := range n.items {
 		if item.kind == astLinebreak {
 			flush()
 			continue
 		}
-		current = append(current, l.lower(item))
+		current = append(current, item)
 	}
 	// Typst ignores a trailing linebreak in a multiline sequence.
 	if len(current) > 0 {
-		rows = append(rows, current)
+		flush()
 	}
 	if len(rows) == 0 {
 		return ir.NewRow(n.span)
 	}
 	if len(rows) == 1 && !hasAlign {
+		if len(rows[0]) == 1 {
+			return rows[0][0]
+		}
 		row := ir.NewRow(n.span)
 		row.Items = rows[0]
 		return row
@@ -255,6 +258,32 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 	multiline := ir.NewMultiline(n.span, rows...)
 	multiline.Centered = true
 	return multiline
+}
+
+func (l *lowerer) lowerMultilineRow(items []*astNode, fallback source.Range) []ir.Node {
+	parts := make([]ir.Node, 0, 3)
+	segment := make([]*astNode, 0, len(items))
+	flush := func() {
+		start, end := fallback.Start, fallback.Start
+		if len(segment) > 0 {
+			start = segment[0].span.Start
+			end = segment[len(segment)-1].span.End
+		}
+		row := ir.NewRow(source.NewRange(start, end))
+		row.Items = l.lowerItems(segment)
+		parts = append(parts, row)
+		segment = make([]*astNode, 0, len(items))
+	}
+	for _, item := range items {
+		if item.kind == astAlign {
+			flush()
+			parts = append(parts, l.lower(item))
+			continue
+		}
+		segment = append(segment, item)
+	}
+	flush()
+	return parts
 }
 
 func (l *lowerer) lowerItems(items []*astNode) []ir.Node {

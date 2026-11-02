@@ -143,6 +143,46 @@ func TestClassAndAlphabetStylesDoNotRewriteDescendants(t *testing.T) {
 	assertSpacingClasses(t, row, ir.ClassNormal)
 }
 
+func TestMultilineRowsUseNeutralRowSegments(t *testing.T) {
+	t.Parallel()
+
+	gathered := parse(t, `a = b+c \ d = e`)
+	requireNoDiagnostics(t, "gathered rows", gathered)
+	multiline, ok := gathered.Root.(*ir.Multiline)
+	if !ok || len(multiline.Rows) != 2 {
+		t.Fatalf("gathered root = %#v", gathered.Root)
+	}
+	for rowIndex, row := range multiline.Rows {
+		if len(row) != 1 {
+			t.Fatalf("gathered row %d has %d parts", rowIndex, len(row))
+		}
+		if _, ok := row[0].(*ir.Row); !ok {
+			t.Fatalf("gathered row %d part = %T", rowIndex, row[0])
+		}
+	}
+
+	aligned := parse(t, `a &= b \ c &= d`)
+	requireNoDiagnostics(t, "aligned rows", aligned)
+	multiline, ok = aligned.Root.(*ir.Multiline)
+	if !ok || len(multiline.Rows) != 2 {
+		t.Fatalf("aligned root = %#v", aligned.Root)
+	}
+	for rowIndex, row := range multiline.Rows {
+		if len(row) != 3 {
+			t.Fatalf("aligned row %d has %d parts", rowIndex, len(row))
+		}
+		if _, ok := row[0].(*ir.Row); !ok {
+			t.Fatalf("aligned row %d first part = %T", rowIndex, row[0])
+		}
+		if _, ok := row[1].(*ir.AlignMarker); !ok {
+			t.Fatalf("aligned row %d alignment = %T", rowIndex, row[1])
+		}
+		if _, ok := row[2].(*ir.Row); !ok {
+			t.Fatalf("aligned row %d last part = %T", rowIndex, row[2])
+		}
+	}
+}
+
 func findCompoundRow(t *testing.T, root ir.Node, class ir.MathClass) *ir.Row {
 	t.Helper()
 	var found *ir.Row
