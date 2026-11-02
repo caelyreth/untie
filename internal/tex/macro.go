@@ -51,6 +51,15 @@ func newExpander(src string, limits source.Limits, macros map[string]Macro, diag
 		if name == "" {
 			continue
 		}
+		if macro.Args < 0 || macro.Args > 9 {
+			diagnostic(source.Diagnostic{
+				Range:    source.Detached(),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  "host macro " + name + " argument count must be between 0 and 9",
+			})
+			continue
+		}
 		if seen[name] {
 			diagnostic(source.Diagnostic{
 				Range:    source.Detached(),
@@ -61,9 +70,8 @@ func newExpander(src string, limits source.Limits, macros map[string]Macro, diag
 			continue
 		}
 		seen[name] = true
-		args := min(max(macro.Args, 0), 9)
 		e.scopes[0][name] = &macroDef{
-			args:     args,
+			args:     macro.Args,
 			hostBody: macro.Body,
 		}
 	}

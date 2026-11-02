@@ -1,6 +1,7 @@
 package tex
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -118,6 +119,34 @@ func TestHostMacros(t *testing.T) {
 	items := rowItems(t, result.Root)
 	if len(items) != 5 {
 		t.Fatalf("got %d items, want 5", len(items))
+	}
+}
+
+func TestHostMacroRejectsInvalidArity(t *testing.T) {
+	t.Parallel()
+
+	for _, args := range []int{-1, 10} {
+		t.Run(strconv.Itoa(args), func(t *testing.T) {
+			result := parseTest(t, `\bad`, Options{
+				Macros: map[string]Macro{
+					"bad": {Body: "x", Args: args},
+				},
+			})
+			if !hasDiagnostic(result.Diagnostics, source.CodeInvalidValue) {
+				t.Fatalf("diagnostics = %v, want invalid-value", diagnosticCodes(result.Diagnostics))
+			}
+			if !hasDiagnostic(result.Diagnostics, source.CodeUnknownCommand) {
+				t.Fatalf("invalid macro was installed: %v", diagnosticCodes(result.Diagnostics))
+			}
+			items := rowItems(t, result.Root)
+			if len(items) != 1 {
+				t.Fatalf("items = %d, want 1", len(items))
+			}
+			node := requireKind[*ir.ErrorNode](t, items[0])
+			if node.Text != `\bad` {
+				t.Fatalf("text = %q, want skipped macro command", node.Text)
+			}
+		})
 	}
 }
 
