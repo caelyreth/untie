@@ -279,6 +279,7 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 		rows:      rows,
 		rowGap:    defaultMatrixRowGap,
 		columnGap: defaultMatrixColumnGap,
+		role:      tableRoleForEnvironment(name),
 	}
 	if name == "cases" || name == "rcases" {
 		table.columnGap = ir.Length{}
@@ -310,6 +311,17 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 	}
 	table.horizontal = horizontal
 	return table
+}
+
+func tableRoleForEnvironment(name string) ir.TableRole {
+	switch name {
+	case "array", "darray", "subarray":
+		return ir.TableRoleArray
+	case "cases", "dcases", "rcases", "drcases":
+		return ir.TableRoleCases
+	default:
+		return ir.TableRoleMatrix
+	}
 }
 
 func appendTableStroke(lines []ir.TableLine, line ir.TableLine) []ir.TableLine {

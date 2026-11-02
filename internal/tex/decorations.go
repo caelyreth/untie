@@ -62,6 +62,7 @@ func (p *parser) parseStacked(command token, position ir.Position, forceRelation
 			limits:  ir.LimitsAlways,
 		},
 		limits: ir.LimitsAlways,
+		role:   ir.ScriptRoleOverlay,
 	}
 	if position == ir.PositionAbove {
 		scripts.top = annotation
@@ -94,6 +95,7 @@ func (p *parser) parseExtensibleArrow(command token) astNode {
 		astBase: newASTBaseAt(astScripts, source.Merge(command.span, above.base().span), tokenOrigin(command)),
 		main:    arrow,
 		limits:  ir.LimitsAlways,
+		role:    ir.ScriptRoleOverlay,
 	}
 	if astHasContent(above) {
 		scripts.top = above

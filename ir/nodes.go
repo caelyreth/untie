@@ -76,6 +76,7 @@ type Fraction struct {
 	Denominator Node
 	Bar         bool
 	Style       FractionStyle
+	Role        FractionRole // Semantic operation; zero is an ordinary fraction.
 	Padding     Length
 }
 
@@ -112,6 +113,7 @@ type Scripts struct {
 	BottomLeft  Node
 	TopRight    Node
 	BottomRight Node
+	Role        ScriptRole // Semantic script purpose; zero is an ordinary script.
 }
 
 // NewScripts constructs a scripts node.
@@ -178,6 +180,7 @@ type Cancel struct {
 	Body      Node
 	Cross     bool
 	Inverted  bool
+	Role      CancelRole // Zero is a cancellation strike.
 	Thickness Length
 }
 
@@ -204,6 +207,7 @@ type TableLine struct {
 type Table struct {
 	Base
 	Rows       []TableRow
+	Role       TableRole // Semantic grid kind; zero preserves matrix behavior.
 	Columns    []ColumnAlign
 	RowGap     Length
 	ColumnGap  Length

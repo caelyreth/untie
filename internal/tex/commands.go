@@ -164,6 +164,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		cancel := &astCancelNode{
 			astBase: newASTBaseAt(astCancel, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:    body,
+			role:    ir.CancelRoleNegation,
 		}
 		return &astClassNode{
 			astBase:   newASTBaseAt(astClass, cancel.span, tokenOrigin(t)),
@@ -586,6 +587,7 @@ func (p *parser) parseBinomial(command token) astNode {
 	fraction := p.parseFraction(command)
 	f := fraction.(*astFractionNode)
 	f.bar = false
+	f.role = ir.FractionRoleBinomial
 	switch command.text {
 	case "\\dbinom":
 		f.size = ir.SizeDisplay

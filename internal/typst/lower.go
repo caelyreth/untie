@@ -419,6 +419,7 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 		base.TopLeft == nil && base.BottomLeft == nil && base.TopRight == nil && base.BottomRight == nil {
 		scripts.BaseItem = base.BaseItem
 		scripts.Limits = base.Limits
+		scripts.Role = base.Role
 	}
 	scripts.Top = l.lowerOptional(n.top)
 	scripts.Bottom = l.lowerOptional(n.bottom)
@@ -426,8 +427,36 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	scripts.BottomLeft = l.lowerOptional(n.bottomLeft)
 	scripts.TopRight = l.lowerOptional(n.topRight)
 	scripts.BottomRight = l.lowerOptional(n.bottomRight)
+	if scripts.Role == ir.ScriptRoleOrdinary && scripts.Limits != ir.LimitsNever &&
+		hasLimitSemantics(scripts.BaseItem) {
+		scripts.Role = ir.ScriptRoleLimits
+	}
 	inheritScriptMetadata(scripts)
 	return scripts
+}
+
+func hasLimitSemantics(node ir.Node) bool {
+	if node == nil || node.NodeBase() == nil {
+		return false
+	}
+	base := node.NodeBase()
+	if base.Class != ir.ClassLarge {
+		return false
+	}
+	if base.Limits != ir.LimitsNever {
+		return true
+	}
+	return containsIntegralText(nodeText(node))
+}
+
+func containsIntegralText(text string) bool {
+	for _, r := range text {
+		switch r {
+		case '∫', '∬', '∭', '∮', '∯', '∰':
+			return true
+		}
+	}
+	return false
 }
 
 func inheritScriptMetadata(scripts *ir.Scripts) {

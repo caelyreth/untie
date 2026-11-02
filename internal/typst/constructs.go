@@ -75,6 +75,7 @@ func (l *lowerer) lowerBinom(call *astNode) ir.Node {
 	fr := ir.NewFraction(call.span, upper, lower)
 	fr.Bar = false
 	fr.Style = ir.FractionNoBar
+	fr.Role = ir.FractionRoleBinomial
 	fr.Padding = builtinEmLength(0.1)
 	fenced := ir.NewFenced(call.span, fr)
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), "(")
@@ -96,6 +97,16 @@ func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 	scripts.BottomLeft = l.contentNamed(call, "bl")
 	scripts.TopRight = l.contentNamed(call, "tr")
 	scripts.BottomRight = l.contentNamed(call, "br")
+	if base, ok := scripts.BaseItem.(*ir.Scripts); ok && base.Role != ir.ScriptRoleOrdinary {
+		scripts.Role = base.Role
+	}
+	if scripts.Role == ir.ScriptRoleOrdinary {
+		if hasLimitSemantics(scripts.BaseItem) {
+			scripts.Role = ir.ScriptRoleLimits
+		} else {
+			scripts.Role = ir.ScriptRoleOverlay
+		}
+	}
 	inheritScriptMetadata(scripts)
 	return scripts
 }
@@ -105,8 +116,10 @@ func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 	scripts := ir.NewScripts(call.span, body)
 	if name == "scripts" {
 		scripts.Limits = ir.LimitsNever
+		scripts.Role = ir.ScriptRoleOrdinary
 	} else {
 		scripts.Limits = ir.LimitsAlways
+		scripts.Role = ir.ScriptRoleLimits
 		if inlineArg := namedArgument(call, "inline"); inlineArg != nil {
 			if inline, ok := l.valueBool(inlineArg.node); ok && !inline {
 				scripts.Limits = ir.LimitsAuto

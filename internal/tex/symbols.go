@@ -47,6 +47,7 @@ type fractionInfix struct {
 	open      string
 	close     string
 	dimension bool
+	role      ir.FractionRole
 }
 
 func init() {
@@ -673,10 +674,10 @@ func addSizing() {
 
 func addInfixes() {
 	infixCommands["\\over"] = fractionInfix{bar: true, style: ir.FractionVertical}
-	infixCommands["\\atop"] = fractionInfix{bar: false, style: ir.FractionVertical}
-	infixCommands["\\choose"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "(", close: ")"}
-	infixCommands["\\brace"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "{", close: "}"}
-	infixCommands["\\brack"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "[", close: "]"}
+	infixCommands["\\atop"] = fractionInfix{bar: false, style: ir.FractionVertical, role: ir.FractionRoleStacked}
+	infixCommands["\\choose"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "(", close: ")", role: ir.FractionRoleBinomial}
+	infixCommands["\\brace"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "{", close: "}", role: ir.FractionRoleStacked}
+	infixCommands["\\brack"] = fractionInfix{bar: false, style: ir.FractionVertical, open: "[", close: "]", role: ir.FractionRoleStacked}
 	infixCommands["\\above"] = fractionInfix{bar: true, style: ir.FractionVertical, dimension: true}
 }
 

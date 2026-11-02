@@ -129,6 +129,70 @@ func TestAttachAndCasesPreserveNeutralMetadata(t *testing.T) {
 	}
 }
 
+func TestSemanticRolesComeFromTypstSyntax(t *testing.T) {
+	t.Parallel()
+
+	scriptTests := []struct {
+		src  string
+		role ir.ScriptRole
+	}{
+		{`x^2`, ir.ScriptRoleOrdinary},
+		{`sin^2 x`, ir.ScriptRoleOrdinary},
+		{`sum_(i=1)^n`, ir.ScriptRoleLimits},
+		{`integral_0^1`, ir.ScriptRoleLimits},
+		{`limits(sum)_(i=1)^n`, ir.ScriptRoleLimits},
+		{`attach(x, t: a)`, ir.ScriptRoleOverlay},
+		{`overbrace(x+y, n)`, ir.ScriptRoleBraceLabel},
+		{`underbrace(x+y, n)`, ir.ScriptRoleBraceLabel},
+	}
+	for _, tc := range scriptTests {
+		tc := tc
+		t.Run(tc.src, func(t *testing.T) {
+			t.Parallel()
+			result := parse(t, tc.src)
+			requireNoDiagnostics(t, tc.src, result)
+			scripts := find[*ir.Scripts](t, result.Root)
+			if scripts.Role != tc.role {
+				t.Fatalf("role = %v, want %v", scripts.Role, tc.role)
+			}
+		})
+	}
+
+	binom := parse(t, `binom(n, k)`)
+	requireNoDiagnostics(t, "binom", binom)
+	fraction := find[*ir.Fraction](t, binom.Root)
+	if fraction.Role != ir.FractionRoleBinomial {
+		t.Fatalf("binom role = %v", fraction.Role)
+	}
+
+	tableTests := []struct {
+		src  string
+		role ir.TableRole
+	}{
+		{`mat(1, 2; 3, 4)`, ir.TableRoleMatrix},
+		{`vec(1, 2, 3)`, ir.TableRoleVector},
+		{`cases(a, b)`, ir.TableRoleCases},
+	}
+	for _, tc := range tableTests {
+		tc := tc
+		t.Run(tc.src, func(t *testing.T) {
+			t.Parallel()
+			result := parse(t, tc.src)
+			requireNoDiagnostics(t, tc.src, result)
+			table := find[*ir.Table](t, result.Root)
+			if table.Role != tc.role {
+				t.Fatalf("role = %v, want %v", table.Role, tc.role)
+			}
+		})
+	}
+
+	cancel := parse(t, `cancel(x)`)
+	requireNoDiagnostics(t, "cancel", cancel)
+	if got := find[*ir.Cancel](t, cancel.Root).Role; got != ir.CancelRoleStrike {
+		t.Fatalf("cancel role = %v, want strike", got)
+	}
+}
+
 func TestClassAndAlphabetStylesDoNotRewriteDescendants(t *testing.T) {
 	t.Parallel()
 

@@ -160,6 +160,46 @@ const (
 	FractionHorizontal
 )
 
+// FractionRole records the semantic operation represented by a fraction-shaped
+// node. FractionStyle continues to control geometry.
+type FractionRole uint8
+
+const (
+	FractionRoleFraction FractionRole = iota
+	FractionRoleBinomial
+	FractionRoleStacked
+)
+
+// TableRole identifies the semantic construct represented by a table grid.
+type TableRole uint8
+
+const (
+	TableRoleMatrix TableRole = iota
+	TableRoleArray
+	TableRoleCases
+	TableRoleVector
+)
+
+// ScriptRole identifies the semantic purpose of attached scripts independently
+// of whether layout places them beside or above/below the base.
+type ScriptRole uint8
+
+const (
+	ScriptRoleOrdinary ScriptRole = iota
+	ScriptRoleLimits
+	ScriptRoleOverlay
+	ScriptRoleBraceLabel
+)
+
+// CancelRole distinguishes cancellation strokes from logical negation, which
+// can share the same geometric overlay.
+type CancelRole uint8
+
+const (
+	CancelRoleStrike CancelRole = iota
+	CancelRoleNegation
+)
+
 // ColumnAlign is the alignment of a table column.
 type ColumnAlign uint8
 

@@ -283,6 +283,9 @@ func (p *parser) parseGenfrac(command token) astNode {
 		style:       ir.FractionVertical,
 		size:        size,
 	}
+	if !bar {
+		fraction.role = ir.FractionRoleStacked
+	}
 	if strings.TrimSpace(openText) == "" && strings.TrimSpace(closeText) == "" {
 		return fraction
 	}

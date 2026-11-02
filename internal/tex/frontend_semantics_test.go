@@ -103,6 +103,68 @@ func TestStackrelNotAndStructuralBracesUseKaTeXClasses(t *testing.T) {
 	}
 }
 
+func TestSemanticRolesComeFromTeXSyntax(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		source string
+		role   ir.ScriptRole
+	}{
+		{`x^2`, ir.ScriptRoleOrdinary},
+		{`\sin^2 x`, ir.ScriptRoleOrdinary},
+		{`\sum_{i=1}^n`, ir.ScriptRoleLimits},
+		{`\int_0^1`, ir.ScriptRoleLimits},
+		{`\overset{a}{b}`, ir.ScriptRoleOverlay},
+		{`\underset{a}{b}`, ir.ScriptRoleOverlay},
+		{`\stackrel{a}{=}`, ir.ScriptRoleOverlay},
+		{`\xrightarrow[below]{above}`, ir.ScriptRoleOverlay},
+		{`\overbrace{x+y}^{n}`, ir.ScriptRoleBraceLabel},
+		{`\underbrace{x+y}_{n}`, ir.ScriptRoleBraceLabel},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
+			scripts := requireKind[*ir.Scripts](t, rowItems(t, parseTest(t, tc.source, Options{}).Root)[0])
+			if scripts.Role != tc.role {
+				t.Fatalf("role = %v, want %v", scripts.Role, tc.role)
+			}
+		})
+	}
+
+	ordinaryFraction := requireKind[*ir.Fraction](t, rowItems(t, parseTest(t, `\frac12`, Options{}).Root)[0])
+	if ordinaryFraction.Role != ir.FractionRoleFraction {
+		t.Fatalf("fraction role = %v, want quotient", ordinaryFraction.Role)
+	}
+	stacked := requireKind[*ir.Fraction](t, rowItems(t, parseTest(t, `a\atop b`, Options{}).Root)[0])
+	if stacked.Role != ir.FractionRoleStacked {
+		t.Fatalf("atop role = %v, want stacked", stacked.Role)
+	}
+
+	matrix := requireKind[*ir.Table](t, rowItems(t, parseTest(t, `\begin{matrix}a&b\end{matrix}`, Options{}).Root)[0])
+	if matrix.Role != ir.TableRoleMatrix {
+		t.Fatalf("matrix role = %v", matrix.Role)
+	}
+	array := requireKind[*ir.Table](t, rowItems(t, parseTest(t, `\begin{array}{cc}a&b\end{array}`, Options{}).Root)[0])
+	if array.Role != ir.TableRoleArray {
+		t.Fatalf("array role = %v", array.Role)
+	}
+	casesFence := requireKind[*ir.Fenced](t, rowItems(t, parseTest(t, `\begin{cases}a&b\end{cases}`, Options{}).Root)[0])
+	cases := requireKind[*ir.Table](t, casesFence.Body[0])
+	if cases.Role != ir.TableRoleCases {
+		t.Fatalf("cases role = %v", cases.Role)
+	}
+
+	not := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\not=`, Options{}).Root)[0])
+	if not.Role != ir.CancelRoleNegation {
+		t.Fatalf("not role = %v", not.Role)
+	}
+	cancel := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\cancel{x}`, Options{}).Root)[0])
+	if cancel.Role != ir.CancelRoleStrike {
+		t.Fatalf("cancel role = %v", cancel.Role)
+	}
+}
+
 func TestGenfracStyleInheritance(t *testing.T) {
 	t.Parallel()
 
