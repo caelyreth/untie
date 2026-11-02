@@ -64,6 +64,22 @@ func TestValidateRejectsKindAndFieldMismatches(t *testing.T) {
 			}(),
 		},
 		{
+			name: "explicit color without flag",
+			root: func() Node {
+				node := NewGlyph(span, "x")
+				node.Paint.Explicit = RGBA{A: 255}
+				return node
+			}(),
+		},
+		{
+			name: "horizontal fraction with bar",
+			root: func() Node {
+				node := NewFraction(span, NewGlyph(span, "x"), NewGlyph(span, "y"))
+				node.Style = FractionHorizontal
+				return node
+			}(),
+		},
+		{
 			name: "non-explicit space amount",
 			root: func() Node {
 				node := NewSpace(span, SpaceInterword, RawLength(LengthEm, 1_000_000))

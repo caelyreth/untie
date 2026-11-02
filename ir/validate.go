@@ -180,6 +180,9 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		if n.Style > FractionHorizontal {
 			return fmt.Errorf("%w: %s: invalid fraction style", ErrInvalidIR, path)
 		}
+		if n.Style != FractionVertical && n.Bar {
+			return fmt.Errorf("%w: %s: non-vertical fraction has a bar", ErrInvalidIR, path)
+		}
 		if err := validateNonNegative(n.Padding, limits, path+".padding"); err != nil {
 			return err
 		}
@@ -338,6 +341,9 @@ func validatePaint(paint Paint, path string) error {
 	}
 	if paint.HasExplicit && paint.Role != PaintInk {
 		return fmt.Errorf("%w: %s: explicit paint also selects role %d", ErrInvalidIR, path, paint.Role)
+	}
+	if !paint.HasExplicit && paint.Explicit != (RGBA{}) {
+		return fmt.Errorf("%w: %s: explicit color set without HasExplicit", ErrInvalidIR, path)
 	}
 	return nil
 }

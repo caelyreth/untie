@@ -163,6 +163,7 @@ func parseRecovered(
 		result := parser(limits)
 		candidate := &ir.Formula{Root: result.root}
 		if result.root == nil {
+			diagnostics = append(diagnostics, result.diagnostics...)
 			diagnostics = append(diagnostics, source.Diagnostic{
 				Range:    source.NewRange(0, len(src)),
 				Severity: source.SeverityError,

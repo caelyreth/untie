@@ -137,6 +137,7 @@ func TestFractionProducesRuleAndNestedStyles(t *testing.T) {
 
 	noBar := ir.NewFraction(source.NewRange(0, 5), glyph("1", ir.ClassNormal), glyph("2", ir.ClassNormal))
 	noBar.Style = ir.FractionNoBar
+	noBar.Bar = false
 	noBarBox, err := renderer.Layout(noBar, ir.Inline, testStyle(20))
 	if err != nil {
 		t.Fatalf("Layout(no-bar fraction) error = %v", err)
