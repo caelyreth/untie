@@ -287,6 +287,12 @@ func parseSelectedFace(data FontData) (*parsedFace, error) {
 	if err != nil {
 		return nil, fmt.Errorf("face %d (%q): parse GSUB: %w", data.Index, data.ID, err)
 	}
+	if err := m.validateGlyphIDs(of.NumGlyphs()); err != nil {
+		return nil, fmt.Errorf("face %d (%q): validate MATH glyph references: %w", data.Index, data.ID, err)
+	}
+	if err := g.validateGlyphIDs(of.NumGlyphs()); err != nil {
+		return nil, fmt.Errorf("face %d (%q): validate GSUB glyph references: %w", data.Index, data.ID, err)
+	}
 
 	pf := &parsedFace{
 		data: data,

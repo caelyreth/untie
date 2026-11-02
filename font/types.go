@@ -89,14 +89,18 @@ type Segment struct {
 	Points [3]Point
 }
 
-// Point is a design-unit outline coordinate.
+// Point is a whole design-unit outline coordinate. Fractional CFF coordinates
+// are truncated toward zero once when the font is loaded, matching the pinned
+// Typst/ttf-parser oracle.
 type Point struct {
 	X int32
 	Y int32
 }
 
-// Outline is an immutable snapshot of a glyph's unhinted outline. The returned
-// value owns its Segments slice; mutating it cannot affect the font cache.
+// Outline is an immutable snapshot of a glyph's unhinted outline. Coordinates
+// are whole design units; sub-design-unit CFF precision is not represented by
+// this API. The returned value owns its Segments slice, so mutation cannot
+// affect the font cache.
 type Outline struct {
 	Glyph    Glyph
 	Bounds   Bounds
@@ -308,7 +312,8 @@ type AssemblyPart struct {
 	Extender       bool
 }
 
-// Assembly is the recipe for constructing a stretchy glyph.
+// Assembly is the complete recipe for constructing a stretchy glyph. Parts
+// retain OpenType order, and the first and last parts are the endpoint glyphs.
 type Assembly struct {
 	ItalicCorrection    int32
 	MinConnectorOverlap int32

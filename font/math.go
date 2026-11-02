@@ -320,6 +320,9 @@ func parseAssembly(b []byte, minConnector int32) (Assembly, error) {
 		return Assembly{}, err
 	}
 	count := int(count16)
+	if count == 0 {
+		return Assembly{}, errors.New("GlyphAssembly has no parts")
+	}
 	if count > (len(b)-off)/10 {
 		return Assembly{}, errors.New("GlyphAssembly parts are truncated")
 	}
@@ -357,6 +360,61 @@ func parseAssembly(b []byte, minConnector int32) (Assembly, error) {
 		}
 	}
 	return Assembly{ItalicCorrection: int32(italic), MinConnectorOverlap: minConnector, Parts: parts}, nil
+}
+
+func (m mathTable) validateGlyphIDs(glyphCount int) error {
+	if glyphCount <= 0 {
+		return errors.New("MATH requires a positive glyph count")
+	}
+	valid := func(gid GlyphID) bool { return int(gid) < glyphCount }
+	checkValues := func(name string, values map[GlyphID]int32) error {
+		for gid := range values {
+			if !valid(gid) {
+				return fmt.Errorf("%s glyph %d is outside %d glyphs", name, gid, glyphCount)
+			}
+		}
+		return nil
+	}
+	if err := checkValues("italic correction", m.italic); err != nil {
+		return err
+	}
+	if err := checkValues("top accent", m.topAccent); err != nil {
+		return err
+	}
+	for gid := range m.kerns {
+		if !valid(gid) {
+			return fmt.Errorf("kern glyph %d is outside %d glyphs", gid, glyphCount)
+		}
+	}
+	for gid := range m.extendedShape {
+		if !valid(gid) {
+			return fmt.Errorf("extended shape glyph %d is outside %d glyphs", gid, glyphCount)
+		}
+	}
+	for axis, table := range map[MathAxis]map[GlyphID]mathConstruction{
+		VerticalAxis:   m.vertical,
+		HorizontalAxis: m.horizontal,
+	} {
+		for gid, construction := range table {
+			if !valid(gid) {
+				return fmt.Errorf("axis %d construction glyph %d is outside %d glyphs", axis, gid, glyphCount)
+			}
+			for i, variant := range construction.variants {
+				if !valid(variant.Glyph) {
+					return fmt.Errorf("axis %d glyph %d variant %d glyph %d is outside %d glyphs", axis, gid, i, variant.Glyph, glyphCount)
+				}
+			}
+			if construction.assembly == nil {
+				continue
+			}
+			for i, part := range construction.assembly.Parts {
+				if !valid(part.Glyph) {
+					return fmt.Errorf("axis %d glyph %d assembly part %d glyph %d is outside %d glyphs", axis, gid, i, part.Glyph, glyphCount)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func parsePerGlyphMathValues(b []byte) (map[GlyphID]int32, error) {

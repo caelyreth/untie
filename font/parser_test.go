@@ -68,6 +68,9 @@ func TestParseMathRejectsMalformed(t *testing.T) {
 			}
 		})
 	}
+	if _, err := parseAssembly(make([]byte, 6), 0); err == nil {
+		t.Fatal("parseAssembly accepted an empty part list")
+	}
 }
 
 func TestParseGSUBRejectsMalformed(t *testing.T) {
@@ -84,6 +87,93 @@ func TestParseGSUBRejectsMalformed(t *testing.T) {
 				t.Fatal("parseGSUBTable() error = nil")
 			}
 		})
+	}
+}
+
+func TestValidateGSUBGlyphReferences(t *testing.T) {
+	t.Parallel()
+	tests := map[string]gsubTable{
+		"positive count": {features: map[string][]gsubLookup{
+			"dtls": {{subtables: []gsubSubtable{{single: map[GlyphID]GlyphID{1: 2}}}}},
+		}},
+		"single source": {features: map[string][]gsubLookup{
+			"dtls": {{subtables: []gsubSubtable{{single: map[GlyphID]GlyphID{8: 2}}}}},
+		}},
+		"single replacement": {features: map[string][]gsubLookup{
+			"dtls": {{subtables: []gsubSubtable{{single: map[GlyphID]GlyphID{1: 8}}}}},
+		}},
+		"alternate source": {features: map[string][]gsubLookup{
+			"ssty": {{subtables: []gsubSubtable{{alternates: map[GlyphID][]GlyphID{8: {2}}}}}},
+		}},
+		"alternate replacement": {features: map[string][]gsubLookup{
+			"ssty": {{subtables: []gsubSubtable{{alternates: map[GlyphID][]GlyphID{1: {8}}}}}},
+		}},
+	}
+	for name, gsub := range tests {
+		t.Run(name, func(t *testing.T) {
+			wantErr := name != "positive count"
+			if err := gsub.validateGlyphIDs(8); (err != nil) != wantErr {
+				t.Fatalf("validateGlyphIDs error = %v, wantErr %v", err, wantErr)
+			}
+		})
+	}
+	if err := (gsubTable{}).validateGlyphIDs(0); err == nil {
+		t.Fatal("validateGlyphIDs accepted zero glyphs")
+	}
+}
+
+func TestAlternateSubstitutionRejectsEmptyAlternateSet(t *testing.T) {
+	t.Parallel()
+	table := make([]byte, 16)
+	binary.BigEndian.PutUint16(table[0:2], 1)
+	binary.BigEndian.PutUint16(table[2:4], 8)
+	binary.BigEndian.PutUint16(table[4:6], 1)
+	binary.BigEndian.PutUint16(table[6:8], 14)
+	binary.BigEndian.PutUint16(table[8:10], 1)
+	binary.BigEndian.PutUint16(table[10:12], 1)
+	binary.BigEndian.PutUint16(table[12:14], 10)
+	binary.BigEndian.PutUint16(table[14:16], 0)
+	if _, err := parseAlternateSubstitution(table, 1); err == nil {
+		t.Fatal("parseAlternateSubstitution accepted an empty alternate set")
+	}
+}
+
+func TestValidateMATHGlyphReferences(t *testing.T) {
+	t.Parallel()
+	tests := map[string]mathTable{
+		"positive count": {
+			italic:        map[GlyphID]int32{1: 0},
+			topAccent:     map[GlyphID]int32{1: 0},
+			kerns:         map[GlyphID]*mathKernRecord{1: {}},
+			extendedShape: map[GlyphID]struct{}{1: {}},
+			vertical: map[GlyphID]mathConstruction{
+				1: {variants: []SizeVariant{{Glyph: 2}}, assembly: &Assembly{Parts: []AssemblyPart{{Glyph: 3}}}},
+			},
+		},
+		"italic":   {italic: map[GlyphID]int32{8: 0}},
+		"accent":   {topAccent: map[GlyphID]int32{8: 0}},
+		"kern":     {kerns: map[GlyphID]*mathKernRecord{8: {}}},
+		"extended": {extendedShape: map[GlyphID]struct{}{8: {}}},
+		"construction": {vertical: map[GlyphID]mathConstruction{
+			8: {variants: []SizeVariant{{Glyph: 2}}},
+		}},
+		"variant": {horizontal: map[GlyphID]mathConstruction{
+			1: {variants: []SizeVariant{{Glyph: 8}}},
+		}},
+		"assembly": {vertical: map[GlyphID]mathConstruction{
+			1: {assembly: &Assembly{Parts: []AssemblyPart{{Glyph: 8}}}},
+		}},
+	}
+	for name, math := range tests {
+		t.Run(name, func(t *testing.T) {
+			wantErr := name != "positive count"
+			if err := math.validateGlyphIDs(8); (err != nil) != wantErr {
+				t.Fatalf("validateGlyphIDs error = %v, wantErr %v", err, wantErr)
+			}
+		})
+	}
+	if err := (mathTable{}).validateGlyphIDs(0); err == nil {
+		t.Fatal("validateGlyphIDs accepted zero glyphs")
 	}
 }
 
