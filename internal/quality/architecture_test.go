@@ -1,15 +1,19 @@
 package quality_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
 
 const modulePath = "github.com/caelyreth/untie"
+
+const exampleModulePath = modulePath + "/examples/mygo"
 
 type listedPackage struct {
 	ImportPath   string
@@ -22,6 +26,16 @@ type listedPackage struct {
 type packageRules struct {
 	Production []string
 	Tests      []string
+}
+
+type importViolationFunc func(string, []string, bool, map[string]packageRules) []string
+
+type architectureModule struct {
+	Name       string
+	Path       string
+	Dir        string
+	Allowed    map[string]packageRules
+	Violations importViolationFunc
 }
 
 // This is an exact allowlist for every project package. Standard-library
@@ -55,7 +69,6 @@ var allowedProjectImports = map[string]packageRules{
 			"github.com/go-text/typesetting/font/opentype",
 			modulePath + "/geometry",
 		},
-		Tests: []string{"github.com/go-text/typesetting/font/opentype"},
 	},
 	modulePath + "/geometry": {},
 	modulePath + "/internal/engine": {
@@ -119,13 +132,11 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
-		Tests: []string{modulePath + "/internal/layout"},
 	},
 	modulePath + "/internal/mathdata":     {},
 	modulePath + "/internal/mathdata/gen": {},
 	modulePath + "/internal/tex": {
 		Production: []string{
-			modulePath + "/geometry",
 			modulePath + "/internal/mathdata",
 			modulePath + "/ir",
 			modulePath + "/source",
@@ -133,7 +144,6 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/internal/typst": {
 		Production: []string{
-			modulePath + "/geometry",
 			modulePath + "/internal/mathdata",
 			modulePath + "/ir",
 			modulePath + "/source",
@@ -145,15 +155,61 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/source": {},
 }
 
+// examples/mygo is a separate consumer module. It may import Untie's public
+// API, packages from its own module and the exact third-party packages declared
+// for the example. Untie internals are rejected explicitly below; relying only
+// on Go's internal-package rule would incorrectly permit this module because it
+// shares Untie's module-path prefix.
+var allowedExampleImports = map[string]packageRules{
+	exampleModulePath: {
+		Production: []string{
+			modulePath,
+			modulePath + "/geometry",
+			"github.com/egoist/mygo",
+			"github.com/egoist/mygo/ui",
+		},
+	},
+}
+
+var architectureModules = []architectureModule{
+	{
+		Name:       "root",
+		Path:       modulePath,
+		Dir:        ".",
+		Allowed:    allowedProjectImports,
+		Violations: packageImportViolations,
+	},
+	{
+		Name:       "examples/mygo",
+		Path:       exampleModulePath,
+		Dir:        filepath.Join("examples", "mygo"),
+		Allowed:    allowedExampleImports,
+		Violations: examplePackageImportViolations,
+	},
+}
+
 func TestArchitectureImportRules(t *testing.T) {
 	t.Parallel()
 
-	cmd := exec.Command("go", "list", "-test", "-json", modulePath+"/...")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("go list -test: %v", err)
+	root := repositoryRoot(t)
+	for _, module := range architectureModules {
+		module := module
+		t.Run(module.Name, func(t *testing.T) {
+			checkArchitectureModule(t, filepath.Join(root, module.Dir), module)
+		})
 	}
-	dec := json.NewDecoder(strings.NewReader(string(out)))
+}
+
+func checkArchitectureModule(t *testing.T, dir string, module architectureModule) {
+	t.Helper()
+
+	cmd := exec.Command("go", "list", "-test", "-json", "./...")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go list -test in %s: %v\n%s", dir, err, out)
+	}
+	dec := json.NewDecoder(bytes.NewReader(out))
 	seen := make(map[string]bool)
 	for dec.More() {
 		var pkg listedPackage
@@ -166,18 +222,40 @@ func TestArchitectureImportRules(t *testing.T) {
 			continue
 		}
 		seen[pkg.ImportPath] = true
-		for _, violation := range packageImportViolations(pkg.ImportPath, pkg.Imports, false, allowedProjectImports) {
+		for _, violation := range module.Violations(pkg.ImportPath, pkg.Imports, false, module.Allowed) {
 			t.Error(violation)
 		}
 		testImports := append([]string(nil), pkg.TestImports...)
 		testImports = append(testImports, pkg.XTestImports...)
-		for _, violation := range packageImportViolations(pkg.ImportPath, testImports, true, allowedProjectImports) {
+		for _, violation := range module.Violations(pkg.ImportPath, testImports, true, module.Allowed) {
 			t.Error(violation)
 		}
+		checkRuleFreshness(t, pkg.ImportPath, pkg.Imports, testImports, module.Allowed)
 	}
-	for pkg := range allowedProjectImports {
+	for pkg := range module.Allowed {
 		if !seen[pkg] {
-			t.Errorf("allowlist package %s was not returned by go list", pkg)
+			t.Errorf("allowlist package %s in module %s was not returned by go list", pkg, module.Path)
+		}
+	}
+}
+
+func checkRuleFreshness(t *testing.T, pkg string, productionImports, testImports []string, allow map[string]packageRules) {
+	t.Helper()
+
+	rules := allow[pkg]
+	production := importSet(productionImports)
+	tests := importSet(testImports)
+	for _, grant := range rules.Production {
+		if !production[grant] {
+			t.Errorf("%s has unused production allowlist grant %s", pkg, grant)
+		}
+	}
+	for _, grant := range rules.Tests {
+		if production[grant] {
+			t.Errorf("%s repeats production grant %s in test-only rules", pkg, grant)
+		}
+		if !tests[grant] {
+			t.Errorf("%s has unused test-only allowlist grant %s", pkg, grant)
 		}
 	}
 }
@@ -203,6 +281,31 @@ func TestArchitectureRuleDetectsViolation(t *testing.T) {
 	}
 	if got := packageImportViolations(modulePath+"/internal/engine", []string{modulePath + "/internal/tex"}, false, allowedProjectImports); len(got) == 0 {
 		t.Fatal("test-only engine -> tex edge leaked into production rules")
+	}
+}
+
+func TestArchitectureExamplePolicyRejectsInternal(t *testing.T) {
+	t.Parallel()
+
+	internalImport := modulePath + "/internal/engine"
+	allow := map[string]packageRules{
+		exampleModulePath: {Production: []string{internalImport}},
+	}
+	violations := examplePackageImportViolations(exampleModulePath, []string{internalImport}, false, allow)
+	if len(violations) != 1 {
+		t.Fatalf("violations = %v, want one internal-import violation", violations)
+	}
+	if !strings.Contains(violations[0], "internal") {
+		t.Fatalf("violation = %q, want an internal-import diagnostic", violations[0])
+	}
+
+	allowed := []string{
+		modulePath + "/geometry",
+		exampleModulePath + "/futurepkg",
+		"github.com/egoist/mygo/ui",
+	}
+	if got := examplePackageImportViolations(exampleModulePath, allowed, false, allowedExampleImports); len(got) != 0 {
+		t.Fatalf("allowed example imports rejected: %v", got)
 	}
 }
 
@@ -239,4 +342,63 @@ func packageImportViolations(pkg string, imports []string, test bool, allow map[
 		violations = append(violations, fmt.Sprintf("%s imports %s outside its exact allowlist", pkg, imp))
 	}
 	return violations
+}
+
+func examplePackageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules) []string {
+	rules, known := allow[pkg]
+	if !known {
+		return []string{fmt.Sprintf("%s is not in the example architecture allowlist", pkg)}
+	}
+	allowed := rules.Production
+	if test {
+		allowed = append(append([]string(nil), allowed...), rules.Tests...)
+	}
+	allowedSet := importSet(allowed)
+	slices.Sort(imports)
+	var violations []string
+	for _, imp := range imports {
+		if imp == "C" {
+			violations = append(violations, fmt.Sprintf("%s imports cgo", pkg))
+			continue
+		}
+		if untieInternalImport(imp) {
+			violations = append(violations, fmt.Sprintf("%s imports Untie internal package %s", pkg, imp))
+			continue
+		}
+		if withinModule(imp, exampleModulePath) || allowedSet[imp] {
+			continue
+		}
+		if withinModule(imp, modulePath) {
+			violations = append(violations, fmt.Sprintf("%s imports non-public or undeclared Untie package %s", pkg, imp))
+			continue
+		}
+		first := strings.SplitN(imp, "/", 2)[0]
+		if strings.Contains(first, ".") {
+			violations = append(violations, fmt.Sprintf("%s imports undeclared external package %s", pkg, imp))
+		}
+	}
+	return violations
+}
+
+func untieInternalImport(imp string) bool {
+	rest, ok := strings.CutPrefix(imp, modulePath+"/")
+	if !ok {
+		return false
+	}
+	return rest == "internal" ||
+		strings.HasPrefix(rest, "internal/") ||
+		strings.Contains(rest, "/internal/") ||
+		strings.HasSuffix(rest, "/internal")
+}
+
+func withinModule(imp, path string) bool {
+	return imp == path || strings.HasPrefix(imp, path+"/")
+}
+
+func importSet(imports []string) map[string]bool {
+	set := make(map[string]bool, len(imports))
+	for _, imp := range imports {
+		set[imp] = true
+	}
+	return set
 }
