@@ -48,7 +48,7 @@ generated nodes retain an origin span where the frontend can identify one.
 | `internal/layout` | Fixed-point math layout and flattening behind narrow font ports | No |
 | `internal/mathdata` | Generated symbol, class, variant, shorthand, and operator tables | No |
 | `internal/fixture` | Decoders, corpus runners, unit and span adapters, golden helpers | No |
-| `internal/daily` | Product-priority daily-STEM corpus loader, exact expectation model, and public-contract evaluator | No |
+| `internal/daily` | Product-priority daily-STEM corpus loader, content digest, exact expectation model, and public-contract evaluator | No |
 | `internal/testrender` | Test-only SVG inspection of display lists | No |
 | `cmd/formula-check` | Developer CLI for diagnostics and canonical IR inspection | Command |
 | `cmd/dailyreport` | Runs the tracked daily-STEM product acceptance corpus | Command |
@@ -80,7 +80,7 @@ internal/fixture
   -> geometry, source
 
 internal/daily
-  -> untie
+  -> untie, ir, source
 
 internal/testrender
   -> display, geometry

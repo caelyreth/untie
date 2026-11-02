@@ -49,11 +49,12 @@ tests and migration notes.
   cache keyed by complete font identity, effective limits, version, and cache
   schema. `ClearLayoutEngineCache` releases convenience-path retention without
   affecting caller-owned engines.
-- A product-priority daily-STEM acceptance corpus with 81 tracked cases across
+- A product-priority daily-STEM acceptance corpus with 87 tracked cases across
   12 categories, evaluated through the public parse, root, Alt, and layout
-  contracts with tracked NewCM font bytes. It contains 41 TeX and 40 Typst
-  cases, 33 inline and 48 display cases, 34 equivalent TeX/Typst groups, and 13
-  explicitly source-specific cases.
+  contracts with tracked NewCM font bytes. It contains 47 TeX and 40 Typst
+  cases, 35 inline and 52 display cases, 34 coverage groups, and 19 explicitly
+  source-specific cases. Coverage groups declare reviewed differences; they do
+  not claim semantic equivalence.
 
 ### TeX Frontend
 
@@ -202,10 +203,12 @@ The following are genuine gaps, not hidden behavior:
   equation numbering, tags, links, MathML output, rasterization, and SVG export
   are not product features. SVG support is test-only.
 - The daily corpus prioritizes ordinary STEM notation over reference-project
-  completeness. Its exact expectations currently pass, including five
-  explicit missing-glyph boundaries and one tracked Typst decimal-lowering
-  issue. Chinese text with only NewCM supplied fails deterministically with an
-  actionable missing-glyph error; it is not replaced by silent tofu.
+  completeness. Its content digest and exact expectations pass with no tracked
+  issue entries, including four explicit missing-glyph boundaries. Chinese text
+  with only NewCM supplied fails deterministically with an actionable
+  missing-glyph error; it is not replaced by silent tofu. Matched tracked
+  issues fail closed by default and require `-allow-known-issues` diagnostic
+  mode for a zero exit.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary

@@ -60,6 +60,7 @@ The product-priority acceptance corpus is documented in
 
 ```sh
 go run ./cmd/dailyreport
+go run ./cmd/dailyreport -allow-known-issues # diagnostic mode only
 ```
 
 ## Properties
