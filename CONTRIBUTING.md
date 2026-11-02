@@ -28,6 +28,8 @@ CGO_ENABLED=0 go vet ./...
 CGO_ENABLED=0 go test ./...
 CGO_ENABLED=0 go test -shuffle=on -count=2 ./...
 CGO_ENABLED=0 go test ./internal/fixture
+CGO_ENABLED=0 go run ./cmd/dailyreport
+CGO_ENABLED=0 go run ./cmd/dailyreport -allow-known-issues
 CGO_ENABLED=0 go test -tags=layout_tex_integration ./internal/layout
 ```
 
@@ -85,6 +87,13 @@ test only after a pinned textual source or fixture supports it.
 
 Fixtures under `testdata/upstream` are immutable external evidence. They are not
 generated build products.
+
+`testdata/daily-stem` is the product-priority acceptance corpus. Its manifest
+pins exact IDs, counts, coverage classifications, a canonical content digest,
+and tracked issues. After an intentional review, run
+`go run ./cmd/dailyreport -update-manifest` and commit the manifest with the
+case change. Add or change a daily case only with an intentional acceptance
+decision; do not weaken a case to make an implementation pass.
 
 Rules:
 

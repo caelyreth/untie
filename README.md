@@ -55,6 +55,14 @@ go run ./cmd/formula-preview -font NewCMMath-Book.otf \
 package-level `Layout` and `LayoutContext` helpers use a bounded process-wide
 engine cache that can be released with `ClearLayoutEngineCache`.
 
+The product-priority acceptance corpus is documented in
+`testdata/daily-stem/README.md`. Run it with:
+
+```sh
+go run ./cmd/dailyreport
+go run ./cmd/dailyreport -allow-known-issues # diagnostic mode only
+```
+
 ## Properties
 
 - `CGO_ENABLED=0`
@@ -69,6 +77,7 @@ engine cache that can be released with `ClearLayoutEngineCache`.
 - deterministic inline break metadata and constrained display line boxes
 - text-only link bodies with explicit unsupported destination diagnostics
 - deterministic text/speech alternative output with bounded fallbacks
+- a tracked daily-STEM acceptance corpus that outranks rare reference cases
 - no reference project is compiled or executed by the test suite
 
 ## Development

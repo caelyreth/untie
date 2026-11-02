@@ -16,6 +16,7 @@ package or claiming feature support.
 | [status.md](status.md) | Implemented behavior, current gaps, and scope boundary |
 | [performance.md](performance.md) | Measured benchmarks, methodology, observations, and provisional regression policy |
 | [upstream.md](upstream.md) | Pinned source map, confirmation status, imported fixture locations, and update procedure |
+| [../testdata/daily-stem/README.md](../testdata/daily-stem/README.md) | Product-priority daily-STEM acceptance corpus, exact expectation model, and known boundaries |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Development commands, fixture policy, commit style, worktree coordination, and review gates |
 | [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) | Third-party licenses, notices, generated data provenance, and owner actions |
 
@@ -27,6 +28,10 @@ Use this order when evaluating a change:
 2. The documents above.
 3. Pinned upstream sources recorded in [upstream.md](upstream.md).
 4. Tracked fixtures and generated-data provenance.
+
+For product acceptance, the tracked daily-STEM corpus has priority over rare
+reference-project cases. Reference conformance remains evidence for syntax and
+diagnostics, not a requirement to implement every low-frequency construct.
 
 The ignored `references/` checkout is useful for static source inspection but is
 never a build or test dependency. It must not be compiled or executed.

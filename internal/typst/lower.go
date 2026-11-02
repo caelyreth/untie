@@ -590,7 +590,7 @@ func (l *lowerer) lowerDelimited(n *astNode) ir.Node {
 	items = append(items, l.flattenFenceBody(body)...)
 	if n.close != "" {
 		end := n.span.End
-		closeGlyph := l.glyph(source.NewRange(max(end-len(n.close), end), end), n.close)
+		closeGlyph := l.glyph(source.NewRange(max(0, end-len(n.close)), end), n.close)
 		closeGlyph.Class = ir.ClassClosing
 		items = append(items, closeGlyph)
 	}

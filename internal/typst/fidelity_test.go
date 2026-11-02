@@ -58,6 +58,44 @@ func TestFractionDeparenthesizesOneLeftOperandPair(t *testing.T) {
 	}
 }
 
+func TestLiteralDelimiterClosingSpanMatchesVisibleToken(t *testing.T) {
+	t.Parallel()
+
+	const src = `f'(x) + (A)`
+	result := parse(t, src)
+	requireNoDiagnostics(t, src, result)
+	var closing []*ir.Glyph
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		if glyph, ok := node.(*ir.Glyph); ok && glyph.Text == ")" {
+			closing = append(closing, glyph)
+		}
+		return true
+	})
+	if len(closing) != 2 {
+		t.Fatalf("closing delimiters = %d, want 2", len(closing))
+	}
+	if closing[0].Span != source.NewRange(4, 5) ||
+		closing[1].Span != source.NewRange(10, 11) {
+		t.Fatalf("closing spans = %v, %v", closing[0].Span, closing[1].Span)
+	}
+}
+
+func TestUnclosedDelimiterDoesNotSynthesizeClosingGlyph(t *testing.T) {
+	t.Parallel()
+
+	const src = "(α"
+	result := Parse(src, ir.Inline, Options{})
+	if result.Root == nil {
+		t.Fatal("Parse() returned a nil root")
+	}
+	if err := ir.Validate(&ir.Formula{Root: result.Root}, source.DefaultLimits()); err != nil {
+		t.Fatalf("unclosed delimiter produced invalid IR: %v", err)
+	}
+	if glyphs := glyphTextCount(result.Root, ")"); glyphs != 0 {
+		t.Fatalf("unclosed delimiter synthesized %d closing glyphs", glyphs)
+	}
+}
+
 func TestNamedSpacesLowerBeforeSymbolLookup(t *testing.T) {
 	t.Parallel()
 

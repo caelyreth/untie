@@ -48,11 +48,13 @@ generated nodes retain an origin span where the frontend can identify one.
 | `internal/layout` | Fixed-point math layout and flattening behind narrow font ports | No |
 | `internal/mathdata` | Generated symbol, class, variant, shorthand, and operator tables | No |
 | `internal/fixture` | Decoders, corpus runners, unit and span adapters, golden helpers | No |
+| `internal/daily` | Product-priority daily-STEM corpus loader, content digest, exact expectation model, and public-contract evaluator | No |
 | `internal/testrender` | Test-only SVG inspection of display lists | No |
 | `cmd/formula-check` | Developer CLI for diagnostics and canonical IR inspection | Command |
+| `cmd/dailyreport` | Runs the tracked daily-STEM product acceptance corpus | Command |
 
-`internal/fixture` and `internal/testrender` are test infrastructure. They must
-not become runtime dependencies of the renderer.
+`internal/fixture`, `internal/daily`, and `internal/testrender` are test
+infrastructure. They must not become runtime dependencies of the renderer.
 
 ## Dependency Direction
 
@@ -76,6 +78,9 @@ internal/engine
 
 internal/fixture
   -> geometry, source
+
+internal/daily
+  -> untie, ir, source
 
 internal/testrender
   -> display, geometry
@@ -102,6 +107,8 @@ The forbidden edges are more important than the diagram:
 - `internal/alt` must not import a frontend, `font`, `layout`, `engine`, or
   rendered display-list construction code.
 - `internal/layout` must not import `internal/tex` or `internal/typst`.
+- `internal/daily` is acceptance infrastructure: it may import the public
+  facade, but no runtime package may import it.
 - `display` may import `geometry` and the low-level immutable `source` range
   types. It must not import `font`, a frontend, or an internal package.
 - No core package may import a UI toolkit, DOM, GPU, platform text, image
