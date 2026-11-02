@@ -14,19 +14,7 @@ func drawMath(p *ui.Painter, r ui.Rect, box *untie.Box) {
 		W: max(0, r.W-2*padding),
 		H: max(0, r.H-2*padding),
 	}
-	height := box.Ascent + box.Descent
-	scale := float32(1)
-	if box.Width > content.W && box.Width > 0 {
-		scale = min(scale, content.W/box.Width)
-	}
-	if height > content.H && height > 0 {
-		scale = min(scale, content.H/height)
-	}
-	scale = max(0, scale)
-	scaledWidth := box.Width * scale
-	scaledHeight := height * scale
-	originX := content.X + (content.W-scaledWidth)/2
-	originY := content.Y + (content.H-scaledHeight)/2 + box.Ascent*scale
+	placement := fitMath(content, box)
 
 	theme := p.Theme()
 	p.Clip(content, 0, func() {
@@ -34,14 +22,14 @@ func drawMath(p *ui.Painter, r ui.Rect, box *untie.Box) {
 			color := itemColor(theme, item.Paint)
 			switch item.Kind {
 			case untie.ItemGlyphPath:
-				path := mathPath(item.Path, originX, originY, scale)
+				path := mathPath(item.Path, placement.originX, placement.originY, placement.scale)
 				p.FillPath(&path, color)
 			case untie.ItemRule:
 				p.Fill(ui.Rect{
-					X: originX + item.Rect.X*scale,
-					Y: originY + item.Rect.Y*scale,
-					W: item.Rect.Width * scale,
-					H: item.Rect.Height * scale,
+					X: placement.originX + item.Rect.X*placement.scale,
+					Y: placement.originY + item.Rect.Y*placement.scale,
+					W: item.Rect.Width * placement.scale,
+					H: item.Rect.Height * placement.scale,
 				}, color, 0)
 			case untie.ItemGlyphRef:
 				// The example paints paths directly; a production host may
@@ -49,6 +37,32 @@ func drawMath(p *ui.Painter, r ui.Rect, box *untie.Box) {
 			}
 		}
 	})
+}
+
+type mathPlacement struct {
+	scale   float32
+	originX float32
+	originY float32
+}
+
+func fitMath(content ui.Rect, box *untie.Box) mathPlacement {
+	overflow := max(float32(0), box.Overflow)
+	width := box.Width + 2*overflow
+	height := box.Ascent + box.Descent + 2*overflow
+	scale := float32(1)
+	if width > content.W && width > 0 {
+		scale = min(scale, content.W/width)
+	}
+	if height > content.H && height > 0 {
+		scale = min(scale, content.H/height)
+	}
+	scale = max(0, scale)
+	scaledWidth := width * scale
+	scaledHeight := height * scale
+	originX := content.X + (content.W-scaledWidth)/2
+	originX += overflow * scale
+	originY := content.Y + (content.H-scaledHeight)/2 + (box.Ascent+overflow)*scale
+	return mathPlacement{scale: scale, originX: originX, originY: originY}
 }
 
 func mathPath(path geometry.Path, originX, originY, scale float32) ui.Path {
