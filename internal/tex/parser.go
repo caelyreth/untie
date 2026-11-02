@@ -11,17 +11,18 @@ import (
 )
 
 type parser struct {
-	src           string
-	mode          ir.Mode
-	exp           *expander
-	limits        source.Limits
-	diagnostics   []source.Diagnostic
-	depth         int
-	iterations    int
-	limitHit      bool
-	leftDepth     int
-	tags          []astEquationTag
-	metadataDepth int
+	src              string
+	mode             ir.Mode
+	exp              *expander
+	limits           source.Limits
+	diagnostics      []source.Diagnostic
+	depth            int
+	iterations       int
+	limitHit         bool
+	leftDepth        int
+	tags             []astEquationTag
+	metadataDepth    int
+	parsedTableCells int
 }
 
 type stopMode uint8

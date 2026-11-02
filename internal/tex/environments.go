@@ -213,13 +213,16 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 			})
 			continue
 		}
-		cell := p.parseSequence(stopCell)
-		cells++
-		if cells > p.limits.MaxTableCells {
-			p.limit(normalizeRange(cell.base().span), "TeX table cell limit exceeded")
-		} else {
-			currentRow = append(currentRow, cell)
+		if cells >= p.limits.MaxTableCells {
+			t := p.exp.peek()
+			p.limit(normalizeRange(t.span), "TeX table cell limit exceeded")
+			tailSpan := p.discardEnvironmentTail(name, span)
+			span = source.Merge(span, tailSpan)
+			break
 		}
+		cell := p.parseTableCell()
+		cells++
+		currentRow = append(currentRow, cell)
 		span = source.Merge(span, cell.base().span)
 
 		t := p.exp.peek()
@@ -310,6 +313,90 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 	}
 	table.horizontal = horizontal
 	return table
+}
+
+func (p *parser) parseTableCell() astNode {
+	p.parsedTableCells++
+	return p.parseSequence(stopCell)
+}
+
+// discardEnvironmentTail skips a table tail after its cell budget is spent.
+// It still tracks groups and nested environments so the matching \end is
+// consumed without interpreting discarded cell contents.
+func (p *parser) discardEnvironmentTail(name string, span source.Range) source.Range {
+	groupDepth := 0
+	var environments []string
+	for {
+		t := p.exp.peek()
+		if t.isEOF() {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidEnvironment,
+				Message:  "missing \\end{" + name + "}",
+			})
+			return source.Merge(span, t.span)
+		}
+		if groupDepth == 0 && t.is(tokEndGroup) {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidEnvironment,
+				Message:  "missing \\end{" + name + "}",
+			})
+			return span
+		}
+
+		t = p.exp.next()
+		span = source.Merge(span, t.span)
+		switch t.kind {
+		case tokBeginGroup:
+			groupDepth++
+			continue
+		case tokEndGroup:
+			groupDepth--
+			continue
+		}
+		if groupDepth > 0 || !t.isControl() {
+			continue
+		}
+
+		switch t.text {
+		case "\\begin":
+			nested, nestedSpan := p.consumeEnvironmentName(t)
+			span = source.Merge(span, nestedSpan)
+			if nested != "" {
+				environments = append(environments, nested)
+			}
+		case "\\end":
+			closed, closedSpan := p.consumeEnvironmentName(t)
+			span = source.Merge(span, closedSpan)
+			if len(environments) == 0 {
+				if closed != name {
+					p.report(source.Diagnostic{
+						Range:    normalizeRange(closedSpan),
+						Severity: source.SeverityError,
+						Code:     source.CodeInvalidEnvironment,
+						Message:  "environment '" + name + "' closed by '\\end{" + closed + "}'",
+					})
+				}
+				return span
+			}
+			open := environments[len(environments)-1]
+			if closed == name && open != name {
+				return span
+			}
+			if open != closed {
+				p.report(source.Diagnostic{
+					Range:    normalizeRange(closedSpan),
+					Severity: source.SeverityError,
+					Code:     source.CodeInvalidEnvironment,
+					Message:  "environment '" + open + "' closed by '\\end{" + closed + "}'",
+				})
+			}
+			environments = environments[:len(environments)-1]
+		}
+	}
 }
 
 func tableRoleForEnvironment(name string) ir.TableRole {

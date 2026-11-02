@@ -145,6 +145,96 @@ func TestTableCellLimitTruncatesBeforeLowering(t *testing.T) {
 	}
 }
 
+func TestTableCellLimitBoundsParsingWork(t *testing.T) {
+	t.Parallel()
+
+	const (
+		maxCells  = 8
+		tailCells = 8_192
+	)
+	var src strings.Builder
+	src.Grow(64 * 1024)
+	src.WriteString(`\begin{matrix}`)
+	for i := 0; i < maxCells+tailCells; i++ {
+		if i != 0 {
+			src.WriteByte('&')
+		}
+		switch i {
+		case maxCells:
+			src.WriteString(`\begin{pmatrix}{x}&{y}\end{pmatrix}`)
+		case maxCells + 1:
+			src.WriteString(`{\unknowncommand}`)
+		default:
+			src.WriteString(`{x}`)
+		}
+	}
+	src.WriteString(`\end{matrix}+z`)
+
+	limits := source.DefaultLimits()
+	limits.MaxTableCells = maxCells
+	p := newParser(src.String(), ir.Display, nil, limits)
+	root, _ := p.parse()
+
+	if p.parsedTableCells != maxCells {
+		t.Fatalf("parsed cells = %d, want %d", p.parsedTableCells, maxCells)
+	}
+	if err := ir.Validate(&ir.Formula{Root: root}, limits); err != nil {
+		t.Fatalf("invalid IR: %v", err)
+	}
+	table := firstTable(root)
+	if table == nil {
+		t.Fatal("table was unexpectedly removed")
+	}
+	if got := tableCellCount(table); got != maxCells {
+		t.Fatalf("table cells = %d, want %d", got, maxCells)
+	}
+	if hasDiagnostic(p.diagnostics, source.CodeUnknownCommand) {
+		t.Fatalf("discarded tail was semantically parsed: %v", diagnosticCodes(p.diagnostics))
+	}
+	items := rowItems(t, root)
+	if len(items) < 3 {
+		t.Fatalf("root items = %d, want trailing +z", len(items))
+	}
+	if glyph := requireKind[*ir.Glyph](t, items[len(items)-1]); glyph.Text != "z" {
+		t.Fatalf("trailing glyph = %q, want z", glyph.Text)
+	}
+}
+
+func TestSubstackLimitBoundsParsingWork(t *testing.T) {
+	t.Parallel()
+
+	const tailGroups = 4_096
+	var src strings.Builder
+	src.Grow(64 * 1024)
+	src.WriteString(`\substack{a\\`)
+	for i := 0; i < tailGroups; i++ {
+		src.WriteString(`{\unknowncommand&x}`)
+	}
+	src.WriteString(`}+z`)
+
+	limits := source.DefaultLimits()
+	limits.MaxTableCells = 1
+	p := newParser(src.String(), ir.Display, nil, limits)
+	root, _ := p.parse()
+
+	if p.parsedTableCells != limits.MaxTableCells {
+		t.Fatalf("parsed cells = %d, want %d", p.parsedTableCells, limits.MaxTableCells)
+	}
+	if err := ir.Validate(&ir.Formula{Root: root}, limits); err != nil {
+		t.Fatalf("invalid IR: %v", err)
+	}
+	if hasDiagnostic(p.diagnostics, source.CodeUnknownCommand) {
+		t.Fatalf("discarded tail was semantically parsed: %v", diagnosticCodes(p.diagnostics))
+	}
+	items := rowItems(t, root)
+	if len(items) < 3 {
+		t.Fatalf("root items = %d, want trailing +z", len(items))
+	}
+	if glyph := requireKind[*ir.Glyph](t, items[len(items)-1]); glyph.Text != "z" {
+		t.Fatalf("trailing glyph = %q, want z", glyph.Text)
+	}
+}
+
 func countIRNodes(root ir.Node) int {
 	count := 0
 	ir.Walk(root, func(ir.Node) bool {

@@ -52,14 +52,20 @@ func (p *parser) parseSubstack(command token) astNode {
 	var rows [][]astNode
 	cells := 0
 	for {
-		cell := p.parseSequence(stopCell)
+		if cells >= p.limits.MaxTableCells {
+			t := p.exp.peek()
+			p.limit(normalizeRange(t.span), "TeX table cell limit exceeded")
+			span = p.discardSubstackTail(open, span)
+			return &astMultilineNode{
+				astBase:  newASTBaseAt(astMultiline, source.Merge(command.span, span), tokenOrigin(command)),
+				rows:     rows,
+				centered: true,
+			}
+		}
+		cell := p.parseTableCell()
 		span = source.Merge(span, cell.base().span)
 		cells++
-		if cells > p.limits.MaxTableCells {
-			p.limit(normalizeRange(cell.base().span), "TeX table cell limit exceeded")
-		} else {
-			rows = append(rows, []astNode{cell})
-		}
+		rows = append(rows, []astNode{cell})
 		t := p.exp.peek()
 		switch {
 		case t.isControl() && isRowBreak(t.text):
@@ -96,6 +102,30 @@ func (p *parser) parseSubstack(command token) astNode {
 			p.exp.next()
 		}
 	}
+}
+
+func (p *parser) discardSubstackTail(open token, span source.Range) source.Range {
+	depth := 1
+	for depth > 0 {
+		t := p.exp.next()
+		if t.isEOF() {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(open.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeUnclosedGroup,
+				Message:  "unclosed \\substack group",
+			})
+			return source.Merge(span, t.span)
+		}
+		span = source.Merge(span, t.span)
+		switch t.kind {
+		case tokBeginGroup:
+			depth++
+		case tokEndGroup:
+			depth--
+		}
+	}
+	return span
 }
 
 func (p *parser) parseSideSet(command token, stop stopMode) astNode {
