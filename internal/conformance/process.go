@@ -25,9 +25,10 @@ type ProcessConfig struct {
 }
 
 type workerRequest struct {
-	Source string        `json:"source"`
-	Mode   ir.Mode       `json:"mode"`
-	Limits source.Limits `json:"limits"`
+	Source   string        `json:"source"`
+	Preamble string        `json:"preamble,omitempty"`
+	Mode     ir.Mode       `json:"mode"`
+	Limits   source.Limits `json:"limits"`
 }
 
 type workerResponse struct {
@@ -41,17 +42,19 @@ type workerResponse struct {
 // ProcessFrontend returns a frontend that communicates with one worker process
 // per evaluation over stdin/stdout.
 func ProcessFrontend(config ProcessConfig) FrontendFunc {
-	return func(ctx context.Context, src string, mode ir.Mode, limits source.Limits) (FrontendResult, error) {
+	return func(ctx context.Context, request Request) (FrontendResult, error) {
 		if config.Path == "" {
 			return FrontendResult{}, errors.New("empty worker executable")
 		}
-		request, err := json.Marshal(workerRequest{Source: src, Mode: mode, Limits: limits})
+		wireRequest, err := json.Marshal(workerRequest{
+			Source: request.Source, Preamble: request.Preamble, Mode: request.Mode, Limits: request.Limits,
+		})
 		if err != nil {
 			return FrontendResult{}, err
 		}
 		command := exec.CommandContext(ctx, config.Path, config.Args...)
 		command.Env = append(os.Environ(), config.Env...)
-		command.Stdin = bytes.NewReader(append(request, '\n'))
+		command.Stdin = bytes.NewReader(append(wireRequest, '\n'))
 		var stdout, stderr bytes.Buffer
 		command.Stdout = &stdout
 		command.Stderr = &stderr
@@ -89,7 +92,7 @@ func ProcessFrontend(config ProcessConfig) FrontendFunc {
 }
 
 // RunWorker executes one frontend request using a process-safe protocol. The
-// TeX command and conformance tests use this entry point for isolation.
+// report commands and conformance tests use this entry point for isolation.
 func RunWorker(frontend FrontendFunc, input io.Reader, output io.Writer) error {
 	if frontend == nil {
 		return errors.New("nil worker frontend")
@@ -109,7 +112,7 @@ func RunWorker(frontend FrontendFunc, input io.Reader, output io.Writer) error {
 		response.FrontendError = err.Error()
 	} else {
 		response.Diagnostics = diagnosticRefs(result.Diagnostics)
-		canonical, problem := summarizeIR(result, request.Limits)
+		canonical, problem := summarizeIR(result, request.Source, request.Limits)
 		response.Valid = problem == ""
 		response.ValidationError = problem
 		response.CanonicalJSON = canonical
@@ -128,7 +131,9 @@ func callFrontend(ctx context.Context, frontend FrontendFunc, request workerRequ
 			err = errors.New("frontend returned no IR observation")
 		}
 	}()
-	return frontend(ctx, request.Source, request.Mode, request.Limits)
+	return frontend(ctx, Request{
+		Source: request.Source, Preamble: request.Preamble, Mode: request.Mode, Limits: request.Limits,
+	})
 }
 
 func diagnosticsFromRefs(refs []DiagnosticRef) []source.Diagnostic {

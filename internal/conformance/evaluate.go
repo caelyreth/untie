@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
@@ -28,9 +30,13 @@ type Input struct {
 	ID         string
 	Index      int
 	Source     string
+	Preamble   string
 	Mode       ir.Mode
 	Expect     ExpectationKind
 	ExpectCode []source.Code
+	ExpectSpan *source.Range
+	Dialect    Dialect
+	Families   []string
 }
 
 // FrontendResult is the observation returned by a parser adapter.
@@ -48,9 +54,18 @@ type IRSummary struct {
 	CanonicalJSON   []byte
 }
 
-// FrontendFunc evaluates source under the supplied limits. A future Typst
-// adapter can implement this without importing TeX or layout.
-type FrontendFunc func(context.Context, string, ir.Mode, source.Limits) (FrontendResult, error)
+// Request is the complete source observation passed to a frontend. Preamble is
+// separate from Source because both inputs have independent source ranges.
+type Request struct {
+	Source   string
+	Preamble string
+	Mode     ir.Mode
+	Limits   source.Limits
+}
+
+// FrontendFunc evaluates one request under the supplied limits. Frontends share
+// this boundary without sharing parser or layout code.
+type FrontendFunc func(context.Context, Request) (FrontendResult, error)
 
 // ErrFrontendTimeout identifies a frontend call that exceeded its per-run
 // budget. Frontends should honor ctx themselves; this guard also contains
@@ -59,14 +74,16 @@ var ErrFrontendTimeout = errors.New("frontend evaluation timed out")
 
 const defaultFrontendTimeout = time.Second
 
-// Evaluator runs one frontend under two limit profiles.
+// Evaluator repeats one frontend, checks both limit profiles, and verifies the
+// IR, diagnostics, source ranges, and canonical-output contracts.
 type Evaluator struct {
 	Frontend       FrontendFunc
 	ExplicitLimits source.Limits
 	Timeout        time.Duration
 }
 
-// Evaluate checks parse recovery, both limit profiles, and the IR contract.
+// Evaluate checks parse recovery, determinism, both limit profiles, and the IR
+// contract.
 func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error) {
 	if e.Frontend == nil {
 		return CaseReport{}, errors.New("nil frontend")
@@ -79,14 +96,27 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 	if timeout <= 0 {
 		timeout = defaultFrontendTimeout
 	}
-	defaultRun, err := invokeFrontend(ctx, e.Frontend, input.Source, input.Mode, source.DefaultLimits(), timeout)
+	defaultRun, err := invokeFrontend(ctx, e.Frontend, Request{
+		Source: input.Source, Preamble: input.Preamble, Mode: input.Mode, Limits: source.DefaultLimits(),
+	}, timeout)
 	if err != nil {
 		return reportFromInput(input, StatusBug, "default-limit parse failed: "+err.Error()), nil
 	}
 	if err := ctx.Err(); err != nil {
 		return CaseReport{}, err
 	}
-	explicitRun, err := invokeFrontend(ctx, e.Frontend, input.Source, input.Mode, explicitLimits, timeout)
+	repeatedDefaultRun, err := invokeFrontend(ctx, e.Frontend, Request{
+		Source: input.Source, Preamble: input.Preamble, Mode: input.Mode, Limits: source.DefaultLimits(),
+	}, timeout)
+	if err != nil {
+		return reportFromInput(input, StatusBug, "determinism parse failed: "+err.Error()), nil
+	}
+	if err := ctx.Err(); err != nil {
+		return CaseReport{}, err
+	}
+	explicitRun, err := invokeFrontend(ctx, e.Frontend, Request{
+		Source: input.Source, Preamble: input.Preamble, Mode: input.Mode, Limits: explicitLimits,
+	}, timeout)
 	if err != nil {
 		return reportFromInput(input, StatusBug, "explicit-limit parse failed: "+err.Error()), nil
 	}
@@ -95,7 +125,7 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 	result.Diagnostics = diagnosticRefs(defaultRun.Diagnostics)
 	result.Codes = diagnosticCodes(defaultRun.Diagnostics)
 
-	detail := structuralProblem(defaultRun, explicitRun, explicitLimits)
+	detail := structuralProblem(defaultRun, repeatedDefaultRun, explicitRun, input.Source, explicitLimits)
 	if detail != "" {
 		result.Status = StatusBug
 		result.Detail = detail
@@ -111,9 +141,9 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 			result.Detail = "upstream case expects a diagnostic, but parsing recovered silently"
 			return result, nil
 		}
-		if !expectedCodeFound(input.ExpectCode, errorsFound) {
+		if !expectedDiagnosticFound(input.ExpectCode, input.ExpectSpan, errorsFound) {
 			result.Status = StatusBug
-			result.Detail = "diagnostics do not include an expected code"
+			result.Detail = "diagnostics do not include an expected code and source span"
 			return result, nil
 		}
 		result.Status = StatusDiagnostic
@@ -136,7 +166,7 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 	return result, nil
 }
 
-func invokeFrontend(ctx context.Context, frontend FrontendFunc, src string, mode ir.Mode, limits source.Limits, timeout time.Duration) (FrontendResult, error) {
+func invokeFrontend(ctx context.Context, frontend FrontendFunc, request Request, timeout time.Duration) (FrontendResult, error) {
 	if err := ctx.Err(); err != nil {
 		return FrontendResult{}, err
 	}
@@ -159,7 +189,7 @@ func invokeFrontend(ctx context.Context, frontend FrontendFunc, src string, mode
 			}
 			done <- callResult{result: result, err: err}
 		}()
-		result, err = frontend(runCtx, src, mode, limits)
+		result, err = frontend(runCtx, request)
 	}()
 	select {
 	case call := <-done:
@@ -175,25 +205,38 @@ func invokeFrontend(ctx context.Context, frontend FrontendFunc, src string, mode
 	}
 }
 
-func structuralProblem(first, second FrontendResult, explicit source.Limits) string {
-	firstCanonical, firstIRProblem := summarizeIR(first, source.DefaultLimits())
+func structuralProblem(first, repeated, explicit FrontendResult, src string, explicitLimits source.Limits) string {
+	firstCanonical, firstIRProblem := summarizeIR(first, src, source.DefaultLimits())
 	if firstIRProblem != "" {
 		return "default-limit result violates IR contract: " + firstIRProblem
 	}
-	secondCanonical, secondIRProblem := summarizeIR(second, explicit)
-	if secondIRProblem != "" {
-		return "explicit-limit result violates IR contract: " + secondIRProblem
+	repeatedCanonical, repeatedIRProblem := summarizeIR(repeated, src, source.DefaultLimits())
+	if repeatedIRProblem != "" {
+		return "repeated default-limit result violates IR contract: " + repeatedIRProblem
 	}
-	if !bytes.Equal(firstCanonical, secondCanonical) {
+	explicitCanonical, explicitIRProblem := summarizeIR(explicit, src, explicitLimits)
+	if explicitIRProblem != "" {
+		return "explicit-limit result violates IR contract: " + explicitIRProblem
+	}
+	if !bytes.Equal(firstCanonical, repeatedCanonical) {
+		return "repeated default-limit canonical IR differs"
+	}
+	if firstSig, repeatedSig := diagnosticSignature(first.Diagnostics), diagnosticSignature(repeated.Diagnostics); firstSig != repeatedSig {
+		return "repeated default-limit diagnostics differ: " + firstSig + " vs " + repeatedSig
+	}
+	if !bytes.Equal(firstCanonical, explicitCanonical) {
 		return "default-limit and explicit-limit IR differ"
 	}
-	if firstSig, secondSig := diagnosticSignature(first.Diagnostics), diagnosticSignature(second.Diagnostics); firstSig != secondSig {
-		return "default-limit and explicit-limit diagnostics differ: " + firstSig + " vs " + secondSig
+	if firstSig, explicitSig := diagnosticSignature(first.Diagnostics), diagnosticSignature(explicit.Diagnostics); firstSig != explicitSig {
+		return "default-limit and explicit-limit diagnostics differ: " + firstSig + " vs " + explicitSig
 	}
 	return ""
 }
 
-func summarizeIR(result FrontendResult, limits source.Limits) ([]byte, string) {
+func summarizeIR(result FrontendResult, src string, limits source.Limits) ([]byte, string) {
+	if problem := validateDiagnostics(result.Diagnostics, src); problem != "" {
+		return nil, problem
+	}
 	if result.Observation != nil {
 		if !result.Observation.Valid {
 			if result.Observation.ValidationError == "" {
@@ -201,10 +244,16 @@ func summarizeIR(result FrontendResult, limits source.Limits) ([]byte, string) {
 			}
 			return nil, result.Observation.ValidationError
 		}
+		if len(result.Observation.CanonicalJSON) == 0 {
+			return nil, "isolated worker reported valid IR without canonical JSON"
+		}
 		return result.Observation.CanonicalJSON, ""
 	}
-	if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
+	if err := ir.ValidateSource(&ir.Formula{Root: result.Root}, src, limits); err != nil {
 		return nil, err.Error()
+	}
+	if problem := validateIRBoundaries(result.Root, src); problem != "" {
+		return nil, problem
 	}
 	canonical, err := ir.MarshalCanonical(&ir.Formula{Root: result.Root})
 	if err != nil {
@@ -213,8 +262,93 @@ func summarizeIR(result FrontendResult, limits source.Limits) ([]byte, string) {
 	return canonical, ""
 }
 
+func validateDiagnostics(diagnostics []source.Diagnostic, src string) string {
+	for i, diagnostic := range diagnostics {
+		if diagnostic.Code == "" {
+			return fmt.Sprintf("diagnostic %d has no code", i)
+		}
+		if strings.TrimSpace(diagnostic.Message) == "" {
+			return fmt.Sprintf("diagnostic %d has no message", i)
+		}
+		if !diagnostic.Range.IsValidFor(len(src)) {
+			return fmt.Sprintf("diagnostic %d range %d:%d exceeds source length %d", i, diagnostic.Range.Start, diagnostic.Range.End, len(src))
+		}
+		if !isRangeOnUTF8Boundaries(diagnostic.Range, src) {
+			return fmt.Sprintf("diagnostic %d range %d:%d splits a UTF-8 code point", i, diagnostic.Range.Start, diagnostic.Range.End)
+		}
+	}
+	return ""
+}
+
+func validateIRBoundaries(root ir.Node, src string) string {
+	if root == nil {
+		return "nil IR root"
+	}
+	var problem string
+	ir.Walk(root, func(node ir.Node) bool {
+		if problem != "" {
+			return false
+		}
+		base := node.NodeBase()
+		if base == nil {
+			problem = "IR node has no base"
+			return false
+		}
+		for _, field := range []struct {
+			name string
+			r    source.Range
+		}{
+			{"span", base.Span},
+			{"origin", base.Origin},
+		} {
+			name, r := field.name, field.r
+			if r.IsDetached() {
+				continue
+			}
+			if !r.IsValidFor(len(src)) {
+				problem = fmt.Sprintf("%s range %d:%d exceeds source length %d", name, r.Start, r.End, len(src))
+				return false
+			}
+			if !isRangeOnUTF8Boundaries(r, src) {
+				problem = fmt.Sprintf("%s range %d:%d splits a UTF-8 code point", name, r.Start, r.End)
+				return false
+			}
+		}
+		return true
+	})
+	return problem
+}
+
+func isRangeOnUTF8Boundaries(r source.Range, src string) bool {
+	if r.IsDetached() {
+		return true
+	}
+	if !r.IsValidFor(len(src)) {
+		return false
+	}
+	if r.Start > 0 && r.Start < len(src) && !utf8.RuneStart(src[r.Start]) {
+		return false
+	}
+	return r.End == 0 || r.End == len(src) || utf8.RuneStart(src[r.End])
+}
+
 func reportFromInput(input Input, status Status, detail string) CaseReport {
-	families, commands, environments := sourceFamilies(input.Source)
+	dialect := input.Dialect
+	if dialect == "" {
+		dialect = DialectTeX
+	}
+	var families, commands, environments []string
+	switch dialect {
+	case DialectTypst:
+		families, commands, environments = typstSourceFamilies(input.Source)
+	case DialectTeX:
+		families, commands, environments = sourceFamilies(input.Source)
+	default:
+		families = []string{"invalid-dialect"}
+	}
+	families = append(families, input.Families...)
+	slices.Sort(families)
+	families = slices.Compact(families)
 	return CaseReport{
 		ID:           input.ID,
 		Corpus:       input.Corpus,
@@ -232,6 +366,9 @@ func invalidInput(input Input) bool {
 		return true
 	}
 	if input.Mode != ir.Inline && input.Mode != ir.Display {
+		return true
+	}
+	if input.Dialect != "" && input.Dialect != DialectTeX && input.Dialect != DialectTypst {
 		return true
 	}
 	switch input.Expect {
@@ -280,18 +417,21 @@ func errorDiagnostics(diagnostics []source.Diagnostic) []source.Diagnostic {
 	return errorsFound
 }
 
-func expectedCodeFound(expected []source.Code, diagnostics []source.Diagnostic) bool {
-	if len(expected) == 0 {
-		return true
-	}
+func expectedDiagnosticFound(expected []source.Code, expectedSpan *source.Range, diagnostics []source.Diagnostic) bool {
 	for _, diagnostic := range diagnostics {
+		if expectedSpan != nil && diagnostic.Range != *expectedSpan {
+			continue
+		}
 		for _, code := range expected {
 			if diagnostic.Code == code {
 				return true
 			}
 		}
+		if len(expected) == 0 {
+			return true
+		}
 	}
-	return false
+	return len(expected) == 0 && expectedSpan == nil
 }
 
 func allCodes(diagnostics []source.Diagnostic, code source.Code) bool {
