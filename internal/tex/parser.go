@@ -53,6 +53,7 @@ const (
 	stopBracket
 	stopCell
 	stopDollar
+	stopParen
 	stopEndgroup
 )
 
@@ -249,6 +250,8 @@ func (p *parser) shouldStop(t token, stop stopMode) bool {
 		return t.text == "\\endgroup"
 	case stopRight:
 		return t.text == "\\right" || t.text == "\\middle"
+	case stopParen:
+		return t.text == "\\)"
 	case stopCell:
 		return t.is(tokAlignment) || isRowBreak(t.text) || t.text == "\\end" ||
 			t.text == "\\hline" || t.text == "\\hdashline"
@@ -259,7 +262,7 @@ func (p *parser) shouldStop(t token, stop stopMode) bool {
 
 func (p *parser) stopAtEOF(stop stopMode, t token) {
 	switch stop {
-	case stopGroup, stopBracket, stopDollar, stopEndgroup:
+	case stopGroup, stopBracket, stopDollar, stopParen, stopEndgroup:
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(t.span),
 			Severity: source.SeverityError,
@@ -290,7 +293,15 @@ func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionI
 		left.origin = astOrigin(items...)
 	}
 	if infix.dimension {
-		_ = p.parseRequiredArgument(command)
+		thickness := p.parseDimension(command, p.exp.peek().is(tokBeginGroup))
+		if thickness.Value != 0 {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(command.span),
+				Severity: source.SeverityWarning,
+				Code:     source.CodeUnsupported,
+				Message:  "custom \\above rule thickness is not represented in the neutral IR",
+			})
+		}
 	}
 	right := p.parseSequenceWithInfix(stop, true)
 	fraction := &astFractionNode{
@@ -400,7 +411,8 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 			setScriptSpan(t.span)
 		case t.isControl() && (t.text == "\\limits" || t.text == "\\nolimits"):
 			p.exp.next()
-			if base.base().kind != astOperator {
+			operatorBase := isLimitBase(base)
+			if !operatorBase {
 				p.report(source.Diagnostic{
 					Range:    normalizeRange(t.span),
 					Severity: source.SeverityError,
@@ -419,6 +431,9 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 				n.limits = limits
 			case *astGlyphNode:
 				n.limits = limits
+			case *astClassNode:
+				n.limits = limits
+				n.setLimits = true
 			}
 		default:
 			if top == nil && bottom == nil {
@@ -437,6 +452,19 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 			}
 			return scripts
 		}
+	}
+}
+
+func isLimitBase(node astNode) bool {
+	switch n := node.(type) {
+	case *astOperatorNode:
+		return true
+	case *astGlyphNode:
+		return n.class == ir.ClassLarge
+	case *astClassNode:
+		return n.class == ir.ClassLarge
+	default:
+		return false
 	}
 }
 
@@ -516,7 +544,11 @@ func (p *parser) parseDollarMath(open token) astNode {
 	}
 	body.base().span = span
 	body.base().origin = containerOrigin(open, body, span)
-	return body
+	return &astStyleNode{
+		astBase: newASTBaseAt(astStyle, span, tokenOrigin(open)),
+		body:    body,
+		size:    ir.SizeText,
+	}
 }
 
 func (p *parser) parseGroup(open token) astNode {

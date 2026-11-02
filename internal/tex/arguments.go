@@ -3,6 +3,7 @@ package tex
 import (
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
@@ -229,9 +230,13 @@ func (p *parser) parseGenfrac(command token) astNode {
 		return newPlaceholderAST(command.span, "missing \\genfrac argument")
 	}
 
-	size := ir.SizeDisplay
+	// KaTeX genfrac.ts leaves an empty style group unresolved; 0..3 force
+	// display, text, script, and script-script respectively.
+	size := ir.SizeInherit
 	switch strings.TrimSpace(styleText) {
-	case "", "0":
+	case "":
+		size = ir.SizeInherit
+	case "0":
 		size = ir.SizeDisplay
 	case "1":
 		size = ir.SizeText
@@ -260,6 +265,14 @@ func (p *parser) parseGenfrac(command token) astNode {
 			})
 		}
 		bar = valid && rule.Value != 0
+		if bar {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(command.span),
+				Severity: source.SeverityWarning,
+				Code:     source.CodeUnsupported,
+				Message:  "custom \\genfrac rule thickness is not represented in the neutral IR",
+			})
+		}
 	}
 	span := source.Merge(command.span, denominator.base().span)
 	fraction := &astFractionNode{
@@ -325,6 +338,12 @@ func (p *parser) parseMathChoice(command token) astNode {
 	text := p.parseRequiredArgument(command)
 	_ = p.parseRequiredArgument(command)
 	_ = p.parseRequiredArgument(command)
+	p.report(source.Diagnostic{
+		Range:    normalizeRange(command.span),
+		Severity: source.SeverityWarning,
+		Code:     source.CodeUnsupported,
+		Message:  "\\mathchoice is resolved from the root mode because the neutral IR has no style-conditional node",
+	})
 	if p.mode == ir.Display {
 		return display
 	}
@@ -383,10 +402,11 @@ func (p *parser) parseBmod(command token) astNode {
 		items:   items,
 	}
 	return &astClassNode{
-		astBase: newASTBaseAt(astClass, command.span, tokenOrigin(command)),
-		body:    row,
-		class:   ir.ClassBinary,
-		limits:  ir.LimitsNever,
+		astBase:   newASTBaseAt(astClass, command.span, tokenOrigin(command)),
+		body:      row,
+		class:     ir.ClassBinary,
+		limits:    ir.LimitsNever,
+		setLimits: true,
 	}
 }
 
@@ -437,6 +457,15 @@ func explicitSpaceAST(span source.Range, mus float64) *astSpaceNode {
 	}
 }
 
+func explicitEmSpaceAST(span source.Range, ems float64) *astSpaceNode {
+	amount, _ := ir.EmLength(ems)
+	return &astSpaceNode{
+		astBase: newASTBaseAt(astSpace, span, span),
+		kind:    ir.SpaceExplicit,
+		amount:  amount,
+	}
+}
+
 func (p *parser) parseVerb(command token) astNode {
 	p.exp.consumeSpaces()
 	delimiter := p.exp.next()
@@ -473,6 +502,36 @@ func (p *parser) parseVerb(command token) astNode {
 
 func (p *parser) parseChar(command token) astNode {
 	p.exp.consumeSpaces()
+	if marker := p.exp.peek(); marker.is(tokChar) && marker.text == "`" {
+		p.exp.next()
+		value := p.exp.next()
+		if value.isEOF() {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(command.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeMissingArgument,
+				Message:  "\\char` requires a character",
+			})
+			return newPlaceholderAST(command.span, "missing character code")
+		}
+		text := value.text
+		if value.isControl() {
+			text = strings.TrimPrefix(text, "\\")
+		}
+		r, size := utf8.DecodeRuneInString(text)
+		if size == 0 || size != len(text) {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(value.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  "\\char` requires exactly one character",
+			})
+			return newPlaceholderAST(source.Merge(command.span, value.span), "invalid character code")
+		}
+		span := source.Merge(command.span, value.span)
+		return newGlyphASTAt(span, tokenOrigin(command), string(r), symbolForChar(string(r)).class)
+	}
+
 	var b strings.Builder
 	span := command.span
 	characters := 0

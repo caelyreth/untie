@@ -33,7 +33,11 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	if n, ok := node.(*astVariantNode); ok {
 		childCtx := ctx
 		childCtx.variant = n.variant
-		return l.lower(n.body, childCtx)
+		out := l.lower(n.body, childCtx)
+		if n.variant != ir.VariantAuto {
+			applyExplicitAlphabetClass(out)
+		}
+		return out
 	}
 
 	if !l.reserve(node.base().span) {
@@ -43,7 +47,22 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	switch n := node.(type) {
 	case *astRowNode:
 		items := make([]ir.Node, 0, len(n.items))
-		for _, item := range n.items {
+		for i := 0; i < len(n.items); i++ {
+			item := n.items[i]
+			if text, ok := item.(*astTextNode); ok {
+				combined := *text
+				for i+1 < len(n.items) {
+					next, nextOK := n.items[i+1].(*astTextNode)
+					if !nextOK || next.variant != text.variant {
+						break
+					}
+					combined.text += next.text
+					combined.span = source.Merge(combined.span, next.span)
+					combined.origin = source.Merge(combined.origin, next.origin)
+					i++
+				}
+				item = &combined
+			}
 			child := l.lower(item, ctx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
@@ -332,7 +351,9 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			return l.placeholder(n.span, "missing math-class body")
 		}
 		body.NodeBase().Class = n.class
-		body.NodeBase().Limits = n.limits
+		if n.setLimits {
+			body.NodeBase().Limits = n.limits
+		}
 		return body
 	case *astRuleNode:
 		if !l.reserve(n.span) {
@@ -476,7 +497,16 @@ func (l *lowerer) applyBase(base *ir.Base, ast *astBase, ctx lowerContext, class
 		base.Origin = base.Span
 	}
 	base.Class = class
-	if base.Variant == ir.VariantAuto {
-		base.Variant = ctx.variant
+}
+
+func applyExplicitAlphabetClass(node ir.Node) {
+	if node == nil {
+		return
+	}
+	if node.NodeBase().Class == ir.ClassAlphabetic {
+		node.NodeBase().Class = ir.ClassNormal
+	}
+	for _, child := range ir.Children(node) {
+		applyExplicitAlphabetClass(child)
 	}
 }

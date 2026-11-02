@@ -133,8 +133,18 @@ func (p *parser) parseTextSequence() astNode {
 		case t.isEOF(), t.is(tokEndGroup):
 			return textRow(items)
 		case t.is(tokSpace):
-			p.exp.next()
-			items = append(items, astLiteralText(t, " "))
+			// KaTeX text mode contracts adjacent input spaces into one spacing
+			// node while retaining a single leading or trailing space.
+			span := t.span
+			for {
+				next := p.exp.peek()
+				if !next.is(tokSpace) {
+					break
+				}
+				p.exp.next()
+				span = source.Merge(span, next.span)
+			}
+			items = append(items, astLiteralText(token{span: span, origin: span}, " "))
 		case t.is(tokBeginGroup):
 			p.exp.next()
 			items = append(items, p.parseTextGroup(t))
@@ -215,6 +225,19 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 	}
 
 	switch t.text {
+	case "\\(":
+		return p.parseInlineMathText(t)
+	case "\\)", "\\]":
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnexpectedToken,
+			Message:  "mismatched math delimiter " + t.text,
+		})
+		return astErr(t.span, t.text, source.CodeUnexpectedToken)
+	case "\\tiny", "\\sixptsize", "\\scriptsize", "\\footnotesize", "\\small",
+		"\\normalsize", "\\large", "\\Large", "\\LARGE", "\\huge", "\\Huge":
+		return p.parseUnsupportedTextSizing(t)
 	case "\\ ", "\\space", "\\nobreakspace":
 		return astLiteralText(t, " ")
 	case "\\relax":
@@ -252,6 +275,13 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		p.parseGlobal(t)
 		return nil
 	}
+	if spec, ok := spacingCommands[t.text]; ok {
+		return &astSpaceNode{
+			astBase: newASTBaseAt(astSpace, t.span, tokenOrigin(t)),
+			kind:    spec.kind,
+			amount:  spec.amount,
+		}
+	}
 	if spec, ok := accentCommands[t.text]; ok {
 		body := p.parseTextArgument(t)
 		return &astAccentNode{
@@ -269,6 +299,46 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		Message:  "command '" + t.text + "' is not supported in text mode",
 	})
 	return astErr(t.span, t.text, source.CodeUnsupported)
+}
+
+func (p *parser) parseInlineMathText(open token) astNode {
+	// KaTeX math.ts switches text groups back to math mode for \(...\),
+	// resets the font, and then returns to the outer text mode.
+	body := p.parseSequence(stopParen)
+	span := source.Merge(open.span, body.base().span)
+	close := p.exp.peek()
+	if close.isControl() && close.text == "\\)" {
+		p.exp.next()
+		span = source.Merge(span, close.span)
+	} else {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(open.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnclosedGroup,
+			Message:  "unclosed inline math group; expected '\\)'",
+		})
+	}
+	body.base().span = span
+	body.base().origin = containerOrigin(open, body, span)
+	return &astStyleNode{
+		astBase: newASTBaseAt(astStyle, span, tokenOrigin(open)),
+		body:    body,
+		size:    ir.SizeText,
+	}
+}
+
+func (p *parser) parseUnsupportedTextSizing(command token) astNode {
+	body := p.parseTextSequence()
+	span := source.Merge(command.span, body.base().span)
+	body.base().span = span
+	body.base().origin = containerOrigin(command, body, span)
+	p.report(source.Diagnostic{
+		Range:    normalizeRange(command.span),
+		Severity: source.SeverityError,
+		Code:     source.CodeUnsupported,
+		Message:  "math font-size declaration '" + command.text + "' requires a neutral font-size field",
+	})
+	return body
 }
 
 var textSymbolCommands = map[string]string{
@@ -311,24 +381,27 @@ var textSymbolCommands = map[string]string{
 	"\\texttimes":         "×",
 	"\\textdiv":           "÷",
 	"\\textpm":            "±",
+	"\\textdagger":        "†",
+	"\\textdaggerdbl":     "‡",
 }
 
 var textAccentCommands = map[string]string{
-	"\\'":  "´",
-	"\\`":  "ˋ",
-	"\\\"": "¨",
-	"\\.":  "˙",
-	"\\=":  "¯",
-	"\\~":  "˜",
-	"\\^":  "ˆ",
-	"\\H":  "˝",
-	"\\r":  "˚",
-	"\\u":  "˘",
-	"\\v":  "ˇ",
-	"\\c":  "¸",
-	"\\k":  "˛",
-	"\\b":  "̱",
-	"\\d":  "̣",
+	"\\'":           "´",
+	"\\`":           "ˋ",
+	"\\\"":          "¨",
+	"\\.":           "˙",
+	"\\=":           "¯",
+	"\\~":           "˜",
+	"\\^":           "ˆ",
+	"\\H":           "˝",
+	"\\r":           "˚",
+	"\\u":           "˘",
+	"\\v":           "ˇ",
+	"\\c":           "¸",
+	"\\k":           "˛",
+	"\\b":           "̱",
+	"\\d":           "̣",
+	"\\textcircled": "◯",
 }
 
 func textRow(items []astNode) astNode {

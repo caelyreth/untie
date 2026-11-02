@@ -38,16 +38,8 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 			stretchy: spec.stretchy,
 		}
 	}
-	if op, ok := namedOperators[t.text]; ok {
-		limits := ir.LimitsNever
-		if limitOperators[t.text] {
-			limits = ir.LimitsAuto
-		}
-		return &astOperatorNode{
-			astBase: newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
-			text:    op,
-			limits:  limits,
-		}
+	if node := p.parseNamedOperator(t); node != nil {
+		return node
 	}
 	if variant, ok := fontCommands[t.text]; ok {
 		body := p.parseRequiredArgument(t)
@@ -97,13 +89,13 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	case "\\underline", "\\underbar":
 		return p.parseLine(t, ir.PositionBelow)
 	case "\\overbrace":
-		return p.parseOverUnderAccent(t, ir.PositionAbove, "⏞", true)
+		return p.parseStructuralAccent(t, ir.PositionAbove, "⏞")
 	case "\\underbrace":
-		return p.parseOverUnderAccent(t, ir.PositionBelow, "⏟", true)
+		return p.parseStructuralAccent(t, ir.PositionBelow, "⏟")
 	case "\\overbracket":
-		return p.parseOverUnderAccent(t, ir.PositionAbove, "⎴", true)
+		return p.parseStructuralAccent(t, ir.PositionAbove, "⎴")
 	case "\\underbracket":
-		return p.parseOverUnderAccent(t, ir.PositionBelow, "⎵", true)
+		return p.parseStructuralAccent(t, ir.PositionBelow, "⎵")
 	case "\\overgroup":
 		return p.parseOverUnderAccent(t, ir.PositionAbove, "⏠", true)
 	case "\\undergroup":
@@ -119,11 +111,11 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	case "\\Overrightarrow":
 		return p.parseOverUnderAccent(t, ir.PositionAbove, "→", true)
 	case "\\utilde":
-		return p.parseOverUnderAccent(t, ir.PositionBelow, "˜", false)
+		return p.parseOverUnderAccent(t, ir.PositionBelow, "˜", true)
 	case "\\overset", "\\stackrel":
-		return p.parseStacked(t, ir.PositionAbove)
+		return p.parseStacked(t, ir.PositionAbove, t.text == "\\stackrel")
 	case "\\underset":
-		return p.parseStacked(t, ir.PositionBelow)
+		return p.parseStacked(t, ir.PositionBelow, false)
 	case "\\xleftarrow", "\\xrightarrow", "\\xLeftarrow", "\\xRightarrow",
 		"\\xleftrightarrow", "\\xLeftrightarrow", "\\xhookleftarrow",
 		"\\xhookrightarrow", "\\xmapsto", "\\xlongequal", "\\xleftharpoondown",
@@ -157,14 +149,28 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseOperatorName(t)
 	case "\\mathchoice":
 		return p.parseMathChoice(t)
+	case "\\mathstrut":
+		return &astPhantomNode{
+			astBase: newASTBaseAt(astPhantom, t.span, tokenOrigin(t)),
+			body:    newGlyphAST(t.span, "(", ir.ClassOpening),
+			height:  true,
+			depth:   true,
+		}
 	case "\\mathbin", "\\mathrel", "\\mathopen", "\\mathclose", "\\mathpunct",
 		"\\mathinner", "\\mathord", "\\mathop":
 		return p.parseMathClass(t)
 	case "\\not":
 		body := p.parseRequiredArgument(t)
-		return &astCancelNode{
+		cancel := &astCancelNode{
 			astBase: newASTBaseAt(astCancel, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:    body,
+		}
+		return &astClassNode{
+			astBase:   newASTBaseAt(astClass, cancel.span, tokenOrigin(t)),
+			body:      cancel,
+			class:     ir.ClassRelation,
+			limits:    ir.LimitsNever,
+			setLimits: true,
 		}
 	case "\\dblcolon", "\\coloncolon":
 		return p.parseCompositeRelation(t, "∷")
@@ -229,6 +235,14 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseChar(t)
 	case "\\newline":
 		return &astBreakNode{astBase: newASTBaseAt(astBreak, t.span, tokenOrigin(t)), kind: ir.BreakExplicit}
+	case "\\(", "\\)", "\\]":
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeUnexpectedToken,
+			Message:  "math delimiters cannot be nested in math mode",
+		})
+		return astErr(t.span, t.text, source.CodeUnexpectedToken)
 	case "\\ce", "\\pu":
 		_ = p.parseRequiredArgument(t)
 		p.report(source.Diagnostic{
@@ -303,6 +317,9 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseDeclarativeStyle(t, stop, ir.SizeScript)
 	case "\\scriptscriptstyle":
 		return p.parseDeclarativeStyle(t, stop, ir.SizeScriptScript)
+	case "\\tiny", "\\sixptsize", "\\scriptsize", "\\footnotesize", "\\small",
+		"\\normalsize", "\\large", "\\Large", "\\LARGE", "\\huge", "\\Huge":
+		return p.parseUnsupportedSizing(t, stop)
 	case "\\rm":
 		return p.parseDeclarativeVariant(t, stop, ir.VariantNormal)
 	case "\\it":
@@ -547,6 +564,14 @@ func (p *parser) parseFraction(command token) astNode {
 	case "\\tfrac":
 		size = ir.SizeText
 	}
+	if command.text == "\\cfrac" {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityWarning,
+			Code:     source.CodeUnsupported,
+			Message:  "continued-fraction strut semantics are not represented in the neutral IR",
+		})
+	}
 	return &astFractionNode{
 		astBase:     newASTBaseAt(astFraction, source.Merge(command.span, denominator.base().span), tokenOrigin(command)),
 		numerator:   numerator,
@@ -723,6 +748,20 @@ func (p *parser) parseDeclarativeStyle(command token, stop stopMode, size ir.Mat
 		body:    body,
 		size:    size,
 	}
+}
+
+func (p *parser) parseUnsupportedSizing(command token, stop stopMode) astNode {
+	body := p.parseSequence(stop)
+	span := source.Merge(command.span, body.base().span)
+	body.base().span = span
+	body.base().origin = containerOrigin(command, body, span)
+	p.report(source.Diagnostic{
+		Range:    normalizeRange(command.span),
+		Severity: source.SeverityError,
+		Code:     source.CodeUnsupported,
+		Message:  "math font-size declaration '" + command.text + "' requires a neutral font-size field",
+	})
+	return body
 }
 
 func (p *parser) parseDeclarativeVariant(command token, stop stopMode, variant ir.Variant) astNode {

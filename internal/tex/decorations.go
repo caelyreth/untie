@@ -38,7 +38,20 @@ func (p *parser) parseOverUnderAccent(command token, position ir.Position, mark 
 	}
 }
 
-func (p *parser) parseStacked(command token, position ir.Position) astNode {
+func (p *parser) parseStructuralAccent(command token, position ir.Position, mark string) astNode {
+	accent := p.parseOverUnderAccent(command, position, mark, true)
+	// KaTeX horizBrace.ts emits minner for braces and brackets; annotations on
+	// these structures are always over/under limits.
+	return &astClassNode{
+		astBase:   newASTBaseAt(astClass, accent.base().span, tokenOrigin(command)),
+		body:      accent,
+		class:     ir.ClassInner,
+		limits:    ir.LimitsAlways,
+		setLimits: true,
+	}
+}
+
+func (p *parser) parseStacked(command token, position ir.Position, forceRelation bool) astNode {
 	annotation := p.parseRequiredArgument(command)
 	body := compactAST(p.parseRequiredArgument(command))
 	scripts := &astScriptsNode{
@@ -54,6 +67,13 @@ func (p *parser) parseStacked(command token, position ir.Position) astNode {
 		scripts.top = annotation
 	} else {
 		scripts.bottom = annotation
+	}
+	if forceRelation {
+		return &astClassNode{
+			astBase: newASTBaseAt(astClass, scripts.span, tokenOrigin(command)),
+			body:    scripts,
+			class:   ir.ClassRelation,
+		}
 	}
 	return scripts
 }
