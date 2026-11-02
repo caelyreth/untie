@@ -2,6 +2,7 @@ package untie
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/ir"
@@ -31,6 +32,30 @@ func TestParseCopiesOptionsAndDiagnostics(t *testing.T) {
 		if expr.Diagnostics()[0].Message == "mutated" {
 			t.Fatal("Diagnostics() returned shared storage")
 		}
+	}
+}
+
+func TestParseRecoversPanics(t *testing.T) {
+	t.Parallel()
+
+	// An invalid dialect exercises the normal diagnostic path; this test mainly
+	// protects the public panic boundary when a frontend regresses.
+	expr := Parse("x", Dialect(99), Inline, ParseOptions{})
+	if expr == nil || len(expr.Diagnostics()) == 0 {
+		t.Fatal("Parse() did not return a diagnosed fallback")
+	}
+	if !strings.Contains(expr.Diagnostics()[0].Message, "dialect") {
+		t.Fatalf("diagnostic = %+v", expr.Diagnostics()[0])
+	}
+}
+
+func TestKeyIncludesLimits(t *testing.T) {
+	t.Parallel()
+
+	a := Parse("x", Typst, Inline, ParseOptions{Limits: source.Limits{MaxNodes: 10}})
+	b := Parse("x", Typst, Inline, ParseOptions{Limits: source.Limits{MaxNodes: 11}})
+	if a.Key() == b.Key() {
+		t.Fatal("parse key does not include limits")
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"sort"
 
 	"github.com/caelyreth/untie/display"
@@ -75,7 +76,26 @@ type Expr struct {
 
 // Parse parses source into an expression. Malformed source produces diagnostics
 // and a drawable fallback tree rather than an ordinary error.
-func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr {
+func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Expr) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			diagnostic := source.Diagnostic{
+				Range:    source.NewRange(0, len(src)),
+				Severity: source.SeverityError,
+				Code:     source.CodeInternal,
+				Message:  fmt.Sprintf("parser invariant failure: %v", recovered),
+			}
+			expr = &Expr{
+				source:      src,
+				dialect:     dialect,
+				mode:        mode,
+				root:        fallbackFormula(src),
+				diagnostics: []source.Diagnostic{diagnostic},
+			}
+			expr.key = computeKey(expr, opts)
+		}
+	}()
+
 	limits := opts.Limits.WithDefaults()
 	diagnostics := make([]source.Diagnostic, 0, 2)
 	root := fallbackFormula(src)
@@ -112,7 +132,7 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr {
 		}
 	}
 
-	expr := &Expr{
+	expr = &Expr{
 		source:      src,
 		dialect:     dialect,
 		mode:        mode,
@@ -236,6 +256,23 @@ func computeKey(e *Expr, opts ParseOptions) uint64 {
 	writeInt(int64(e.mode))
 	writeString(e.source)
 	writeString(opts.Preamble)
+	for _, limit := range []int{
+		opts.Limits.MaxSourceBytes,
+		opts.Limits.MaxTokens,
+		opts.Limits.MaxNesting,
+		opts.Limits.MaxNodes,
+		opts.Limits.MaxMacroExpansions,
+		opts.Limits.MaxExpandedTokens,
+		opts.Limits.MaxCallDepth,
+		opts.Limits.MaxTableCells,
+		opts.Limits.MaxAssemblyRepeats,
+		opts.Limits.MaxTextBytes,
+		opts.Limits.MaxOutputItems,
+		opts.Limits.MaxPathSegments,
+	} {
+		writeInt(int64(limit))
+	}
+	writeInt(opts.Limits.MaxDimension)
 
 	names := make([]string, 0, len(opts.Macros))
 	for name := range opts.Macros {
