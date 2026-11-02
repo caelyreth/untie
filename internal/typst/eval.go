@@ -138,7 +138,6 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 		default:
 			return contentValue(n), true
 		}
-		return contentValue(n), true
 	case astDelimited:
 		return contentValue(n), true
 	}

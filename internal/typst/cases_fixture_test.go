@@ -114,7 +114,11 @@ func loadTypstSourceRecords(t *testing.T, path string) map[string]typstSourceRec
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	records := make(map[string]typstSourceRecord)
 	scanner := bufio.NewScanner(file)
@@ -138,7 +142,11 @@ func loadTypstFrameRecords(t *testing.T, path string) map[string]typstFrameRecor
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	records := make(map[string]typstFrameRecord)
 	scanner := bufio.NewScanner(file)
