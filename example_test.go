@@ -92,10 +92,12 @@ func ExampleEngine_displayLines() {
 	fmt.Println("wrapped:", len(box.Lines) > 1)
 	fmt.Println("lines valid:", allValid)
 	fmt.Println("first baseline:", displayLineBaseline(box.Lines[0]))
+	fmt.Println("first offset nonnegative:", box.Lines[0].OffsetX >= 0)
 	// Output:
 	// wrapped: true
 	// lines valid: true
 	// first baseline: 0
+	// first offset nonnegative: true
 }
 
 func displayLineBaseline(line untie.LineBox) float32 {

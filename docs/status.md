@@ -35,7 +35,7 @@ tests and migration notes.
   public error contract. Public layout populates `display.Box.Alt` after
   geometry succeeds under the per-field stricter intersection of Engine and
   expression resource limits, so tighter Engine limits may produce a bounded
-  fallback that differs from `Expr.Alt`; MathML remains unimplemented.
+  fallback that differs from `Expr.Alt`.
 - Layout emits source-linked hit regions for atoms, groups, scripts, fraction
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
@@ -139,7 +139,8 @@ tables.
   resource limits;
 - flattening to `display.Box` using real and mocked font ports;
 - deterministic greedy display wrapping at top-level neutral break boundaries,
-  with independently flattened, baseline-offset `LineBox` results.
+  with independently flattened `LineBox` results aligned inside a
+  `MaxWidth`-wide frame.
 
 `internal/engine` adapts `font.FontSet` to layout, performs rune/class-aware
 variant selection, multi-glyph operator shaping, text tracking and fallback,
@@ -197,9 +198,9 @@ The following are genuine gaps, not hidden behavior:
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
 - Inline break metadata, alternative text, and width-constrained display line
-  boxes are implemented. Re-layout split pieces, equation numbering, tags,
-  links, MathML, rasterization, and SVG export are not product features. SVG
-  support is test-only.
+  boxes with start/center/end alignment are implemented. Re-layout split pieces,
+  equation numbering, tags, links, MathML output, rasterization, and SVG export
+  are not product features. SVG support is test-only.
 - The daily corpus prioritizes ordinary STEM notation over reference-project
   completeness. Its exact expectations currently pass, including five
   explicit missing-glyph boundaries and one tracked Typst decimal-lowering

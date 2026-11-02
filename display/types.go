@@ -8,7 +8,8 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
-// Align is horizontal display alignment.
+// Align is horizontal placement within a constrained display line frame.
+// Inline layout and display layout with MaxWidth zero ignore it.
 type Align uint8
 
 const (
@@ -19,7 +20,9 @@ const (
 
 // Style is a layout request in host units.
 type Style struct {
-	Size        float32
+	Size float32
+	// MaxWidth enables constrained display line boxes when positive. A
+	// constrained Box.Width is the requested frame width.
 	MaxWidth    float32
 	Align       Align
 	ScriptLevel int
@@ -27,14 +30,19 @@ type Style struct {
 	GlyphRefs   bool
 }
 
-// LineBox is one baseline-relative display line inside a wrapped Box.
+// LineBox is one display line inside a constrained Box.
+//
 // Baseline is the line baseline's vertical offset from the parent box baseline,
 // positive downward. Adjacent baselines are separated by the previous line's
 // descent plus the current line's ascent; no additional leading is invented.
-// Box must not contain nested Lines. Box.Overflow is local to that line; the
-// parent Box.Overflow is recomputed from the assembled aggregate.
+// OffsetX is the nonnegative horizontal offset of the line inside the parent's
+// MaxWidth-wide alignment frame. Box uses line-local coordinates: hosts draw it
+// at (OffsetX, Baseline). Box must not contain nested Lines. Box.Overflow is
+// local to that line; the parent Box.Overflow is recomputed from the assembled
+// aggregate.
 type LineBox struct {
 	Baseline float32
+	OffsetX  float32
 	Box      *Box
 }
 
@@ -103,17 +111,18 @@ type Box struct {
 	Alt    Alt
 	// Lines is populated only for display layout with a positive Style.MaxWidth.
 	// A constrained display result always has at least one line, including when
-	// the complete formula fits. Line boxes are source ordered and carry their
-	// own baseline-relative items and hits.
+	// the complete formula fits. Its Width is the requested MaxWidth, even when
+	// every line is narrower or an unbreakable line overflows it. Line boxes are
+	// source ordered and carry their own line-local items and hits. Items and
+	// Hits directly on this Box are the vertically and horizontally translated
+	// aggregate in frame coordinates.
 	Lines []LineBox
 }
 
 // Alt is semantic alternative text derived from the neutral expression tree.
-// MathML is reserved until a host requires it and remains empty for now.
 type Alt struct {
 	Speech string
 	Text   string
-	MathML string
 }
 
 // Clone returns an independent copy of the alternative text.
@@ -141,6 +150,7 @@ func cloneBox(b *Box, cloneLines bool) *Box {
 	out.Lines = make([]LineBox, len(b.Lines))
 	for i, line := range b.Lines {
 		out.Lines[i].Baseline = line.Baseline
+		out.Lines[i].OffsetX = line.OffsetX
 		if line.Box != nil {
 			// Nested Lines are invalid, so a line's box is copied without
 			// descending again. This also makes Clone safe on malformed graphs.

@@ -27,9 +27,6 @@ var (
 // An Engine retains its FontSet and is GC-managed; neither value needs a Close
 // call. Use LoadFonts and NewEngine once during application setup, then retain
 // the Engine for the lifetime of the font configuration.
-//
-// Style.Align is currently inactive: it is range-checked for forward
-// compatibility, but the renderer always emits start-origin Box geometry.
 type Engine struct {
 	fonts  *FontSet
 	inner  *engine.Engine

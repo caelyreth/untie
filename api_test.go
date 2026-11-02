@@ -525,9 +525,6 @@ func TestExprAltIsSemanticAndDeterministic(t *testing.T) {
 	if again := tex.Alt(); again != texAlt {
 		t.Fatalf("Alt() is nondeterministic: %#v != %#v", texAlt, again)
 	}
-	if texAlt.MathML != "" {
-		t.Fatalf("MathML = %q, want empty", texAlt.MathML)
-	}
 	if err := texAlt.Validate(); err != nil {
 		t.Fatalf("Alt().Validate() error = %v", err)
 	}

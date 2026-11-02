@@ -58,10 +58,10 @@ type (
 	FontSet    = font.FontSet
 )
 
-// Style is a display.Style layout request. Style.Align is currently inactive:
-// it is validated for forward compatibility but does not change output geometry.
-// Display layout with a positive MaxWidth emits wrapped Box.Lines; inline layout
-// ignores MaxWidth. Wrapped lines use start-origin coordinates.
+// Style is a display.Style layout request. Display layout with a positive
+// MaxWidth emits Box.Lines in a MaxWidth-wide alignment frame. Align positions
+// each line within that frame; line items remain line-local and expose OffsetX.
+// Inline layout ignores both MaxWidth and Align.
 type Style = display.Style
 
 const (
@@ -331,8 +331,8 @@ func (e *Expr) Diagnostics() []Diagnostic {
 }
 
 // Alt returns deterministic plain text and speech derived from the neutral IR.
-// If generation cannot complete, it returns a bounded, validated fallback.
-// MathML is deferred and remains empty. Use AltContext to observe the error.
+// If generation cannot complete, it returns a bounded, validated fallback. Use
+// AltContext to observe the error.
 func (e *Expr) Alt() Alt {
 	if e == nil {
 		return Alt{}
