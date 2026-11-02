@@ -127,8 +127,14 @@ markers.
 - logical alphabet variant;
 - role or explicit paint;
 - limits placement;
+- display-only limits placement distinct from class-dependent automatic limits;
 - explicit left and right spacing;
 - whether the node is ignored for automatic spacing.
+
+Neutral nodes also preserve source semantics that layout must not infer:
+fraction/table/script/cancel roles, source accent stretch intent, and natural
+accent width fitting. These fields are compared by crosscheck; layout may
+consume them only through neutral rules, never dialect checks.
 
 `ir` deliberately does not contain glyph IDs, font advances, outline paths,
 pixel sizes, or dialect AST types. Those values either belong to source

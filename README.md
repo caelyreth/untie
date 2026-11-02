@@ -5,9 +5,10 @@ languages into one language-neutral IR, lays formulas out with an OpenType MATH
 font supplied by the host, and returns a UI-independent display list of glyph
 paths and filled rules.
 
-The project is under active implementation. The current repository contains the
-public contracts, canonical IR, geometry, deterministic display-list types, and
-the first frontend/font/layout work in progress.
+The project is under active implementation. The repository now contains a
+working end-to-end vertical slice for both dialects, including canonical IR,
+OpenType MATH layout, source hits, inline breaks, alternative text, and
+width-constrained display lines.
 
 ## Use
 
@@ -56,6 +57,8 @@ engine cache that can be released with `ClearLayoutEngineCache`.
 - OpenType MATH metrics and glyph outlines
 - reusable caller-owned layout engines with bounded convenience caching
 - source-linked hit rectangles emitted from placed layout fragments
+- deterministic inline break metadata and constrained display line boxes
+- deterministic text/speech alternative output with bounded fallbacks
 - no reference project is compiled or executed by the test suite
 
 ## Development

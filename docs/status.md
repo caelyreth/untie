@@ -11,7 +11,8 @@ is not a compatibility claim.
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
-- Last documented verification: `CGO_ENABLED=0 go test ./...` passed
+- Last documented verification: pure-Go tests, race tests, vet, lint, tagged TeX
+  layout integration, fuzz smoke runs, and the cross-build matrix passed
 
 The public API and IR remain pre-1.0. Breaking changes are allowed while the
 vertical slice is completed, but semantic behavior and data formats still need
