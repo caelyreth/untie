@@ -140,10 +140,22 @@ func (a *app) compile() {
 	box, err := a.engine.Layout(expr, untie.Style{Size: 32})
 	if err != nil {
 		a.box = nil
-		a.message = err.Error()
+		a.message = layoutErrorMessage(err)
 		return
 	}
 	a.box = box
+}
+
+func layoutErrorMessage(err error) string {
+	var layoutErr *untie.LayoutError
+	if !errors.As(err, &layoutErr) {
+		return err.Error()
+	}
+	if layoutErr.Range.IsValid() && !layoutErr.Range.IsDetached() {
+		return fmt.Sprintf("%s at bytes [%d,%d): %v",
+			layoutErr.Kind, layoutErr.Range.Start, layoutErr.Range.End, layoutErr.Err)
+	}
+	return fmt.Sprintf("%s: %v", layoutErr.Kind, layoutErr.Err)
 }
 
 func (a *app) diagnosticSummary() string {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -71,5 +72,16 @@ func TestParseDiagnosticsRemainVisibleWithPreview(t *testing.T) {
 	tester := ui.NewTester(model.view, 960, 720)
 	if !tester.HasText("1 error") {
 		t.Fatalf("texts = %q, want diagnostic badge", tester.Texts())
+	}
+}
+
+func TestLayoutErrorMessageUsesStructuredClassification(t *testing.T) {
+	err := &untie.LayoutError{
+		Kind:  untie.LayoutErrorMissingGlyph,
+		Range: untie.Range{Start: 2, End: 4},
+		Err:   errors.New("missing glyph"),
+	}
+	if got := layoutErrorMessage(err); got != "missing-glyph at bytes [2,4): missing glyph" {
+		t.Fatalf("layoutErrorMessage() = %q", got)
 	}
 }
