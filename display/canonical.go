@@ -1,0 +1,96 @@
+package display
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/caelyreth/untie/geometry"
+)
+
+// MarshalCanonical returns deterministic JSON for golden tests and diagnostics.
+// It is not a stable cross-language protocol.
+func (b *Box) MarshalCanonical() ([]byte, error) {
+	if b == nil {
+		return nil, fmt.Errorf("display: nil box")
+	}
+	items := make([]canonicalItem, len(b.Items))
+	for i, item := range b.Items {
+		items[i] = canonicalItem{
+			Kind:   itemKindName(item.Kind),
+			Paint:  canonicalPaint(item.Paint),
+			Bound:  []float32{item.Bound.X, item.Bound.Y, item.Bound.Width, item.Bound.Height},
+			Path:   canonicalPath(item.Path),
+			Rect:   []float32{item.Rect.X, item.Rect.Y, item.Rect.Width, item.Rect.Height},
+			FontID: item.FontID,
+			Glyph:  item.Glyph,
+			At:     []float32{item.At.X, item.At.Y},
+			Em:     item.Em,
+		}
+	}
+	type boxSnapshot struct {
+		Width      float32         `json:"width"`
+		Ascent     float32         `json:"ascent"`
+		Descent    float32         `json:"descent"`
+		Italic     float32         `json:"italic"`
+		AxisHeight float32         `json:"axisHeight"`
+		Overflow   float32         `json:"overflow"`
+		Items      []canonicalItem `json:"items"`
+	}
+	return json.Marshal(boxSnapshot{
+		Width:      b.Width,
+		Ascent:     b.Ascent,
+		Descent:    b.Descent,
+		Italic:     b.Italic,
+		AxisHeight: b.AxisHeight,
+		Overflow:   b.Overflow,
+		Items:      items,
+	})
+}
+
+type canonicalItem struct {
+	Kind   string    `json:"kind"`
+	Paint  []any     `json:"paint"`
+	Bound  []float32 `json:"bound"`
+	Path   [][]any   `json:"path,omitempty"`
+	Rect   []float32 `json:"rect,omitempty"`
+	FontID string    `json:"fontID,omitempty"`
+	Glyph  uint16    `json:"glyph,omitempty"`
+	At     []float32 `json:"at,omitempty"`
+	Em     float32   `json:"em,omitempty"`
+}
+
+func canonicalPath(path []geometry.Segment) [][]any {
+	if len(path) == 0 {
+		return nil
+	}
+	out := make([][]any, len(path))
+	for i, seg := range path {
+		row := make([]any, 0, 7)
+		row = append(row, seg.Op)
+		for _, p := range seg.Points {
+			row = append(row, p.X, p.Y)
+		}
+		out[i] = row
+	}
+	return out
+}
+
+func canonicalPaint(p Paint) []any {
+	if p.HasExplicit {
+		return []any{"rgba", p.Explicit.R, p.Explicit.G, p.Explicit.B, p.Explicit.A}
+	}
+	return []any{"role", p.Role}
+}
+
+func itemKindName(kind ItemKind) string {
+	switch kind {
+	case ItemGlyphPath:
+		return "glyph-path"
+	case ItemRule:
+		return "rule"
+	case ItemGlyphRef:
+		return "glyph-ref"
+	default:
+		return "unknown"
+	}
+}
