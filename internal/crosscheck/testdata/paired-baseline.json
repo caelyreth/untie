@@ -87,7 +87,7 @@
       "index": 12,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].amount[0]: expected \"em\", got \"mu\"",
+      "detail": "root[2].weak: expected false, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -103,7 +103,7 @@
       "index": 14,
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[2].amount[0]: expected \"em\", got \"mu\"",
+      "detail": "root[2].weak: expected false, got true",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -295,7 +295,7 @@
       "index": 40,
       "category": "accents",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[12].accent.variant: expected \"auto\", got \"normal-or-auto\"",
+      "detail": "root[1].amount[0]: expected \"mu\", got \"em\"",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
@@ -455,7 +455,7 @@
       "index": 60,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[11].class: expected \"space\", got \"normal\"",
+      "detail": "root[1].amount[0]: expected \"mu\", got \"em\"",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {
