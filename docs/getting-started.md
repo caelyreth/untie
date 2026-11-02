@@ -1,0 +1,219 @@
+# Getting Started
+
+This guide uses only the root `untie` package. The root package re-exports the
+public display, font, source, and geometry types needed by a host.
+
+## Requirements
+
+- A pure-Go build. No cgo, browser, DOM, GPU, or system-font lookup is used.
+- A host-supplied OpenType font with MATH data for the primary math face.
+- A positive layout size in host units. The bundled example uses DIP-like
+  units.
+
+Untie validates and copies the supplied font bytes during `LoadFonts`. The
+caller may release or reuse its byte slices after that call.
+
+## Load, Parse, and Lay Out
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+
+	"github.com/caelyreth/untie"
+)
+
+func renderFormula() (*untie.Box, []untie.Diagnostic, error) {
+	fontBytes, err := os.ReadFile("NewCMMath-Book.otf")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fonts, err := untie.LoadFonts(untie.Fonts{
+		Math: untie.FontData{
+			Bytes: fontBytes,
+			ID:    "newcm-math",
+		},
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	engine, err := untie.NewEngine(fonts, untie.Limits{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	expr := untie.ParseTeX(
+		`x^2 + \frac{1}{2}`,
+		untie.Display,
+		untie.ParseOptions{},
+	)
+
+	box, err := engine.Layout(expr, untie.Style{Size: 24})
+	if err != nil {
+		return nil, expr.Diagnostics(), err
+	}
+	return box, expr.Diagnostics(), nil
+}
+
+func classifyLayoutError(err error) string {
+	switch {
+	case errors.Is(err, untie.ErrMissingGlyph):
+		return "the selected fonts do not cover the formula"
+	case errors.Is(err, untie.ErrLimit):
+		return "a configured resource limit was exceeded"
+	case errors.Is(err, untie.ErrUnsupported):
+		return "the parsed construct is not representable"
+	case errors.Is(err, untie.ErrInsufficientStretch):
+		return "the font cannot stretch a delimiter or accent enough"
+	default:
+		return fmt.Sprint(err)
+	}
+}
+```
+
+The order is intentional:
+
+1. Load and validate fonts once.
+2. Prepare an `Engine` once for repeated layouts with that font set.
+3. Parse each source string into an immutable `Expr`.
+4. Lay out the expression with a positive `Style.Size`.
+5. Draw the returned `Box.Items`.
+
+## Which Parse Function?
+
+- `Parse(source, dialect, mode, options)` accepts a runtime `Dialect`.
+- `ParseTeX(source, mode, options)` is the same path with `TeX` selected.
+- `ParseTypst(source, mode, options)` is the same path with `Typst` selected.
+
+`Parse` does not return an ordinary Go error. Syntax and semantic problems are
+reported in `expr.Diagnostics()`, and the expression still contains a validated,
+drawable recovery tree. See [Parsing, diagnostics, and
+recovery](parsing.md).
+
+## Which Layout Function?
+
+For an application, prefer an explicitly owned `Engine`:
+
+```go
+engine, err := untie.NewEngine(fonts, untie.Limits{})
+if err != nil {
+	return err
+}
+box, err := engine.LayoutContext(ctx, expr, untie.Style{Size: 20})
+```
+
+`Engine.Layout` uses a background context. `Engine.LayoutContext` accepts a
+context for cancellation. The engine is safe for concurrent layouts, retains
+its `FontSet`, and has no `Close` method.
+
+The package-level convenience API keeps a bounded process-wide engine cache:
+
+```go
+box, err := untie.LayoutContext(ctx, expr, fonts, untie.Style{Size: 20})
+```
+
+It caches prepared engines, not layout results. Use `NewEngine` when the host
+needs explicit lifecycle control. See [Concurrency, lifecycle, and
+caching](concurrency.md).
+
+## Draw the Result
+
+The baseline origin is `(0, 0)`. Coordinates increase to the right and down.
+For every item:
+
+- `ItemGlyphPath`: fill `item.Path` with `item.Paint`.
+- `ItemRule`: fill `item.Rect` with `item.Paint`.
+- `ItemGlyphRef`: optional host-cache metadata for the same placed glyph. It is
+  not an additional visible shape. Ignore it when drawing the path list.
+
+```go
+func paint(painter Painter, box *untie.Box, colorFor func(untie.Paint) Color) {
+	for _, item := range box.Items {
+		switch item.Kind {
+		case untie.ItemGlyphPath:
+			painter.FillPath(item.Path, colorFor(item.Paint))
+		case untie.ItemRule:
+			painter.FillRect(item.Rect, colorFor(item.Paint))
+		case untie.ItemGlyphRef:
+			// Skip when ItemGlyphPath is already being drawn. A host may instead
+			// resolve an exact ref through its own glyph cache.
+		}
+	}
+}
+```
+
+`Painter`, `Color`, and `FillPath` above are placeholders for the host's
+graphics API. The real MyGo implementation is in
+[`examples/mygo/mathview.go`](../examples/mygo/mathview.go).
+
+Do not draw `ItemGlyphPath` and its accompanying `ItemGlyphRef` as two shapes.
+When `Style.GlyphRefs` is true, an exact glyph can produce both an outline path
+and a semantic glyph reference.
+
+## Fit and Center
+
+Use `box.Bounds()` to fit the complete display list. The rectangle is relative
+to the baseline origin and already includes the box's certified overflow.
+
+```go
+bounds := box.Bounds()
+originX := viewport.X + (viewport.Width-bounds.Width)/2 - bounds.X
+originY := viewport.Y + (viewport.Height-bounds.Height)/2 - bounds.Y
+```
+
+Items are already positioned relative to the baseline origin, so draw them
+with the same translation. See [Rendering the display list](rendering.md) for
+the full coordinate contract.
+
+## Inline and Display
+
+`untie.Display` selects display-style math and can produce constrained line
+boxes when `Style.MaxWidth` is positive. `untie.Inline` selects text-style
+math; it ignores `MaxWidth` and `Align` and does not return `Box.Lines`.
+
+Untie is not a paragraph layout engine. An inline caller remains responsible
+for placing the returned box in a text line. A display caller can use the
+returned `MaxWidth` frame and `Lines`, or draw the unconstrained aggregate when
+`MaxWidth` is zero.
+
+## Style Essentials
+
+```go
+style := untie.Style{
+	Size:        24,          // required, finite and positive
+	MaxWidth:    480,         // display-only wrapping frame
+	Align:       untie.AlignCenter,
+	ScriptLevel: 0,           // root style; 1=script, 2+=script-script
+	Features:    []string{"dtls=1"},
+	GlyphRefs:   false,
+}
+```
+
+`Style.Features` is copied for the duration of the call. A caller may safely
+reuse or modify its slice after `LayoutContext` returns.
+
+## Common First Integration Mistakes
+
+- Drawing `item.Path` in device pixels without applying the host's chosen
+  placement or scale. The path is in the layout's host units.
+- Treating a parse diagnostic as a reason not to draw. Recoverable parse
+  results are intended to remain drawable.
+- Treating a nil/zero `Box` as a successful layout. Layout errors return no
+  box.
+- Drawing parent `Box.Items` and nested `LineBox.Box.Items` together. Choose
+  one coordinate level.
+- Supplying a font without a valid OpenType MATH table as `Fonts.Math`.
+
+## Evidence
+
+- Public facade: [`api.go`](../api.go), [`layout.go`](../layout.go),
+  [`doc.go`](../doc.go)
+- End-to-end examples: [`example_test.go`](../example_test.go)
+- Lifecycle and style tests: [`layout_lifecycle_test.go`](../layout_lifecycle_test.go)
+- Drawing example: [`examples/mygo/mathview.go`](../examples/mygo/mathview.go)
+
