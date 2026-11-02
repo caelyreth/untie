@@ -75,6 +75,7 @@ go run ./cmd/dailyreport -allow-known-issues # diagnostic mode only
 - reusable caller-owned layout engines with bounded convenience caching
 - source-linked hit rectangles emitted from placed layout fragments
 - deterministic inline break metadata and constrained display line boxes
+- text-only link bodies with explicit unsupported destination diagnostics
 - deterministic text/speech alternative output with bounded fallbacks
 - a tracked daily-STEM acceptance corpus that outranks rare reference cases
 - no reference project is compiled or executed by the test suite

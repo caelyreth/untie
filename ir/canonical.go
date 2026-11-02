@@ -207,7 +207,7 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 	case *Placeholder:
 		return map[string]any{"base": base, "reason": n.Reason}, nil
 	case *Break:
-		return map[string]any{"base": base, "break": n.Break, "penalty": n.Penalty}, nil
+		return map[string]any{"base": base, "break": n.Break}, nil
 	case *AlignMarker:
 		return map[string]any{"base": base}, nil
 	default:

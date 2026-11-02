@@ -291,6 +291,20 @@ func TestMarshalCanonicalIsStable(t *testing.T) {
 	}
 }
 
+func TestBreakCanonicalHasNoPenalty(t *testing.T) {
+	t.Parallel()
+
+	encoded, err := MarshalCanonical(&Formula{
+		Root: NewBreak(source.NewRange(0, 1), BreakExplicit),
+	})
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	if strings.Contains(string(encoded), "penalty") {
+		t.Fatalf("canonical break retained a penalty: %s", encoded)
+	}
+}
+
 func TestMarshalCanonicalIncludesSemanticRoles(t *testing.T) {
 	t.Parallel()
 

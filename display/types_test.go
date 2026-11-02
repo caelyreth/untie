@@ -83,7 +83,7 @@ func TestMarshalCanonical(t *testing.T) {
 			Depth:  1,
 			Kind:   HitAtom,
 		}},
-		Breaks: []Break{{X: 0.5, Penalty: 10, Kind: BreakRelation}},
+		Breaks: []Break{{X: 0.5, Kind: BreakRelation}},
 		Alt:    Alt{Text: "x", Speech: "x"},
 		Lines: []LineBox{{
 			Baseline: 1,
@@ -127,6 +127,9 @@ func TestMarshalCanonical(t *testing.T) {
 		!strings.Contains(string(first), `"italic":-0.25`) ||
 		!strings.Contains(string(first), `"lines":[{"baseline":1,"offsetX":0,"box":`) {
 		t.Fatalf("canonical output omitted hits, breaks, alt, signed italic, or lines: %s", first)
+	}
+	if strings.Contains(string(first), `"penalty"`) {
+		t.Fatalf("canonical output retained a break penalty: %s", first)
 	}
 	if _, err := (*Box)(nil).MarshalCanonical(); err == nil {
 		t.Fatal("nil box MarshalCanonical() error = nil")

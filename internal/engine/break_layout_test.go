@@ -54,8 +54,8 @@ func TestBreakMetadataEquivalentAcrossFrontends(t *testing.T) {
 				if len(result.box.Breaks) != 1 {
 					t.Fatalf("%s Breaks = %+v, want one", result.name, result.box.Breaks)
 				}
-				if got := result.box.Breaks[0]; got.Kind != test.kind || got.Penalty != 0 {
-					t.Fatalf("%s break = %+v, want kind %v and penalty 0", result.name, got, test.kind)
+				if got := result.box.Breaks[0]; got.Kind != test.kind {
+					t.Fatalf("%s break = %+v, want kind %v", result.name, got, test.kind)
 				}
 			}
 			if texBox.Breaks[0] != typstBox.Breaks[0] {
@@ -85,8 +85,8 @@ func TestTeXBreakMarkersAndGroups(t *testing.T) {
 	if len(box.Breaks) != 1 {
 		t.Fatalf("Breaks = %+v, want one", box.Breaks)
 	}
-	if got := box.Breaks[0]; got.Kind != display.BreakExplicit || got.Penalty != 0 {
-		t.Fatalf("allowbreak = %+v, want explicit with penalty 0", got)
+	if got := box.Breaks[0]; got.Kind != display.BreakExplicit {
+		t.Fatalf("allowbreak = %+v, want explicit", got)
 	}
 
 	grouped := layoutParsedForBreakTest(t, engine, tex.Parse(`{x=y}`, ir.Inline, tex.Options{}), "tex")

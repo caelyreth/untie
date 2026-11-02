@@ -176,7 +176,7 @@ func TestCloneFormulaCoversAllNodeKinds(t *testing.T) {
 		"phantom":     NewPhantom(span, glyph("x")),
 		"error":       NewError(span, "bad", source.CodeSyntax),
 		"placeholder": NewPlaceholder(span, "missing"),
-		"break":       NewBreak(span, BreakRelation, 0),
+		"break":       NewBreak(span, BreakRelation),
 		"align":       NewAlignMarker(span),
 	}
 	for name, node := range nodes {

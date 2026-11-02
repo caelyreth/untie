@@ -112,9 +112,8 @@ func randomBox(data []byte) *Box {
 	breakCount := int(next() % 8)
 	for range breakCount {
 		box.Breaks = append(box.Breaks, Break{
-			X:       fuzzAbsFloat(number()),
-			Penalty: int(int8(next())),
-			Kind:    BreakKind(next() % (byte(BreakExplicit) + 1)),
+			X:    fuzzAbsFloat(number()),
+			Kind: BreakKind(next() % (byte(BreakExplicit) + 1)),
 		})
 	}
 	if next()%3 == 0 {

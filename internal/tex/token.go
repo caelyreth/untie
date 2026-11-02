@@ -46,13 +46,16 @@ func (t token) isEOF() bool {
 }
 
 type lexer struct {
-	src        string
-	pos        int
-	detached   bool
-	count      int
-	limits     source.Limits
-	diagnostic func(source.Diagnostic)
-	hitLimit   bool
+	src             string
+	pos             int
+	detached        bool
+	count           int
+	limits          source.Limits
+	diagnostic      func(source.Diagnostic)
+	hitLimit        bool
+	urlGroupPending bool
+	urlGroupDepth   int
+	definitionName  bool
 }
 
 func newLexer(src string, limits source.Limits, detached bool, diagnostic func(source.Diagnostic)) *lexer {
@@ -93,6 +96,20 @@ func (l *lexer) next() token {
 		}
 
 		start := l.pos
+		if l.definitionName && l.src[l.pos] != '\\' {
+			l.definitionName = false
+		}
+		if l.urlGroupDepth == 0 && l.urlGroupPending {
+			l.urlGroupPending = false
+			if l.src[l.pos] == '{' {
+				l.urlGroupDepth = 1
+				l.pos++
+				return l.counted(tokBeginGroup, "{", start, l.pos)
+			}
+		}
+		if l.urlGroupDepth > 0 {
+			return l.lexURLToken()
+		}
 		b := l.src[l.pos]
 		if isTeXSpace(b) {
 			for l.pos < len(l.src) && isTeXSpace(l.src[l.pos]) {
@@ -159,6 +176,8 @@ func (l *lexer) next() token {
 }
 
 func (l *lexer) lexControl() token {
+	definesName := l.definitionName
+	l.definitionName = false
 	start := l.pos
 	l.pos++ // backslash
 	if l.pos >= len(l.src) {
@@ -187,6 +206,12 @@ func (l *lexer) lexControl() token {
 		for l.pos < len(l.src) && isTeXSpace(l.src[l.pos]) {
 			l.pos++
 		}
+		if l.urlGroupDepth == 0 && !definesName && (t.text == "\\url" || t.text == "\\href") {
+			l.urlGroupPending = true
+		}
+		if isDefinitionCommand(t.text) {
+			l.definitionName = true
+		}
 		return t
 	}
 
@@ -207,6 +232,61 @@ func (l *lexer) lexControl() token {
 		return l.counted(tokControlSymbol, "\\ ", start, l.pos)
 	}
 	return l.counted(tokControlSymbol, l.src[start:l.pos], start, l.pos)
+}
+
+func isDefinitionCommand(command string) bool {
+	switch command {
+	case "\\def", "\\gdef", "\\edef", "\\xdef", "\\newcommand", "\\renewcommand", "\\providecommand", "\\let":
+		return true
+	default:
+		return false
+	}
+}
+
+func (l *lexer) lexURLToken() token {
+	start := l.pos
+	if isTeXSpace(l.src[l.pos]) {
+		for l.pos < len(l.src) && isTeXSpace(l.src[l.pos]) {
+			l.pos++
+		}
+		return l.counted(tokChar, l.src[start:l.pos], start, l.pos)
+	}
+	if l.src[l.pos] == '\\' {
+		return l.lexControl()
+	}
+	r, size := utf8.DecodeRuneInString(l.src[l.pos:])
+	if r == utf8.RuneError && size == 1 {
+		l.pos++
+		span := l.rangeFor(start, l.pos)
+		l.diagnostic(source.Diagnostic{
+			Range:    span,
+			Severity: source.SeverityError,
+			Code:     source.CodeSyntax,
+			Message:  "invalid UTF-8 byte in TeX URL",
+		})
+		return l.counted(tokError, "\uFFFD", start, l.pos)
+	}
+	l.pos += size
+	switch r {
+	case '{':
+		l.urlGroupDepth++
+		return l.counted(tokBeginGroup, "{", start, l.pos)
+	case '}':
+		l.urlGroupDepth--
+		return l.counted(tokEndGroup, "}", start, l.pos)
+	default:
+		if unicode.IsControl(r) {
+			span := l.rangeFor(start, l.pos)
+			l.diagnostic(source.Diagnostic{
+				Range:    span,
+				Severity: source.SeverityError,
+				Code:     source.CodeSyntax,
+				Message:  "control character is not allowed in TeX URL",
+			})
+			return l.counted(tokError, "\uFFFD", start, l.pos)
+		}
+		return l.counted(tokChar, l.src[start:l.pos], start, l.pos)
+	}
 }
 
 func (l *lexer) counted(kind tokenKind, text string, start, end int) token {

@@ -86,10 +86,9 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			return
 		}
 		row.breaks = append(row.breaks, fragmentBreak{
-			x:       x,
-			penalty: pending.penalty,
-			kind:    pending.kind,
-			cut:     len(row.items),
+			x:    x,
+			kind: pending.kind,
+			cut:  len(row.items),
 		})
 		pending = pendingBreak{}
 	}
@@ -134,8 +133,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			if err := flushSpace(); err != nil {
 				return nil, err
 			}
-			kind, penalty := neutralBreak(breakNode.Break, breakNode.Penalty)
-			pending.offer(kind, penalty)
+			pending.offer(neutralBreak(breakNode.Break))
 			continue
 		}
 		if _, ok := node.(*ir.AlignMarker); ok {
@@ -230,8 +228,8 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		if hasNext {
 			nextClass = atoms[nextIndex].fragment.Class
 		}
-		if kind, penalty, ok := automaticBreakKind(fragment.Class, nextClass, hasNext); ok {
-			pending.offer(kind, penalty)
+		if kind, ok := automaticBreakKind(fragment.Class, nextClass, hasNext); ok {
+			pending.offer(kind)
 		}
 	}
 

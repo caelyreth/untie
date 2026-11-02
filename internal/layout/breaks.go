@@ -9,27 +9,14 @@ import (
 	"github.com/caelyreth/untie/ir"
 )
 
-// Untie does not inherit numeric penalties from TeX or Typst. Both reference
-// implementations distinguish break eligibility by atom class but assign no
-// relative cost to relation, binary, or explicit opportunities. Zero keeps
-// every emitted opportunity available to a host's line breaker; Kind carries
-// the semantic distinction.
-const (
-	breakPenaltyRelation = 0
-	breakPenaltyBinary   = 0
-	breakPenaltyExplicit = 0
-)
-
 type pendingBreak struct {
-	kind    display.BreakKind
-	penalty int
-	valid   bool
+	kind  display.BreakKind
+	valid bool
 }
 
-func (p *pendingBreak) offer(kind display.BreakKind, penalty int) {
+func (p *pendingBreak) offer(kind display.BreakKind) {
 	if !p.valid || breakPriority(kind) > breakPriority(p.kind) {
 		p.kind = kind
-		p.penalty = penalty
 		p.valid = true
 	}
 }
@@ -47,37 +34,37 @@ func breakPriority(kind display.BreakKind) int {
 	}
 }
 
-func neutralBreak(kind ir.BreakKind, penalty int) (display.BreakKind, int) {
+func neutralBreak(kind ir.BreakKind) display.BreakKind {
 	switch kind {
 	case ir.BreakBinary:
-		return display.BreakBinary, penalty
+		return display.BreakBinary
 	case ir.BreakRelation:
-		return display.BreakRelation, penalty
+		return display.BreakRelation
 	default:
-		return display.BreakExplicit, penalty
+		return display.BreakExplicit
 	}
 }
 
-func automaticBreakKind(class ir.MathClass, next ir.MathClass, hasNext bool) (display.BreakKind, int, bool) {
+func automaticBreakKind(class ir.MathClass, next ir.MathClass, hasNext bool) (display.BreakKind, bool) {
 	switch class {
 	case ir.ClassBinary:
 		// Typst excludes a break immediately before a closing atom. Class
 		// normalization already demotes such a binary, but retain the guard so
 		// callers of this helper cannot create a non-neutral opportunity.
 		if hasNext && next == ir.ClassClosing {
-			return 0, 0, false
+			return 0, false
 		}
-		return display.BreakBinary, breakPenaltyBinary, true
+		return display.BreakBinary, true
 	case ir.ClassRelation:
 		// KaTeX's outer-level rule and Typst's paragraph splitter agree on
 		// ordinary relations. Typst additionally avoids dangling relation runs
 		// and a relation immediately before a closing atom.
 		if hasNext && (next == ir.ClassRelation || next == ir.ClassClosing) {
-			return 0, 0, false
+			return 0, false
 		}
-		return display.BreakRelation, breakPenaltyRelation, true
+		return display.BreakRelation, true
 	default:
-		return 0, 0, false
+		return 0, false
 	}
 }
 
@@ -140,9 +127,8 @@ func (s *layoutState) displayBreaks(ctx context.Context, breaks []fragmentBreak)
 			return nil, err
 		}
 		out = append(out, display.Break{
-			X:       x,
-			Penalty: breakPoint.penalty,
-			Kind:    breakPoint.kind,
+			X:    x,
+			Kind: breakPoint.kind,
 		})
 	}
 	return out, nil
