@@ -40,6 +40,7 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
+		Tests: []string{modulePath},
 	},
 	modulePath + "/cmd/formula-check": {
 		Production: []string{modulePath, modulePath + "/ir"},

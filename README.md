@@ -9,6 +9,36 @@ The project is under active implementation. The current repository contains the
 public contracts, canonical IR, geometry, deterministic display-list types, and
 the first frontend/font/layout work in progress.
 
+## Use
+
+```go
+fontBytes, err := os.ReadFile("NewCMMath-Book.otf")
+if err != nil {
+	return err
+}
+fonts, err := untie.LoadFonts(untie.Fonts{
+	Math: untie.FontData{Bytes: fontBytes, ID: "newcm-math"},
+})
+if err != nil {
+	return err
+}
+engine, err := untie.NewEngine(fonts, untie.Limits{})
+if err != nil {
+	return err
+}
+
+expr := untie.ParseTeX(`x^2+\frac{1}{2}`, untie.Display, untie.ParseOptions{})
+box, err := engine.Layout(expr, untie.Style{Size: 16})
+if err != nil {
+	return err
+}
+// Draw box.Items as filled paths/rules and use box.Hits for source mapping.
+```
+
+`NewEngine` is the caller-owned lifecycle API for repeated layouts. The
+package-level `Layout` and `LayoutContext` helpers use a bounded process-wide
+engine cache that can be released with `ClearLayoutEngineCache`.
+
 ## Properties
 
 - `CGO_ENABLED=0`
@@ -19,6 +49,7 @@ the first frontend/font/layout work in progress.
 - fixed-point internal geometry
 - OpenType MATH metrics and glyph outlines
 - reusable caller-owned layout engines with bounded convenience caching
+- source-linked hit rectangles emitted from placed layout fragments
 - no reference project is compiled or executed by the test suite
 
 ## Development
