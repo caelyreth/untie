@@ -54,10 +54,12 @@ func ExampleEngine_layoutAtTwoSizes() {
 	fmt.Println("small valid:", small.Validate() == nil)
 	fmt.Println("large valid:", large.Validate() == nil)
 	fmt.Println("scales up:", large.Width > small.Width)
+	fmt.Println("alt present:", small.Alt.Text != "" && small.Alt.Speech != "")
 	fmt.Println("first box unchanged:", bytes.Equal(before, after))
 	// Output:
 	// small valid: true
 	// large valid: true
 	// scales up: true
+	// alt present: true
 	// first box unchanged: true
 }
