@@ -38,16 +38,22 @@ decision.
 | codex 0.3.0 | Typst revision `2e43ab9` | Transitive source of Typst symbol data captured by Typlet | Apache-2.0 | Not locally confirmed |
 | unicode-math-class 0.1.0 | MathClass.txt revision 15 | Transitive Unicode math-class source captured by Typlet | MIT or Apache-2.0; recorded use is MIT | Not locally confirmed |
 
-External candidates under evaluation, not dependencies and not imported:
+Adopted pure-Go dependencies:
+
+| Dependency | Pin | Role | License | Local status |
+|---|---|---|---|---|
+| `go-opentype/opentype` | `v0.16.2-0.20261101005254-2c8922cb87c6` / `2c8922cb87c69d7555957e90370c19f890758b36` | SFNT, CFF, MATH, and GSUB parsing and outline evidence | BSD-3-Clause | Module required by `go.mod`; tracked notice under `licenses/` |
+| `go-text/typesetting` | `v0.3.5` | CFF/TrueType outline primitives | Unlicense OR BSD-3-Clause | Module required by `go.mod`; tracked notice under `licenses/` |
+
+External candidate under evaluation, not a dependency:
 
 | Candidate | Observed pin | Status |
 |---|---|---|
-| `go-opentype/opentype` | `2c8922cb87c69d7555957e90370c19f890758b36` | Unverified; no local checkout |
 | `go-tex/math` | `2e01a93dc9749b2b23d3503fdb33117cace6a91b` | Unverified; no local checkout |
 
-Adopting either candidate requires a pinned dependency review, license review,
-performance and correctness tests, and an architecture decision. Neither is a
-source of Untie compatibility.
+Adopted dependencies are implementation substrates, not compatibility
+authorities. Upgrading them requires a pinned dependency review, tracked-license
+refresh, performance and correctness tests, and an architecture decision.
 
 ## Confirmation Legend
 
@@ -231,7 +237,8 @@ Unverified:
 
 Limit:
 
-- the font is test data and is not yet loaded by the production font backend.
+- the font remains test data; production callers still supply their own font
+  bytes and stable face IDs.
 
 ## Generated Metadata
 
