@@ -62,12 +62,13 @@ Renderer geometry is already in DIP. Static Typlet frames are converted exactly
 once from points. Comparison tolerance is Typlet's reviewed `0.0015pt`, or
 `0.002` DIP after conversion.
 
-The comparison checks box width/ascent/descent, TeX-versus-Typst box details,
-glyph font identity, glyph ID, x/y position, and em size. Static top-anchored
-frames are compared after converting renderer baselines with the renderer box
-ascent. Paint order and glyph item count are significant. Paths and raster
-pixels are intentionally outside this checker; glyph identity pins the expected
-outline.
+The cross-dialect comparison checks box width/ascent/descent, box details,
+ordered item kinds, paint, bounds, glyph paths, rule rectangles, glyph font
+identity, glyph ID, x/y position, and em size. Static top-anchored frames are
+compared after converting renderer baselines with the renderer box ascent.
+Fixture comparison currently checks glyph identity/placement and box geometry;
+direct table tests additionally compare stroked fixture lines with rule
+geometry. Raster pixels remain outside this checker.
 
 ## Reporting
 

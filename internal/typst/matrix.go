@@ -119,7 +119,7 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		}
 	}
 	if kind == "mat" {
-		l.applyAugment(call, table, maxColumns)
+		l.applyAugment(call, table, maxColumns, len(grid))
 	}
 
 	openText, closeText := "(", ")"
@@ -353,7 +353,7 @@ func inferClosingDelimiter(open string) string {
 	return open
 }
 
-func (l *lowerer) applyAugment(call *astNode, table *ir.Table, columns int) {
+func (l *lowerer) applyAugment(call *astNode, table *ir.Table, columns, rows int) {
 	arg := namedArgument(call, "augment")
 	if arg == nil || isNoneAST(arg.node) {
 		return
@@ -367,6 +367,19 @@ func (l *lowerer) applyAugment(call *astNode, table *ir.Table, columns int) {
 			return
 		}
 		table.Vertical = append(table.Vertical, ir.TableLine{
+			Position: int(position),
+			Count:    1,
+		})
+	}
+	addHorizontalLine := func(position int64) {
+		if position < 0 {
+			position = int64(rows) + position
+		}
+		if position < 0 || position > int64(rows) {
+			l.errorAt(arg.span, source.CodeInvalidValue, "horizontal augmentation line outside table")
+			return
+		}
+		table.Horizontal = append(table.Horizontal, ir.TableLine{
 			Position: int(position),
 			Count:    1,
 		})
@@ -395,8 +408,20 @@ func (l *lowerer) applyAugment(call *astNode, table *ir.Table, columns int) {
 			l.errorAt(arg.span, source.CodeInvalidValue, "expected integer or array for vline")
 		}
 	}
-	if _, ok := v.entry("hline"); ok {
-		l.warningAt(arg.span, source.CodeUnsupported, "horizontal augmentation lines are not represented by the matrix subset")
+	if hline, ok := v.entry("hline"); ok {
+		switch hline.kind {
+		case valueInteger:
+			addHorizontalLine(hline.integer)
+		case valueArray:
+			for _, item := range hline.array {
+				if item.kind == valueInteger {
+					addHorizontalLine(item.integer)
+				}
+			}
+		case valueNone:
+		default:
+			l.errorAt(arg.span, source.CodeInvalidValue, "expected integer or array for hline")
+		}
 	}
 	if _, ok := v.entry("stroke"); ok {
 		l.warningAt(arg.span, source.CodeUnsupported, "augmentation strokes are not represented by the matrix subset")

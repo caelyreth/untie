@@ -10,6 +10,8 @@ import (
 
 	"github.com/caelyreth/untie"
 	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/internal/fixture"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -187,6 +189,146 @@ func TestOutputComparisonUsesFixtureTolerance(t *testing.T) {
 	if difference := CompareOutputs(outside, want); difference == "" {
 		t.Fatal("outside tolerance compared equal")
 	}
+}
+
+func TestCompareOutputsComparesRulesPathsAndPaint(t *testing.T) {
+	t.Parallel()
+
+	base := &display.Box{
+		Width: 10, Ascent: 8, Descent: 2,
+		Items: []display.Item{{
+			Kind:  display.ItemRule,
+			Paint: display.Paint{Role: display.RoleInk},
+			Bound: geometry.Rect{X: 1, Y: 2, Width: 8, Height: 1},
+			Rect:  geometry.Rect{X: 1, Y: 2, Width: 8, Height: 1},
+		}},
+	}
+	changedRule := base.Clone()
+	changedRule.Items[0].Rect.Y = 3
+	changedRule.Items[0].Bound.Y = 3
+	if difference := CompareOutputs(changedRule, base); difference == "" {
+		t.Fatal("CompareOutputs() ignored a rule geometry difference")
+	}
+	changedPaint := base.Clone()
+	changedPaint.Items[0].Paint.Role = display.RoleError
+	if difference := CompareOutputs(changedPaint, base); difference == "" {
+		t.Fatal("CompareOutputs() ignored a paint difference")
+	}
+
+	path := &display.Box{
+		Width: 10, Ascent: 8, Descent: 2,
+		Items: []display.Item{{
+			Kind:  display.ItemGlyphPath,
+			Paint: display.Paint{Role: display.RoleInk},
+			Bound: geometry.Rect{Width: 10, Height: 10},
+			Path: geometry.Path{{
+				Op: geometry.SegLineTo,
+				Points: [3]geometry.Point{
+					{X: 10, Y: 2},
+				},
+			}},
+		}},
+	}
+	changedPath := path.Clone()
+	changedPath.Items[0].Path[0].Points[0].X = 9
+	if difference := CompareOutputs(changedPath, path); difference == "" {
+		t.Fatal("CompareOutputs() ignored a path geometry difference")
+	}
+}
+
+func TestTypstTableAugmentMatchesPinnedFixture(t *testing.T) {
+	root, _ := crosscheckPaths(t)
+	corpus, err := LoadPairedCorpus(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var testCase fixture.Case
+	for _, candidate := range corpus.Cases {
+		if candidate.ID == "array-hline" {
+			testCase = candidate
+			break
+		}
+	}
+	if testCase.ID == "" || testCase.Fixture == nil || testCase.Fixture.Frame == nil {
+		t.Fatal("array-hline fixture is missing")
+	}
+	converted, err := fixture.FrameToDIP(*testCase.Fixture.Frame)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expr := untie.ParseTypst(testCase.Source, ir.Display, untie.ParseOptions{})
+	for _, diagnostic := range expr.Diagnostics() {
+		if diagnostic.Severity == untie.SeverityError {
+			t.Fatalf("Typst diagnostic = %s: %s", diagnostic.Code, diagnostic.Message)
+		}
+	}
+	harness := testHarness(t, root)
+	box, err := harness.layout(context.Background(), expr.Root().Root, ir.Display, converted.FontSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !near(float64(box.Width), *converted.Box.Width) ||
+		!near(float64(box.Ascent+box.Descent), *converted.Box.Height) {
+		t.Fatalf("table box = %vx%v, fixture = %vx%v",
+			box.Width, box.Ascent+box.Descent, *converted.Box.Width, *converted.Box.Height)
+	}
+	lines := make([][4]float64, 0, len(converted.Shapes))
+	thickness := make([]float64, 0, len(converted.Shapes))
+	for _, shape := range converted.Shapes {
+		if len(shape.Line) != 4 || shape.Stroke == nil {
+			t.Fatalf("fixture shape = %#v, want stroked line", shape)
+		}
+		lines = append(lines, [4]float64{
+			shape.Line[0], shape.Line[1], shape.Line[2], shape.Line[3],
+		})
+		thickness = append(thickness, shape.Stroke.Thickness)
+	}
+	rules := make([]display.Item, 0)
+	for _, item := range box.Items {
+		if item.Kind == display.ItemRule {
+			rules = append(rules, item)
+		}
+	}
+	if len(rules) != len(lines) {
+		t.Fatalf("renderer rules = %d, fixture lines = %d", len(rules), len(lines))
+	}
+	used := make([]bool, len(rules))
+	for i, want := range lines {
+		matched := false
+		for j, rule := range rules {
+			if used[j] {
+				continue
+			}
+			got, gotThickness := ruleLine(rule, box.Ascent)
+			if near(got[0], want[0]) && near(got[1], want[1]) &&
+				near(got[2], want[2]) && near(got[3], want[3]) &&
+				near(gotThickness, thickness[i]) {
+				used[j] = true
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			t.Fatalf("fixture line %v thickness %v has no matching renderer rule: %#v",
+				want, thickness[i], rules)
+		}
+	}
+}
+
+func ruleLine(item display.Item, ascent float32) ([4]float64, float64) {
+	rect := item.Rect
+	if rect.Width <= rect.Height {
+		x := float64(rect.X + rect.Width/2)
+		return [4]float64{
+			x, float64(ascent + rect.Y),
+			x, float64(ascent + rect.Y + rect.Height),
+		}, float64(rect.Width)
+	}
+	y := float64(ascent + rect.Y + rect.Height/2)
+	return [4]float64{
+		float64(rect.X), y,
+		float64(rect.X + rect.Width), y,
+	}, float64(rect.Height)
 }
 
 func TestReportRejectsUnexplainedAndMissingReasons(t *testing.T) {

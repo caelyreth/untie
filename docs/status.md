@@ -132,7 +132,7 @@ The bounded Typst math frontend includes:
   rows, and math calls;
 - named and spread arguments for core math functions;
 - matrices, vectors, cases, accents, lines, cancel, text, boxes, styles, and
-  alphabets;
+  alphabets, including horizontal and vertical matrix augmentation lines;
 - a deterministic evaluator subset for values required by math calls;
 - source, token, nesting, node, call-depth, table-cell, and text limits;
 - explicit diagnostics for unsupported code, parameters, and scope boundaries.

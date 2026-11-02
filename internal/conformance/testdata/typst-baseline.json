@@ -1661,18 +1661,6 @@
       ],
       "commands": [
         "mat"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 1,
-          "start": 18,
-          "end": 48,
-          "message": "horizontal augmentation lines are not represented by the matrix subset"
-        }
       ]
     },
     {

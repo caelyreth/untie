@@ -168,6 +168,14 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	if len(dictTable.Vertical) != 1 || dictTable.Vertical[0].Position != 1 {
 		t.Fatalf("dictionary vertical augmentation = %#v", dictTable.Vertical)
 	}
+	hlineAugment := parse(t, `mat(augment: #(hline: (1, -1)), 1, 2; 3, 4; 5, 6)`)
+	requireNoDiagnostics(t, "horizontal augmentation", hlineAugment)
+	hlineTable := find[*ir.Table](t, hlineAugment.Root)
+	if len(hlineTable.Horizontal) != 2 ||
+		hlineTable.Horizontal[0].Position != 1 ||
+		hlineTable.Horizontal[1].Position != 2 {
+		t.Fatalf("horizontal augmentation = %#v", hlineTable.Horizontal)
+	}
 
 	empty := parse(t, `mat(1, , 3; , 5, )`)
 	requireNoDiagnostics(t, "empty matrix cells", empty)

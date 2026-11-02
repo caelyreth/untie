@@ -267,7 +267,7 @@ func (s *layoutState) reservePlannedOutput(count int) error {
 func (s *layoutState) tableLines(lines []ir.TableLine, style Style, metrics MathMetrics) ([]TableLine, error) {
 	out := make([]TableLine, len(lines))
 	for i, line := range lines {
-		thickness, err := s.orMetric(line.Thickness, metrics.FractionRuleThickness, style, metrics)
+		thickness, err := s.orMetric(line.Thickness, geometry.Em(geometry.EmScale/20), style, metrics)
 		if err != nil {
 			return nil, err
 		}

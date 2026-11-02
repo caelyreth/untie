@@ -95,6 +95,7 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath,
 			modulePath + "/display",
 			modulePath + "/font",
+			modulePath + "/geometry",
 			modulePath + "/internal/engine",
 			modulePath + "/internal/fixture",
 			modulePath + "/ir",
