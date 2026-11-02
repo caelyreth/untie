@@ -218,6 +218,16 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			rows[rowIndex].descent = max(rows[rowIndex].descent, tag.Descent)
 		}
 	}
+	parenEnv := env
+	parenEnv.Style = env.Style.Denominator()
+	paren, err := s.layoutClassGlyphText("(", ir.ClassOpening, parenEnv, nil)
+	if err != nil {
+		return nil, fmt.Errorf("layout table baseline parenthesis: %w", err)
+	}
+	for i := range rows {
+		rows[i].ascent = max(rows[i].ascent, paren.Ascent)
+		rows[i].descent = max(rows[i].descent, paren.Descent)
+	}
 
 	metrics := s.fontMetrics(env.Style, env.Variant)
 	rowGap, err := s.length(node.RowGap, env.Style, metrics)
