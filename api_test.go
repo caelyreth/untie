@@ -545,6 +545,29 @@ func TestPublicLayoutErrorClassification(t *testing.T) {
 	}
 }
 
+func TestExprHasErrorsUsesRootDiagnosticFacade(t *testing.T) {
+	t.Parallel()
+
+	clean := ParseTeX(`x+1`, Inline, ParseOptions{})
+	if clean.HasErrors() {
+		t.Fatalf("clean diagnostics = %+v", clean.Diagnostics())
+	}
+	bad := ParseTeX(`\definitelyunknown`, Inline, ParseOptions{})
+	if !bad.HasErrors() {
+		t.Fatalf("bad diagnostics = %+v", bad.Diagnostics())
+	}
+	for _, diagnostic := range bad.Diagnostics() {
+		if diagnostic.Severity != SeverityError {
+			continue
+		}
+		if diagnostic.Code != CodeUnknownCommand {
+			t.Fatalf("diagnostic code = %q, want %q", diagnostic.Code, CodeUnknownCommand)
+		}
+		return
+	}
+	t.Fatal("missing error diagnostic")
+}
+
 func TestLayoutFormulaContextAcceptsCanonicalIR(t *testing.T) {
 	t.Parallel()
 

@@ -372,6 +372,21 @@ func (e *Expr) Diagnostics() []Diagnostic {
 	return out
 }
 
+// HasErrors reports whether parsing produced at least one error-severity
+// diagnostic. The expression remains drawable whether this returns true or
+// false.
+func (e *Expr) HasErrors() bool {
+	if e == nil {
+		return false
+	}
+	for _, diagnostic := range e.diagnostics {
+		if diagnostic.Severity == source.SeverityError {
+			return true
+		}
+	}
+	return false
+}
+
 // Alt returns deterministic plain text and speech derived from the neutral IR.
 // If generation cannot complete, it returns a bounded, validated fallback. Use
 // AltContext to observe the error.
