@@ -64,6 +64,11 @@ The same `Renderer` can serve many UI workers concurrently as long as each
 worker uses its own caller-owned request data and does not mutate a shared
 `Expr`, `Formula`, or `Box`.
 
+An `Engine` retains immutable base-em design paths for glyphs it has shaped.
+That cache is safe for concurrent layouts, grows only with glyphs actually
+encountered, and is released with the engine. It never shares final display
+paths between returned boxes.
+
 ## Context Cancellation
 
 Use `LayoutContext` and `AltContext` when input changes quickly:
