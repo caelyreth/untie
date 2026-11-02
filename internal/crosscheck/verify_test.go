@@ -61,6 +61,33 @@ func TestBaselineCoversCorpusExactly(t *testing.T) {
 	}
 }
 
+func TestSourcePairDifferencesHaveSpecificReasons(t *testing.T) {
+	t.Parallel()
+
+	_, baseline := crosscheckPaths(t)
+	report, err := LoadReport(baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceDifferences := []string{
+		"middle", "braket", "greek", "arrows", "euler-product",
+		"text-in-math", "null-delim", "color",
+	}
+	byID := make(map[string]CaseResult, len(report.Cases))
+	for _, result := range report.Cases {
+		byID[result.ID] = result
+	}
+	for _, id := range sourceDifferences {
+		result, ok := byID[id]
+		if !ok {
+			t.Fatalf("missing source-pair case %q", id)
+		}
+		if !strings.Contains(strings.ToLower(result.KnownReason), "source-pair difference") {
+			t.Fatalf("%s reason = %q, want a source-pair classification", id, result.KnownReason)
+		}
+	}
+}
+
 func TestSupplementaryPlaneSpansAndLayout(t *testing.T) {
 	root, _ := crosscheckPaths(t)
 	harness := testHarness(t, root)

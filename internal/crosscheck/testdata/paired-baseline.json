@@ -112,7 +112,7 @@
       "category": "big-ops",
       "kind": "semantic-ir-mismatch",
       "detail": "root[0].limit-bottom[1].text: expected \" prime\", got \"prime\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: the paired text sources preserve different leading-space content around `prime`."
     },
     {
       "id": "lim",
@@ -158,7 +158,7 @@
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
       "detail": "root.body[4].text: expected \"ϕ\", got \"φ\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: Typst `phi` is U+03C6 while KaTeX `\\phi` is U+03D5; both frontends preserve their pinned dialect semantics."
     },
     {
       "id": "big-sizes",
@@ -190,7 +190,7 @@
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
       "detail": "root[1].text: expected \"ϕ\", got \"φ\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: the paired sources request different phi code points under Typst and KaTeX, so forcing equality would corrupt one dialect's semantics."
     },
     {
       "id": "null-delim",
@@ -198,7 +198,7 @@
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
       "detail": "root.main.body[0].denominator[0].amount: expected \u003cabsent\u003e, got [\"mu\",3000000]",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: Typst `dif` includes its upright differential and weak spacing semantics, while the paired TeX source uses an ordinary italic `d` with no inserted weak space."
     },
     {
       "id": "pmatrix",
@@ -374,7 +374,7 @@
       "category": "fonts",
       "kind": "semantic-ir-mismatch",
       "detail": "root[3].text: expected \" if \", got \"if\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: TeX text runs retain the source spaces around `if`/`and`, while the Typst strings do not include them."
     },
     {
       "id": "operatorname",
@@ -390,7 +390,7 @@
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
       "detail": "root[4].text: expected \"ε\", got \"ϵ\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: Typst `epsilon.alt` and KaTeX `\\varepsilon` select different source glyphs in the pinned corpora."
     },
     {
       "id": "misc-symbols",
@@ -406,7 +406,7 @@
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
       "detail": "root[3].text: expected \"⟺\", got \"⇔\"",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: Typst `\u003c=\u003e` is a short equivalence arrow while KaTeX `\\iff` expands to the long arrow; lengths are source-significant."
     },
     {
       "id": "relations",
@@ -488,7 +488,7 @@
       "category": "layout",
       "kind": "semantic-ir-mismatch",
       "detail": "root: expected {\"body\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},{\"class\":\"binary\",\"cramped\":fals...\u003csha256:b67893c9bf54f454\u003e, got [{\"body\":{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"x\",\"variant\":\"auto\"},\"class\":\"normal\",\"cramped\":false...\u003csha256:5594450ee848d729\u003e",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "reason": "Reviewed source-pair difference: TeX declarative `\\color` applies to the remainder of the source sequence, while the paired Typst color value applies only to its explicit body."
     },
     {
       "id": "clap",
