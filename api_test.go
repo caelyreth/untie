@@ -146,22 +146,28 @@ func TestLayoutContextRejectsNilAndDoesNotReportFalseSuccess(t *testing.T) {
 	if err := box.Validate(); err != nil {
 		t.Fatalf("LayoutContext() box invalid: %v", err)
 	}
-	if box := Layout(expr, fonts, Style{Size: 16}); box == nil {
-		t.Fatal("Layout() = nil for valid input")
+	if box, err := Layout(expr, fonts, Style{Size: 16}); err != nil || box == nil {
+		t.Fatalf("Layout() = %v, %v", box, err)
 	}
 }
 
-func loadTestFonts(t *testing.T) *FontSet {
+func loadTestFonts(t testing.TB) *FontSet {
 	t.Helper()
-	data, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
-	if err != nil {
-		t.Fatalf("read test font: %v", err)
-	}
+	data := testFontBytes(t)
 	fonts, err := LoadFonts(Fonts{Math: FontData{Bytes: data, ID: "NewCMMath-Book"}})
 	if err != nil {
 		t.Fatalf("LoadFonts() error = %v", err)
 	}
 	return fonts
+}
+
+func testFontBytes(t testing.TB) []byte {
+	t.Helper()
+	data, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		t.Fatalf("read test font: %v", err)
+	}
+	return data
 }
 
 func TestRootReturnsIndependentSnapshots(t *testing.T) {
