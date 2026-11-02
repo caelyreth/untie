@@ -88,8 +88,9 @@ type LineBox struct {
 	Overflow float32
 	Items    ItemRange
 	Hits     HitRange
-	// Tag is parent-frame metadata for a tag associated with this line. Its
-	// range is separate from the line range. Nil means no rendered tag.
+	// Tag is the borrowed canonical Box.Tag for a tag associated with this
+	// line. If non-nil, it must be the same pointer as Box.Tag. Its range is
+	// separate from the line range.
 	Tag *TagBox
 }
 
@@ -215,9 +216,11 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	out.Items = cloneItems(b.Items)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
+	var canonicalTag *TagBox
 	if b.Tag != nil {
 		tag := *b.Tag
-		out.Tag = &tag
+		canonicalTag = &tag
+		out.Tag = canonicalTag
 	}
 	if !cloneNested || len(b.Lines) == 0 {
 		out.Lines = nil
@@ -227,8 +230,12 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	for i, line := range b.Lines {
 		out.Lines[i] = line
 		if line.Tag != nil {
-			tag := *line.Tag
-			out.Lines[i].Tag = &tag
+			if line.Tag == b.Tag && canonicalTag != nil {
+				out.Lines[i].Tag = canonicalTag
+			} else {
+				tag := *line.Tag
+				out.Lines[i].Tag = &tag
+			}
 		}
 	}
 	return &out

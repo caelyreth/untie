@@ -35,6 +35,12 @@ func TestTagBoxCloneCanonicalAndValidation(t *testing.T) {
 	if box.Tag.Width == clone.Tag.Width {
 		t.Fatal("Clone shared tag metadata")
 	}
+
+	constrained := constrainedTaggedRangeBox()
+	constrainedClone := constrained.Clone()
+	if constrainedClone.Lines[0].Tag != constrainedClone.Tag {
+		t.Fatal("Clone did not preserve the borrowed line-tag identity")
+	}
 }
 
 func TestTagBoxValidationRejectsMalformedRangesAndMetadata(t *testing.T) {
@@ -104,9 +110,11 @@ func TestConstrainedTagRequiresTargetedLineTag(t *testing.T) {
 	}
 
 	mismatched := box.Clone()
-	mismatched.Lines[0].Tag.X++
+	borrowed := *mismatched.Lines[0].Tag
+	borrowed.X++
+	mismatched.Lines[0].Tag = &borrowed
 	if err := mismatched.Validate(); err == nil {
-		t.Fatal("Validate() accepted mismatched parent and line tag metadata")
+		t.Fatal("Validate() accepted a line tag that was not the canonical parent tag")
 	}
 
 	badLineRange := box.Clone()

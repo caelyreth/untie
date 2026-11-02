@@ -115,8 +115,8 @@ func validateLines(box *Box) error {
 			if i != 0 {
 				return fmt.Errorf("line %d has a tag outside the phase-1 target line", i)
 			}
-			if !sameTagMetadata(*line.Tag, *box.Tag) {
-				return fmt.Errorf("line %d tag metadata differs from parent tag", i)
+			if line.Tag != box.Tag {
+				return fmt.Errorf("line %d tag must reference the canonical parent tag", i)
 			}
 		}
 		itemOffset = line.Items.End()
@@ -240,21 +240,6 @@ func validateHitRange(r HitRange, length int, path string) error {
 		return fmt.Errorf("%s range [%d,%d) exceeds length %d", path, r.Start, r.End(), length)
 	}
 	return nil
-}
-
-func sameTagMetadata(left, right TagBox) bool {
-	return left.Source == right.Source &&
-		left.Manual == right.Manual &&
-		left.Starred == right.Starred &&
-		left.Line == right.Line &&
-		left.X == right.X &&
-		left.Y == right.Y &&
-		left.Width == right.Width &&
-		left.Ascent == right.Ascent &&
-		left.Descent == right.Descent &&
-		left.Italic == right.Italic &&
-		left.Items == right.Items &&
-		left.Hits == right.Hits
 }
 
 func validateTagRangeSuffix(tag *TagBox, itemCount, hitCount int) error {
