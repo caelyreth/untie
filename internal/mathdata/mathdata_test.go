@@ -268,13 +268,14 @@ func TestTeXSymbols(t *testing.T) {
 		class   Class
 		group   TeXGroup
 		font    TeXFont
+		kind    TeXSymbolKind
 	}{
-		{command: `\alpha`, text: "α", class: ClassAlphabetic, group: TeXGroupMathOrd, font: TeXFontMain},
-		{command: `\Gamma`, text: "Γ", class: ClassNormal, group: TeXGroupTextOrd, font: TeXFontMain},
-		{command: `\leq`, text: "≤", class: ClassRelation, group: TeXGroupRelation, font: TeXFontMain},
-		{command: `\le`, text: "≤", class: ClassRelation, group: TeXGroupRelation, font: TeXFontMain},
-		{command: `\rightarrow`, text: "→", class: ClassRelation, group: TeXGroupRelation, font: TeXFontMain},
-		{command: `\infty`, text: "∞", class: ClassNormal, group: TeXGroupTextOrd, font: TeXFontMain},
+		{command: `\alpha`, text: "α", class: ClassAlphabetic, group: TeXGroupMathOrd, font: TeXFontMain, kind: TeXSymbolPublic},
+		{command: `\Gamma`, text: "Γ", class: ClassNormal, group: TeXGroupTextOrd, font: TeXFontMain, kind: TeXSymbolPublic},
+		{command: `\leq`, text: "≤", class: ClassRelation, group: TeXGroupRelation, font: TeXFontMain, kind: TeXSymbolPublic},
+		{command: `\le`, text: "≤", class: ClassRelation, group: TeXGroupRelation, font: TeXFontMain, kind: TeXSymbolPublic},
+		{command: `\rightarrow`, text: "→", class: ClassRelation, group: TeXGroupRelation, font: TeXFontMain, kind: TeXSymbolPublic},
+		{command: `\infty`, text: "∞", class: ClassNormal, group: TeXGroupTextOrd, font: TeXFontMain, kind: TeXSymbolPublic},
 	}
 	for _, test := range tests {
 		symbol, ok := LookupTeXSymbol(test.command)
@@ -282,7 +283,8 @@ func TestTeXSymbols(t *testing.T) {
 			t.Fatalf("LookupTeXSymbol(%q) was not found", test.command)
 		}
 		if symbol.Text != test.text || symbol.Class != test.class ||
-			symbol.Group != test.group || symbol.Font != test.font {
+			symbol.Group != test.group || symbol.Font != test.font ||
+			symbol.Kind != test.kind {
 			t.Errorf("%s = %#v", test.command, symbol)
 		}
 	}
@@ -298,6 +300,32 @@ func TestTeXSymbols(t *testing.T) {
 	}
 }
 
+func TestTeXPrivateUseSymbolsAreExplicitlyInternal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		command     string
+		text        string
+		sourceGlyph rune
+	}{
+		{command: `\@gvertneqq`, text: "≩", sourceGlyph: 0xe00d},
+		{command: `\@imath`, text: "ı", sourceGlyph: 0xe131},
+		{command: `\@jmath`, text: "ȷ", sourceGlyph: 0xe237},
+		{command: `\@not`, text: "", sourceGlyph: 0xe020},
+		{command: `\@cdots`, text: "⋯"},
+	}
+	for _, test := range tests {
+		symbol, ok := LookupTeXSymbol(test.command)
+		if !ok {
+			t.Fatalf("LookupTeXSymbol(%q) was not found", test.command)
+		}
+		if symbol.Kind != TeXSymbolInternal || symbol.Text != test.text ||
+			symbol.SourceGlyph != test.sourceGlyph {
+			t.Errorf("%s = %#v", test.command, symbol)
+		}
+	}
+}
+
 func TestTeXSymbolTableShape(t *testing.T) {
 	t.Parallel()
 
@@ -310,10 +338,40 @@ func TestTeXSymbolTableShape(t *testing.T) {
 		}
 		if symbol.Command == "" || symbol.Class > ClassSpecial ||
 			symbol.Group > TeXGroupSpacing ||
-			(symbol.Font != TeXFontMain && symbol.Font != TeXFontAMS) {
+			(symbol.Font != TeXFontMain && symbol.Font != TeXFontAMS) ||
+			symbol.Kind > TeXSymbolInternal {
 			t.Fatalf("invalid TeX symbol at %d: %#v", i, symbol)
 		}
+		internalCommand := len(symbol.Command) >= 2 && symbol.Command[0] == '\\' && symbol.Command[1] == '@'
+		if (symbol.Kind == TeXSymbolInternal) != internalCommand {
+			t.Fatalf("TeX symbol kind does not match command at %d: %#v", i, symbol)
+		}
+		if _, ok := privateUseSymbolRune(symbol.Text); ok {
+			t.Fatalf("TeX symbol %s exposes private-use text %#v", symbol.Command, symbol)
+		}
+		if symbol.Kind == TeXSymbolPublic && symbol.SourceGlyph != 0 {
+			t.Fatalf("public TeX symbol %s has a source-only private-use glyph: %#v", symbol.Command, symbol)
+		}
+		if symbol.SourceGlyph != 0 {
+			if _, ok := privateUseSymbolRune(string(symbol.SourceGlyph)); !ok {
+				t.Fatalf("TeX symbol %s has invalid source glyph %U", symbol.Command, symbol.SourceGlyph)
+			}
+			if symbol.Kind != TeXSymbolInternal {
+				t.Fatalf("TeX symbol %s is public but has private-use source glyph", symbol.Command)
+			}
+		}
 	}
+}
+
+func privateUseSymbolRune(text string) (rune, bool) {
+	for _, r := range text {
+		if (r >= 0xe000 && r <= 0xf8ff) ||
+			(r >= 0xf0000 && r <= 0xffffd) ||
+			(r >= 0x100000 && r <= 0x10fffd) {
+			return r, true
+		}
+	}
+	return 0, false
 }
 
 func TestTypstSymbols(t *testing.T) {

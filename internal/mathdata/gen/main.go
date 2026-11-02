@@ -24,6 +24,7 @@ import (
 const (
 	katexSymbolsPath    = "KaTeX/src/symbols.ts"
 	katexOpsPath        = "KaTeX/src/functions/op.ts"
+	katexMacrosPath     = "KaTeX/src/macros.ts"
 	typstSyntaxPath     = "typst/crates/typst-syntax/src/ast.rs"
 	typstOpsPath        = "typst/crates/typst-library/src/math/op.rs"
 	typletClassRunsPath = "Typlet/src/generated/math-class.ts"
@@ -74,6 +75,8 @@ type texSymbol struct {
 	group         string
 	font          string
 	acceptUnicode bool
+	kind          string
+	sourceGlyph   rune
 }
 
 type typstSymbol struct {
@@ -142,6 +145,10 @@ func run(refs, out string) error {
 	if err != nil {
 		return err
 	}
+	katexMacrosSrc, katexMacrosRef, err := read(katexMacrosPath)
+	if err != nil {
+		return err
+	}
 	typstSyntaxSrc, typstSyntaxRef, err := read(typstSyntaxPath)
 	if err != nil {
 		return err
@@ -163,7 +170,11 @@ func run(refs, out string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", typletStylePath, err)
 	}
-	symbols, err := parseTeXSymbols(katexSymSrc)
+	fallbacks, err := parseKaTeXMacroFallbacks(katexMacrosSrc)
+	if err != nil {
+		return fmt.Errorf("%s: %w", katexMacrosPath, err)
+	}
+	symbols, err := parseTeXSymbols(katexSymSrc, fallbacks)
 	if err != nil {
 		return fmt.Errorf("%s: %w", katexSymbolsPath, err)
 	}
@@ -201,7 +212,7 @@ func run(refs, out string) error {
 		},
 		{
 			name:    "tex_generated.go",
-			sources: []sourceRef{katexSymRef},
+			sources: []sourceRef{katexSymRef, katexMacrosRef},
 			body:    generateTeXSymbols(symbols),
 		},
 		{
@@ -495,7 +506,7 @@ func parseHexRune(hexText string) (rune, error) {
 	return rune(n), nil
 }
 
-func parseTeXSymbols(src string) ([]texSymbol, error) {
+func parseTeXSymbols(src string, fallbacks map[string]string) ([]texSymbol, error) {
 	re := regexp.MustCompile(`(?m)^defineSymbol\(math,\s*(main|ams),\s*([a-z-]+),\s*("(?:\\.|[^"\\])*")\s*,\s*("(?:\\.|[^"\\])*")(?:\s*,\s*(true|false))?\s*\)\s*;`)
 	var out []texSymbol
 	for _, match := range re.FindAllStringSubmatch(src, -1) {
@@ -515,6 +526,27 @@ func parseTeXSymbols(src string) ([]texSymbol, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown symbol group %q for %s", gname, command)
 		}
+		kind := "Public"
+		if strings.HasPrefix(command, `\@`) {
+			kind = "Internal"
+		}
+		sourceGlyph, privateUse := privateUseGlyph(text)
+		if privateUse {
+			if kind != "Internal" {
+				return nil, fmt.Errorf("public TeX symbol %s uses private-use text %U", command, sourceGlyph)
+			}
+			if utf8.RuneCountInString(text) != 1 {
+				return nil, fmt.Errorf("TeX symbol %s has private-use text mixed with other runes", command)
+			}
+			if fallback, ok := fallbacks[command]; ok {
+				text = fallback
+			} else {
+				text = ""
+			}
+		}
+		if glyph, ok := privateUseGlyph(text); ok {
+			return nil, fmt.Errorf("TeX symbol %s retains private-use text %U", command, glyph)
+		}
 		out = append(out, texSymbol{
 			command:       command,
 			text:          text,
@@ -522,6 +554,8 @@ func parseTeXSymbols(src string) ([]texSymbol, error) {
 			group:         group,
 			font:          map[string]string{"main": "Main", "ams": "AMS"}[match[1]],
 			acceptUnicode: match[5] == "true",
+			kind:          kind,
+			sourceGlyph:   sourceGlyph,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].command < out[j].command })
@@ -534,6 +568,109 @@ func parseTeXSymbols(src string) ([]texSymbol, error) {
 		}
 	}
 	return out, nil
+}
+
+func privateUseGlyph(text string) (rune, bool) {
+	for _, r := range text {
+		if isPrivateUse(r) {
+			return r, true
+		}
+	}
+	return 0, false
+}
+
+func isPrivateUse(r rune) bool {
+	return (r >= 0xE000 && r <= 0xF8FF) ||
+		(r >= 0xF0000 && r <= 0xFFFFD) ||
+		(r >= 0x100000 && r <= 0x10FFFD)
+}
+
+func parseKaTeXMacroFallbacks(src string) (map[string]string, error) {
+	re := regexp.MustCompile(`(?m)^defineMacro\(\s*("(?:\\.|[^"\\])*")\s*,\s*("(?:\\.|[^"\\])*")\s*\)\s*;`)
+	fallbacks := make(map[string]string)
+	for _, match := range re.FindAllStringSubmatch(src, -1) {
+		command, err := strconv.Unquote(match[1])
+		if err != nil {
+			return nil, err
+		}
+		body, err := strconv.Unquote(match[2])
+		if err != nil {
+			return nil, err
+		}
+		internal, alternative, ok, err := parseHTMLMathMLAlternative(body)
+		if err != nil {
+			return nil, fmt.Errorf("macro %s: %w", command, err)
+		}
+		if !ok || !strings.HasPrefix(internal, `\@`) {
+			continue
+		}
+		if alternative == "" {
+			return nil, fmt.Errorf("macro %s has an empty MathML alternative", command)
+		}
+		if glyph, ok := privateUseGlyph(alternative); ok {
+			return nil, fmt.Errorf("macro %s alternative contains private-use text %U", command, glyph)
+		}
+		if previous, ok := fallbacks[internal]; ok && previous != alternative {
+			return nil, fmt.Errorf("macro fallback for %s is both %q and %q", internal, previous, alternative)
+		}
+		fallbacks[internal] = alternative
+	}
+	if len(fallbacks) == 0 {
+		return nil, errors.New("no KaTeX private-use macro fallbacks found")
+	}
+	return fallbacks, nil
+}
+
+func parseHTMLMathMLAlternative(body string) (internal, alternative string, ok bool, err error) {
+	const prefix = `\html@mathml`
+	if !strings.HasPrefix(body, prefix) {
+		return "", "", false, nil
+	}
+	open := len(prefix)
+	if open >= len(body) || body[open] != '{' {
+		return "", "", false, fmt.Errorf("invalid html@mathml call")
+	}
+	internal, end, err := mathBraceGroupAt(body, open)
+	if err != nil {
+		return "", "", false, err
+	}
+	if end >= len(body) || body[end] != '{' {
+		return "", "", false, fmt.Errorf("html@mathml call has no second argument")
+	}
+	alternative, end, err = mathBraceGroupAt(body, end)
+	if err != nil {
+		return "", "", false, err
+	}
+	if strings.TrimSpace(body[end:]) != "" {
+		return "", "", false, fmt.Errorf("unexpected text after html@mathml call")
+	}
+	return internal, alternative, true, nil
+}
+
+func mathBraceGroupAt(src string, open int) (string, int, error) {
+	if open < 0 || open >= len(src) || src[open] != '{' {
+		return "", 0, errors.New("internal generator error: brace offset")
+	}
+	depth := 0
+	escaped := false
+	for i := open; i < len(src); i++ {
+		if escaped {
+			escaped = false
+			continue
+		}
+		switch src[i] {
+		case '\\':
+			escaped = true
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return src[open+1 : i], i + 1, nil
+			}
+		}
+	}
+	return "", 0, errors.New("unclosed brace")
 }
 
 func texGroupName(name string) (string, bool) {
@@ -840,9 +977,9 @@ func generateTeXSymbols(symbols []texSymbol) string {
 	b.WriteString("var texSymbols = [...]TeXSymbol{\n")
 	for _, symbol := range symbols {
 		fmt.Fprintf(&b,
-			"\t{Command: %s, Text: %s, Class: Class%s, Group: TeXGroup%s, Font: TeXFont%s, AcceptUnicode: %t},\n",
+			"\t{Command: %s, Text: %s, Class: Class%s, Group: TeXGroup%s, Font: TeXFont%s, AcceptUnicode: %t, Kind: TeXSymbol%s, SourceGlyph: 0x%04x},\n",
 			strconv.Quote(symbol.command), strconv.Quote(symbol.text), symbol.class,
-			symbol.group, symbol.font, symbol.acceptUnicode)
+			symbol.group, symbol.font, symbol.acceptUnicode, symbol.kind, symbol.sourceGlyph)
 	}
 	b.WriteString("}\n")
 	return b.String()
@@ -920,8 +1057,13 @@ func namedObject(block, key string) (string, error) {
 }
 
 func bracesAt(src string, open int) (string, error) {
+	body, _, err := braceGroupAt(src, open)
+	return body, err
+}
+
+func braceGroupAt(src string, open int) (string, int, error) {
 	if open < 0 || open >= len(src) || src[open] != '{' {
-		return "", errors.New("internal generator error: brace offset")
+		return "", 0, errors.New("internal generator error: brace offset")
 	}
 	depth := 0
 	inString := byte(0)
@@ -946,11 +1088,11 @@ func bracesAt(src string, open int) (string, error) {
 		case '}':
 			depth--
 			if depth == 0 {
-				return src[open+1 : i], nil
+				return src[open+1 : i], i + 1, nil
 			}
 		}
 	}
-	return "", errors.New("unclosed brace")
+	return "", 0, errors.New("unclosed brace")
 }
 
 func bracketBody(src, marker string) (string, error) {
