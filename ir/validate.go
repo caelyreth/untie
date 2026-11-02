@@ -32,7 +32,7 @@ func validate(f *Formula, sourceLen int, limits source.Limits) error {
 	if f == nil {
 		return fmt.Errorf("%w: nil formula", ErrInvalidIR)
 	}
-	if f.Root == nil {
+	if nodeIsNil(f.Root) {
 		return fmt.Errorf("%w: nil root", ErrInvalidIR)
 	}
 	limits = limits.WithDefaults()
@@ -55,7 +55,7 @@ type validationState struct {
 }
 
 func (s *validationState) visit(n Node, path string, depth int) error {
-	if n == nil {
+	if nodeIsNil(n) {
 		return fmt.Errorf("%w: %s: nil node", ErrInvalidIR, path)
 	}
 	if s.active[n] {

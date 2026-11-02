@@ -96,6 +96,21 @@ func TestWalkWithoutLimitsTerminatesOnCycle(t *testing.T) {
 	}
 }
 
+func TestGraphUtilitiesTreatTypedNilAsNil(t *testing.T) {
+	t.Parallel()
+
+	var row *Row
+	if children := Children(row); children != nil {
+		t.Fatalf("Children(typed nil) = %v", children)
+	}
+	if err := WalkWithLimits(row, source.Limits{}, func(Node) bool { return true }); err != nil {
+		t.Fatalf("WalkWithLimits(typed nil) error = %v", err)
+	}
+	if err := Validate(&Formula{Root: row}, source.Limits{}); err == nil {
+		t.Fatal("Validate() accepted a typed nil root")
+	}
+}
+
 func TestCloneFormulaIsDeep(t *testing.T) {
 	t.Parallel()
 

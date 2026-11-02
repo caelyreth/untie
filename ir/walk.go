@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 
 	"github.com/caelyreth/untie/source"
@@ -10,9 +11,10 @@ import (
 // Children returns direct child nodes in deterministic semantic order.
 // Returned slices never alias node-owned storage.
 func Children(n Node) []Node {
-	switch n := n.(type) {
-	case nil:
+	if nodeIsNil(n) {
 		return nil
+	}
+	switch n := n.(type) {
 	case *Row:
 		return slices.Clone(n.Items)
 	case *Glyph, *Text, *Operator, *Space, *ErrorNode, *Placeholder, *Break, *AlignMarker:
@@ -95,7 +97,7 @@ type walkState struct {
 }
 
 func (s *walkState) visit(n Node, depth int, fn func(Node) bool) error {
-	if n == nil {
+	if nodeIsNil(n) {
 		return nil
 	}
 	if s.active[n] {
@@ -119,6 +121,14 @@ func (s *walkState) visit(n Node, depth int, fn func(Node) bool) error {
 		}
 	}
 	return nil
+}
+
+func nodeIsNil(n Node) bool {
+	if n == nil {
+		return true
+	}
+	value := reflect.ValueOf(n)
+	return value.Kind() == reflect.Pointer && value.IsNil()
 }
 
 func compact(nodes ...Node) []Node {

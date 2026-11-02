@@ -39,7 +39,7 @@ type canonicalState struct {
 }
 
 func (s *canonicalState) node(n Node, depth int) (any, error) {
-	if n == nil {
+	if nodeIsNil(n) {
 		return nil, nil
 	}
 	if s.active[n] {

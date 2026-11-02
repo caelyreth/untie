@@ -53,7 +53,7 @@ type cloneState struct {
 }
 
 func (s *cloneState) clone(n Node, depth int) (Node, error) {
-	if n == nil {
+	if nodeIsNil(n) {
 		return nil, nil
 	}
 	if s.active[n] {
