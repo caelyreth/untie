@@ -128,3 +128,45 @@ func TestAttachAndCasesPreserveNeutralMetadata(t *testing.T) {
 		}
 	}
 }
+
+func TestDifferentialAndBuiltinSpacingUseExactMathUnits(t *testing.T) {
+	t.Parallel()
+
+	result := parse(t, `integral f(x) dif x + Dif`)
+	requireNoDiagnostics(t, "differential", result)
+	var differentials []*ir.Row
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		row, ok := node.(*ir.Row)
+		if !ok || len(row.Items) != 2 {
+			return true
+		}
+		space, spaceOK := row.Items[0].(*ir.Space)
+		glyph, glyphOK := row.Items[1].(*ir.Glyph)
+		if spaceOK && glyphOK && (glyph.Text == "d" || glyph.Text == "D") {
+			if space.Weak && space.Amount == builtinMuLength(3) &&
+				glyph.Class == ir.ClassUnary && glyph.Variant == ir.VariantNormal {
+				differentials = append(differentials, row)
+			}
+		}
+		return true
+	})
+	if len(differentials) != 2 {
+		t.Fatalf("differentials = %d, want 2", len(differentials))
+	}
+
+	spacing := map[string]int64{
+		"thin":  3,
+		"med":   4,
+		"thick": 5,
+		"quad":  18,
+		"wide":  36,
+	}
+	for name, want := range spacing {
+		result := parse(t, name)
+		requireNoDiagnostics(t, name, result)
+		space := find[*ir.Space](t, result.Root)
+		if space.Amount != builtinMuLength(float64(want)) {
+			t.Fatalf("%s amount = %#v, want %d mu", name, space.Amount, want)
+		}
+	}
+}

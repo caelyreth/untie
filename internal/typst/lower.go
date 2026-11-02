@@ -268,6 +268,9 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 	if name == "zws" {
 		return ir.NewRow(n.span)
 	}
+	if name == "dif" || name == "Dif" {
+		return l.lowerDifferential(n.span, strings.ToUpper(name[:1]))
+	}
 	if hasCombiningMark(name) {
 		return l.lowerCombinedIdentifier(n)
 	}
@@ -311,6 +314,16 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 		return l.unknownSymbolField(n, name)
 	}
 	return l.unknownVariable(n.span, name)
+}
+
+func (l *lowerer) lowerDifferential(span source.Range, letter string) ir.Node {
+	space := ir.NewSpace(span, ir.SpaceExplicit, builtinMuLength(3))
+	space.Class = ir.ClassSpace
+	space.Weak = true
+	d := l.glyph(span, letter)
+	d.Class = ir.ClassUnary
+	d.Variant = ir.VariantNormal
+	return ir.NewRow(span, space, d)
 }
 
 func (l *lowerer) unknownVariable(span source.Range, name string) *ir.ErrorNode {

@@ -175,17 +175,25 @@ var textOperators = map[string]bool{
 
 var spacingSymbols = map[string]ir.Length{
 	"space": builtinEmLength(0.25),
-	"thin":  builtinEmLength(1.0 / 6.0),
-	"med":   builtinEmLength(2.0 / 9.0),
-	"thick": builtinEmLength(5.0 / 18.0),
-	"quad":  builtinEmLength(1),
-	"wide":  builtinEmLength(2),
+	"thin":  builtinMuLength(3),
+	"med":   builtinMuLength(4),
+	"thick": builtinMuLength(5),
+	"quad":  builtinMuLength(18),
+	"wide":  builtinMuLength(36),
 }
 
 func builtinEmLength(value float64) ir.Length {
 	length, err := ir.EmLength(value)
 	if err != nil {
 		panic("invalid built-in Typst em length: " + err.Error())
+	}
+	return length
+}
+
+func builtinMuLength(value float64) ir.Length {
+	length, err := ir.MuLength(value)
+	if err != nil {
+		panic("invalid built-in Typst math-unit length: " + err.Error())
 	}
 	return length
 }
