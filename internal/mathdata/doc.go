@@ -5,8 +5,6 @@
 // Callers receive value copies and can therefore neither reorder generated
 // data nor mutate process-global tables.
 //
-// All data is checked in. References to KaTeX, Typst, and Typlet are needed
-// only when regenerating, never at build or runtime.
-//
-//go:generate go run ./gen -refs ../../references -out .
+// All data is checked in. Upstream KaTeX, Typst, and Typlet sources are needed
+// only for an explicit maintainer regeneration, never at build or runtime.
 package mathdata

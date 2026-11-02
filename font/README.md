@@ -64,7 +64,7 @@ the NewCM fixture used by the tests.
 
 ## Conformance data
 
-`testdata/NewCMMath` tracks the unmodified NewCM Book font and Typlet's complete
+`testdata/upstream` tracks the unmodified NewCM Book font and Typlet's complete
 NewCM JSONL fixture. The tests compare all 8,598 glyph advances, control bounds,
 italic corrections, accent attachments, extended-shape membership, kerns,
 variants, and assemblies, plus every cmap character, variation sequence, and

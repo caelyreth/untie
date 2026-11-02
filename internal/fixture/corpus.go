@@ -401,7 +401,7 @@ func addResult(report *Report, testCase Case, classification Classification, det
 }
 
 // CorpusRoot resolves the tracked fixture root relative to any working
-// directory by finding the nearest go.mod. It never consults references/.
+// directory by finding the nearest go.mod.
 func CorpusRoot(start string) (string, error) {
 	absolute, err := filepath.Abs(start)
 	if err != nil {

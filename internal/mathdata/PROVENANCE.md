@@ -1,7 +1,8 @@
-# Provenance And Licensing
+# Generated Math Metadata
 
-This package contains mechanically transformed metadata from pinned, permissively
-licensed upstream projects. It does not contain code from those projects.
+`internal/mathdata` contains mechanically transformed metadata from pinned,
+permissively licensed upstream projects. It does not contain upstream runtime
+code. Normal builds consume only the checked-in Go files.
 
 ## Source Pins
 
@@ -11,15 +12,12 @@ licensed upstream projects. It does not contain code from those projects.
 | Typst | 0.15.1, `84cca406aafe7f830ed3f37f1cc6f0c8b6b65a03` | Apache-2.0 | `crates/typst-syntax/src/ast.rs`, `crates/typst-library/src/math/op.rs` |
 | Typlet | 0.2.0, `c3ebcac2db54ee123faaab8c437c83e7f66ec0a5` | MIT with Apache-2.0 notices | `src/generated/math-class.ts`, `src/utils/math-class.ts`, `src/utils/styling.ts`, `src/generated/symbols.ts` |
 | codex | 0.3.0, upstream Typst pin `2e43ab9` | Apache-2.0 | Transitive source of Typlet's generated Typst symbol table |
-| unicode-math-class | 0.1.0, MathClass.txt revision 15 | MIT or Apache-2.0, used under MIT | Transitive source of Typlet's generated class runs |
+| unicode-math-class | 0.1.0, MathClass.txt revision 15 | MIT or Apache-2.0 | Transitive source of Typlet's generated class runs |
 
-The KaTeX and Typst commits exactly match `references/untie-plan/01-source-of-truth.md`.
-The local checkout was used only as static text. No reference project was built
-or executed.
+The input files are read as static text. No upstream compiler or runtime is
+invoked.
 
 ## Exact Input Hashes
-
-These SHA-256 values are also emitted into each generated file:
 
 | File | SHA-256 |
 |---|---|
@@ -33,69 +31,43 @@ These SHA-256 values are also emitted into each generated file:
 | `Typlet/src/utils/styling.ts` | `14fd8750bceb34b1b68d192b9e767e7e0af8db981e891b6fb15ce1548c971163` |
 | `Typlet/src/generated/symbols.ts` | `229f1cb2b5892076ed14104be42adccbae055d72421c466063e150b0ee8a2d9d` |
 
-The generated headers are the authoritative record for the files used by a
-particular output.
+Generated file headers repeat the exact source paths and hashes used for that
+output.
 
 ## Transformations
 
-The generator performs only representation-preserving transformations:
+The generator performs representation-preserving transformations:
 
-- KaTeX `defineSymbol(math, ...)` calls are selected as literal no-argument math
-  symbols. JavaScript string escapes are decoded; commands are sorted.
-- KaTeX commands beginning with `\@` are marked internal. Private-use code
-  points are removed from public `Text`; direct `\html@mathml{...}{...}`
-  alternatives in `macros.ts` provide the portable Unicode replacement where
-  one exists. The original private-use scalar is retained as source-only
-  `SourceGlyph`.
-- KaTeX's parser groups are retained in `TeXGroup`; normalized `Class` is a
-  derived convenience mapping.
-- KaTeX `type: "op"` function registrations with `numArgs: 0` are collected as
-  operator metadata. Macro-specific symbol aliases and operands are not expanded.
-- Typst `MathShorthand::LIST` entries are decoded and sorted.
-- Typst's static `ops!` registrations are decoded and sorted.
-- Typlet's generated class runs are decoded from its compact
-  `(gap, length, class)` representation. Typst's explicit default-class override
-  cases are decoded separately.
-- Typlet's transcription of codex's named symbol variants is decoded from
-  `name<TAB>=value<TAB>modifier=value...` records. Variant and binding
-  deprecations are attached to the same generated records.
-- Typlet's transcription of codex's alphanumeric ranges and exceptions is decoded
-  into generated range data. Calligraphic and roundhand selectors are retained.
+- KaTeX literal no-argument math symbol registrations are decoded and sorted.
+- Private-use KaTeX code points are excluded from public replacement text.
+  Portable Unicode alternatives from `macros.ts` are retained where available.
+- KaTeX zero-argument operator registrations are collected without expanding
+  macros.
+- Typst math shorthands and static operator registrations are decoded and
+  sorted.
+- Typlet class runs and Typst default-class overrides are decoded into compact
+  Unicode ranges.
+- Typlet symbol variant records, alphanumeric ranges, exceptions, and
+  deprecation metadata are decoded and sorted.
 
-No public spelling, portable code-point, deprecation, font-class, group, limit,
-or symbol value is changed. Ordering is canonicalized for deterministic binary
-search. Internal KaTeX glyph code points are deliberately not exposed as
-renderable text.
+No public spelling, portable code point, deprecation, class, or symbol value is
+changed. Ordering is canonicalized for deterministic binary search.
 
-## Excluded Data
+## Reproduction
 
-- KaTeX text-mode symbols, macros, CSS, fonts, and metrics.
-- Typst document semantics, evaluator behavior, arbitrary embedded code, fonts,
-  package/import/file support, and layout data.
-- Typst symbols outside the codex 0.3.0 data captured by pinned Typlet.
-- Dynamic symbol modifiers, callable-symbol implementations, and runtime
-  deprecation behavior.
-- Unicode prose names and data not represented by the pinned tools.
+With a directory containing the pinned source trees:
 
-Absence is not silently converted into support. Higher frontend layers must
-report unsupported commands, symbols, and options.
+```sh
+go run ./internal/mathdata/gen \
+  -sources /path/to/pinned-sources \
+  -out internal/mathdata
+```
 
-## Required Notices
+The source root is an explicit maintainer input. Review the generated hash and
+table diff before committing it. Do not update generated metadata merely to make
+an unrelated parser or layout test pass.
 
-Full license texts are vendored under `licenses/`:
+## Attribution
 
-- `licenses/MIT-KaTeX.txt`
-- `licenses/MIT-Typlet.txt`
-- `licenses/Apache-2.0.txt`
-- `licenses/NOTICE-Typst.txt`
-
-Copyright and attribution notices:
-
-- KaTeX: Copyright (c) 2013-2020 Khan Academy and other contributors.
-- Typst: Copyright The Typst Project Developers.
-- codex: Copyright The Typst Project Developers.
-- Typlet: Copyright (c) 2026 dbcccc.
-
-The Apache-2.0 material is used under the Apache License, Version 2.0. The
-generated metadata is a modified representation and is not presented as an
-unmodified Typst or codex distribution.
+Canonical upstream license and notice files are tracked beside the imported
+fixtures under `testdata/upstream/licenses`.
