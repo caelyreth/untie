@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/caelyreth/untie"
-	"github.com/caelyreth/untie/geometry"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -46,51 +45,50 @@ type mathPlacement struct {
 }
 
 func fitMath(content ui.Rect, box *untie.Box) mathPlacement {
-	overflow := max(float32(0), box.Overflow)
-	width := box.Width + 2*overflow
-	height := box.Ascent + box.Descent + 2*overflow
+	bounds := box.Bounds()
 	scale := float32(1)
-	if width > content.W && width > 0 {
-		scale = min(scale, content.W/width)
+	if bounds.Width > content.W && bounds.Width > 0 {
+		scale = min(scale, content.W/bounds.Width)
 	}
-	if height > content.H && height > 0 {
-		scale = min(scale, content.H/height)
+	if bounds.Height > content.H && bounds.Height > 0 {
+		scale = min(scale, content.H/bounds.Height)
 	}
 	scale = max(0, scale)
-	scaledWidth := width * scale
-	scaledHeight := height * scale
+	scaledWidth := bounds.Width * scale
+	scaledHeight := bounds.Height * scale
 	originX := content.X + (content.W-scaledWidth)/2
-	originX += overflow * scale
-	originY := content.Y + (content.H-scaledHeight)/2 + (box.Ascent+overflow)*scale
+	originX -= bounds.X * scale
+	originY := content.Y + (content.H-scaledHeight)/2
+	originY -= bounds.Y * scale
 	return mathPlacement{scale: scale, originX: originX, originY: originY}
 }
 
-func mathPath(path geometry.Path, originX, originY, scale float32) ui.Path {
+func mathPath(path untie.Path, originX, originY, scale float32) ui.Path {
 	var out ui.Path
 	for _, segment := range path {
 		switch segment.Op {
-		case geometry.SegMoveTo:
+		case untie.SegMoveTo:
 			out.MoveTo(
 				originX+segment.Points[0].X*scale,
 				originY+segment.Points[0].Y*scale,
 			)
-		case geometry.SegLineTo:
+		case untie.SegLineTo:
 			out.LineTo(
 				originX+segment.Points[0].X*scale,
 				originY+segment.Points[0].Y*scale,
 			)
-		case geometry.SegQuadTo:
+		case untie.SegQuadTo:
 			out.QuadTo(
 				originX+segment.Points[0].X*scale, originY+segment.Points[0].Y*scale,
 				originX+segment.Points[1].X*scale, originY+segment.Points[1].Y*scale,
 			)
-		case geometry.SegCubeTo:
+		case untie.SegCubeTo:
 			out.CubeTo(
 				originX+segment.Points[0].X*scale, originY+segment.Points[0].Y*scale,
 				originX+segment.Points[1].X*scale, originY+segment.Points[1].Y*scale,
 				originX+segment.Points[2].X*scale, originY+segment.Points[2].Y*scale,
 			)
-		case geometry.SegClose:
+		case untie.SegClose:
 			out.Close()
 		}
 	}

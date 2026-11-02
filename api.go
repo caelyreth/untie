@@ -11,6 +11,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/font"
+	"github.com/caelyreth/untie/geometry"
 	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/tex"
 	"github.com/caelyreth/untie/internal/typst"
@@ -59,6 +60,11 @@ type (
 	FontSet     = font.FontSet
 	Formula     = ir.Formula
 	EquationTag = ir.EquationTag
+
+	Point   = geometry.Point
+	Rect    = geometry.Rect
+	Segment = geometry.Segment
+	Path    = geometry.Path
 )
 
 // Style is a display.Style layout request. Display layout with a positive
@@ -77,6 +83,12 @@ const (
 	ItemGlyphPath = display.ItemGlyphPath
 	ItemRule      = display.ItemRule
 	ItemGlyphRef  = display.ItemGlyphRef
+
+	SegMoveTo = geometry.SegMoveTo
+	SegLineTo = geometry.SegLineTo
+	SegQuadTo = geometry.SegQuadTo
+	SegCubeTo = geometry.SegCubeTo
+	SegClose  = geometry.SegClose
 
 	RoleInk         = display.RoleInk
 	RoleError       = display.RoleError
