@@ -79,20 +79,74 @@ func (s *layoutState) constrainedFallback(base *display.Box) (*display.Box, erro
 	if err := s.checkLineOutputLimit(nil, base, 1); err != nil {
 		return nil, err
 	}
-	line := singleDisplayLine(base, s.request.MaxWidth)
-	if err := s.ctx.Err(); err != nil {
+	line, err := s.singleDisplayLine(base, s.request.MaxWidth)
+	if err != nil {
 		return nil, err
 	}
 	return s.assembleDisplayLines(base, []display.LineBox{{Box: line}})
 }
 
-func singleDisplayLine(base *display.Box, maxWidth float32) *display.Box {
-	line := base.Clone()
+func (s *layoutState) singleDisplayLine(base *display.Box, maxWidth float32) (*display.Box, error) {
+	if base == nil {
+		return nil, fmt.Errorf("%w: nil fallback box", ErrInvalidInput)
+	}
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
+	}
+	line := *base
+	line.Items = nil
+	line.Hits = nil
+	line.Breaks = nil
 	line.Alt = display.Alt{}
 	line.Lines = nil
+	if len(base.Items) > 0 {
+		line.Items = make([]display.Item, len(base.Items))
+		for i, item := range base.Items {
+			if i%64 == 0 {
+				if err := s.ctx.Err(); err != nil {
+					return nil, err
+				}
+			}
+			copied := item
+			if len(item.Path) > 0 {
+				copied.Path = make([]geometry.Segment, len(item.Path))
+				for j := range item.Path {
+					if j%256 == 0 {
+						if err := s.ctx.Err(); err != nil {
+							return nil, err
+						}
+					}
+					copied.Path[j] = item.Path[j]
+				}
+			}
+			line.Items[i] = copied
+		}
+	}
+	if len(base.Hits) > 0 {
+		line.Hits = make([]display.Hit, len(base.Hits))
+		for i := range base.Hits {
+			if i%64 == 0 {
+				if err := s.ctx.Err(); err != nil {
+					return nil, err
+				}
+			}
+			line.Hits[i] = base.Hits[i]
+		}
+	}
+	if len(base.Breaks) > 0 {
+		line.Breaks = make([]display.Break, len(base.Breaks))
+		for i := range base.Breaks {
+			if i%64 == 0 {
+				if err := s.ctx.Err(); err != nil {
+					return nil, err
+				}
+			}
+			line.Breaks[i] = base.Breaks[i]
+		}
+	}
 	line.Overflow = maxFloat(line.Overflow, line.Width-maxWidth)
 	line.Overflow = maxFloat(0, line.Overflow)
-	return line
+	return &line, nil
 }
 
 func (s *layoutState) displayLineBoundaries(root *Fragment) ([]lineBoundary, bool, error) {
@@ -403,7 +457,9 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 		lines[i].Baseline = baseline
 		parent.Lines[i] = lines[i]
 		parent.Width = maxFloat(parent.Width, lines[i].Box.Width)
-		parent.Italic = maxFloat(parent.Italic, lines[i].Box.Italic)
+		// Italic correction belongs to the final horizontal endpoint, which is
+		// the end of the last line for a vertically assembled display box.
+		parent.Italic = lines[i].Box.Italic
 
 		top, err := s.subHost(baseline, lines[i].Box.Ascent)
 		if err != nil {
@@ -447,7 +503,11 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 			}
 		}
 	}
-	parent.Overflow = displayItemsOverflow(parent.Items, parent.Width, parent.Ascent, parent.Descent)
+	overflow, err := s.displayItemsOverflow(parent.Items, parent.Width, parent.Ascent, parent.Descent)
+	if err != nil {
+		return nil, err
+	}
+	parent.Overflow = overflow
 	parent.Overflow = maxFloat(parent.Overflow, parent.Width-s.request.MaxWidth)
 	parent.Overflow = maxFloat(0, parent.Overflow)
 	if err := parent.Validate(); err != nil {
@@ -456,9 +516,14 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 	return parent, nil
 }
 
-func displayItemsOverflow(items []display.Item, width, ascent, descent float32) float32 {
+func (s *layoutState) displayItemsOverflow(items []display.Item, width, ascent, descent float32) (float32, error) {
 	var overflow float32
-	for _, item := range items {
+	for i, item := range items {
+		if i%256 == 0 {
+			if err := s.ctx.Err(); err != nil {
+				return 0, err
+			}
+		}
 		bound := item.Bound
 		left := maxFloat(0, -bound.X)
 		right := maxFloat(0, bound.X+bound.Width-width)
@@ -466,7 +531,7 @@ func displayItemsOverflow(items []display.Item, width, ascent, descent float32) 
 		bottom := maxFloat(0, bound.Y+bound.Height-descent)
 		overflow = maxFloat(overflow, maxFloat(maxFloat(left, right), maxFloat(top, bottom)))
 	}
-	return overflow
+	return overflow, nil
 }
 
 func (s *layoutState) translateItem(item display.Item, dy float32) (display.Item, error) {

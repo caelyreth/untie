@@ -25,13 +25,14 @@ func (b *Box) validate(allowLines bool) error {
 		return fmt.Errorf("%w: nil box", ErrInvalidBox)
 	}
 	for _, field := range []struct {
-		name  string
-		value float32
+		name        string
+		value       float32
+		nonnegative bool
 	}{
-		{"width", b.Width}, {"ascent", b.Ascent}, {"descent", b.Descent},
-		{"italic", b.Italic}, {"axis-height", b.AxisHeight}, {"overflow", b.Overflow},
+		{"width", b.Width, true}, {"ascent", b.Ascent, true}, {"descent", b.Descent, true},
+		{"italic", b.Italic, false}, {"axis-height", b.AxisHeight, true}, {"overflow", b.Overflow, true},
 	} {
-		if !finite(field.value) || field.value < 0 {
+		if !finite(field.value) || field.nonnegative && field.value < 0 {
 			return fmt.Errorf("%w: %s is %v", ErrInvalidBox, field.name, field.value)
 		}
 	}
@@ -65,6 +66,8 @@ func (b *Box) validate(allowLines bool) error {
 }
 
 func validateLines(box *Box) error {
+	itemCount := 0
+	hitCount := 0
 	for i, line := range box.Lines {
 		if !finite(line.Baseline) || line.Baseline < 0 {
 			return fmt.Errorf("line %d baseline is %v", i, line.Baseline)
@@ -91,6 +94,14 @@ func validateLines(box *Box) error {
 			bottom > box.Descent+lineTolerance(box.Descent) {
 			return fmt.Errorf("line %d extent [%v,%v] exceeds parent [%v,%v]", i, top, bottom, -box.Ascent, box.Descent)
 		}
+		itemCount += len(line.Box.Items)
+		hitCount += len(line.Box.Hits)
+	}
+	if len(box.Items) != itemCount {
+		return fmt.Errorf("parent item count %d, want line aggregate %d", len(box.Items), itemCount)
+	}
+	if len(box.Hits) != hitCount {
+		return fmt.Errorf("parent hit count %d, want line aggregate %d", len(box.Hits), hitCount)
 	}
 	return nil
 }
@@ -153,6 +164,9 @@ func validateItem(item Item) error {
 	if item.Kind > ItemGlyphRef {
 		return fmt.Errorf("unknown kind %d", item.Kind)
 	}
+	if err := validatePaint(item.Paint); err != nil {
+		return fmt.Errorf("paint: %v", err)
+	}
 	if err := validateRect(item.Bound); err != nil {
 		return fmt.Errorf("bound: %v", err)
 	}
@@ -189,6 +203,16 @@ func validateItem(item Item) error {
 		if !finite(item.At.X) || !finite(item.At.Y) || !finite(item.Em) || item.Em <= 0 {
 			return errors.New("glyph ref has invalid placement")
 		}
+	}
+	return nil
+}
+
+func validatePaint(paint Paint) error {
+	if paint.Role > RolePlaceholder {
+		return fmt.Errorf("unknown role %d", paint.Role)
+	}
+	if paint.HasExplicit && paint.Role != RoleInk {
+		return fmt.Errorf("explicit color has non-ink role %d", paint.Role)
 	}
 	return nil
 }

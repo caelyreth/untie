@@ -235,11 +235,15 @@ is not treated as the parent value.
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.
 
-`display.Box.Clone` owns copied path slices. `display.Validate` checks finite
-values, nonnegative dimensions, known item kinds, valid path arity, and glyph
-reference placement. It also validates hit ranges/areas and break positions.
-`MarshalCanonical` exists for deterministic tests and diagnostics; it is not yet
-a stable cross-language protocol.
+`display.Box.Clone` owns copied path slices. `display.Box.Italic` preserves the
+signed OpenType MATH italic correction; it is not a nonnegative dimension.
+`display.Validate` checks finite values, nonnegative dimensions other than the
+italic correction, known item kinds and paint roles, valid path arity, and glyph
+reference placement. Explicit colors must use the ink role. For wrapped boxes,
+parent items and hits must be exact aggregates of their line boxes. `Validate`
+also checks hit ranges/areas and break positions. `MarshalCanonical` exists for
+deterministic tests and diagnostics; it is not yet a stable cross-language
+protocol.
 
 ## Public Orchestration
 

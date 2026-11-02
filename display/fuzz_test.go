@@ -12,6 +12,7 @@ import (
 func FuzzBoxOperations(f *testing.F) {
 	f.Add([]byte{})
 	f.Add([]byte{1, 2, 3, 4, 5, 6, 7, 8})
+	f.Add([]byte{0, 0, 0, 0x80})
 	f.Add(bytes.Repeat([]byte{0xff}, 64))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		box := randomBox(data)
@@ -68,7 +69,7 @@ func randomBox(data []byte) *Box {
 	}
 	box := &Box{
 		Width: fuzzAbsFloat(number()), Ascent: fuzzAbsFloat(number()), Descent: fuzzAbsFloat(number()),
-		Italic: fuzzAbsFloat(number()), AxisHeight: fuzzAbsFloat(number()), Overflow: fuzzAbsFloat(number()),
+		Italic: number(), AxisHeight: fuzzAbsFloat(number()), Overflow: fuzzAbsFloat(number()),
 		Alt: Alt{Speech: string(data), Text: string(data)},
 	}
 	itemCount := int(next() % 8)
