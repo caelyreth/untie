@@ -117,3 +117,16 @@ The public API and IR are still pre-1.0 and may change while the renderer's
 vertical slice is completed. Unsupported behavior must produce a visible
 diagnostic; silent approximation is not an accepted fallback.
 
+## License
+
+Copyright 2026 Yu (Caelyreth).
+
+Untie is dual-licensed under either:
+
+- the [MIT License](LICENSE-MIT);
+- the [Apache License, Version 2.0](LICENSE-APACHE).
+
+You may choose either license at your option. The SPDX expression for original
+project material is `MIT OR Apache-2.0`. Third-party material remains under
+its own license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+

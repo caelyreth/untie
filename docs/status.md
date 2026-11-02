@@ -244,7 +244,9 @@ The following are genuine gaps, not hidden behavior:
   missing-glyph error; it is not replaced by silent tofu. Matched tracked
   issues fail closed by default and require `-allow-known-issues` diagnostic
   mode for a zero exit.
-- There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
+- Untie is dual-licensed under MIT or Apache-2.0, at the recipient's option.
+  Third-party material remains under its own license; see
+  `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary
 

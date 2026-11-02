@@ -1,9 +1,9 @@
 # Third-Party Notices
 
-Untie does not currently declare a project-wide license. This file does not
-grant a license for Untie's original source, documentation, generated code, or
-distribution. It records third-party material and points to the complete
-licenses and notices that are tracked with that material.
+Untie's original source and documentation are dual-licensed under the MIT
+License or Apache License 2.0, at your option. See `LICENSE-MIT`,
+`LICENSE-APACHE`, and `NOTICE`. Those licenses do not replace or relicense the
+third-party material recorded here.
 
 Third-party material remains under its own license. Do not remove or rewrite a
 third-party notice when redistributing the repository or a binary that contains
@@ -163,28 +163,21 @@ review them with the dependency version.
 
 ## Owner Confirmation Required
 
-The following facts require project-owner or legal review before public
-distribution. This document does not resolve them:
+The following release-review items do not change the dual-license grant stated
+in `README.md`. This document does not resolve them:
 
-1. Select a project-wide license and copyright holder, or explicitly decide to
-   keep the original project unlicensed.
-2. Decide the contribution licensing model, such as a Developer Certificate of
+1. Decide the contribution licensing model, such as a Developer Certificate of
    Origin, CLA, or another written grant.
-3. Confirm whether the Apache-2.0 NOTICE obligations are satisfied by the two
+2. Confirm whether the Apache-2.0 NOTICE obligations are satisfied by the two
    tracked copies covering generated metadata and Typst-derived fixture output.
-4. Track complete codex and unicode-math-class license texts, or document why
+3. Track complete codex and unicode-math-class license texts, or document why
    their current provenance notices are sufficient.
-5. Confirm GUST/LPPL obligations for distributing the exact NewCM font and its
+4. Confirm GUST/LPPL obligations for distributing the exact NewCM font and its
    manifest. If a modified, subset, or embedded derived font is later shipped,
    re-review the GUST naming and source-offer requirements.
-6. Confirm the `typst-assets` revision and asset licensing against the upstream
+5. Confirm the `typst-assets` revision and asset licensing against the upstream
    repository, because that checkout is not available locally.
-7. Confirm whether hand-transcribed KaTeX cases and normalized Typlet selections
+6. Confirm whether hand-transcribed KaTeX cases and normalized Typlet selections
    need any additional copyright or modification notice.
-8. Confirm whether any RaTeX test input contains third-party TeX material that
+7. Confirm whether any RaTeX test input contains third-party TeX material that
    requires a separate attribution.
-9. Decide whether documentation contributions and examples are under the same
-   license as source, once a project license is selected.
-
-Until those decisions are recorded, do not describe Untie as licensed under MIT,
-Apache-2.0, GPL, or any other project-wide license.
