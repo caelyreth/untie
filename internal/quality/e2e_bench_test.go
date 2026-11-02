@@ -65,6 +65,25 @@ func BenchmarkEndToEndDailyCorpus(b *testing.B) {
 		}, nil)
 	})
 
+	accessibleCases := make([]corpusBenchCase, len(cases))
+	copy(accessibleCases, cases)
+	for i := range accessibleCases {
+		accessibleCases[i].style.GenerateAlt = true
+	}
+	b.Run("e2e/caller-engine-accessible", func(b *testing.B) {
+		engines := make(map[untie.Limits]*untie.Engine, len(uniqueLimits))
+		for limits := range uniqueLimits {
+			prepared, err := untie.NewEngine(fonts, limits)
+			if err != nil {
+				b.Fatal(err)
+			}
+			engines[limits] = prepared
+		}
+		runCorpusBenchmark(b, accessibleCases, sourceBytes, len(uniqueLimits), func(expr *untie.Expr, limits untie.Limits, style untie.Style) (*untie.Box, error) {
+			return engines[limits].Layout(expr, style)
+		}, nil)
+	})
+
 	b.Run("e2e/package-cache-warm", func(b *testing.B) {
 		untie.ClearLayoutEngineCache()
 		b.Cleanup(untie.ClearLayoutEngineCache)

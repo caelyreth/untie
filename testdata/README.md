@@ -53,7 +53,8 @@ CGO_ENABLED=0 go test ./...
 ```
 
 The daily corpus also has a whole-pipeline benchmark comparing caller-owned,
-warm package-cache, cold package-cache, and no-cache engine strategies:
+accessible, warm package-cache, cold package-cache, and no-cache engine
+strategies:
 
 ```sh
 CGO_ENABLED=0 go test ./internal/quality \

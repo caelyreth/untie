@@ -45,6 +45,8 @@ The benchmark compares:
 
 - `parse-only`: parse and validate, without layout;
 - `e2e/caller-engine`: engines prepared outside the timer and reused;
+- `e2e/caller-engine-accessible`: the same geometry path with
+  `Style.GenerateAlt` enabled;
 - `e2e/package-cache-warm`: the bounded package cache pre-filled outside the
   timer;
 - `e2e/package-cache-cold`: package cache cleared at the start of each corpus
