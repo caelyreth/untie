@@ -97,7 +97,11 @@ func (s *layoutState) layoutBox(node *ir.Box, env environment, depth int) (*Frag
 			}
 		}
 	}
-	if err := fragment.pushGroup(padding[3], 0, body); err != nil {
+	bodyY, err := baselineAtTop(padding[0], body.Ascent, ascent)
+	if err != nil {
+		return nil, err
+	}
+	if err := fragment.pushGroup(padding[3], bodyY, body); err != nil {
 		return nil, err
 	}
 	return withClass(fragment, node.Class), nil

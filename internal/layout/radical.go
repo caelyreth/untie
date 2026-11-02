@@ -145,7 +145,11 @@ func (s *layoutState) layoutRadical(node *ir.Radical, env environment, depth int
 	fragment.BaseDescent = descent
 	fragment.TextLike = false
 	if index != nil {
-		indexY, err := sub(ascent, index.Ascent, indexShiftUp)
+		indexTop, err := sub(ascent, index.Ascent, indexShiftUp)
+		if err != nil {
+			return nil, err
+		}
+		indexY, err := baselineAtTop(indexTop, index.Ascent, ascent)
 		if err != nil {
 			return nil, err
 		}
@@ -153,7 +157,7 @@ func (s *layoutState) layoutRadical(node *ir.Radical, env environment, depth int
 			return nil, err
 		}
 	}
-	signY, err := sub(signTop, ascent)
+	signY, err := baselineAtTop(signTop, sign.Ascent, ascent)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +165,7 @@ func (s *layoutState) layoutRadical(node *ir.Radical, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	radicandY, err := sub(radicandTop, ascent)
+	radicandY, err := baselineAtTop(radicandTop, radicand.Ascent, ascent)
 	if err != nil {
 		return nil, err
 	}
