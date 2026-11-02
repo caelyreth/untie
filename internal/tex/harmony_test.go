@@ -37,6 +37,38 @@ func TestCompoundNodesUseNeutralClasses(t *testing.T) {
 	}
 }
 
+func TestImplicitGroupsDoNotBecomeInnerAtoms(t *testing.T) {
+	t.Parallel()
+
+	scripts := requireKind[*ir.Scripts](t, rowItems(t, parseTest(t, `x^{2}`, Options{}).Root)[0])
+	group := requireKind[*ir.Row](t, scripts.Top)
+	if group.Class != ir.ClassNormal {
+		t.Errorf("script group class = %v, want normal", group.Class)
+	}
+
+	radical := requireKind[*ir.Radical](t, rowItems(t, parseTest(t, `\sqrt{x+1}`, Options{}).Root)[0])
+	radicand := requireKind[*ir.Row](t, radical.Radicand)
+	if radicand.Class != ir.ClassNormal {
+		t.Errorf("radicand group class = %v, want normal", radicand.Class)
+	}
+}
+
+func TestStyleDeclarationsRemainOnTheWrapper(t *testing.T) {
+	t.Parallel()
+
+	root := parseTest(t, `\displaystyle\sum_{i=1}^n`, Options{}).Root
+	style := requireKind[*ir.Style](t, rowItems(t, root)[0])
+	if !style.SetSize || style.NewSize != ir.SizeDisplay {
+		t.Fatalf("style wrapper = %#v, want display size", style)
+	}
+	body := rowItems(t, style.Body)
+	scripts := requireKind[*ir.Scripts](t, body[0])
+	if scripts.Size != ir.SizeInherit || scripts.Bottom.NodeBase().Size != ir.SizeInherit {
+		t.Fatalf("style declaration leaked into descendants: scripts=%v bottom=%v",
+			scripts.Size, scripts.Bottom.NodeBase().Size)
+	}
+}
+
 func TestFenceRolesAndMatrixSemantics(t *testing.T) {
 	t.Parallel()
 
@@ -66,8 +98,11 @@ func TestFenceRolesAndMatrixSemantics(t *testing.T) {
 		`\left(\begin{smallmatrix}a&b\\c&d\end{smallmatrix}\right)`,
 		Options{},
 	).Root)[0])
-	if small.Size != ir.SizeScript || small.Open.NodeBase().Size != ir.SizeScript || small.Close.NodeBase().Size != ir.SizeScript {
-		t.Errorf("smallmatrix fence sizes = %v/%v/%v, want script", small.Size, small.Open.NodeBase().Size, small.Close.NodeBase().Size)
+	if small.Size != ir.SizeScript ||
+		small.Open.NodeBase().Size != ir.SizeInherit ||
+		small.Close.NodeBase().Size != ir.SizeInherit {
+		t.Errorf("smallmatrix fence sizes = %v/%v/%v, want wrapper script with inherited delimiters",
+			small.Size, small.Open.NodeBase().Size, small.Close.NodeBase().Size)
 	}
 }
 

@@ -7,8 +7,6 @@ import (
 
 type lowerContext struct {
 	variant ir.Variant
-	size    ir.MathSize
-	cramped bool
 }
 
 var defaultFractionPadding = ir.RawLength(ir.LengthEm, 100_000)
@@ -55,7 +53,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			}
 		}
 		out := ir.NewRow(n.span, items...)
-		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astGlyphNode:
 		out := ir.NewGlyph(n.span, n.text)
@@ -65,7 +63,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		out.Variant = variant
 		out.Limits = n.limits
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, n.class)
 		return out
 	case *astTextNode:
@@ -74,13 +71,11 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if out.Variant == ir.VariantAuto {
 			out.Variant = ctx.variant
 		}
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astOperatorNode:
 		out := ir.NewOperator(n.span, n.text)
 		out.Limits = n.limits
-		out.Size = ctx.size
 		out.Variant = n.variant
 		if out.Variant == ir.VariantAuto {
 			out.Variant = ir.VariantNormal
@@ -89,7 +84,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		return out
 	case *astSpaceNode:
 		out := ir.NewSpace(n.span, n.kind, n.amount)
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassSpace)
 		return out
 	case *astFractionNode:
@@ -111,9 +105,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			out.Style = ir.FractionNoBar
 		}
 		out.Padding = defaultFractionPadding
-		if n.size == ir.SizeInherit {
-			out.Size = ctx.size
-		} else {
+		if n.size != ir.SizeInherit {
 			out.Size = n.size
 		}
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
@@ -134,7 +126,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			return l.placeholder(n.span, "missing radicand")
 		}
 		out := ir.NewRadical(n.span, radicand, index)
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astScriptsNode:
@@ -185,26 +176,21 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
 		}
-		out.Size = ctx.size
 		out.Limits = n.limits
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		out.Class = base.NodeBase().Class
 		base.NodeBase().Limits = n.limits
 		return out
 	case *astFencedNode:
-		fenceCtx := ctx
-		if n.size != ir.SizeInherit {
-			fenceCtx.size = n.size
-		}
 		var open, close ir.Node
 		if n.open != nil {
-			open = l.lower(n.open, fenceCtx)
+			open = l.lower(n.open, ctx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
 		}
 		if n.close != nil {
-			close = l.lower(n.close, fenceCtx)
+			close = l.lower(n.close, ctx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
@@ -228,7 +214,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		body := make([]ir.Node, 0, len(n.body))
 		for _, item := range n.body {
-			child := l.lower(item, fenceCtx)
+			child := l.lower(item, ctx)
 			if l.exhausted {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
@@ -246,9 +232,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Open = open
 		out.Close = close
 		out.Balanced = n.balanced
-		if n.size == ir.SizeInherit {
-			out.Size = ctx.size
-		} else {
+		if n.size != ir.SizeInherit {
 			out.Size = n.size
 		}
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
@@ -269,7 +253,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Stretchy = n.stretchy
 		out.Dotless = n.dotless
 		out.ExactFrameWidth = n.exactWidth
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astLineNode:
@@ -281,7 +264,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			return l.placeholder(n.span, "missing line body")
 		}
 		out := ir.NewLine(n.span, body, n.position)
-		out.Size = ctx.size
 		out.Thickness = defaultStrokeThickness
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
@@ -296,7 +278,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out := ir.NewCancel(n.span, body)
 		out.Cross = n.cross
 		out.Inverted = n.inverted
-		out.Size = ctx.size
 		out.Thickness = defaultStrokeThickness
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
@@ -309,7 +290,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			return l.placeholder(n.span, "missing color body")
 		}
 		out := ir.NewColor(n.span, body, n.paint)
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astBoxNode:
@@ -327,7 +307,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.HasBorder = n.hasBorder
 		out.BorderWidth = n.borderSize
 		out.Radius = n.radius
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astPhantomNode:
@@ -342,7 +321,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Width = n.width
 		out.Height = n.height
 		out.Depth = n.depth
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astClassNode:
@@ -366,16 +344,10 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.Padding[3] = n.width
 		out.Fill = ir.Paint{Role: ir.PaintInk}
 		out.HasFill = true
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astStyleNode:
-		childCtx := ctx
-		if n.size != ir.SizeInherit {
-			childCtx.size = n.size
-		}
-		childCtx.cramped = n.cramped
-		body := l.lower(n.body, childCtx)
+		body := l.lower(n.body, ctx)
 		if l.exhausted {
 			return l.placeholder(n.span, "IR node limit exceeded")
 		}
@@ -417,9 +389,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.ColumnGap = n.columnGap
 		out.Horizontal = append([]ir.TableLine(nil), n.horizontal...)
 		out.Vertical = append([]ir.TableLine(nil), n.vertical...)
-		if n.size == ir.SizeInherit {
-			out.Size = ctx.size
-		} else {
+		if n.size != ir.SizeInherit {
 			out.Size = n.size
 		}
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
@@ -445,7 +415,6 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		out := ir.NewMultiline(n.span, rows...)
 		out.Centered = n.centered
-		out.Size = ctx.size
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astErrorNode:
@@ -510,8 +479,4 @@ func (l *lowerer) applyBase(base *ir.Base, ast *astBase, ctx lowerContext, class
 	if base.Variant == ir.VariantAuto {
 		base.Variant = ctx.variant
 	}
-	if base.Size == ir.SizeInherit {
-		base.Size = ctx.size
-	}
-	base.Cramped = ctx.cramped
 }
