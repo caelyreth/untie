@@ -446,9 +446,10 @@ func validateHits(root ir.Node, testCase Case, box *untie.Box) string {
 			continue
 		}
 	}
-	for _, span := range meaningfulLeafSpans(root) {
-		if !hitOverlaps(box.Hits, span) {
-			return fmt.Sprintf("meaningful source range %v has no hit coverage", span)
+	for _, leaf := range meaningfulLeaves(root) {
+		if !leafHitCovered(box.Hits, leaf) {
+			return fmt.Sprintf("meaningful source range %v has no permitted leaf hit coverage",
+				leaf.span)
 		}
 	}
 	for i, expected := range testCase.Expect.Hits {
@@ -471,38 +472,76 @@ func validateHits(root ir.Node, testCase Case, box *untie.Box) string {
 	return ""
 }
 
-func meaningfulLeafSpans(root ir.Node) []source.Range {
-	var spans []source.Range
+type meaningfulLeaf struct {
+	span  source.Range
+	kinds hitKindMask
+}
+
+type hitKindMask uint16
+
+const leafHitKinds = 1<<untie.HitAtom |
+	1<<untie.HitScript |
+	1<<untie.HitFractionNumerator |
+	1<<untie.HitFractionDenominator |
+	1<<untie.HitRadical |
+	1<<untie.HitTableCell
+
+func meaningfulLeaves(root ir.Node) []meaningfulLeaf {
+	var leaves []meaningfulLeaf
 	ir.Walk(root, func(node ir.Node) bool {
+		if _, ok := node.(*ir.Phantom); ok {
+			return false
+		}
 		var text string
+		kinds := hitKindMask(leafHitKinds)
 		switch value := node.(type) {
 		case *ir.Glyph:
 			text = value.Text
+			if delimiterClass(value.Class) {
+				kinds |= 1 << untie.HitFence
+			}
 		case *ir.Operator:
 			text = value.Text
 		case *ir.Text:
 			text = value.Text
 		case *ir.ErrorNode:
 			text = value.Text
+		case *ir.SizedDelimiter:
+			text = value.Text
+			if delimiterClass(value.Class) {
+				kinds |= 1 << untie.HitFence
+			}
 		default:
 			return true
 		}
 		span := node.NodeBase().Span
 		if strings.TrimSpace(text) != "" && span.IsValid() && !span.IsDetached() && span.Len() > 0 {
-			spans = append(spans, span)
+			leaves = append(leaves, meaningfulLeaf{span: span, kinds: kinds})
 		}
 		return true
 	})
-	return spans
+	return leaves
 }
 
-func hitOverlaps(hits []untie.Hit, span source.Range) bool {
+func leafHitCovered(hits []untie.Hit, leaf meaningfulLeaf) bool {
 	for _, hit := range hits {
-		if hit.Source.Start < span.End && hit.Source.End > span.Start {
+		if hit.Source.Len() <= 0 {
+			continue
+		}
+		if hit.Kind == untie.HitFence &&
+			(hit.Source.Start < leaf.span.Start || hit.Source.End > leaf.span.End) {
+			continue
+		}
+		if hit.Source.Start < leaf.span.End && hit.Source.End > leaf.span.Start &&
+			leaf.kinds&(1<<hit.Kind) != 0 {
 			return true
 		}
 	}
 	return false
+}
+
+func delimiterClass(class ir.MathClass) bool {
+	return class == ir.ClassOpening || class == ir.ClassClosing || class == ir.ClassFence
 }
 
 func sourceOccurrence(src, text string, occurrence int) (int, error) {

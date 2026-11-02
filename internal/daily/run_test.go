@@ -270,6 +270,36 @@ func TestValidateHitsRejectsVisibleZeroRanges(t *testing.T) {
 	}
 }
 
+func TestAncestorRowHitDoesNotCoverMeaningfulLeaves(t *testing.T) {
+	t.Parallel()
+
+	x := ir.NewGlyph(source.NewRange(0, 1), "x")
+	y := ir.NewGlyph(source.NewRange(1, 2), "y")
+	root := ir.NewRow(source.NewRange(0, 2), x, y)
+	box := &untie.Box{Hits: []untie.Hit{{
+		Source: source.NewRange(0, 2), Kind: untie.HitRow,
+	}}}
+	problem := validateHits(root, Case{Source: "xy"}, box)
+	if !strings.Contains(problem, "no permitted leaf hit coverage") {
+		t.Fatalf("validateHits() = %q", problem)
+	}
+}
+
+func TestAncestorFenceHitDoesNotCoverDelimiterLeaf(t *testing.T) {
+	t.Parallel()
+
+	open := ir.NewGlyph(source.NewRange(0, 1), "(")
+	open.Class = ir.ClassOpening
+	root := ir.NewRow(source.NewRange(0, 2), open)
+	box := &untie.Box{Hits: []untie.Hit{{
+		Source: source.NewRange(0, 2), Kind: untie.HitFence,
+	}}}
+	problem := validateHits(root, Case{Source: "(x"}, box)
+	if !strings.Contains(problem, "no permitted leaf hit coverage") {
+		t.Fatalf("validateHits() = %q", problem)
+	}
+}
+
 func selectCases(t testing.TB, cases []Case, ids ...string) []Case {
 	t.Helper()
 	selected := make([]Case, 0, len(ids))
