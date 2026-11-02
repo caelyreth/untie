@@ -217,6 +217,65 @@ func TestSemanticNormalizationPreservesSemanticRoles(t *testing.T) {
 	}
 }
 
+func TestSemanticNormalizationIgnoresUnobservableSingleColumnGap(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	makeTable := func(gap ir.Length) *ir.Table {
+		table := ir.NewTable(span, ir.TableRow{Cells: []ir.Node{
+			ir.NewGlyph(span, "x"),
+		}})
+		table.Role = ir.TableRoleVector
+		table.ColumnGap = gap
+		return table
+	}
+	withGap, err := normalizeFormula(&ir.Formula{Root: makeTable(ir.RawLength(ir.LengthEm, 500_000))}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutGap, err := normalizeFormula(&ir.Formula{Root: makeTable(ir.Length{})}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareSemantic(withGap, withoutGap); difference != nil {
+		t.Fatalf("single-column gap changed semantics: %v", difference)
+	}
+
+	twoColumns := ir.NewTable(span, ir.TableRow{Cells: []ir.Node{
+		ir.NewGlyph(span, "x"),
+		ir.NewGlyph(span, "y"),
+	}})
+	twoColumnsWithGap := *twoColumns
+	twoColumnsWithGap.ColumnGap = ir.RawLength(ir.LengthEm, 500_000)
+	left, err := normalizeFormula(&ir.Formula{Root: twoColumns}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := normalizeFormula(&ir.Formula{Root: &twoColumnsWithGap}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareSemantic(left, right); difference == nil {
+		t.Fatal("multi-column gap difference was normalized away")
+	}
+
+	matrix := makeTable(ir.Length{})
+	matrix.Role = ir.TableRoleMatrix
+	vector := makeTable(ir.Length{})
+	vector.Role = ir.TableRoleVector
+	matrixValue, err := normalizeFormula(&ir.Formula{Root: matrix}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vectorValue, err := normalizeFormula(&ir.Formula{Root: vector}, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareSemantic(matrixValue, vectorValue); difference != nil {
+		t.Fatalf("one-column matrix/vector roles are not equivalent: %v", difference)
+	}
+}
+
 func TestSemanticNormalizationPreservesLetterVariants(t *testing.T) {
 	italic := requireValidRoot(t, untie.ParseTeX(`\mathit{x}`, ir.Inline, untie.ParseOptions{}))
 	upright := requireValidRoot(t, untie.ParseTeX(`\mathrm{x}`, ir.Inline, untie.ParseOptions{}))

@@ -3,8 +3,8 @@
   "corpus": "typlet-paired",
   "toleranceDIP": 0.002,
   "total": 81,
-  "pass": 21,
-  "semanticIRMismatch": 56,
+  "pass": 22,
+  "semanticIRMismatch": 55,
   "layoutMismatch": 0,
   "fixtureMismatch": 2,
   "documentedPairDifference": 2,
@@ -222,9 +222,7 @@
       "id": "vector",
       "index": 30,
       "category": "matrices",
-      "kind": "semantic-ir-mismatch",
-      "detail": "root.body[0].column-gap: expected [\"em\",500000], got null",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "kind": "pass"
     },
     {
       "id": "array-rules",

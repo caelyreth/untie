@@ -256,10 +256,19 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		}
 		baseValue["kind"] = "table"
 		baseValue["rows"] = rows
-		baseValue["role"] = tableRoleName(node.Role)
+		columns := tableColumnCount(node)
+		role := tableRoleName(node.Role)
+		if columns == 1 && (node.Role == ir.TableRoleMatrix || node.Role == ir.TableRoleVector) {
+			role = "vector"
+		}
+		baseValue["role"] = role
 		baseValue["columns"] = normalizedColumns(node.Columns)
 		baseValue["row-gap"] = normalizedLength(node.RowGap)
-		baseValue["column-gap"] = normalizedLength(node.ColumnGap)
+		if columns > 1 {
+			baseValue["column-gap"] = normalizedLength(node.ColumnGap)
+		} else {
+			baseValue["column-gap"] = nil
+		}
 		baseValue["horizontal"] = normalizedTableLines(node.Horizontal)
 		baseValue["vertical"] = normalizedTableLines(node.Vertical)
 		return baseValue, nil
@@ -603,6 +612,14 @@ func normalizedColumns(columns []ir.ColumnAlign) []string {
 		out[i] = columnName(column)
 	}
 	return out
+}
+
+func tableColumnCount(table *ir.Table) int {
+	columns := len(table.Columns)
+	for _, row := range table.Rows {
+		columns = max(columns, len(row.Cells))
+	}
+	return columns
 }
 
 func normalizedTableLines(lines []ir.TableLine) []any {
