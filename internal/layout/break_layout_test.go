@@ -132,8 +132,8 @@ func TestExplicitBreakIncludesFollowingSpaceAndWinsTies(t *testing.T) {
 	if len(box.Breaks) != 1 {
 		t.Fatalf("Breaks = %+v, want one", box.Breaks)
 	}
-	if got := box.Breaks[0]; got.Kind != display.BreakExplicit || got.Penalty != 0 {
-		t.Fatalf("break = %+v, want explicit with neutral penalty", got)
+	if got := box.Breaks[0]; got.Kind != display.BreakExplicit || got.Penalty != 123 {
+		t.Fatalf("break = %+v, want explicit with source penalty", got)
 	}
 	if want := box.Items[1].At.X; !closeHost(box.Breaks[0].X, want) {
 		t.Fatalf("explicit break X = %v, want %v after following space", box.Breaks[0].X, want)
@@ -149,8 +149,8 @@ func TestExplicitBreakIncludesFollowingSpaceAndWinsTies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Layout(tied) error = %v", err)
 	}
-	if len(box.Breaks) != 1 || box.Breaks[0].Kind != display.BreakExplicit {
-		t.Fatalf("tied Breaks = %+v, want one explicit opportunity", box.Breaks)
+	if len(box.Breaks) != 1 || box.Breaks[0].Kind != display.BreakExplicit || box.Breaks[0].Penalty != 123 {
+		t.Fatalf("tied Breaks = %+v, want one explicit opportunity with source penalty", box.Breaks)
 	}
 
 	semantic := ir.NewRow(source.NewRange(0, 3),

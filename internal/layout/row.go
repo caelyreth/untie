@@ -133,7 +133,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			if err := flushSpace(); err != nil {
 				return nil, err
 			}
-			kind, penalty := neutralBreak(breakNode.Break)
+			kind, penalty := neutralBreak(breakNode.Break, breakNode.Penalty)
 			pending.offer(kind, penalty)
 			continue
 		}

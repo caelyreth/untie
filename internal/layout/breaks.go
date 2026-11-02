@@ -47,14 +47,14 @@ func breakPriority(kind display.BreakKind) int {
 	}
 }
 
-func neutralBreak(kind ir.BreakKind) (display.BreakKind, int) {
+func neutralBreak(kind ir.BreakKind, penalty int) (display.BreakKind, int) {
 	switch kind {
 	case ir.BreakBinary:
-		return display.BreakBinary, breakPenaltyBinary
+		return display.BreakBinary, penalty
 	case ir.BreakRelation:
-		return display.BreakRelation, breakPenaltyRelation
+		return display.BreakRelation, penalty
 	default:
-		return display.BreakExplicit, breakPenaltyExplicit
+		return display.BreakExplicit, penalty
 	}
 }
 
