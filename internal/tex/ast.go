@@ -17,6 +17,7 @@ const (
 	astRadical
 	astScripts
 	astFenced
+	astSizedDelimiter
 	astAccent
 	astLine
 	astCancel
@@ -119,6 +120,13 @@ type astFencedNode struct {
 	body     []astNode
 	balanced bool
 	size     ir.MathSize
+}
+
+type astSizedDelimiterNode struct {
+	astBase
+	text  string
+	class ir.MathClass
+	size  ir.DelimiterSize
 }
 
 type astAccentNode struct {

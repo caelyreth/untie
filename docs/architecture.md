@@ -115,9 +115,9 @@ known UI libraries. Rules not covered by that test remain review-enforced.
 `ir.Node` is a sealed interface with one struct per node family. The sealed
 interface prevents hosts from inventing nodes that layout cannot validate.
 Current node families include rows, glyphs, text, operators, spaces, fractions,
-radicals, scripts, fences, accents, lines, cancel, tables, multiline groups,
-styles, colors, boxes, phantoms, errors, placeholders, breaks, and alignment
-markers.
+radicals, scripts, paired fences, standalone explicitly sized delimiters,
+accents, lines, cancel, tables, multiline groups, styles, colors, boxes,
+phantoms, errors, placeholders, breaks, and alignment markers.
 
 `ir.Base` carries source metadata and semantic state needed by layout:
 
@@ -135,6 +135,16 @@ Neutral nodes also preserve source semantics that layout must not infer:
 fraction/table/script/cancel roles, source accent stretch intent, and natural
 accent width fitting. These fields are compared by crosscheck; layout may
 consume them only through neutral rules, never dialect checks.
+
+An explicitly sized delimiter is a leaf, not metadata on `Fenced` and not an
+ordinary delimiter atom. It retains its delimiter text, opening/closing/
+relation/ordinary class, source evidence, and one of four neutral size tiers.
+Layout renders the leaf in text style so it remains fixed inside scripts, and
+targets the KaTeX-derived maximum heights 1.2em, 1.8em, 2.4em, and 3.0em
+through the existing vertical stretch port. Typst's non-default
+`lr(size: ...)` values are relative or absolute and are intentionally not folded
+into these tiers; the Typst frontend retains an explicit bounded unsupported
+diagnostic for them.
 
 `ir` deliberately does not contain glyph IDs, font advances, outline paths,
 pixel sizes, or dialect AST types. Those values either belong to source

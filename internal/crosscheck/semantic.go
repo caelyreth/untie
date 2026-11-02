@@ -195,6 +195,11 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["body"] = body
 		baseValue["balanced"] = node.Balanced
 		return baseValue, nil
+	case *ir.SizedDelimiter:
+		baseValue["kind"] = "sized-delimiter"
+		baseValue["text"] = node.Text
+		baseValue["delimiter-size"] = int(node.Size)
+		return baseValue, nil
 	case *ir.Accent:
 		body, err := normalizeNode(node.Body, childMode)
 		if err != nil {

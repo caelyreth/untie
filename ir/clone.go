@@ -95,6 +95,9 @@ func (s *cloneState) cloneNode(n Node, depth int) (Node, error) {
 	case *Glyph:
 		out := *n
 		return &out, nil
+	case *SizedDelimiter:
+		out := *n
+		return &out, nil
 	case *Text:
 		out := *n
 		return &out, nil

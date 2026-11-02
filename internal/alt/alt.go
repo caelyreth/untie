@@ -147,6 +147,12 @@ func (r *renderer) render(node ir.Node, env renderEnv, depth int) (piece, error)
 		out, err = r.scripts(n, env, depth)
 	case *ir.Fenced:
 		out, err = r.fenced(n, env, depth)
+	case *ir.SizedDelimiter:
+		if n.Text == "." {
+			out = piece{atomic: true}
+		} else {
+			out = r.leaf(n.Text, glyphSpeech(n.Text), n.Variant)
+		}
 	case *ir.Accent:
 		out, err = r.accent(n, env, depth)
 	case *ir.Line:
@@ -1387,6 +1393,8 @@ func nodeKindName(kind ir.NodeKind) string {
 		return "scripts"
 	case ir.KindFenced:
 		return "fenced"
+	case ir.KindSizedDelimiter:
+		return "sized-delimiter"
 	case ir.KindAccent:
 		return "accent"
 	case ir.KindLine:

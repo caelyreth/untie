@@ -268,6 +268,10 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		}
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
 		return out
+	case *astSizedDelimiterNode:
+		out := ir.NewSizedDelimiter(n.span, n.text, n.size)
+		l.applyBase(&out.Base, &n.astBase, ctx, n.class)
+		return out
 	case *astAccentNode:
 		body := l.lower(n.body, ctx)
 		if l.exhausted {

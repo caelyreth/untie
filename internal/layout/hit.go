@@ -75,6 +75,8 @@ func nodeHitKind(node ir.Node) (display.HitKind, bool) {
 		return display.HitRadical, true
 	case *ir.Fenced:
 		return display.HitFence, true
+	case *ir.SizedDelimiter:
+		return display.HitFence, true
 	case *ir.Style, *ir.Color, *ir.Accent, *ir.Line, *ir.Cancel, *ir.Box, *ir.Phantom:
 		return display.HitGroup, true
 	case *ir.Table:

@@ -105,6 +105,83 @@ func TestDisplayOnlyLimitsAndNaturalFitContract(t *testing.T) {
 	}
 }
 
+func TestSizedDelimiterContract(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 7)
+	for size := DelimiterSize1; size <= DelimiterSize4; size++ {
+		size := size
+		t.Run(KindName(KindSizedDelimiter), func(t *testing.T) {
+			t.Parallel()
+			node := NewSizedDelimiter(span, "(", size)
+			node.Class = ClassOpening
+			if err := Validate(&Formula{Root: node}, source.Limits{}); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+			encoded, err := MarshalCanonical(&Formula{Root: node})
+			if err != nil {
+				t.Fatalf("MarshalCanonical() error = %v", err)
+			}
+			for _, want := range []string{
+				`"kind":"sized-delimiter"`,
+				`"delimiter-size":` + string(rune('0'+size)),
+				`"text":"("`,
+			} {
+				if !strings.Contains(string(encoded), want) {
+					t.Fatalf("canonical node = %s, want %s", encoded, want)
+				}
+			}
+			clone, err := CloneFormula(&Formula{Root: node})
+			if err != nil {
+				t.Fatalf("CloneFormula() error = %v", err)
+			}
+			cloned := clone.Root.(*SizedDelimiter)
+			if cloned == node || cloned.Text != node.Text || cloned.Size != node.Size ||
+				cloned.Span != node.Span || cloned.Origin != node.Origin {
+				t.Fatalf("clone = %#v, want deep copy of %#v", cloned, node)
+			}
+		})
+	}
+
+	tests := map[string]*SizedDelimiter{
+		"empty text": {
+			Base: NewBase(KindSizedDelimiter, span),
+			Size: DelimiterSize1,
+		},
+		"multi-rune text": {
+			Base: NewBase(KindSizedDelimiter, span),
+			Text: "()",
+			Size: DelimiterSize1,
+		},
+		"zero size": {
+			Base: NewBase(KindSizedDelimiter, span),
+			Text: "(",
+		},
+		"oversized": {
+			Base: NewBase(KindSizedDelimiter, span),
+			Text: "(",
+			Size: DelimiterSize4 + 1,
+		},
+		"invalid class": {
+			Base: func() Base {
+				base := NewBase(KindSizedDelimiter, span)
+				base.Class = ClassBinary
+				return base
+			}(),
+			Text: "(",
+			Size: DelimiterSize1,
+		},
+	}
+	for name, node := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if err := Validate(&Formula{Root: node}, source.Limits{}); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+		})
+	}
+}
+
 func TestMarshalCanonicalIsStable(t *testing.T) {
 	t.Parallel()
 

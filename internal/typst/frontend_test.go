@@ -310,6 +310,40 @@ func TestEvaluatorValuesSpreadAndHSpace(t *testing.T) {
 	}
 }
 
+func TestLRSizeDiagnosticBoundary(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		source       string
+		wantWarnings int
+	}{
+		{source: `lr([x])`},
+		{source: `lr([x], size: #100%)`},
+		{source: `lr([x], size: #150%)`, wantWarnings: 1},
+		{source: `lr([x], size: #3em)`, wantWarnings: 1},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.source, func(t *testing.T) {
+			t.Parallel()
+			result := parse(t, tt.source)
+			warnings := 0
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Code != source.CodeUnsupported {
+					t.Fatalf("%s diagnostics = %#v", tt.source, result.Diagnostics)
+				}
+				warnings++
+				if !strings.Contains(diagnostic.Message, "relative or absolute semantics") {
+					t.Fatalf("%s diagnostic = %q", tt.source, diagnostic.Message)
+				}
+			}
+			if warnings != tt.wantWarnings {
+				t.Fatalf("%s warnings = %d, want %d", tt.source, warnings, tt.wantWarnings)
+			}
+		})
+	}
+}
+
 func TestNonFunctionContentCallPreservesArguments(t *testing.T) {
 	t.Parallel()
 

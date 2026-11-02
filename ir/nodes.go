@@ -138,6 +138,23 @@ func NewFenced(span source.Range, body ...Node) *Fenced {
 	}
 }
 
+// SizedDelimiter is one standalone delimiter with an explicit size tier. It is
+// distinct from an ordinary delimiter atom and from a paired Fenced group.
+type SizedDelimiter struct {
+	Base
+	Text string
+	Size DelimiterSize
+}
+
+// NewSizedDelimiter constructs a standalone explicitly sized delimiter.
+func NewSizedDelimiter(span source.Range, text string, size DelimiterSize) *SizedDelimiter {
+	return &SizedDelimiter{
+		Base: NewBase(KindSizedDelimiter, span),
+		Text: text,
+		Size: size,
+	}
+}
+
 // Accent places a mark above or below content.
 type Accent struct {
 	Base

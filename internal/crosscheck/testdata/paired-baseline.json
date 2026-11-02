@@ -165,8 +165,8 @@
       "index": 22,
       "category": "delimiters",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR; unsupported: explicit delimiter size command is not represented in the current neutral IR",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root: expected [{\"class\":\"opening\",\"cramped\":false,\"delimiter-size\":1,\"ignore-as-space\":false,\"kind\":\"sized-delimiter\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"(\",\"variant\":\"auto\"},{\"class\":\"ope...\u003csha256:43a6ef504063fe9d\u003e, got {\"balanced\":true,\"body\":[{\"balanced\":true,\"body\":[{\"balanced\":true,\"body\":[{\"balanced\":true,\"body\":[{\"class\":\"alphabetic\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"righ...\u003csha256:5bdfbfdf157d9479\u003e",
+      "reason": "Reviewed: TeX now lowers all eight explicit \\big... delimiters to neutral SizedDelimiter nodes with source class and 1-4 tiers, while Typst's paired lr(size:) values remain intentionally unsupported because they are relative/absolute rather than discrete tiers. Focused tests cover every TeX command, accepted delimiter, NewCM geometry, source hits, and class spacing."
     },
     {
       "id": "floor-ceil",

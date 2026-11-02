@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie/source"
 )
@@ -209,6 +210,21 @@ func validateNode(n Node, path string, limits source.Limits) error {
 		}
 		if n.Balanced && (n.Open == nil || n.Close == nil) {
 			return fmt.Errorf("%w: %s: balanced fence has a missing delimiter", ErrInvalidIR, path)
+		}
+	case *SizedDelimiter:
+		if err := validateTextBytes(n.Text, limits, path, "sized delimiter"); err != nil {
+			return err
+		}
+		if utf8.RuneCountInString(n.Text) != 1 {
+			return fmt.Errorf("%w: %s: sized delimiter text must be one rune", ErrInvalidIR, path)
+		}
+		if !n.Size.Valid() {
+			return fmt.Errorf("%w: %s: invalid delimiter size %d", ErrInvalidIR, path, n.Size)
+		}
+		switch n.Class {
+		case ClassNormal, ClassOpening, ClassClosing, ClassRelation:
+		default:
+			return fmt.Errorf("%w: %s: invalid sized delimiter class", ErrInvalidIR, path)
 		}
 	case *Accent:
 		if n.Body == nil || n.Accent == nil {
@@ -432,6 +448,8 @@ func kindForNode(n Node) (NodeKind, bool) {
 		return KindScripts, true
 	case *Fenced:
 		return KindFenced, true
+	case *SizedDelimiter:
+		return KindSizedDelimiter, true
 	case *Accent:
 		return KindAccent, true
 	case *Line:
@@ -488,6 +506,7 @@ func kindName(kind NodeKind) string {
 		"placeholder",
 		"break",
 		"align-marker",
+		"sized-delimiter",
 	}
 	if int(kind) >= len(names) {
 		return "unknown"

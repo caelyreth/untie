@@ -45,9 +45,9 @@
   },
   "summary": {
     "total": 1111,
-    "pass": 1029,
+    "pass": 1047,
     "diagnostic": 26,
-    "unsupported": 56,
+    "unsupported": 38,
     "bug": 0,
     "unexplained": 0
   },
@@ -4458,7 +4458,8 @@
         "\\bigr"
       ],
       "codes": [
-        "invalid-value"
+        "invalid-value",
+        "missing-argument"
       ],
       "diagnostics": [
         {
@@ -4469,11 +4470,11 @@
           "message": "invalid delimiter after '\\bigl'"
         },
         {
-          "code": "invalid-value",
+          "code": "missing-argument",
           "severity": 0,
-          "start": 17,
+          "start": 12,
           "end": 17,
-          "message": "invalid delimiter after '\\bigr'"
+          "message": "missing delimiter after '\\bigr'"
         }
       ]
     },
@@ -4493,17 +4494,9 @@
         "\\bigr"
       ],
       "codes": [
-        "invalid-value",
-        "unsupported"
+        "invalid-value"
       ],
       "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
         {
           "code": "invalid-value",
           "severity": 0,
@@ -5851,69 +5844,25 @@
       "id": "line:000082",
       "corpus": "ratex-core",
       "index": 82,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\big"
       ],
       "commands": [
         "\\big"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 5,
-          "end": 10,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000083",
       "corpus": "ratex-core",
       "index": 83,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Big"
       ],
       "commands": [
         "\\Big"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 5,
-          "end": 10,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000084",
@@ -5955,131 +5904,55 @@
       "id": "line:000087",
       "corpus": "ratex-core",
       "index": 87,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\bigg"
       ],
       "commands": [
         "\\bigg"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 6,
-          "end": 12,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000088",
       "corpus": "ratex-core",
       "index": 88,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Bigg"
       ],
       "commands": [
         "\\Bigg"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 6,
-          "end": 12,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000089",
       "corpus": "ratex-core",
       "index": 89,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\biggl"
       ],
       "commands": [
         "\\biggl"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 7,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000090",
       "corpus": "ratex-core",
       "index": 90,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Biggl"
       ],
       "commands": [
         "\\Biggl"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 7,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000091",
       "corpus": "ratex-core",
       "index": 91,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\biggm",
         "command:\\vert"
@@ -6087,28 +5960,13 @@
       "commands": [
         "\\biggm",
         "\\vert"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 11,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000092",
       "corpus": "ratex-core",
       "index": 92,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Biggm",
         "command:\\vert"
@@ -6116,136 +5974,61 @@
       "commands": [
         "\\Biggm",
         "\\vert"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 11,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000093",
       "corpus": "ratex-core",
       "index": 93,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\biggr"
       ],
       "commands": [
         "\\biggr"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 7,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000094",
       "corpus": "ratex-core",
       "index": 94,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Biggr"
       ],
       "commands": [
         "\\Biggr"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 7,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000095",
       "corpus": "ratex-core",
       "index": 95,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\bigl"
       ],
       "commands": [
         "\\bigl"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000096",
       "corpus": "ratex-core",
       "index": 96,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Bigl"
       ],
       "commands": [
         "\\Bigl"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000097",
       "corpus": "ratex-core",
       "index": 97,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\bigm",
         "command:\\vert"
@@ -6253,28 +6036,13 @@
       "commands": [
         "\\bigm",
         "\\vert"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 10,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000098",
       "corpus": "ratex-core",
       "index": 98,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Bigm",
         "command:\\vert"
@@ -6282,20 +6050,7 @@
       "commands": [
         "\\Bigm",
         "\\vert"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 10,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000099",
@@ -6337,55 +6092,25 @@
       "id": "line:000102",
       "corpus": "ratex-core",
       "index": 102,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\bigr"
       ],
       "commands": [
         "\\bigr"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000103",
       "corpus": "ratex-core",
       "index": 103,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Bigr"
       ],
       "commands": [
         "\\Bigr"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000104",
@@ -17784,9 +17509,7 @@
       "id": "line:000942",
       "corpus": "ratex-core",
       "index": 942,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\Bigl",
         "command:\\Bigr",
@@ -17800,27 +17523,7 @@
         "\\Bigr",
         "\\exp",
         "\\tfrac"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 4,
-          "end": 10,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 28,
-          "end": 34,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000943",
@@ -17898,9 +17601,7 @@
       "id": "line:000947",
       "corpus": "ratex-core",
       "index": 947,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion.",
+      "status": "pass",
       "families": [
         "command:\\\\",
         "command:\\begin",
@@ -17925,27 +17626,7 @@
       ],
       "environments": [
         "smallmatrix"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 7,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        },
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 53,
-          "end": 60,
-          "message": "explicit delimiter size command is not represented in the current neutral IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000948",

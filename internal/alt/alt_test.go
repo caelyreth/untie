@@ -180,6 +180,24 @@ func TestGenerateStructuralConstructs(t *testing.T) {
 	}
 }
 
+func TestGenerateSizedDelimiters(t *testing.T) {
+	t.Parallel()
+
+	left := ir.NewSizedDelimiter(testSpan, "(", ir.DelimiterSize4)
+	left.Class = ir.ClassOpening
+	got := Generate(left, ir.Inline, source.Limits{})
+	if got.Text != "(" || got.Speech != "left parenthesis" {
+		t.Fatalf("sized delimiter = %#v", got)
+	}
+
+	null := ir.NewSizedDelimiter(testSpan, ".", ir.DelimiterSize1)
+	null.Class = ir.ClassNormal
+	got = Generate(null, ir.Inline, source.Limits{})
+	if got.Text != "" || got.Speech != "" {
+		t.Fatalf("null sized delimiter = %#v, want no visible output", got)
+	}
+}
+
 func TestGenerateDecorationsAndWrappers(t *testing.T) {
 	t.Parallel()
 

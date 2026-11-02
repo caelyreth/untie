@@ -17,7 +17,7 @@ func Children(n Node) []Node {
 	switch n := n.(type) {
 	case *Row:
 		return slices.Clone(n.Items)
-	case *Glyph, *Text, *Operator, *Space, *ErrorNode, *Placeholder, *Break, *AlignMarker:
+	case *Glyph, *Text, *Operator, *Space, *SizedDelimiter, *ErrorNode, *Placeholder, *Break, *AlignMarker:
 		return nil
 	case *Fraction:
 		return compact(n.Numerator, n.Denominator)

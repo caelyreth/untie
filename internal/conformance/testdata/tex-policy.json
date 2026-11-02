@@ -136,8 +136,8 @@
     {
       "corpus": "katex-cases",
       "ids": ["errors/invalid-opening-delimiter"],
-      "codes": ["invalid-value"],
-      "reason": "a sized opening delimiter command has no valid delimiter"
+      "codes": ["invalid-value", "missing-argument"],
+      "reason": "a sized opening delimiter command has an invalid or missing delimiter"
     },
     {
       "corpus": "katex-cases",
@@ -201,29 +201,6 @@
       "families": ["environment:CD"],
       "codes": ["unsupported"],
       "reason": "Commutative-diagram environments are outside the neutral math IR and are explicitly rejected."
-    },
-    {
-      "corpus": "ratex-core",
-      "families": [
-        "command:\\big",
-        "command:\\Big",
-        "command:\\bigg",
-        "command:\\Bigg",
-        "command:\\bigl",
-        "command:\\Bigl",
-        "command:\\biggl",
-        "command:\\Biggl",
-        "command:\\bigm",
-        "command:\\Bigm",
-        "command:\\biggm",
-        "command:\\Biggm",
-        "command:\\bigr",
-        "command:\\Bigr",
-        "command:\\biggr",
-        "command:\\Biggr"
-      ],
-      "codes": ["unsupported"],
-      "reason": "Explicit delimiter sizing is outside the current neutral IR and remains a documented scope exclusion."
     },
     {
       "corpus": "ratex-core",

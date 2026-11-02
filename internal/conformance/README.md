@@ -54,11 +54,13 @@ Current TeX baseline:
 | RaTeX 0.1.15 core | 1,075 |
 | Selected KaTeX 0.19.1 errors and parses | 36 |
 
-The TeX baseline currently records 1,029 passes, 26 expected diagnostics, 56
+The TeX baseline currently records 1,047 passes, 26 expected diagnostics, 38
 unsupported cases, and 0 reviewed parser gaps. Unsupported cases are explicit
-scope exclusions such as delimiter sizing, font-size declarations, chemistry,
+scope exclusions such as math font-size declarations, chemistry,
 commutative diagrams, and document-layout commands; they are not relabeled
-passes.
+passes. All 16 explicit `\big...` delimiter commands are now in-scope:
+standalone sized delimiters preserve their class and 1-4 size tier in neutral
+IR instead of remaining unsupported.
 
 Current Typst baseline:
 

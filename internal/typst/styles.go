@@ -176,6 +176,8 @@ func nodeText(n ir.Node) string {
 		return n.Text
 	case *ir.Glyph:
 		return n.Text
+	case *ir.SizedDelimiter:
+		return n.Text
 	case *ir.Operator:
 		return n.Text
 	case *ir.Row:

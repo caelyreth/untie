@@ -19,6 +19,11 @@ type delimiterSpec struct {
 	class ir.MathClass
 }
 
+type sizedDelimiterSpec struct {
+	size  ir.DelimiterSize
+	class ir.MathClass
+}
+
 type accentSpec struct {
 	text     string
 	stretchy bool
@@ -30,15 +35,17 @@ type spaceSpec struct {
 }
 
 var (
-	symbolCommands    = map[string]symbolSpec{}
-	delimiterCommands = map[string]delimiterSpec{}
-	accentCommands    = map[string]accentSpec{}
-	spacingCommands   = map[string]spaceSpec{}
-	namedOperators    = map[string]string{}
-	limitOperators    = map[string]bool{}
-	fontCommands      = map[string]ir.Variant{}
-	infixCommands     = map[string]fractionInfix{}
-	sizingCommands    = map[string]uint8{}
+	symbolCommands         = map[string]symbolSpec{}
+	delimiterCommands      = map[string]delimiterSpec{}
+	sizedDelimiterCommands = map[string]sizedDelimiterSpec{}
+	sizedDelimiterText     = map[string]string{}
+	accentCommands         = map[string]accentSpec{}
+	spacingCommands        = map[string]spaceSpec{}
+	namedOperators         = map[string]string{}
+	limitOperators         = map[string]bool{}
+	fontCommands           = map[string]ir.Variant{}
+	infixCommands          = map[string]fractionInfix{}
+	sizingCommands         = map[string]uint8{}
 )
 
 type fractionInfix struct {
@@ -51,6 +58,7 @@ type fractionInfix struct {
 }
 
 func init() {
+	addSizedDelimiters()
 	addSymbols(ir.ClassRelation,
 		`equiv ≡
 prec ≺
@@ -330,6 +338,54 @@ smallint ∫`)
 	addInfixes()
 	addEscapedSymbols()
 	addTeXAliases()
+}
+
+func addSizedDelimiters() {
+	for command, spec := range map[string]sizedDelimiterSpec{
+		"\\big":   {size: ir.DelimiterSize1, class: ir.ClassNormal},
+		"\\Big":   {size: ir.DelimiterSize2, class: ir.ClassNormal},
+		"\\bigg":  {size: ir.DelimiterSize3, class: ir.ClassNormal},
+		"\\Bigg":  {size: ir.DelimiterSize4, class: ir.ClassNormal},
+		"\\bigl":  {size: ir.DelimiterSize1, class: ir.ClassOpening},
+		"\\Bigl":  {size: ir.DelimiterSize2, class: ir.ClassOpening},
+		"\\biggl": {size: ir.DelimiterSize3, class: ir.ClassOpening},
+		"\\Biggl": {size: ir.DelimiterSize4, class: ir.ClassOpening},
+		"\\bigr":  {size: ir.DelimiterSize1, class: ir.ClassClosing},
+		"\\Bigr":  {size: ir.DelimiterSize2, class: ir.ClassClosing},
+		"\\biggr": {size: ir.DelimiterSize3, class: ir.ClassClosing},
+		"\\Biggr": {size: ir.DelimiterSize4, class: ir.ClassClosing},
+		"\\bigm":  {size: ir.DelimiterSize1, class: ir.ClassRelation},
+		"\\Bigm":  {size: ir.DelimiterSize2, class: ir.ClassRelation},
+		"\\biggm": {size: ir.DelimiterSize3, class: ir.ClassRelation},
+		"\\Biggm": {size: ir.DelimiterSize4, class: ir.ClassRelation},
+	} {
+		sizedDelimiterCommands[command] = spec
+	}
+
+	// This set and the canonical glyph substitutions mirror KaTeX's static
+	// delimsizing.ts table. Aliases such as \lt intentionally resolve to the
+	// angle delimiter glyph selected by makeSizedDelim.
+	for source, text := range map[string]string{
+		"(": "(", "\\lparen": "(", ")": ")", "\\rparen": ")",
+		"[": "[", "\\lbrack": "[", "]": "]", "\\rbrack": "]",
+		"\\{": "{", "\\lbrace": "{", "\\}": "}", "\\rbrace": "}",
+		"\\lfloor": "⌊", "\\rfloor": "⌋", "⌊": "⌊", "⌋": "⌋",
+		"\\lceil": "⌈", "\\rceil": "⌉", "⌈": "⌈", "⌉": "⌉",
+		"<": "⟨", "\\langle": "⟨", "⟨": "⟨",
+		">": "⟩", "\\rangle": "⟩", "⟩": "⟩",
+		"\\lt": "⟨", "\\gt": "⟩",
+		"\\lvert": "|", "\\rvert": "|", "\\lVert": "‖", "\\rVert": "‖",
+		"\\lgroup": "⟮", "\\rgroup": "⟯", "⟮": "⟮", "⟯": "⟯",
+		"\\lmoustache": "⎰", "\\rmoustache": "⎱", "⎰": "⎰", "⎱": "⎱",
+		"/": "/", "\\backslash": "\\",
+		"|": "|", "\\vert": "|", "\\|": "‖", "\\Vert": "‖",
+		"\\uparrow": "↑", "\\Uparrow": "⇑",
+		"\\downarrow": "↓", "\\Downarrow": "⇓",
+		"\\updownarrow": "↕", "\\Updownarrow": "⇕",
+		".": ".",
+	} {
+		sizedDelimiterText[source] = text
+	}
 }
 
 func addSymbols(class ir.MathClass, table string) {
