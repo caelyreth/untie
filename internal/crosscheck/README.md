@@ -96,10 +96,10 @@ changed failure path, not merely a changed pass/fail bit, visible in review.
 Current reviewed baseline:
 
 ```text
-pass                        17
-semantic-ir-mismatch        60
-layout-mismatch              0
-fixture-mismatch             2
+pass                        21
+semantic-ir-mismatch        52
+layout-mismatch              2
+fixture-mismatch             4
 documented-pair-difference   2
 unexplained                  0
 ```
