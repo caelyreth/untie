@@ -1,0 +1,114 @@
+// Package geometry defines deterministic geometric primitives.
+package geometry
+
+import (
+	"errors"
+	"math"
+)
+
+const (
+	// EmScale is the number of fixed-point subunits in one em.
+	EmScale int64 = 1 << 16
+)
+
+var (
+	ErrOverflow     = errors.New("geometry: overflow")
+	ErrInvalidScale = errors.New("geometry: invalid scale")
+)
+
+// Em is a signed fixed-point length in 1/EmScale em.
+type Em int64
+
+// EmFromParts returns a value equal to numerator/denominator em.
+func EmFromParts(numerator, denominator int64) (Em, error) {
+	if denominator == 0 {
+		return 0, ErrInvalidScale
+	}
+	value, err := mulDiv(numerator, EmScale, denominator)
+	if err != nil {
+		return 0, err
+	}
+	return Em(value), nil
+}
+
+// Add returns a+b, reporting overflow.
+func (a Em) Add(b Em) (Em, error) {
+	if (b > 0 && a > Em(math.MaxInt64)-b) || (b < 0 && a < Em(math.MinInt64)-b) {
+		return 0, ErrOverflow
+	}
+	return a + b, nil
+}
+
+// MulDiv returns a*num/den rounded to nearest, ties away from zero.
+func (a Em) MulDiv(num, den int64) (Em, error) {
+	if den == 0 {
+		return 0, ErrInvalidScale
+	}
+	value, err := mulDiv(int64(a), num, den)
+	if err != nil {
+		return 0, err
+	}
+	return Em(value), nil
+}
+
+// Abs returns the absolute value of a.
+func (a Em) Abs() Em {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
+// Float returns the value in ems.
+func (a Em) Float() float64 {
+	return float64(a) / float64(EmScale)
+}
+
+func mulDiv(a, b, c int64) (int64, error) {
+	if a == 0 {
+		return 0, nil
+	}
+	if c == 0 {
+		return 0, ErrInvalidScale
+	}
+	if a == math.MinInt64 && b == math.MinInt64 {
+		return 0, ErrOverflow
+	}
+
+	negative := (a < 0) != (b < 0)
+	negative = negative != (c < 0)
+	ua := abs64(a)
+	ub := abs64(b)
+	uc := abs64(c)
+	hi, lo := bitsMul(ua, ub)
+	if hi >= uc {
+		return 0, ErrOverflow
+	}
+	q, r := bitsDiv(hi, lo, uc)
+	if r >= (uc+1)/2 {
+		if q == math.MaxInt64 {
+			return 0, ErrOverflow
+		}
+		q++
+	}
+	if q > math.MaxInt64 {
+		return 0, ErrOverflow
+	}
+	if negative {
+		if q > 1<<63 {
+			return 0, ErrOverflow
+		}
+		return -int64(q), nil
+	}
+	if q > math.MaxInt64 {
+		return 0, ErrOverflow
+	}
+	return int64(q), nil
+}
+
+func abs64(v int64) uint64 {
+	if v < 0 {
+		return uint64(-(v + 1)) + 1
+	}
+	return uint64(v)
+}
