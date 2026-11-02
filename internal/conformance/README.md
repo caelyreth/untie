@@ -77,11 +77,12 @@ case rule and reason in `typst-policy.json`.
 
 ## Isolation
 
-The TeX frontend currently contains nonterminating text-mode inputs. A Go
-goroutine cannot be forcibly stopped, so both baseline reports run every case in
-a fresh worker process with a deadline. This contains hangs and crashes without
-weakening the conformance gate. Benchmarks call the parser directly so their
-throughput numbers describe parser work, not process startup.
+The baseline reports run every case in a fresh worker process with a deadline,
+so an unexpected non-cooperative parser hang or fatal failure cannot poison the
+suite. This isolation is defense in depth, not a substitute for termination
+tests: the tracked TeX corpora are also parsed in-process with per-case deadlines
+by `TestTeXCorpusTerminatesInProcess`. Benchmarks call the parser directly so
+their throughput numbers describe parser work, not process startup.
 
 ## Commands
 
