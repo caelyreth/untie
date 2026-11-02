@@ -89,6 +89,25 @@ func TestTagBoxValidationRejectsMalformedContracts(t *testing.T) {
 			},
 		},
 		{
+			name: "non-manual formula tag",
+			mutate: func(box *Box) {
+				box.Tag.Manual = false
+				box.Tag.Starred = false
+			},
+		},
+		{
+			name: "zero line tag",
+			mutate: func(box *Box) {
+				box.Tag.Line = 0
+			},
+		},
+		{
+			name: "future row tag",
+			mutate: func(box *Box) {
+				box.Tag.Line = 5
+			},
+		},
+		{
 			name: "italic does not match tag",
 			mutate: func(box *Box) {
 				box.Italic = 1
@@ -170,6 +189,18 @@ func TestConstrainedTagRequiresTargetedLineTag(t *testing.T) {
 		t.Fatal("Validate() accepted a constrained parent tag without its targeted line tag")
 	}
 
+	withoutParentTag := parent.Clone()
+	withoutParentTag.Tag = nil
+	if err := withoutParentTag.Validate(); err == nil {
+		t.Fatal("Validate() accepted a line tag without a parent tag")
+	}
+
+	nestedLineTag := parent.Clone()
+	nestedLineTag.Lines[0].Box.Tag = cloneTestTag(tag)
+	if err := nestedLineTag.Validate(); err == nil {
+		t.Fatal("Validate() accepted a nested tag inside a LineBox.Box")
+	}
+
 	wrongLine := parent.Clone()
 	wrongLine.Tag.Line = 1
 	wrongLine.Lines[0].Tag.Line = 1
@@ -242,7 +273,7 @@ func validDisplayTagBox(x, y float32) *TagBox {
 		},
 		Source: source.NewRange(1, 2),
 		Manual: true,
-		Line:   0,
+		Line:   FormulaTagLine,
 		X:      x,
 		Y:      y,
 	}

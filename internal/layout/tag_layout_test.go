@@ -131,6 +131,100 @@ func TestTaggedConstrainedLayoutAlwaysUsesOneCompleteLine(t *testing.T) {
 	}
 }
 
+func TestTaggedConstrainedAlignmentReservesTagWidth(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	formula := taggedTestFormula(glyph("x", ir.ClassNormal), tagGlyph("1"))
+	fitting := []struct {
+		name       string
+		align      display.Align
+		wantOffset float32
+	}{
+		{name: "start", align: display.AlignStart, wantOffset: 0},
+		{name: "center", align: display.AlignCenter, wantOffset: 16},
+		{name: "end", align: display.AlignEnd, wantOffset: 32},
+	}
+	for _, tc := range fitting {
+		t.Run(tc.name, func(t *testing.T) {
+			style := testStyle(16)
+			style.MaxWidth = 64
+			style.Align = tc.align
+			box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+			if err != nil {
+				t.Fatalf("LayoutFormulaContext() error = %v", err)
+			}
+			if box.Width != 64 || len(box.Lines) != 1 || box.Tag == nil {
+				t.Fatalf("geometry = width:%v lines:%d tag:%+v", box.Width, len(box.Lines), box.Tag)
+			}
+			if !closeHost(box.Lines[0].OffsetX, tc.wantOffset) {
+				t.Fatalf("OffsetX = %v, want %v", box.Lines[0].OffsetX, tc.wantOffset)
+			}
+			if !closeHost(box.Tag.X, 40) || !closeHost(box.Tag.X+box.Tag.Box.Width, 64) {
+				t.Fatalf("tag frame = x:%v right:%v, want x 40 right 64",
+					box.Tag.X, box.Tag.X+box.Tag.Box.Width)
+			}
+			untagged, err := renderer.Layout(glyph("x", ir.ClassNormal), ir.Display, style)
+			if err != nil {
+				t.Fatalf("untagged Layout() error = %v", err)
+			}
+			if box.Overflow != untagged.Overflow {
+				t.Fatalf("Overflow = %v, untagged %v; reserved tag added no frame overflow",
+					box.Overflow, untagged.Overflow)
+			}
+			if !closeHost(box.Items[0].Bound.X, tc.wantOffset) {
+				t.Fatalf("formula item x = %v, want %v", box.Items[0].Bound.X, tc.wantOffset)
+			}
+			if err := box.Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
+	}
+
+	t.Run("exact reserved width", func(t *testing.T) {
+		style := testStyle(16)
+		style.MaxWidth = 32
+		style.Align = display.AlignEnd
+		box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+		if err != nil {
+			t.Fatalf("LayoutFormulaContext() error = %v", err)
+		}
+		untagged, err := renderer.Layout(glyph("x", ir.ClassNormal), ir.Display, style)
+		if err != nil {
+			t.Fatalf("untagged Layout() error = %v", err)
+		}
+		if box.Lines[0].OffsetX != 0 || box.Tag.X != 8 || box.Overflow != untagged.Overflow {
+			t.Fatalf("exact geometry = offset:%v tag-x:%v overflow:%v, untagged overflow %v",
+				box.Lines[0].OffsetX, box.Tag.X, box.Overflow, untagged.Overflow)
+		}
+	})
+
+	t.Run("unbreakable overflow", func(t *testing.T) {
+		style := testStyle(16)
+		style.MaxWidth = 31
+		style.Align = display.AlignEnd
+		box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+		if err != nil {
+			t.Fatalf("LayoutFormulaContext() error = %v", err)
+		}
+		if box.Lines[0].OffsetX != 0 || box.Tag.X != 8 || box.Overflow < 1 {
+			t.Fatalf("overflow geometry = offset:%v tag-x:%v overflow:%v, want offset 0, tag-x 8, overflow >= 1",
+				box.Lines[0].OffsetX, box.Tag.X, box.Overflow)
+		}
+	})
+
+	t.Run("unconstrained unchanged", func(t *testing.T) {
+		box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, testStyle(16))
+		if err != nil {
+			t.Fatalf("LayoutFormulaContext() error = %v", err)
+		}
+		if len(box.Lines) != 0 || !closeHost(box.Tag.X, 8) || !closeHost(box.Width, 32) {
+			t.Fatalf("unconstrained geometry = lines:%d tag-x:%v width:%v, want 0/8/32",
+				len(box.Lines), box.Tag.X, box.Width)
+		}
+	})
+}
+
 func TestTagBecomesRightmostItalicRun(t *testing.T) {
 	t.Parallel()
 
@@ -183,7 +277,7 @@ func taggedTestFormula(root, tagBody ir.Node) *ir.Formula {
 			Span:   source.NewRange(1, 2),
 			Origin: source.NewRange(1, 2),
 			Manual: true,
-			Line:   0,
+			Line:   ir.FormulaTagLine,
 		}},
 	}
 }

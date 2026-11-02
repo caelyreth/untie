@@ -55,7 +55,7 @@ func TestDocumentedDailyCorpusCounts(t *testing.T) {
 	t.Parallel()
 
 	manifest := readJSON[dailyManifest](t, "testdata/daily-stem/manifest.json")
-	if manifest.Count != 87 || len(manifest.Categories) != 12 {
+	if manifest.Count != 92 || len(manifest.Categories) != 14 {
 		t.Fatalf("daily manifest has %d cases and %d categories", manifest.Count, len(manifest.Categories))
 	}
 	if len(manifest.ContentSHA256) != 64 {

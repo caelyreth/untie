@@ -81,6 +81,8 @@ type Expectation struct {
 	RootKind            string           `json:"rootKind,omitempty"`
 	MinLines            int              `json:"minLines,omitempty"`
 	RequireOverflow     bool             `json:"requireOverflow,omitempty"`
+	RequireFits         bool             `json:"requireFits,omitempty"`
+	RequireTag          bool             `json:"requireTag,omitempty"`
 	Hits                []HitExpectation `json:"hits,omitempty"`
 }
 
@@ -111,18 +113,21 @@ const (
 // sourceSpecificReasons is the closed taxonomy for cases that deliberately
 // cover one dialect rather than a paired product scenario.
 var sourceSpecificReasons = map[string]struct{}{
-	"tex-delimiter-sizing":   {},
-	"typst-delimiter-sizing": {},
-	"tex-environment":        {},
-	"typst-multiline":        {},
-	"tex-recovery":           {},
-	"typst-recovery":         {},
-	"tex-resource-limit":     {},
-	"typst-resource-limit":   {},
-	"display-alignment":      {},
-	"display-breaks":         {},
-	"display-overflow":       {},
-	"host-font-boundary":     {},
+	"tex-delimiter-sizing":         {},
+	"typst-delimiter-sizing":       {},
+	"tex-environment":              {},
+	"typst-multiline":              {},
+	"tex-recovery":                 {},
+	"typst-recovery":               {},
+	"tex-resource-limit":           {},
+	"typst-resource-limit":         {},
+	"display-alignment":            {},
+	"display-breaks":               {},
+	"display-overflow":             {},
+	"tex-equation-tag":             {},
+	"tex-equation-tag-alignment":   {},
+	"tex-equation-tag-constrained": {},
+	"host-font-boundary":           {},
 }
 
 // expectedDifferences is the closed taxonomy for why a coverage group is not
@@ -323,6 +328,15 @@ func (c Case) Validate() error {
 		(c.Style == nil || c.Style.MaxWidth <= 0) {
 		return fmt.Errorf("case %q: constrained-line expectations require a positive maxWidth", c.ID)
 	}
+	if c.Expect.RequireFits && (c.Style == nil || c.Style.MaxWidth <= 0) {
+		return fmt.Errorf("case %q: requireFits requires a positive maxWidth", c.ID)
+	}
+	if c.Expect.RequireFits && c.Expect.RequireOverflow {
+		return fmt.Errorf("case %q: requireFits conflicts with requireOverflow", c.ID)
+	}
+	if c.Expect.RequireTag && c.Mode != "display" {
+		return fmt.Errorf("case %q: requireTag requires display mode", c.ID)
+	}
 	if err := c.Expect.validate(c.ID, c.Mode); err != nil {
 		return err
 	}
@@ -400,6 +414,9 @@ func (e Expectation) validate(id, mode string) error {
 	}
 	if e.RequireOverflow && mode != "display" {
 		return fmt.Errorf("case %q: requireOverflow requires display mode", id)
+	}
+	if e.RequireFits && mode != "display" {
+		return fmt.Errorf("case %q: requireFits requires display mode", id)
 	}
 	for i, hit := range e.Hits {
 		if hit.Text == "" {

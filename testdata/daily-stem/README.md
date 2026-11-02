@@ -10,7 +10,7 @@ scope boundary.
 ## Exact Contents
 
 `manifest.json` pins exact case IDs, counts, classifications, and the canonical
-content digest. `cases.jsonl` contains 87 cases across 12 categories:
+content digest. `cases.jsonl` contains 92 cases across 14 categories:
 
 | Category | Cases |
 |---|---:|
@@ -18,6 +18,8 @@ content digest. `cases.jsonl` contains 87 cases across 12 categories:
 | calculus | 12 |
 | delimiters | 6 |
 | display-wrapping | 5 |
+| equation-tags | 3 |
+| links | 2 |
 | linear-algebra | 10 |
 | malformed-input | 4 |
 | multiline-cases | 6 |
@@ -27,8 +29,8 @@ content digest. `cases.jsonl` contains 87 cases across 12 categories:
 | sets-logic | 8 |
 | text-and-fallback | 4 |
 
-The corpus has 47 TeX and 40 Typst cases, with 35 inline and 52 display cases.
-It contains 34 coverage groups and 19 explicitly source-specific cases. A
+The corpus has 51 TeX and 41 Typst cases, with 37 inline and 55 display cases.
+It contains 35 coverage groups and 22 explicitly source-specific cases. A
 coverage group tests both dialects together; it does not assert semantic
 equivalence.
 
@@ -42,7 +44,8 @@ Each JSON Lines record has:
 - `dialect`, `mode`, and source text;
 - optional parse/layout-limit and layout-style overrides;
 - a closed `expect` object for parse, layout, Alt, root-fallback, and exact hit
-  assertions.
+  assertions, plus `requireTag` and `requireFits` checks for reviewed tag and
+  constrained-frame geometry.
 
 `expectedDifference` is a review declaration, not a normalization rule. Its
 closed values are `source-syntax`, `relation-spacing`, `text-preservation`,
@@ -51,7 +54,8 @@ closed values are `source-syntax`, `relation-spacing`, `text-preservation`,
 `sourceSpecific` uses a closed taxonomy: `tex-delimiter-sizing`,
 `typst-delimiter-sizing`, `tex-environment`, `typst-multiline`, `tex-recovery`,
 `typst-recovery`, `tex-resource-limit`, `typst-resource-limit`,
-`display-alignment`, `display-breaks`, `display-overflow`, and
+`display-alignment`, `display-breaks`, `display-overflow`, `tex-equation-tag`,
+`tex-equation-tag-alignment`, `tex-equation-tag-constrained`, and
 `host-font-boundary`.
 
 There are no catch-all skip or flaky dispositions. A case can expect clean
@@ -123,9 +127,15 @@ remain fatal.
 - Oversized input produces the reviewed limit diagnostic and a visible,
   bounded Alt fallback. It does not hang or panic.
 - Node and output limits have exact fallback/error expectations.
+- The equation-tag cases cover an unconstrained formula-level tag, a fitting
+  `AlignEnd` frame where the tag reserves horizontal space, and a constrained
+  overfull line where the tag follows the formula. Their `requireTag` and
+  `requireFits` expectations are checked through the public Box contract.
+- The paired links cases verify that TeX `\href` and Typst `#link` preserve
+  visible body text while reporting the deliberate text-only destination
+  warning.
 - Typst decimal number runs now render as individual source-linked digits;
   `physics.units.typst` is a clean success with no tracked issue.
-- TeX single-line manual display tags are implemented outside this initial
-  corpus. Host/Typst document numbering, multiline row tags, and Typst
+- Host/Typst document numbering, multiline row tags, and Typst
   preamble-backed declarative code remain unsupported, so this corpus does not
   claim them.

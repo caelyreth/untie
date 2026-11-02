@@ -484,7 +484,7 @@ func (p *parser) parseEquationSuppression(command token) {
 		span:       span,
 		origin:     tokenOrigin(command),
 		suppressed: true,
-		line:       0,
+		line:       ir.FormulaTagLine,
 	})
 }
 
@@ -553,7 +553,7 @@ func (p *parser) parseEquationTag(command token) {
 		origin:  origin,
 		manual:  true,
 		starred: starred,
-		line:    0,
+		line:    ir.FormulaTagLine,
 	})
 }
 

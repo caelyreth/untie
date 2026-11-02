@@ -83,12 +83,8 @@ func validateLines(box *Box) error {
 	itemCount := 0
 	hitCount := 0
 	lineTagCount := 0
-	targetTagLine := -1
+	targetTagLine := 0
 	if box.Tag != nil {
-		targetTagLine = box.Tag.Line
-		if targetTagLine < 0 {
-			targetTagLine = 0
-		}
 		if targetTagLine >= len(box.Lines) {
 			return fmt.Errorf("parent tag targets line %d with only %d lines", box.Tag.Line, len(box.Lines))
 		}
@@ -102,6 +98,9 @@ func validateLines(box *Box) error {
 		}
 		if line.Box == nil {
 			return fmt.Errorf("line %d has nil box", i)
+		}
+		if line.Box.Tag != nil {
+			return fmt.Errorf("line %d box contains a nested tag; use LineBox.Tag", i)
 		}
 		if i > 0 {
 			previous := box.Lines[i-1]
@@ -198,11 +197,11 @@ func validateTagBox(tag *TagBox, path string) error {
 	if !tag.Source.IsValid() || tag.Source.IsDetached() {
 		return fmt.Errorf("%s source range is invalid", path)
 	}
-	if tag.Line < -1 {
-		return fmt.Errorf("%s line is %d", path, tag.Line)
+	if tag.Line != FormulaTagLine {
+		return fmt.Errorf("%s line is %d, want formula-level %d", path, tag.Line, FormulaTagLine)
 	}
-	if tag.Starred && !tag.Manual {
-		return fmt.Errorf("%s is starred but not manual", path)
+	if !tag.Manual {
+		return fmt.Errorf("%s must be manual in the Phase-1 contract", path)
 	}
 	if !finite(tag.X) || tag.X < 0 {
 		return fmt.Errorf("%s x is %v", path, tag.X)

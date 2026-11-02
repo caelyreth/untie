@@ -63,7 +63,8 @@ type (
 // Style is a display.Style layout request. Display layout with a positive
 // MaxWidth emits Box.Lines in a MaxWidth-wide alignment frame. Align positions
 // each line within that frame; line items remain line-local and expose OffsetX.
-// Single-line display tags populate Box.Tag and the associated LineBox.Tag.
+// Single-line display tags populate Box.Tag and the associated LineBox.Tag;
+// constrained alignment reserves the tag width before positioning the line.
 // Inline layout ignores both MaxWidth and Align and rejects manual tags.
 type Style = display.Style
 
@@ -98,6 +99,8 @@ const (
 	AlignStart  = display.AlignStart
 	AlignCenter = display.AlignCenter
 	AlignEnd    = display.AlignEnd
+
+	FormulaTagLine = display.FormulaTagLine
 )
 
 // Macro is a host-provided TeX macro.
