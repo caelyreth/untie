@@ -96,6 +96,8 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/internal/quality/conformance",
 			modulePath + "/internal/quality/crosscheck",
 			modulePath + "/internal/quality/daily",
+			modulePath + "/internal/quality/fixture",
+			modulePath + "/source",
 		},
 	},
 	modulePath + "/internal/quality/conformance": {
