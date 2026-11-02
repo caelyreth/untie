@@ -93,6 +93,9 @@ sequence to satisfy a source that requests it.
 - a face has invalid units per em, glyph count, metrics, or outlines;
 - there are more fallback faces than the public `FaceRef` space allows.
 
+Every preparation failure matches `errors.Is(err, untie.ErrInvalidFonts)`
+while preserving the underlying font parser error through `errors.Unwrap`.
+
 Malformed glyph outlines are rejected at load time so later layout does not
 fail because of a malformed glyph program.
 

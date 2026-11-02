@@ -119,8 +119,8 @@ needs to annotate or transform one, clone it first.
 
 `Expr` is immutable through its public methods. In particular:
 
-- `Root()` returns an independent validated snapshot;
-- `Tags()` returns independent tag metadata;
+- `RootSnapshot()` returns an independent validated formula, including tag
+  metadata;
 - `Diagnostics()` returns an independent slice;
 - `Alt()` computes deterministic text without changing layout geometry.
 

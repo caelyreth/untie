@@ -26,7 +26,7 @@ func TestExprCarriesImmutableEquationTags(t *testing.T) {
 			t.Fatalf("unexpected parse diagnostic: %+v", diagnostic)
 		}
 	}
-	tags := expr.Tags()
+	tags := mustRoot(t, expr).Tags
 	if len(tags) != 1 || !tags[0].Manual || tags[0].Suppressed {
 		t.Fatalf("Tags() = %+v, want one manual tag", tags)
 	}
@@ -34,7 +34,7 @@ func TestExprCarriesImmutableEquationTags(t *testing.T) {
 		t.Fatalf("tag body span = %v, want [5,8)", got)
 	}
 	tags[0].Body.(*ir.Row).Items[0].(*ir.Glyph).Text = "changed"
-	again := expr.Tags()
+	again := mustRoot(t, expr).Tags
 	if got := again[0].Body.(*ir.Row).Items[0].(*ir.Glyph).Text; got != "1" {
 		t.Fatalf("mutating Tags() changed expression tag body to %q", got)
 	}
@@ -169,7 +169,7 @@ func TestEquationTagSuppressionDoesNotRender(t *testing.T) {
 		t.Fatalf("NewEngine() error = %v", err)
 	}
 	expr := ParseTeX(`\nonumber x`, Display, ParseOptions{})
-	tags := expr.Tags()
+	tags := mustRoot(t, expr).Tags
 	if len(tags) != 1 || !tags[0].Suppressed || tags[0].Body != nil {
 		t.Fatalf("Tags() = %+v, want suppression event", tags)
 	}
@@ -206,7 +206,7 @@ func TestEquationTagLayoutRejectsInlineButAllowsNestedMultilineValues(t *testing
 	}
 
 	nested := ParseTeX(`x+\substack{a\\b}\tag{2}`, Display, ParseOptions{})
-	if tags := nested.Tags(); len(tags) != 1 {
+	if tags := mustRoot(t, nested).Tags; len(tags) != 1 {
 		t.Fatalf("nested multiline tags = %+v, want top-level tag retained", tags)
 	}
 	box, err := engine.Layout(nested, Style{Size: 16, MaxWidth: 1, Align: AlignCenter})

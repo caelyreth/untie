@@ -28,7 +28,7 @@ func TestParseCopiesOptionsAndDiagnostics(t *testing.T) {
 	if expr.Key() == 0 {
 		t.Fatal("Key() = 0")
 	}
-	if got := expr.Root(); got == nil {
+	if got := mustRoot(t, expr); got == nil {
 		t.Fatal("Root() = nil")
 	}
 	diagnostics := expr.Diagnostics()
@@ -63,7 +63,7 @@ func TestParseRecoversPanics(t *testing.T) {
 	if expr.Key() == 0 {
 		t.Fatal("recovered expression has zero key")
 	}
-	if err := ir.ValidateSource(expr.Root(), "x", source.Limits{}); err != nil {
+	if err := ir.ValidateSource(mustRoot(t, expr), "x", source.Limits{}); err != nil {
 		t.Fatalf("recovered Root() invalid: %v", err)
 	}
 }
@@ -101,6 +101,35 @@ func TestKeyIgnoresMapInsertionOrder(t *testing.T) {
 	}})
 	if a.Key() != b.Key() {
 		t.Fatalf("keys differ: %d != %d", a.Key(), b.Key())
+	}
+}
+
+func TestKeyIncludesMacrosOnlyForTeX(t *testing.T) {
+	t.Parallel()
+
+	texA := Parse("x", TeX, Inline, ParseOptions{Macros: map[string]Macro{"a": {Body: "A"}}})
+	texB := Parse("x", TeX, Inline, ParseOptions{Macros: map[string]Macro{"a": {Body: "B"}}})
+	if texA.Key() == texB.Key() {
+		t.Fatal("TeX key ignored macro body")
+	}
+	typstA := Parse("x", Typst, Inline, ParseOptions{Macros: map[string]Macro{"a": {Body: "A"}}})
+	typstB := Parse("x", Typst, Inline, ParseOptions{Macros: map[string]Macro{"a": {Body: "B"}}})
+	if typstA.Key() != typstB.Key() {
+		t.Fatal("Typst key includes ignored TeX macros")
+	}
+}
+
+func TestKeyExcludesLayoutOnlyLimits(t *testing.T) {
+	t.Parallel()
+
+	base := Parse("x", TeX, Inline, ParseOptions{})
+	layoutOnly := Parse("x", TeX, Inline, ParseOptions{Limits: source.Limits{
+		MaxAssemblyRepeats: 3,
+		MaxOutputItems:     4,
+		MaxPathSegments:    5,
+	}})
+	if base.Key() != layoutOnly.Key() {
+		t.Fatal("layout-only limits changed the parse key")
 	}
 }
 
@@ -196,6 +225,23 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 	}
 	if err := box.Validate(); err != nil {
 		t.Fatalf("layout with bounded alt fallback is invalid: %v", err)
+	}
+}
+
+func TestLoadFontsClassifiesPreparationFailures(t *testing.T) {
+	t.Parallel()
+
+	if fonts, err := LoadFonts(Fonts{}); err == nil || fonts != nil {
+		t.Fatalf("LoadFonts(empty) = %v, %v", fonts, err)
+	} else if !errors.Is(err, ErrInvalidFonts) {
+		t.Fatalf("LoadFonts(empty) error = %v, want ErrInvalidFonts", err)
+	}
+	if fonts, err := LoadFonts(Fonts{
+		Math: FontData{Bytes: []byte("not a font"), ID: "bad"},
+	}); err == nil || fonts != nil {
+		t.Fatalf("LoadFonts(malformed) = %v, %v", fonts, err)
+	} else if !errors.Is(err, ErrInvalidFonts) {
+		t.Fatalf("LoadFonts(malformed) error = %v, want ErrInvalidFonts", err)
 	}
 }
 
@@ -363,6 +409,15 @@ func loadTestFonts(t testing.TB) *FontSet {
 	return fonts
 }
 
+func mustRoot(t testing.TB, expr *Expr) *Formula {
+	t.Helper()
+	root, err := expr.RootSnapshot()
+	if err != nil {
+		t.Fatalf("RootSnapshot() error = %v", err)
+	}
+	return root
+}
+
 func testFontBytes(t testing.TB) []byte {
 	t.Helper()
 	data, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
@@ -391,7 +446,7 @@ func TestRootReturnsIndependentSnapshots(t *testing.T) {
 	})
 	row.Items = row.Items[:0]
 
-	second := expr.Root()
+	second := mustRoot(t, expr)
 	if second == nil {
 		t.Fatal("Root() = nil after snapshot mutation")
 	}
@@ -428,7 +483,7 @@ func TestTextLimitAffectsParsedFallback(t *testing.T) {
 		MaxSourceBytes: len(src),
 		MaxTextBytes:   3,
 	}})
-	root := expr.Root()
+	root := mustRoot(t, expr)
 	var texts []string
 	ir.Walk(root.Root, func(node ir.Node) bool {
 		if text, ok := node.(*ir.ErrorNode); ok {
@@ -510,7 +565,7 @@ func TestParseBoundaryRejectsOutOfSourceFrontendIR(t *testing.T) {
 	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "invalid IR") {
 		t.Fatalf("diagnostics = %+v", diagnostics)
 	}
-	if err := ir.ValidateSource(expr.Root(), "x", source.Limits{}); err != nil {
+	if err := ir.ValidateSource(mustRoot(t, expr), "x", source.Limits{}); err != nil {
 		t.Fatalf("fallback Root() invalid: %v", err)
 	}
 }
@@ -596,8 +651,8 @@ func TestPublicLayoutErrorsCarryKindAndSourceRange(t *testing.T) {
 	if layoutErr.Unwrap() == nil {
 		t.Fatal("LayoutError.Unwrap() = nil, want underlying cause")
 	}
-	if got := layoutErr.Code(); got != LayoutErrorMissingGlyph {
-		t.Fatalf("LayoutError.Code() = %q, want %q", got, LayoutErrorMissingGlyph)
+	if got := layoutErr.Kind; got != LayoutErrorMissingGlyph {
+		t.Fatalf("LayoutError.Kind = %q, want %q", got, LayoutErrorMissingGlyph)
 	}
 
 	pathLimited, err := NewEngine(fonts, Limits{MaxPathSegments: 1})
@@ -747,7 +802,7 @@ func TestLayoutFormulaContextAcceptsCanonicalIR(t *testing.T) {
 		t.Fatalf("NewEngine() error = %v", err)
 	}
 	expr := ParseTeX(`x_i^2`, Inline, ParseOptions{})
-	formula := expr.Root()
+	formula := mustRoot(t, expr)
 	box, err := engine.LayoutFormulaContext(context.Background(), formula, Inline, Style{Size: 16, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutFormulaContext() error = %v", err)
@@ -769,7 +824,7 @@ func TestFallbackIRValidates(t *testing.T) {
 	t.Parallel()
 
 	expr := Parse(`\frac{1}{2}`, TeX, Inline, ParseOptions{})
-	if err := ir.Validate(expr.Root(), source.Limits{}); err != nil {
+	if err := ir.Validate(mustRoot(t, expr), source.Limits{}); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
 }
@@ -783,18 +838,18 @@ func TestHostMacroURLProducesValidSourceIR(t *testing.T) {
 			"site": {Body: `\url{https://example.org/a%20b}`},
 		},
 	})
-	if err := ir.ValidateSource(expr.Root(), src, source.Limits{}); err != nil {
+	if err := ir.ValidateSource(mustRoot(t, expr), src, source.Limits{}); err != nil {
 		t.Fatalf("ValidateSource() error = %v", err)
 	}
 	var text *ir.Text
-	ir.Walk(expr.Root().Root, func(node ir.Node) bool {
+	ir.Walk(mustRoot(t, expr).Root, func(node ir.Node) bool {
 		if candidate, ok := node.(*ir.Text); ok {
 			text = candidate
 		}
 		return true
 	})
 	if text == nil {
-		t.Fatalf("host macro URL root = %T, want text", expr.Root())
+		t.Fatalf("host macro URL root = %T, want text", mustRoot(t, expr))
 	}
 	if text.Text != "https://example.org/a%20b" {
 		t.Fatalf("host macro URL text = %q", text.Text)

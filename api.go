@@ -321,38 +321,12 @@ func (e *Expr) Mode() Mode {
 	return e.mode
 }
 
-// Root returns an independent snapshot of the canonical IR. Mutating the
-// snapshot never changes the expression or its Key.
-func (e *Expr) Root() *ir.Formula {
-	root, err := e.RootSnapshot()
-	if err != nil {
-		return nil
-	}
-	return root
-}
-
 // RootSnapshot returns an independent, validated copy of the canonical IR.
 func (e *Expr) RootSnapshot() (*ir.Formula, error) {
 	if e == nil {
 		return nil, ErrInvalidExpr
 	}
 	return ir.CloneFormula(e.root, e.limits)
-}
-
-// Tags returns an independent copy of formula-level tag metadata. Manual tags
-// keep their normal math-IR bodies, while suppression-only events have a nil
-// body. The returned body nodes are deep clones and never alias the expression.
-// Phase 1 exposes top-level TeX display tags; multiline and host numbering are
-// outside this contract.
-func (e *Expr) Tags() []EquationTag {
-	if e == nil || e.root == nil {
-		return nil
-	}
-	root, err := ir.CloneFormula(e.root, e.limits)
-	if err != nil {
-		return nil
-	}
-	return root.Tags
 }
 
 // rootForLayout exposes the owned tree to the in-package layout orchestration.
@@ -432,7 +406,11 @@ func (e *Expr) Key() uint64 {
 
 // LoadFonts prepares host-supplied font bytes for repeated layout.
 func LoadFonts(fonts Fonts) (*FontSet, error) {
-	return font.Load(fonts)
+	prepared, err := font.Load(fonts)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidFonts, err)
+	}
+	return prepared, nil
 }
 
 func fallbackFormula(src string, limits source.Limits) *ir.Formula {
@@ -502,25 +480,24 @@ func computeKey(e *Expr, limits source.Limits, opts ParseOptions) uint64 {
 		limits.MaxExpandedTokens,
 		limits.MaxCallDepth,
 		limits.MaxTableCells,
-		limits.MaxAssemblyRepeats,
 		limits.MaxTextBytes,
-		limits.MaxOutputItems,
-		limits.MaxPathSegments,
 	} {
 		writeInt(int64(limit))
 	}
 	writeInt(limits.MaxDimension)
 
-	names := make([]string, 0, len(opts.Macros))
-	for name := range opts.Macros {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		macro := opts.Macros[name]
-		writeString(name)
-		writeString(macro.Body)
-		writeInt(int64(macro.Args))
+	if e.dialect == TeX {
+		names := make([]string, 0, len(opts.Macros))
+		for name := range opts.Macros {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			macro := opts.Macros[name]
+			writeString(name)
+			writeString(macro.Body)
+			writeInt(int64(macro.Args))
+		}
 	}
 	sum := h.Sum(nil)
 	return binary.LittleEndian.Uint64(sum[:8])

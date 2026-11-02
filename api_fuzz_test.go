@@ -43,7 +43,11 @@ func FuzzParseNoPanicAndValidIR(f *testing.F) {
 			if expr == nil {
 				t.Fatal("Parse() = nil")
 			}
-			if err := ir.Validate(expr.Root(), source.Limits{}); err != nil {
+			root, err := expr.RootSnapshot()
+			if err != nil {
+				t.Fatalf("RootSnapshot() error = %v", err)
+			}
+			if err := ir.Validate(root, source.Limits{}); err != nil {
 				t.Fatalf("invalid IR for %q: %v", src, err)
 			}
 			first := expr.Key()

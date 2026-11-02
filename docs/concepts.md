@@ -54,8 +54,8 @@ See [Fonts and fallback](fonts.md).
 - the original source, dialect, and root mode;
 - a convenience cache key.
 
-Use `Root()` when you need an independent IR snapshot. It clones and validates
-the formula. Use `RootSnapshot()` when you need the clone error.
+Use `RootSnapshot()` when you need an independent IR snapshot. It returns the
+clone error explicitly; there is no silent snapshot accessor.
 
 `Expr.Diagnostics()` returns an independent copy. Changing that slice cannot
 change the expression. `Expr.HasErrors()` provides the common

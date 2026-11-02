@@ -55,9 +55,9 @@ The unexported method seals the interface to the `ir` package. The concrete
 node pointer types are public and constructible, but all public fields are
 mutable.
 
-Treat a formula as immutable once it is validated or shared. `Expr.Root()`
-returns a deep snapshot precisely so a host can inspect or modify a copy without
-changing the expression.
+Treat a formula as immutable once it is validated or shared.
+`Expr.RootSnapshot()` returns a deep snapshot precisely so a host can inspect
+or modify a copy without changing the expression.
 
 ## Shared Base
 
@@ -179,8 +179,8 @@ format without versioning your own adapter.
 
 ## Parsing Without Re-Parsing
 
-`Expr.Root()` returns a validated deep snapshot. This is the normal route to
-canonical IR:
+`Expr.RootSnapshot()` returns a validated deep snapshot. This is the normal
+route to canonical IR:
 
 ```go
 expr := untie.ParseTeX(source, untie.Display, untie.ParseOptions{})

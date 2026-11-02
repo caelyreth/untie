@@ -119,8 +119,8 @@ metadata, not a stable localization format.
 ## Layout Error Kinds
 
 `LayoutErrorKind` values are stable semantic identifiers. Match with
-`LayoutError.Kind` or `LayoutError.Code()`, not the error message. New kinds may
-be added when a new failure category is introduced.
+`LayoutError.Kind`, not the error message. New kinds may be added when a new
+failure category is introduced.
 
 `LayoutError.Range` is an attributable half-open source byte range or
 `source.Detached()`. Its exact node may improve as source attribution becomes

@@ -629,7 +629,11 @@ func TestTypstTableAugmentMatchesPinnedFixture(t *testing.T) {
 		}
 	}
 	harness := testHarness(t, root)
-	box, err := harness.layout(context.Background(), expr.Root().Root, ir.Display, converted.FontSize)
+	snapshot, err := expr.RootSnapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	box, err := harness.layout(context.Background(), snapshot.Root, ir.Display, converted.FontSize)
 	if err != nil {
 		t.Fatal(err)
 	}

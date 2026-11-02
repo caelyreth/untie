@@ -61,14 +61,6 @@ func (e *LayoutError) Unwrap() error {
 	return e.Err
 }
 
-// Code returns the stable machine-readable classification.
-func (e *LayoutError) Code() LayoutErrorKind {
-	if e == nil {
-		return ""
-	}
-	return e.Kind
-}
-
 var (
 	// ErrInvalidInput reports malformed input at the public layout boundary.
 	ErrInvalidInput = internallayout.ErrInvalidInput

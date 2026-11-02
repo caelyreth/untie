@@ -16,7 +16,7 @@ Layout functions return Go errors. Use `errors.Is`:
 | `ErrInsufficientStretch` | The font cannot stretch a delimiter or accent enough. |
 | `ErrLimit` | A resource limit was exceeded during layout or output construction. |
 | `ErrInvalidStyle` | `Style` failed validation. |
-| `ErrInvalidFonts` | A font set was nil or could not prepare an engine. |
+| `ErrInvalidFonts` | Font preparation failed in `LoadFonts`, or `NewEngine` received an unusable font set. |
 | `ErrInvalidEngine` | A nil or unusable engine was called. |
 | `ErrInvalidContext` | A nil context was supplied. |
 | `ErrInvalidExpr` | A nil expression was supplied. |

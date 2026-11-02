@@ -208,7 +208,8 @@ The tag body is already positioned in parent-frame coordinates. Draw the tag
 range once as part of `Box.Items`; use `TagBox.Items` and `TagBox.Hits` only to
 identify that subset. A `\tag*` value has no automatic parentheses.
 
-Tag source metadata is available through `Expr.Tags()` and `TagBox.Source`.
+Tag source metadata is available through `TagBox.Source` or the `Tags` field
+of a formula returned by `Expr.RootSnapshot()`.
 `Box.Tag.Manual` is true for the rendered formula-level tag. See the TeX
 support page for the exact Phase 1 tag limitations.
 
