@@ -466,7 +466,7 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 	case "overbrace", "underbrace", "overbracket", "underbracket", "overparen", "underparen", "overshell", "undershell":
 		return l.lowerStructuralAccent(call, name)
 	case "equation":
-		return l.lowerNamedOrPositional(call, "body", len(call.args)-1)
+		return l.lowerEquation(call)
 	}
 	if mark, ok := accentAliases[name]; ok {
 		return l.lowerAccentWithMark(call, mark)

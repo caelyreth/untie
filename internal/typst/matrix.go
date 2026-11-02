@@ -406,4 +406,7 @@ func (l *lowerer) applyAugment(call *astNode, table *ir.Table, columns int) {
 	if _, ok := v.entry("hline"); ok {
 		l.warningAt(arg.span, source.CodeUnsupported, "horizontal augmentation lines are not represented by the matrix subset")
 	}
+	if _, ok := v.entry("stroke"); ok {
+		l.warningAt(arg.span, source.CodeUnsupported, "augmentation strokes are not represented by the matrix subset")
+	}
 }

@@ -276,10 +276,40 @@ func (l *lowerer) evalLuma(call *astNode) (value, bool) {
 	default:
 		return value{}, false
 	}
+	alpha := uint8(0xff)
+	if arg := namedArgument(call, "alpha"); arg != nil {
+		if parsed, ok := l.alphaByte(arg.node); ok {
+			alpha = parsed
+		} else {
+			return value{}, false
+		}
+	} else if len(positional) > 1 {
+		if parsed, ok := l.alphaByte(positional[1].node); ok {
+			alpha = parsed
+		}
+	}
 	return colorValue(ir.Paint{
-		Explicit:    ir.RGBA{R: lightness, G: lightness, B: lightness, A: 0xff},
+		Explicit:    ir.RGBA{R: lightness, G: lightness, B: lightness, A: alpha},
 		HasExplicit: true,
 	}), true
+}
+
+func (l *lowerer) alphaByte(n *astNode) (uint8, bool) {
+	v, ok := l.evalValue(n)
+	if !ok {
+		return 0, false
+	}
+	switch v.kind {
+	case valueInteger:
+		return clampByte(v.integer), true
+	case valueFloat:
+		return clampByte(int64(math.Round(v.float * 255))), true
+	case valueLength:
+		if v.length.Unit == ir.LengthPercent {
+			return clampByte(int64(math.Round(v.length.Float() * 2.55))), true
+		}
+	}
+	return 0, false
 }
 
 func clampByte(v int64) uint8 {

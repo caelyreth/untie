@@ -60,9 +60,10 @@ func (l *lowerer) lowerText(call *astNode) ir.Node {
 		// producing the wrong scale.
 		l.warningAt(arg.span, source.CodeUnsupported, "continuous text size is not represented by the neutral IR")
 	}
-	for _, name := range []string{"font", "stroke", "features", "variations", "spacing", "baseline"} {
-		if arg := namedArgument(call, name); arg != nil {
-			l.warningAt(arg.span, source.CodeUnsupported, "text %s is not represented by the neutral Text node", name)
+	handled := setOf("body", "text", "fill", "tracking", "weight", "style", "size")
+	for _, arg := range call.args {
+		if arg.kind == argNamed && !handled[arg.name] {
+			l.warningAt(arg.span, source.CodeUnsupported, "text %s is not represented by the neutral Text node", arg.name)
 		}
 	}
 	return body
@@ -257,6 +258,15 @@ func (l *lowerer) lowerNamedOrPositional(call *astNode, name string, fallback in
 		return named
 	}
 	return l.contentArg(call, name, fallback, true)
+}
+
+func (l *lowerer) lowerEquation(call *astNode) ir.Node {
+	for _, arg := range call.args {
+		if arg.kind == argNamed && arg.name != "body" {
+			l.warningAt(arg.span, source.CodeUnsupported, "equation %s metadata is not represented in the neutral IR", arg.name)
+		}
+	}
+	return l.lowerNamedOrPositional(call, "body", len(call.args)-1)
 }
 
 func (l *lowerer) lowerValueContent(span source.Range, v value) ir.Node {
