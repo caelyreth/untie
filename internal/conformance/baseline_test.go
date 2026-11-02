@@ -9,6 +9,9 @@ import (
 )
 
 func TestTeXConformanceBaseline(t *testing.T) {
+	if raceEnabled {
+		t.Skip("process-per-case corpus is covered by non-race CI; run package race tests without baseline workers")
+	}
 	packageRoot := conformancePackageRoot(t)
 	report, err := BuildTeXReport(context.Background(), SuiteOptions{
 		FixtureRoot: filepath.Join(packageRoot, "..", "..", "testdata", "upstream"),

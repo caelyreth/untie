@@ -14,6 +14,9 @@ import (
 )
 
 func TestBoundedGeneratedTeX(t *testing.T) {
+	if raceEnabled {
+		t.Skip("process-per-case bounded run is covered by non-race CI")
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
