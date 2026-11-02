@@ -351,7 +351,7 @@ func TestNewCMGlyphMetricsConformance(t *testing.T) {
 			}
 			expected := Bounds{XMin: want.BBox[0], YMin: -want.BBox[3], XMax: want.BBox[2], YMax: -want.BBox[1]}
 			if got.Bounds != expected {
-				if !knownCFFBoundsRounding(id, got.Bounds, expected) {
+				if !knownCFFComponentDifference(id, got.Bounds, expected) {
 					failures = reportMetric(t, failures, "glyph %d bounds = %#v, want %#v", id, got.Bounds, expected)
 				}
 			}
@@ -440,7 +440,11 @@ func TestNewCMMappingConformance(t *testing.T) {
 	}
 }
 
-func knownCFFBoundsRounding(id GlyphID, got, want Bounds) bool {
+// The pinned ttf-parser oracle composes four CFF endchar-seac glyphs. The Go
+// outline parser exposes the same glyphs but without that legacy composition,
+// so their bounds differ by one design unit. Keep this list exhaustive and
+// fail closed for every other glyph.
+func knownCFFComponentDifference(id GlyphID, got, want Bounds) bool {
 	switch id {
 	case 8465, 8480, 8481, 8483:
 		return boundsWithinOne(got, want)
@@ -711,11 +715,22 @@ func TestMathConstructsAreDefensiveCopies(t *testing.T) {
 	}
 	originalVariant := first.Variants[0]
 	originalPart := first.Assembly.Parts[0]
+	originalItalic := first.Assembly.ItalicCorrection
+	originalOverlap := first.Assembly.MinConnectorOverlap
 	first.Variants[0].Advance++
+	first.Assembly.ItalicCorrection++
+	first.Assembly.MinConnectorOverlap++
 	first.Assembly.Parts[0].FullAdvance++
+	first.Assembly.Parts[0].Glyph++
 	second, _ := set.MathConstruction(glyph, VerticalAxis)
 	if second.Variants[0] != originalVariant || second.Assembly.Parts[0] != originalPart {
 		t.Fatal("MathConstruction returned shared slices")
+	}
+	if second.Assembly.ItalicCorrection != originalItalic || second.Assembly.MinConnectorOverlap != originalOverlap {
+		t.Fatal("MathConstruction returned shared assembly metadata")
+	}
+	if second.Assembly.Parts[0].Glyph != originalPart.Glyph {
+		t.Fatal("MathConstruction returned shared part glyph IDs")
 	}
 
 	curve, ok := set.MathKernCurve(Glyph{Face: MathFace, ID: 374}, MathKernBottomRight)
@@ -728,6 +743,46 @@ func TestMathConstructsAreDefensiveCopies(t *testing.T) {
 	if again.Kerns[0] != originalKern {
 		t.Fatal("MathKernCurve returned shared slices")
 	}
+	if _, ok := set.MathKernCurve(glyph, MathKernTopLeft); ok {
+		t.Fatal("MathKernCurve returned a curve for a glyph without one")
+	}
+	if _, ok := set.MathKernCurve(glyph, MathKernBottomLeft+1); ok {
+		t.Fatal("MathKernCurve accepted an invalid corner")
+	}
+}
+
+func TestAssemblyContractIsSufficientForLayout(t *testing.T) {
+	t.Parallel()
+	set := loadSharedTestFont(t)
+	construction, ok := set.MathConstruction(Glyph{Face: MathFace, ID: 9}, VerticalAxis)
+	if !ok || construction.Assembly == nil || len(construction.Assembly.Parts) == 0 {
+		t.Fatal("expected a vertical assembly")
+	}
+	assembly := construction.Assembly
+	if assembly.MinConnectorOverlap != 0 && assembly.MinConnectorOverlap > maxAssemblyConnector(assembly) {
+		t.Fatalf("minimum overlap %d exceeds all connector lengths", assembly.MinConnectorOverlap)
+	}
+	hasExtender := false
+	for _, part := range assembly.Parts {
+		if _, ok := set.Outline(Glyph{Face: MathFace, ID: part.Glyph}); !ok {
+			t.Fatalf("assembly exposes unreadable endpoint glyph %d", part.Glyph)
+		}
+		if part.StartConnector < 0 || part.EndConnector < 0 || part.FullAdvance <= 0 {
+			t.Fatalf("assembly part is invalid: %#v", part)
+		}
+		hasExtender = hasExtender || part.Extender
+	}
+	if !hasExtender {
+		t.Fatal("stretchy NewCM assembly has no extender part")
+	}
+}
+
+func maxAssemblyConnector(assembly *Assembly) int32 {
+	var maximum int32
+	for _, part := range assembly.Parts {
+		maximum = max(maximum, part.StartConnector, part.EndConnector)
+	}
+	return maximum
 }
 
 func TestTestdataManifest(t *testing.T) {

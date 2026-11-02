@@ -302,6 +302,9 @@ func parseAlternateSubstitution(b []byte, format uint16) (gsubSubtable, error) {
 		if err != nil {
 			return gsubSubtable{}, err
 		}
+		if len(glyphs) == 0 {
+			return gsubSubtable{}, fmt.Errorf("alternate substitution glyph %d has no alternates", gid)
+		}
 		alt := make([]GlyphID, len(glyphs))
 		for i := range glyphs {
 			alt[i] = GlyphID(glyphs[i])
@@ -323,22 +326,55 @@ func (g gsubTable) featureTags() []string {
 	return tags
 }
 
+func (g gsubTable) validateGlyphIDs(glyphCount int) error {
+	if glyphCount <= 0 {
+		return errors.New("GSUB requires a positive glyph count")
+	}
+	valid := func(gid GlyphID) bool { return int(gid) < glyphCount }
+	for tag, lookups := range g.features {
+		for lookupIndex, lookup := range lookups {
+			for subtableIndex, st := range lookup.subtables {
+				for source, replacement := range st.single {
+					if !valid(source) || !valid(replacement) {
+						return fmt.Errorf("feature %q lookup %d subtable %d single substitution %d->%d is outside %d glyphs", tag, lookupIndex, subtableIndex, source, replacement, glyphCount)
+					}
+				}
+				for source, alternates := range st.alternates {
+					if !valid(source) {
+						return fmt.Errorf("feature %q lookup %d subtable %d source glyph %d is outside %d glyphs", tag, lookupIndex, subtableIndex, source, glyphCount)
+					}
+					for alternateIndex, replacement := range alternates {
+						if !valid(replacement) {
+							return fmt.Errorf("feature %q lookup %d subtable %d alternate %d glyph %d is outside %d glyphs", tag, lookupIndex, subtableIndex, alternateIndex, replacement, glyphCount)
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (g gsubTable) shape(glyphs []GlyphID, features []Feature) []GlyphID {
 	if len(glyphs) == 0 || len(features) == 0 || len(g.features) == 0 {
 		return append([]GlyphID(nil), glyphs...)
 	}
 	out := append([]GlyphID(nil), glyphs...)
 	for _, feature := range features {
+		feature, ok := normalizeFeature(feature)
+		if !ok {
+			continue
+		}
 		for _, lookup := range g.features[feature.Tag] {
 			for _, st := range lookup.subtables {
-				if st.single != nil && feature.Value != 0 {
+				if st.single != nil {
 					for i, gid := range out {
 						if replacement, ok := st.single[gid]; ok {
 							out[i] = replacement
 						}
 					}
 				}
-				if st.alternates != nil && feature.Value != 0 {
+				if st.alternates != nil {
 					altIndex := int(feature.Value - 1)
 					for i, gid := range out {
 						alts := st.alternates[gid]
@@ -351,6 +387,23 @@ func (g gsubTable) shape(glyphs []GlyphID, features []Feature) []GlyphID {
 		}
 	}
 	return out
+}
+
+// normalizeFeature enforces OpenType's exact four-byte, case-sensitive tag
+// syntax and drops disabled or unsupported features before traversal.
+func normalizeFeature(feature Feature) (Feature, bool) {
+	if feature.Value == 0 || len(feature.Tag) != 4 {
+		return Feature{}, false
+	}
+	for i := 0; i < len(feature.Tag); i++ {
+		if feature.Tag[i] < 0x20 || feature.Tag[i] > 0x7e {
+			return Feature{}, false
+		}
+	}
+	if _, ok := mathFeatureTags[feature.Tag]; !ok {
+		return Feature{}, false
+	}
+	return feature, true
 }
 
 func subtableAllowHeader(b []byte, off int) ([]byte, error) {

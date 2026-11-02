@@ -14,6 +14,7 @@ import (
 const (
 	maxSegmentsPerGlyph = 1 << 20
 	maxSegmentsPerFace  = 16 << 20
+	maxDesignCoordinate = 1 << 30
 )
 
 type outlineCache struct {
@@ -36,8 +37,9 @@ func (f *parsedFace) readGlyphMetrics() error {
 	for i := 0; i < glyphCount; i++ {
 		gid := tsfont.GID(i)
 		advance := face.HorizontalAdvance(gid)
-		if math.IsNaN(float64(advance)) || math.IsInf(float64(advance), 0) {
-			return fmt.Errorf("face %d (%q): glyph %d has non-finite advance", f.data.Index, f.data.ID, i)
+		advanceUnits, err := designCoordinate(advance)
+		if err != nil {
+			return fmt.Errorf("face %d (%q): glyph %d advance: %w", f.data.Index, f.data.ID, i, err)
 		}
 		outline, ok := face.GlyphDataOutline(gid)
 		if !ok {
@@ -50,9 +52,13 @@ func (f *parsedFace) readGlyphMetrics() error {
 		if totalSegments > maxSegmentsPerFace {
 			return fmt.Errorf("face %d (%q): outlines exceed %d segments", f.data.Index, f.data.ID, maxSegmentsPerFace)
 		}
+		bounds, err := outlineBounds(outline.Segments)
+		if err != nil {
+			return fmt.Errorf("face %d (%q): glyph %d outline: %w", f.data.Index, f.data.ID, i, err)
+		}
 		f.metrics[i] = GlyphMetrics{
-			Advance:    int32(advance),
-			Bounds:     outlineBounds(outline.Segments),
+			Advance:    advanceUnits,
+			Bounds:     bounds,
 			HasOutline: len(outline.Segments) != 0,
 		}
 	}
@@ -77,9 +83,13 @@ func (f *parsedFace) outline(id GlyphID) (outlineData, bool) {
 	if !ok {
 		return outlineData{}, false
 	}
+	segments, err := convertSegments(outline.Segments)
+	if err != nil {
+		return outlineData{}, false
+	}
 	data := outlineData{
 		bounds:   metric.Bounds,
-		segments: convertSegments(outline.Segments),
+		segments: segments,
 	}
 	if err := validateOutline(data); err != nil {
 		return outlineData{}, false
@@ -88,57 +98,133 @@ func (f *parsedFace) outline(id GlyphID) (outlineData, bool) {
 	return actual.(outlineData), true
 }
 
-func convertSegments(in []tsot.Segment) []Segment {
+func convertSegments(in []tsot.Segment) ([]Segment, error) {
 	out := make([]Segment, 0, len(in)+1)
 	open := false
-	for _, seg := range in {
+	for i, seg := range in {
+		args, err := segmentArgs(seg)
+		if err != nil {
+			return nil, fmt.Errorf("segment %d: %w", i, err)
+		}
 		switch seg.Op {
 		case tsot.SegmentOpMoveTo:
 			if open {
 				out = append(out, Segment{Op: geometry.SegClose})
 			}
+			p, err := point(args[0])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d move: %w", i, err)
+			}
 			out = append(out, Segment{
 				Op:     geometry.SegMoveTo,
-				Points: [3]Point{point(seg.Args[0])},
+				Points: [3]Point{p},
 			})
 			open = true
 		case tsot.SegmentOpLineTo:
+			p, err := point(args[0])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d line: %w", i, err)
+			}
 			out = append(out, Segment{
 				Op:     geometry.SegLineTo,
-				Points: [3]Point{point(seg.Args[0])},
+				Points: [3]Point{p},
 			})
 		case tsot.SegmentOpQuadTo:
+			p0, err := point(args[0])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d quadratic control: %w", i, err)
+			}
+			p1, err := point(args[1])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d quadratic endpoint: %w", i, err)
+			}
 			out = append(out, Segment{
 				Op:     geometry.SegQuadTo,
-				Points: [3]Point{point(seg.Args[0]), point(seg.Args[1])},
+				Points: [3]Point{p0, p1},
 			})
 		case tsot.SegmentOpCubeTo:
+			p0, err := point(args[0])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d cubic control 1: %w", i, err)
+			}
+			p1, err := point(args[1])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d cubic control 2: %w", i, err)
+			}
+			p2, err := point(args[2])
+			if err != nil {
+				return nil, fmt.Errorf("segment %d cubic endpoint: %w", i, err)
+			}
 			out = append(out, Segment{
 				Op:     geometry.SegCubeTo,
-				Points: [3]Point{point(seg.Args[0]), point(seg.Args[1]), point(seg.Args[2])},
+				Points: [3]Point{p0, p1, p2},
 			})
+		default:
+			return nil, fmt.Errorf("segment %d has invalid operation %d", i, seg.Op)
 		}
 	}
 	if open {
 		out = append(out, Segment{Op: geometry.SegClose})
 	}
-	return out
+	return out, nil
 }
 
-func point(p tsot.SegmentPoint) Point {
-	// The outline parser retains CFF 16.16 coordinates as float32. Convert once
-	// to whole design units and flip to the renderer's y-down convention.
-	return Point{X: int32(p.X), Y: int32(-p.Y)}
+func segmentArgs(seg tsot.Segment) ([]tsot.SegmentPoint, error) {
+	switch seg.Op {
+	case tsot.SegmentOpMoveTo, tsot.SegmentOpLineTo:
+		return seg.Args[:1], nil
+	case tsot.SegmentOpQuadTo:
+		return seg.Args[:2], nil
+	case tsot.SegmentOpCubeTo:
+		return seg.Args[:3], nil
+	default:
+		return nil, fmt.Errorf("invalid operation %d", seg.Op)
+	}
 }
 
-func outlineBounds(segments []tsot.Segment) Bounds {
+func point(p tsot.SegmentPoint) (Point, error) {
+	// The dependency retains CFF 16.16 coordinates as float32. Quantize once at
+	// the integer design-unit API boundary, matching ttf-parser/Typst's
+	// truncating float-to-int conversion, and flip to y-down.
+	x, err := designCoordinate(p.X)
+	if err != nil {
+		return Point{}, fmt.Errorf("x coordinate: %w", err)
+	}
+	y, err := designCoordinate(-p.Y)
+	if err != nil {
+		return Point{}, fmt.Errorf("y coordinate: %w", err)
+	}
+	return Point{X: x, Y: y}, nil
+}
+
+func designCoordinate(v float32) (int32, error) {
+	f := float64(v)
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, fmt.Errorf("non-finite coordinate %v", v)
+	}
+	truncated := math.Trunc(f)
+	if truncated < -maxDesignCoordinate || truncated > maxDesignCoordinate {
+		return 0, fmt.Errorf("coordinate %v is outside the supported design-unit range", v)
+	}
+	return int32(truncated), nil
+}
+
+func outlineBounds(segments []tsot.Segment) (Bounds, error) {
 	var b boundsBuilder
-	for _, seg := range segments {
-		for _, p := range seg.ArgsSlice() {
-			b.add(int32(p.X), int32(-p.Y))
+	for i, seg := range segments {
+		args, err := segmentArgs(seg)
+		if err != nil {
+			return Bounds{}, fmt.Errorf("segment %d: %w", i, err)
+		}
+		for _, raw := range args {
+			p, err := point(raw)
+			if err != nil {
+				return Bounds{}, fmt.Errorf("segment %d: %w", i, err)
+			}
+			b.add(p.X, p.Y)
 		}
 	}
-	return b.bounds()
+	return b.bounds(), nil
 }
 
 type boundsBuilder struct {

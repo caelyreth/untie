@@ -252,6 +252,16 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		p.parseGlobal(t)
 		return nil
 	}
+	if spec, ok := accentCommands[t.text]; ok {
+		body := p.parseTextArgument(t)
+		return &astAccentNode{
+			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
+			body:     body,
+			mark:     newGlyphAST(t.span, spec.text, ir.ClassDiacritic),
+			position: ir.PositionAbove,
+			stretchy: false,
+		}
+	}
 	p.report(source.Diagnostic{
 		Range:    normalizeRange(t.span),
 		Severity: source.SeverityError,

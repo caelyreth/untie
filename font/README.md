@@ -31,9 +31,11 @@ the internal cache is immutable. `KeySHA256` is the collision-resistant font
 set identity. `Key` is the first 64 bits for host maps.
 
 Coordinates and advances are whole font design units. CFF 16.16 operands are
-converted once to this design-unit grid; they are never rounded through a host
-or canvas pixel size. Bounds are control bounds in y-down design units, matching
-the Typst/NewCM fixture used by the tests.
+quantized once to this integer grid by truncating toward zero, matching the
+pinned Typst/`ttf-parser` oracle; they are never rounded through a host or
+canvas pixel size. Sub-design-unit outline coordinates are intentionally not
+exposed by this API. Bounds are control bounds in y-down design units matching
+the NewCM fixture used by the tests.
 
 ## Intentional boundaries
 
@@ -43,6 +45,13 @@ the Typst/NewCM fixture used by the tests.
 - `ssty` and `dtls` are parsed locally because `ssty` requires alternate-feature
   values. Lookup flags on those math features are rejected at load rather than
   silently ignored.
+- Public feature tags are exact, case-sensitive four-byte OpenType tags.
+  Disabled and unsupported values are ignored. `Shape` preserves caller order;
+  `ShapeMath` always applies `dtls` before `ssty`.
+- `MathConstruction` exposes variants and the complete assembly recipe:
+  assembly italic correction, minimum connector overlap, ordered parts, part
+  glyph IDs, connector lengths, full advances, and extender flags. Variant
+  selection remains a layout policy and is not implemented in `font`.
 - Text shaping is outside this package. `MapRune` and glyph advances are
   deterministic primitives for a later text shaper.
 - The two pinned parser dependencies are pure Go:
@@ -58,10 +67,11 @@ italic corrections, accent attachments, extended-shape membership, kerns,
 variants, and assemblies, plus every cmap character, variation sequence, and
 `ssty`/`dtls` shaping result.
 
-Four private-use glyph bounds differ by one design unit because CFF source
-coordinates near an integer are quantized differently by the upstream
-fixture. Those IDs are listed explicitly in `fixture_test.go`. The fixture's
-U+FFFF entry maps to `.notdef`; public rune lookup intentionally reports that
-as unmapped. The fixture also omits one spec-defined left-corner kern; Untie
-retains it for prescript layout. No other differences are accepted.
+Four variation-sequence glyphs (`8465`, `8480`, `8481`, and `8483`) differ by
+one design unit because `ttf-parser` composes their legacy CFF endchar-seac
+components while the Go outline parser does not. Those IDs are listed
+explicitly in `fixture_test.go`; no other fixture difference is accepted. The
+fixture's U+FFFF entry maps to `.notdef`; public rune lookup intentionally
+reports that as unmapped. The fixture also omits one spec-defined left-corner
+kern; Untie retains all four corners for prescript layout.
 

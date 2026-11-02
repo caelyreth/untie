@@ -325,8 +325,9 @@ func (f *FontSet) HasFeature(ref FaceRef, tag string) bool {
 	return ok
 }
 
-// Shape applies one-to-one math GSUB features in order and returns a new glyph
-// slice. Unknown or unsupported feature tags leave the run unchanged.
+// Shape applies one-to-one math GSUB features in request order and returns a
+// new glyph slice. Tags must be exact, case-sensitive four-byte OpenType tags.
+// Disabled (zero-valued) and unsupported features are ignored.
 func (f *FontSet) Shape(ref FaceRef, glyphs []GlyphID, features ...Feature) ([]GlyphID, bool) {
 	face := f.face(ref)
 	if face == nil {
@@ -335,14 +336,17 @@ func (f *FontSet) Shape(ref FaceRef, glyphs []GlyphID, features ...Feature) ([]G
 	return face.gsub.shape(glyphs, features), true
 }
 
-// ShapeMath applies the standard ssty alternate and optional dtls dotless
-// substitution.
+// ShapeMath applies the standard math substitutions in Typst's canonical
+// order: optional dtls first, then the style-appropriate ssty alternate.
 func (f *FontSet) ShapeMath(ref FaceRef, glyphs []GlyphID, style MathScriptStyle, flatten bool) ([]GlyphID, bool) {
 	face := f.face(ref)
 	if face == nil {
 		return nil, false
 	}
 	features := make([]Feature, 0, 2)
+	if flatten {
+		features = append(features, Feature{Tag: "dtls", Value: 1})
+	}
 	switch style {
 	case ScriptVariant:
 		features = append(features, Feature{Tag: "ssty", Value: 1})
@@ -351,9 +355,6 @@ func (f *FontSet) ShapeMath(ref FaceRef, glyphs []GlyphID, style MathScriptStyle
 	case NoScriptVariant:
 	default:
 		return nil, false
-	}
-	if flatten {
-		features = append(features, Feature{Tag: "dtls", Value: 1})
 	}
 	return face.gsub.shape(glyphs, features), true
 }

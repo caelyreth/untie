@@ -61,7 +61,7 @@ func runObservedFrontend(t *testing.T, parent context.Context, frontend Frontend
 	t.Helper()
 	ctx, cancel := context.WithTimeout(parent, 500*time.Millisecond)
 	defer cancel()
-	result, err := frontend(ctx, src, ir.Inline, limits)
+	result, err := frontend(ctx, Request{Source: src, Mode: ir.Inline, Limits: limits})
 	if err != nil {
 		t.Fatalf("frontend failed for %q: %v", src, err)
 	}

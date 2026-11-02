@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/caelyreth/untie/internal/tex"
+	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -28,7 +29,7 @@ func BenchmarkParseTeXRepresentative(b *testing.B) {
 		testCase := testCase
 		b.Run(testCase.name, func(b *testing.B) {
 			warmup := tex.Parse(testCase.src, testCase.mode, tex.Options{Limits: limits})
-			if err := ir.Validate(&ir.Formula{Root: warmup.Root}, limits); err != nil {
+			if err := ir.ValidateSource(&ir.Formula{Root: warmup.Root}, testCase.src, limits); err != nil {
 				b.Fatalf("invalid benchmark input: %v", err)
 			}
 			if len(warmup.Diagnostics) != 0 {
@@ -62,6 +63,69 @@ func BenchmarkParseTeXCorpusMix(b *testing.B) {
 	for b.Loop() {
 		for _, src := range sources {
 			result := tex.Parse(src, ir.Display, tex.Options{Limits: limits})
+			if result.Root == nil {
+				b.Fatal("nil root")
+			}
+		}
+	}
+}
+
+func BenchmarkParseTypstRepresentative(b *testing.B) {
+	cases := []struct {
+		name string
+		src  string
+		mode ir.Mode
+	}{
+		{"basics", `e^(i pi)+1=0`, ir.Inline},
+		{"scripts", `attach(x, t: 1, b: 2, tl: 3, bl: 4, tr: 5, br: 6)`, ir.Display},
+		{"fraction", `1/(1+1/(1+1/x))`, ir.Display},
+		{"radical", `root(3, x+1) + sqrt(sqrt(sqrt(x)))`, ir.Display},
+		{"matrix", `mat(a & b, c; d & e, f)`, ir.Display},
+		{"accents", `hat(x) + tilde(a) + macron(b) + dot.double(d) + arrow(e)`, ir.Inline},
+		{"text", `x = 1 "if" y > 0 "and"`, ir.Inline},
+		{"alignment", `(a+b)^2 &= (a+b)(a+b) \\ &= a^2 + 2a b + b^2`, ir.Display},
+		{"code", `#math.attach("x", t: "2") + #sym.alpha`, ir.Inline},
+		{"mixed", `sum_(i=0)^n mat(1, 2; 3, 4) + sqrt(frac(a+b, c)) + lr([hat(x)_i^2])`, ir.Display},
+	}
+	limits := ExplicitTypstLimits()
+	for _, testCase := range cases {
+		testCase := testCase
+		b.Run(testCase.name, func(b *testing.B) {
+			warmup := typst.Parse(testCase.src, testCase.mode, typst.Options{Limits: limits})
+			if err := ir.ValidateSource(&ir.Formula{Root: warmup.Root}, testCase.src, limits); err != nil {
+				b.Fatalf("invalid benchmark input: %v", err)
+			}
+			if errorsFound := errorDiagnostics(warmup.Diagnostics); len(errorsFound) != 0 {
+				b.Fatalf("benchmark input diagnostics: %v", errorsFound)
+			}
+			b.ReportAllocs()
+			b.SetBytes(int64(len(testCase.src)))
+			b.ResetTimer()
+			for b.Loop() {
+				result := typst.Parse(testCase.src, testCase.mode, typst.Options{Limits: limits})
+				if result.Root == nil {
+					b.Fatal("nil root")
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkParseTypstCorpusMix(b *testing.B) {
+	sources := []string{
+		`a+b^2 - x_(i,j)^2`,
+		`sum_(i=1)^n i^2 = (n(n+1)(2n+1))/6`,
+		`mat(a, b; c, d)`,
+		`(a+b)^2 &= (a+b)(a+b) \\ &= a^2 + 2a b + b^2`,
+		`hat(a b c) space tilde(x y z) space arrow(A B)`,
+		`#math.attach("x", t: "2") + #sym.alpha`,
+	}
+	limits := source.DefaultLimits()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		for _, src := range sources {
+			result := typst.Parse(src, ir.Display, typst.Options{Limits: limits})
 			if result.Root == nil {
 				b.Fatal("nil root")
 			}

@@ -44,11 +44,6 @@ func TestStaticKaTeXCases(t *testing.T) {
 				}
 				return
 			}
-			// Accent layout is now implemented, so this older static snapshot's
-			// unsupported expectation is no longer part of the frontend contract.
-			if tc.Name == "accent" && len(result.Diagnostics) == 0 {
-				return
-			}
 			if !hasDiagnostic(result.Diagnostics, source.Code(tc.Diagnostic)) {
 				t.Fatalf("%s: diagnostics = %v, want %s", tc.Provenance, diagnosticCodes(result.Diagnostics), tc.Diagnostic)
 			}
