@@ -57,7 +57,7 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
-		Tests: []string{modulePath, modulePath + "/geometry"},
+		Tests: []string{modulePath},
 	},
 	modulePath + "/display": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
@@ -164,7 +164,6 @@ var allowedExampleImports = map[string]packageRules{
 	exampleModulePath: {
 		Production: []string{
 			modulePath,
-			modulePath + "/geometry",
 			"github.com/egoist/mygo",
 			"github.com/egoist/mygo/ui",
 		},
@@ -300,7 +299,7 @@ func TestArchitectureExamplePolicyRejectsInternal(t *testing.T) {
 	}
 
 	allowed := []string{
-		modulePath + "/geometry",
+		modulePath,
 		exampleModulePath + "/futurepkg",
 		"github.com/egoist/mygo/ui",
 	}
