@@ -62,15 +62,17 @@ Errors include:
 
 ### `Box.Alt`
 
-Every successful layout populates `Box.Alt`. Layout generates it under the
-stricter intersection of engine and expression text/traversal limits.
+Set `Style.GenerateAlt` when a layout call should populate `Box.Alt`. The
+default geometry-only path skips accessibility traversal. Requested Alt is
+generated under the stricter intersection of engine and expression
+text/traversal limits.
 
 This means `Box.Alt` can differ from `Expr.Alt()` when the engine has a lower
 limit. It may be a bounded, validated fallback even though geometry succeeded.
 An accessibility failure does not invalidate correct geometry.
 
-If precise accessibility error reporting matters, call `Expr.AltContext` in
-addition to layout.
+For parsed expressions, `Expr.Alt()` remains available without layout, and
+`Expr.AltContext()` provides precise accessibility error reporting.
 
 ## Semantics, Not Geometry
 

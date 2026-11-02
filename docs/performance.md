@@ -1,9 +1,10 @@
 # Performance
 
-Untie's tracked performance target is the complete public pipeline: parse,
-validate, lay out, generate accessibility text, validate the output box, and
-return a drawable display list. Font loading and corpus loading are setup, not
-part of the timed operation.
+Untie's tracked performance target is the complete public geometry pipeline:
+parse, validate, lay out, validate the output box, and return a drawable
+display list. Accessibility text is generated only when
+`Style.GenerateAlt` is set, so it is not part of the default benchmark.
+Font loading and corpus loading are setup, not part of the timed operation.
 
 Run benchmarks on an otherwise idle machine and compare repeated runs on the
 same hardware and Go toolchain. Do not compare isolated numbers from different
@@ -89,10 +90,10 @@ an all-clean workload merely because every case has a reviewed outcome.
 
 ## Interpreting Allocations
 
-`B/op` and `allocs/op` include parser, validation, layout, accessibility, and
-output construction. A speed improvement that moves work outside the timed
-operation or caches output across benchmark iterations is not comparable.
-Every corpus pass must construct fresh expressions and boxes.
+`B/op` and `allocs/op` include parser, validation, layout, and output
+construction. A speed improvement that moves work outside the timed operation
+or caches output across benchmark iterations is not comparable. Every corpus
+pass must construct fresh expressions and boxes.
 
 ## Profiling
 

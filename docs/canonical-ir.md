@@ -201,7 +201,7 @@ box, err := engine.LayoutFormulaContext(
 	ctx,
 	formula,
 	untie.Display,
-	untie.Style{Size: 24, MaxWidth: 480},
+	untie.Style{Size: 24, MaxWidth: 480, GenerateAlt: true},
 )
 ```
 
@@ -212,7 +212,7 @@ This API:
 - applies the engine's configured resource limits;
 - performs the same font, layout, tag, alternative-text, and box-validation
   work as expression layout;
-- populates `Box.Alt`;
+- populates `Box.Alt` when `Style.GenerateAlt` is true;
 - returns no box on layout failure.
 
 The formula must remain immutable for the duration of the call and may be

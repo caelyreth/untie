@@ -191,11 +191,16 @@ style := untie.Style{
 	ScriptLevel: 0,           // root style; 1=script, 2+=script-script
 	Features:    []string{"dtls=1"},
 	GlyphRefs:   false,
+	GenerateAlt: false,       // opt in to Box.Alt accessibility generation
 }
 ```
 
 `Style.Features` is copied for the duration of the call. A caller may safely
 reuse or modify its slice after `LayoutContext` returns.
+
+`Expr.Alt()` is always available for parsed expressions. Set
+`Style.GenerateAlt` when the returned `Box` should also carry accessibility
+text under the engine's effective limits.
 
 ## Common First Integration Mistakes
 

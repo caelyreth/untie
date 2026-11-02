@@ -32,6 +32,9 @@ type Style struct {
 	ScriptLevel int
 	Features    []string
 	GlyphRefs   bool
+	// GenerateAlt requests Box.Alt generation through the public Engine
+	// facade. Expr.Alt remains available independently for parsed expressions.
+	GenerateAlt bool
 }
 
 // LineBox is one display line inside a constrained Box.

@@ -407,7 +407,7 @@ func (e engineEvaluator) Evaluate(ctx context.Context, testCase Case) CaseResult
 }
 
 func (s *StyleSpec) layoutStyle() (untie.Style, error) {
-	style := untie.Style{Size: 16}
+	style := untie.Style{Size: 16, GenerateAlt: true}
 	if s == nil {
 		return style, nil
 	}

@@ -34,7 +34,7 @@ func ExampleEngine_layoutAtTwoSizes() {
 	}
 
 	expr := untie.ParseTeX(`\frac{x+1}{2}`, untie.Inline, untie.ParseOptions{})
-	small, err := engine.Layout(expr, untie.Style{Size: 12})
+	small, err := engine.Layout(expr, untie.Style{Size: 12, GenerateAlt: true})
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +42,7 @@ func ExampleEngine_layoutAtTwoSizes() {
 	if err != nil {
 		panic(err)
 	}
-	large, err := engine.Layout(expr, untie.Style{Size: 24})
+	large, err := engine.Layout(expr, untie.Style{Size: 24, GenerateAlt: true})
 	if err != nil {
 		panic(err)
 	}

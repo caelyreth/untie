@@ -163,7 +163,7 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 		t.Fatalf("NewEngine() error = %v", err)
 	}
 	expr := ParseTeX(`x_i^2+\frac{1}{2}`, Inline, ParseOptions{})
-	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutContext() error = %v", err)
 	}
@@ -187,7 +187,7 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 		MaxSourceBytes: 3,
 		MaxTextBytes:   5,
 	}})
-	box, err = engine.LayoutContext(context.Background(), limited, Style{Size: 16})
+	box, err = engine.LayoutContext(context.Background(), limited, Style{Size: 16, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutContext(limited alt) error = %v", err)
 	}
@@ -196,6 +196,34 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 	}
 	if err := box.Validate(); err != nil {
 		t.Fatalf("layout with bounded alt fallback is invalid: %v", err)
+	}
+}
+
+func TestAltGenerationIsExplicit(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	expr := ParseTeX(`x^2`, Inline, ParseOptions{})
+	plain, err := engine.Layout(expr, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("Layout() error = %v", err)
+	}
+	if plain.Alt != (Alt{}) {
+		t.Fatalf("default Box.Alt = %#v, want empty", plain.Alt)
+	}
+	if expr.Alt().Text == "" {
+		t.Fatal("Expr.Alt() should remain available without Layout Alt generation")
+	}
+	accessible, err := engine.Layout(expr, Style{Size: 16, GenerateAlt: true})
+	if err != nil {
+		t.Fatalf("Layout(GenerateAlt) error = %v", err)
+	}
+	if accessible.Alt != expr.Alt() {
+		t.Fatalf("accessible Box.Alt = %#v, want %#v", accessible.Alt, expr.Alt())
 	}
 }
 
@@ -214,7 +242,7 @@ func TestLayoutAltUsesStricterEngineLimits(t *testing.T) {
 		}
 	}
 
-	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutContext() error = %v", err)
 	}
@@ -314,7 +342,7 @@ func TestLayoutAltRecognizesExactTeXSpaceLengths(t *testing.T) {
 			if exprAlt.Text != tc.text || exprAlt.Speech != tc.speech {
 				t.Fatalf("Expr.Alt() = %#v, want Text=%q Speech=%q", exprAlt, tc.text, tc.speech)
 			}
-			box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+			box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16, GenerateAlt: true})
 			if err != nil {
 				t.Fatalf("LayoutContext() error = %v", err)
 			}
@@ -720,7 +748,7 @@ func TestLayoutFormulaContextAcceptsCanonicalIR(t *testing.T) {
 	}
 	expr := ParseTeX(`x_i^2`, Inline, ParseOptions{})
 	formula := expr.Root()
-	box, err := engine.LayoutFormulaContext(context.Background(), formula, Inline, Style{Size: 16})
+	box, err := engine.LayoutFormulaContext(context.Background(), formula, Inline, Style{Size: 16, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutFormulaContext() error = %v", err)
 	}

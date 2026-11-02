@@ -151,7 +151,7 @@ These limits govern layout with that engine:
 - text and dimension checks;
 - table-cell checks;
 - output item and path-segment accounting;
-- alternative text generated for the returned box.
+- alternative text when `Style.GenerateAlt` requests it.
 
 `Engine.Limits()` returns the normalized effective values.
 
@@ -162,9 +162,10 @@ effective parse limits. It still does not cache the resulting `Box`.
 
 ### Alternative Text
 
-`Engine.LayoutContext` generates `Box.Alt` under the per-field stricter
-intersection of engine and expression limits. This means an engine can reduce
-an expression's text budget even when the geometry itself is valid.
+When `Style.GenerateAlt` is true, `Engine.LayoutContext` generates `Box.Alt`
+under the per-field stricter intersection of engine and expression limits.
+This means an engine can reduce an expression's text budget even when the
+geometry itself is valid. `Expr.Alt()` remains available independently.
 
 ## Parser and Frontend Limits
 

@@ -150,6 +150,9 @@ func (e *Engine) layoutRootContext(
 	if box == nil {
 		return nil, publicLayoutError(fmt.Errorf("%w: layout returned a nil box", ErrInvalidInput))
 	}
+	if !style.GenerateAlt {
+		return box, nil
+	}
 	alt, altErr := internalalt.GenerateFormulaContext(ctx, root, mode, altLimits)
 	if altErr != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {

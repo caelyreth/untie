@@ -59,7 +59,7 @@ func TestEquationTagLayoutAndAltContract(t *testing.T) {
 		t.Fatalf("NewEngine() error = %v", err)
 	}
 	expr := ParseTeX(`x\tag{1}`, Display, ParseOptions{})
-	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16, GlyphRefs: true})
+	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16, GlyphRefs: true, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutContext() error = %v", err)
 	}
@@ -173,7 +173,7 @@ func TestEquationTagSuppressionDoesNotRender(t *testing.T) {
 	if len(tags) != 1 || !tags[0].Suppressed || tags[0].Body != nil {
 		t.Fatalf("Tags() = %+v, want suppression event", tags)
 	}
-	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16, GenerateAlt: true})
 	if err != nil {
 		t.Fatalf("LayoutContext() error = %v", err)
 	}

@@ -121,8 +121,8 @@ contract:
 - a recovered frontend panic.
 
 A fallback is not a claim that the source is correct. The caller should display
-the diagnostics and inspect `Box.Alt` or `Expr.Alt()` for accessible error
-markers.
+the diagnostics and inspect `Expr.Alt()` or request `Box.Alt` through
+`Style.GenerateAlt` for accessible error markers.
 
 The fallback text is bounded by `MaxTextBytes`. Under an exact one-node budget,
 the parser emits a one-node placeholder/error rather than constructing an

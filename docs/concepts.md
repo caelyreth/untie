@@ -80,7 +80,7 @@ A `Box` is the complete UI-independent result of layout:
 - source-linked hit rectangles;
 - inline break opportunities;
 - optional display-line boxes and equation tags;
-- alternative text.
+- alternative text when `Style.GenerateAlt` is requested.
 
 Every successful layout returns an independent `Box`. Reusing an engine does
 not reuse box storage. `Box.Clone()` produces a deep, independent copy of the

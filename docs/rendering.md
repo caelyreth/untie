@@ -179,7 +179,8 @@ break opportunities internally and does not expose them as parent
 
 ### Alternative Text on Lines
 
-Only the parent `Box.Alt` is populated. Line boxes have empty alternative text.
+Only the parent `Box.Alt` can be populated, and only when
+`Style.GenerateAlt` is true. Line boxes have empty alternative text.
 
 ## Equation Tags
 

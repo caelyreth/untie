@@ -23,7 +23,7 @@ Use this file as the short entry point for code assistants. Read
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
 - Draw either parent `Box.Items` or line-local items, never both.
 - Use `Box.Bounds()` to include certified overflow.
-- Use `Alt.Speech` and `Alt.Text` for accessibility.
+- Use `Expr.Alt()` or `Style.GenerateAlt` plus `Box.Alt` for accessibility.
 - Do not import any `internal/` package from a host.
 
 ## Minimal Pipeline
@@ -125,6 +125,7 @@ type Box struct {
   `LineBox.Tag` separately.
 - `Overflow` is the certified allowance outside nominal geometry.
 - `Bounds()` returns the baseline-relative fit rectangle including overflow.
+- `Alt` is populated only when `Style.GenerateAlt` is true.
 - `At` and `Covering` use UTF-8 byte source ranges.
 
 ## Error Rules
