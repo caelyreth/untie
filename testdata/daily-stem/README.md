@@ -71,6 +71,8 @@ go run ./cmd/dailyreport -update-manifest
 ```
 
 The resulting manifest and digest must be committed with the case change.
+Manifest update rejects corpus/manifest paths that resolve to the same file,
+including relative, symlink, and hard-link aliases, before any write occurs.
 
 ## Evaluation
 

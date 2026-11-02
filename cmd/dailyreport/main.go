@@ -43,6 +43,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "dailyreport: unexpected positional arguments")
 		return 2
 	}
+	if *updateManifest {
+		same, err := sameFileOrPath(*corpus, *manifest)
+		if err != nil {
+			fail(stderr, err)
+			return 1
+		}
+		if same {
+			fail(stderr, errors.New("corpus and manifest resolve to the same file"))
+			return 1
+		}
+	}
 	cases, err := daily.LoadCaseFile(*corpus)
 	if err != nil {
 		fail(stderr, err)
@@ -168,6 +179,35 @@ func reportExitCode(report daily.Report, allowKnownIssues bool) int {
 		return 1
 	}
 	return 0
+}
+
+func sameFileOrPath(left, right string) (bool, error) {
+	leftAbs, err := filepath.Abs(left)
+	if err != nil {
+		return false, fmt.Errorf("resolve corpus path: %w", err)
+	}
+	rightAbs, err := filepath.Abs(right)
+	if err != nil {
+		return false, fmt.Errorf("resolve manifest path: %w", err)
+	}
+	if filepath.Clean(leftAbs) == filepath.Clean(rightAbs) {
+		return true, nil
+	}
+	leftInfo, err := os.Stat(leftAbs)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("stat corpus path: %w", err)
+	}
+	rightInfo, err := os.Stat(rightAbs)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("stat manifest path: %w", err)
+	}
+	return os.SameFile(leftInfo, rightInfo), nil
 }
 
 func fail(writer io.Writer, err error) {

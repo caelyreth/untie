@@ -54,6 +54,62 @@ func TestRunUpdatesManifestExplicitly(t *testing.T) {
 	}
 }
 
+func TestUpdateManifestRejectsSameFileAliases(t *testing.T) {
+	corpus, _, _ := writeCLIFixture(t)
+	before, err := os.ReadFile(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := filepath.Dir(corpus)
+	symlink := filepath.Join(directory, "corpus-symlink.jsonl")
+	if err := os.Symlink(corpus, symlink); err != nil {
+		t.Logf("symlink alias skipped: %v", err)
+		symlink = ""
+	}
+	hardlink := filepath.Join(directory, "corpus-hardlink.jsonl")
+	if err := os.Link(corpus, hardlink); err != nil {
+		t.Fatalf("create hard-link alias: %v", err)
+	}
+	tests := []struct {
+		name     string
+		manifest string
+	}{
+		{"same path", corpus},
+		{"relative alias", directory + string(os.PathSeparator) + "." + string(os.PathSeparator) + "cases.jsonl"},
+		{"hard-link alias", hardlink},
+	}
+	if symlink != "" {
+		tests = append(tests, struct {
+			name     string
+			manifest string
+		}{"symlink alias", symlink})
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := run([]string{
+				"-corpus", corpus,
+				"-manifest", test.manifest,
+				"-update-manifest",
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("run() = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+			}
+			if !strings.Contains(stderr.String(), "resolve to the same file") {
+				t.Fatalf("stderr = %q", stderr.String())
+			}
+			after, err := os.ReadFile(corpus)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Fatal("rejected update modified the corpus")
+			}
+		})
+	}
+}
+
 func TestKnownAndUnexpectedExitPolicy(t *testing.T) {
 	t.Parallel()
 
