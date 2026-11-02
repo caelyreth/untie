@@ -37,35 +37,13 @@ func LoadPairedCorpus(fixtureRoot string) (*fixture.Corpus, error) {
 
 // Verify loads and verifies all 81 paired cases.
 func Verify(ctx context.Context, opts Options) (Report, error) {
-	if ctx == nil {
-		return Report{}, errors.New("nil context")
-	}
-	corpus, err := LoadPairedCorpus(opts.FixtureRoot)
+	results, previous, err := verifyObserved(ctx, opts)
 	if err != nil {
 		return Report{}, err
 	}
-	if corpus.Spec.ExpectedCount != 81 {
-		return Report{}, fmt.Errorf("paired corpus has %d cases, want 81", corpus.Spec.ExpectedCount)
-	}
-	known, err := loadKnownDifferences(opts.KnownDifferences)
-	if err != nil {
-		return Report{}, err
-	}
-	fontBytes, err := os.ReadFile(filepath.Join(opts.FixtureRoot, "fonts", "NewCMMath-Book.otf"))
-	if err != nil {
-		return Report{}, err
-	}
-	harness, err := newLayoutHarness(fontBytes)
-	if err != nil {
-		return Report{}, err
-	}
-	results := make([]CaseResult, 0, len(corpus.Cases))
-	for _, testCase := range corpus.Cases {
-		if err := ctx.Err(); err != nil {
-			return Report{}, err
-		}
-		result := verifyCase(ctx, harness, testCase)
-		if expected, ok := known[testCase.ID]; ok {
+	for i := range results {
+		result := &results[i]
+		if expected, ok := previous[result.ID]; ok {
 			if expected.Kind != result.Kind {
 				result.Detail = fmt.Sprintf("baseline expects %s: %s; observed %s: %s",
 					expected.Kind, expected.Reason, result.Kind, result.Detail)
@@ -78,7 +56,6 @@ func Verify(ctx context.Context, opts Options) (Report, error) {
 			result.Kind = Unexplained
 			result.KnownReason = "Observed non-passing result has no reviewed baseline entry."
 		}
-		results = append(results, result)
 	}
 	report := summarize(results)
 	if err := report.Validate(); err != nil {
@@ -94,6 +71,53 @@ func Verify(ctx context.Context, opts Options) (Report, error) {
 		return report, err
 	}
 	return report, nil
+}
+
+// Refresh recomputes observed dispositions while requiring explicit reasons
+// for every new non-passing kind and for every kind transition.
+func Refresh(ctx context.Context, opts Options, reasons map[string]string) (Report, error) {
+	results, _, err := verifyObserved(ctx, opts)
+	if err != nil {
+		return Report{}, err
+	}
+	previous, err := LoadReport(opts.KnownDifferences)
+	if err != nil {
+		return Report{}, err
+	}
+	return ReviewedRefresh(results, previous, reasons)
+}
+
+func verifyObserved(ctx context.Context, opts Options) ([]CaseResult, map[string]KnownDifference, error) {
+	if ctx == nil {
+		return nil, nil, errors.New("nil context")
+	}
+	corpus, err := LoadPairedCorpus(opts.FixtureRoot)
+	if err != nil {
+		return nil, nil, err
+	}
+	if corpus.Spec.ExpectedCount != 81 {
+		return nil, nil, fmt.Errorf("paired corpus has %d cases, want 81", corpus.Spec.ExpectedCount)
+	}
+	known, err := loadKnownDifferences(opts.KnownDifferences)
+	if err != nil {
+		return nil, nil, err
+	}
+	fontBytes, err := os.ReadFile(filepath.Join(opts.FixtureRoot, "fonts", "NewCMMath-Book.otf"))
+	if err != nil {
+		return nil, nil, err
+	}
+	harness, err := newLayoutHarness(fontBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	results := make([]CaseResult, 0, len(corpus.Cases))
+	for _, testCase := range corpus.Cases {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		results = append(results, verifyCase(ctx, harness, testCase))
+	}
+	return results, known, nil
 }
 
 func verifyCase(ctx context.Context, harness *layoutHarness, testCase fixture.Case) CaseResult {

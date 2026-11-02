@@ -305,32 +305,9 @@ func TestSemanticNormalizationKeepsLiteralParentheses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	value := normalized
-	for {
-		switch current := value.(type) {
-		case []any:
-			if len(current) != 1 {
-				goto found
-			}
-			value = current[0]
-		case map[string]any:
-			items, ok := current["items"].([]any)
-			if current["kind"] != "row" || !ok || len(items) != 1 {
-				goto found
-			}
-			value = items[0]
-		default:
-			goto found
-		}
-	}
-found:
-	item, ok := value.(map[string]any)
-	if !ok || item["kind"] != "row" {
-		t.Fatalf("literal parentheses normalized to %#v, want a row", value)
-	}
-	items, ok := item["items"].([]any)
+	items, ok := normalized.([]any)
 	if !ok || len(items) != 3 {
-		t.Fatalf("literal parenthesis items = %#v, want opening/fraction/closing", item["items"])
+		t.Fatalf("literal parentheses normalized to %#v, want opening/fraction/closing", normalized)
 	}
 	open, _ := items[0].(map[string]any)
 	closeItem, _ := items[2].(map[string]any)
@@ -556,6 +533,44 @@ func ruleLine(item display.Item, ascent float32) ([4]float64, float64) {
 		float64(rect.X), y,
 		float64(rect.X + rect.Width), y,
 	}, float64(rect.Height)
+}
+
+func TestReviewedRefreshRequiresReasonsOnlyForKindChanges(t *testing.T) {
+	t.Parallel()
+
+	previous := Report{
+		SchemaVersion: 1,
+		Corpus:        "paired",
+		ToleranceDIP:  toleranceDIP,
+		Total:         2,
+		SemanticIR:    2,
+		Cases: []CaseResult{
+			{ID: "same", Index: 1, Category: "test", Kind: SemanticIRMismatch, Detail: "old", KnownReason: "old reason"},
+			{ID: "moved", Index: 2, Category: "test", Kind: SemanticIRMismatch, Detail: "old", KnownReason: "old reason"},
+		},
+	}
+	observed := []CaseResult{
+		{ID: "same", Category: "test", Kind: SemanticIRMismatch, Detail: "new"},
+		{ID: "moved", Category: "test", Kind: LayoutMismatch, Detail: "new"},
+	}
+	if _, err := ReviewedRefresh(observed, previous, nil); err == nil {
+		t.Fatal("ReviewedRefresh accepted a kind change without a reason")
+	}
+	report, err := ReviewedRefresh(observed, previous, map[string]string{
+		"moved": "reviewed layout difference",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Cases[0].KnownReason != "old reason" || report.Cases[1].KnownReason != "reviewed layout difference" {
+		t.Fatalf("refreshed cases = %#v", report.Cases)
+	}
+	if _, err := ReviewedRefresh(observed, previous, map[string]string{
+		"moved":         "reviewed layout difference",
+		"unused-reason": "unused",
+	}); err == nil {
+		t.Fatal("ReviewedRefresh accepted an unused reason")
+	}
 }
 
 func TestReportRejectsUnexplainedAndMissingReasons(t *testing.T) {

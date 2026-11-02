@@ -3,11 +3,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/caelyreth/untie/internal/crosscheck"
 	"github.com/caelyreth/untie/internal/fixture"
@@ -18,9 +20,13 @@ func main() {
 	var baseline string
 	var writePath string
 	var asJSON bool
+	var refresh bool
+	var reasonsPath string
 	flag.StringVar(&fixtureRoot, "fixtures", "", "tracked upstream fixture root (default: discover testdata/upstream)")
 	flag.StringVar(&baseline, "baseline", "", "data-driven known-differences baseline (default: internal/crosscheck/testdata/paired-baseline.json)")
 	flag.StringVar(&writePath, "write", "", "explicitly write the rendered report as a reviewed baseline")
+	flag.BoolVar(&refresh, "refresh", false, "refresh details and accept only explicit kind-change reasons")
+	flag.StringVar(&reasonsPath, "reasons", "", "JSON object of case ID to reviewed reason for -refresh")
 	flag.BoolVar(&asJSON, "json", false, "print the complete verified report")
 	flag.Parse()
 
@@ -35,21 +41,36 @@ func main() {
 		}
 		baseline = filepath.Join(filepath.Dir(filepath.Dir(base)), "internal", "crosscheck", "testdata", "paired-baseline.json")
 	}
-	report, err := crosscheck.Verify(context.Background(), crosscheck.Options{
-		FixtureRoot: root, KnownDifferences: baseline,
-	})
+	opts := crosscheck.Options{FixtureRoot: root, KnownDifferences: baseline}
+	if refresh {
+		if writePath == "" {
+			fail(errors.New("-refresh requires -write"))
+		}
+		reasons := map[string]string{}
+		if reasonsPath != "" {
+			data, err := os.ReadFile(reasonsPath)
+			if err != nil {
+				fail(err)
+			}
+			decoder := json.NewDecoder(strings.NewReader(string(data)))
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&reasons); err != nil {
+				fail(err)
+			}
+		}
+		report, err := crosscheck.Refresh(context.Background(), opts, reasons)
+		if err != nil {
+			fail(err)
+		}
+		writeReport(report, writePath)
+		return
+	}
+	report, err := crosscheck.Verify(context.Background(), opts)
 	if err != nil {
 		fail(err)
 	}
 	if writePath != "" {
-		data, err := report.MarshalCanonical()
-		if err != nil {
-			fail(err)
-		}
-		if err := os.WriteFile(writePath, data, 0o644); err != nil {
-			fail(err)
-		}
-		printSummary(report)
+		writeReport(report, writePath)
 		return
 	}
 	want, err := crosscheck.LoadReport(baseline)
@@ -66,6 +87,17 @@ func main() {
 		}
 		_, _ = os.Stdout.Write(data)
 		return
+	}
+	printSummary(report)
+}
+
+func writeReport(report crosscheck.Report, path string) {
+	data, err := report.MarshalCanonical()
+	if err != nil {
+		fail(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		fail(err)
 	}
 	printSummary(report)
 }

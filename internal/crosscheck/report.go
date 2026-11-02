@@ -247,3 +247,56 @@ func summarize(results []CaseResult) Report {
 	}
 	return report
 }
+
+// ReviewedRefresh applies the explicit baseline review policy to observed
+// cases. Details may change under an unchanged kind; a kind transition or new
+// non-passing case requires a reviewer-supplied reason.
+func ReviewedRefresh(results []CaseResult, previous Report, reasons map[string]string) (Report, error) {
+	previousCases := make(map[string]CaseResult, len(previous.Cases))
+	for _, result := range previous.Cases {
+		previousCases[result.ID] = result
+	}
+	used := make(map[string]bool, len(reasons))
+	refreshed := make([]CaseResult, len(results))
+	for i, result := range results {
+		result.Index = i + 1
+		result.KnownReason = ""
+		if result.Kind == Pass {
+			result.Detail = ""
+			refreshed[i] = result
+			continue
+		}
+		if reason, ok := reasons[result.ID]; ok {
+			used[result.ID] = true
+			if strings.TrimSpace(reason) == "" {
+				return Report{}, fmt.Errorf("case %q override reason is blank", result.ID)
+			}
+			result.KnownReason = reason
+			refreshed[i] = result
+			continue
+		}
+		old, ok := previousCases[result.ID]
+		if !ok {
+			return Report{}, fmt.Errorf("case %q has no previous entry or reviewed reason", result.ID)
+		}
+		if old.Kind != result.Kind {
+			return Report{}, fmt.Errorf("case %q kind changed from %q to %q and requires a reviewed reason",
+				result.ID, old.Kind, result.Kind)
+		}
+		if strings.TrimSpace(old.KnownReason) == "" {
+			return Report{}, fmt.Errorf("case %q has no previous reviewed reason", result.ID)
+		}
+		result.KnownReason = old.KnownReason
+		refreshed[i] = result
+	}
+	for id := range reasons {
+		if !used[id] {
+			return Report{}, fmt.Errorf("reviewed reason for %q was not needed", id)
+		}
+	}
+	report := summarize(refreshed)
+	if err := report.Validate(); err != nil {
+		return Report{}, err
+	}
+	return report, nil
+}
