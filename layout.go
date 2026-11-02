@@ -7,6 +7,7 @@ import (
 
 	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/engine"
+	"github.com/caelyreth/untie/source"
 )
 
 var (
@@ -77,7 +78,9 @@ func (e *Engine) FontKeySHA256() [32]byte {
 
 // LayoutContext lays out an expression with cancellation and resource limits.
 // Style.Features is snapshotted for the duration of the call; the caller may
-// reuse or modify its slice after LayoutContext returns.
+// reuse or modify its slice after LayoutContext returns. Box.Alt is generated
+// under the per-field stricter intersection of Engine and expression limits,
+// so it may be a bounded fallback that differs from Expr.Alt.
 func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*Box, error) {
 	if e == nil || e.inner == nil {
 		return nil, ErrInvalidEngine
@@ -106,7 +109,8 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if box == nil {
 		return nil, fmt.Errorf("untie: layout returned a nil box")
 	}
-	alt, altErr := internalalt.GenerateContext(ctx, root.Root, expr.mode, expr.limits)
+	altLimits := intersectLimits(e.limits, expr.limits)
+	alt, altErr := internalalt.GenerateContext(ctx, root.Root, expr.mode, altLimits)
 	if altErr != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
@@ -119,6 +123,47 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 		return nil, fmt.Errorf("untie: invalid layout output: %w", err)
 	}
 	return box, nil
+}
+
+// intersectLimits returns the stricter positive value for every resource
+// field. Engine limits govern public layout while expression limits govern the
+// parsed tree; derived outputs must honor both contracts.
+func intersectLimits(left, right source.Limits) source.Limits {
+	left = left.WithDefaults()
+	right = right.WithDefaults()
+	minPositive := func(a, b int) int {
+		if a <= 0 {
+			return b
+		}
+		if b <= 0 || a < b {
+			return a
+		}
+		return b
+	}
+	minPositiveDimension := func(a, b int64) int64 {
+		if a <= 0 {
+			return b
+		}
+		if b <= 0 || a < b {
+			return a
+		}
+		return b
+	}
+	return source.Limits{
+		MaxSourceBytes:     minPositive(left.MaxSourceBytes, right.MaxSourceBytes),
+		MaxTokens:          minPositive(left.MaxTokens, right.MaxTokens),
+		MaxNesting:         minPositive(left.MaxNesting, right.MaxNesting),
+		MaxNodes:           minPositive(left.MaxNodes, right.MaxNodes),
+		MaxMacroExpansions: minPositive(left.MaxMacroExpansions, right.MaxMacroExpansions),
+		MaxExpandedTokens:  minPositive(left.MaxExpandedTokens, right.MaxExpandedTokens),
+		MaxCallDepth:       minPositive(left.MaxCallDepth, right.MaxCallDepth),
+		MaxTableCells:      minPositive(left.MaxTableCells, right.MaxTableCells),
+		MaxAssemblyRepeats: minPositive(left.MaxAssemblyRepeats, right.MaxAssemblyRepeats),
+		MaxTextBytes:       minPositive(left.MaxTextBytes, right.MaxTextBytes),
+		MaxOutputItems:     minPositive(left.MaxOutputItems, right.MaxOutputItems),
+		MaxPathSegments:    minPositive(left.MaxPathSegments, right.MaxPathSegments),
+		MaxDimension:       minPositiveDimension(left.MaxDimension, right.MaxDimension),
+	}
 }
 
 // Layout lays out an expression with a background context.

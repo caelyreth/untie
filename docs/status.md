@@ -32,7 +32,9 @@ tests and migration notes.
 - Expression-level alternative text through `Expr.Alt` and `Expr.AltContext`,
   with deterministic plain text, speech, bounded validated fallbacks, and a
   public error contract. Public layout populates `display.Box.Alt` after
-  geometry succeeds; MathML remains unimplemented.
+  geometry succeeds under the per-field stricter intersection of Engine and
+  expression resource limits, so tighter Engine limits may produce a bounded
+  fallback that differs from `Expr.Alt`; MathML remains unimplemented.
 - Layout emits source-linked hit regions for atoms, groups, scripts, fraction
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
