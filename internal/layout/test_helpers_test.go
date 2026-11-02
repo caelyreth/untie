@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/caelyreth/untie/display"
@@ -12,10 +13,19 @@ import (
 type fakeGlyphSource struct {
 	glyphs map[string]Glyph
 	strict bool
+	seen   map[string][]string
+	mu     sync.Mutex
 }
 
 func (f *fakeGlyphSource) Glyph(req GlyphRequest) (Glyph, bool) {
-	if glyph, ok := f.glyphs[req.Text]; ok {
+	f.mu.Lock()
+	if f.seen == nil {
+		f.seen = make(map[string][]string)
+	}
+	f.seen[req.Text] = append([]string(nil), req.Features...)
+	glyph, ok := f.glyphs[req.Text]
+	f.mu.Unlock()
+	if ok {
 		glyph.Text = req.Text
 		return glyph, true
 	}
@@ -68,6 +78,16 @@ func (f *fakeStretcher) Stretch(req StretchRequest) (Glyph, bool) {
 	if !ok {
 		return Glyph{}, false
 	}
+	if req.Axis == Horizontal && req.Target > glyph.Advance {
+		glyph.Advance = req.Target
+		glyph.Outline = Path{
+			{Op: geometry.SegMoveTo, Points: [3]Point{{X: 0, Y: -glyph.Descent}}},
+			{Op: geometry.SegLineTo, Points: [3]Point{{X: glyph.Advance, Y: -glyph.Descent}}},
+			{Op: geometry.SegLineTo, Points: [3]Point{{X: glyph.Advance, Y: glyph.Ascent}}},
+			{Op: geometry.SegLineTo, Points: [3]Point{{X: 0, Y: glyph.Ascent}}},
+			{Op: geometry.SegClose},
+		}
+	}
 	if req.Axis == Vertical && req.Target > glyph.Ascent+glyph.Descent {
 		glyph.Ascent = req.Target * 3 / 4
 		glyph.Descent = req.Target - glyph.Ascent
@@ -109,17 +129,24 @@ func (fakeTextSource) ShapeText(req TextRequest) (TextRun, bool) {
 
 type fakeTableLayouter struct {
 	called bool
+	req    TableRequest
 }
 
 func (f *fakeTableLayouter) LayoutTable(req TableRequest) (Fragment, bool) {
 	f.called = true
+	f.req = req
 	width := geometry.Em(0)
 	ascent, descent := geometry.Em(0), geometry.Em(0)
 	for _, row := range req.Rows {
-		for _, cell := range row {
+		for _, cell := range row.Cells {
 			width = max(width, cell.Width)
 			ascent = max(ascent, cell.Ascent)
 			descent = max(descent, cell.Descent)
+		}
+		if row.Tag != nil {
+			width = max(width, row.Tag.Width)
+			ascent = max(ascent, row.Tag.Ascent)
+			descent = max(descent, row.Tag.Descent)
 		}
 	}
 	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassInner, Text, geometry.Em(geometry.EmScale))

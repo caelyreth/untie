@@ -55,10 +55,16 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 	if ctx == nil {
 		return nil, fmt.Errorf("%w: nil context", ErrInvalidInput)
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if root == nil {
 		return nil, fmt.Errorf("%w: nil root", ErrInvalidInput)
 	}
-	if err := ir.Validate(&ir.Formula{Root: root}, source.DefaultLimits()); err != nil {
+	if err := validateConfiguredLimits(ctx, root, r.limits); err != nil {
+		return nil, err
+	}
+	if err := ir.Validate(&ir.Formula{Root: root}, structuralValidationLimits()); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 	hostSize, err := hostSizeFromDisplay(style.Size)
@@ -85,9 +91,13 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 		metrics:   metrics,
 		hostSize:  hostSize,
 		limits:    r.limits,
-		features:  append([]string(nil), style.Features...),
 	}
-	env := environment{Style: rootStyle, Variant: ir.VariantAuto, Font: ir.FontMath}
+	env := environment{
+		Style:    rootStyle,
+		Variant:  ir.VariantAuto,
+		Font:     ir.FontMath,
+		Features: append([]string(nil), style.Features...),
+	}
 	rootFragment, err := state.layoutNode(root, env, 0)
 	if err != nil {
 		return nil, err
@@ -96,23 +106,24 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 }
 
 type layoutState struct {
-	ctx       context.Context
-	renderer  *Renderer
-	request   display.Style
-	mode      ir.Mode
-	rootStyle Style
-	metrics   MathMetrics
-	hostSize  int64
-	limits    source.Limits
-	features  []string
-	nodes     int
+	ctx          context.Context
+	renderer     *Renderer
+	request      display.Style
+	mode         ir.Mode
+	rootStyle    Style
+	metrics      MathMetrics
+	hostSize     int64
+	limits       source.Limits
+	nodes        int
+	pathSegments int
 }
 
 type environment struct {
-	Style   Style
-	Variant ir.Variant
-	Font    ir.FontRole
-	Paint   ir.Paint
+	Style    Style
+	Variant  ir.Variant
+	Font     ir.FontRole
+	Paint    ir.Paint
+	Features []string
 }
 
 func rootStyle(mode ir.Mode, scriptLevel int) (Style, error) {
@@ -164,6 +175,69 @@ func (s *layoutState) check(depth int) error {
 	return nil
 }
 
+func (s *layoutState) reservePathSegments(count int) error {
+	if count < 0 || count > s.limits.MaxPathSegments-s.pathSegments {
+		return fmt.Errorf("%w: path segment count would exceed %d", ErrLimit, s.limits.MaxPathSegments)
+	}
+	s.pathSegments += count
+	return nil
+}
+
+func validateConfiguredLimits(ctx context.Context, root ir.Node, limits source.Limits) error {
+	limits = limits.WithDefaults()
+	nodes := 0
+	var visit func(ir.Node, int) error
+	visit = func(node ir.Node, depth int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if node == nil {
+			return nil
+		}
+		nodes++
+		if nodes > limits.MaxNodes {
+			return fmt.Errorf("%w: node count %d", ErrLimit, nodes)
+		}
+		if depth > limits.MaxNesting {
+			return fmt.Errorf("%w: nesting depth %d", ErrLimit, depth)
+		}
+		if table, ok := node.(*ir.Table); ok {
+			cells := 0
+			for _, row := range table.Rows {
+				cells += len(row.Cells)
+			}
+			if cells > limits.MaxTableCells {
+				return fmt.Errorf("%w: table cell count %d", ErrLimit, cells)
+			}
+		}
+		for _, child := range ir.Children(node) {
+			if err := visit(child, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return visit(root, 0)
+}
+
+func structuralValidationLimits() source.Limits {
+	return source.Limits{
+		MaxSourceBytes:     math.MaxInt,
+		MaxTokens:          math.MaxInt,
+		MaxNesting:         math.MaxInt,
+		MaxNodes:           math.MaxInt,
+		MaxMacroExpansions: math.MaxInt,
+		MaxExpandedTokens:  math.MaxInt,
+		MaxCallDepth:       math.MaxInt,
+		MaxTableCells:      math.MaxInt,
+		MaxAssemblyRepeats: math.MaxInt,
+		MaxTextBytes:       math.MaxInt,
+		MaxOutputItems:     math.MaxInt,
+		MaxPathSegments:    math.MaxInt,
+		MaxDimension:       math.MaxInt64,
+	}
+}
+
 func (s *layoutState) fontMetrics(style Style, variant ir.Variant) MathMetrics {
 	return s.renderer.fonts.Metrics.MathMetrics(style, variant).normalized()
 }
@@ -194,6 +268,9 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragme
 	}
 	if n == nil {
 		return nil, fmt.Errorf("%w: nil node", ErrInvalidInput)
+	}
+	if err := s.checkTextLimit(n); err != nil {
+		return nil, err
 	}
 	env = s.nodeEnvironment(n, env)
 
@@ -251,6 +328,14 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragme
 		return withClass(fragment, n.NodeBase().Class), nil
 	case *ir.Line:
 		return s.layoutLine(node, env, depth+1)
+	case *ir.Accent:
+		return s.layoutAccent(node, env, depth+1)
+	case *ir.Cancel:
+		return s.layoutCancel(node, env, depth+1)
+	case *ir.Box:
+		return s.layoutBox(node, env, depth+1)
+	case *ir.Phantom:
+		return s.layoutPhantom(node, env, depth+1)
 	case *ir.Table:
 		return s.layoutTable(node, env, depth+1)
 	case *ir.Placeholder:
@@ -260,4 +345,26 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragme
 	default:
 		return nil, fmt.Errorf("%w: %T", ErrUnsupported, n)
 	}
+}
+
+func (s *layoutState) checkTextLimit(node ir.Node) error {
+	var text string
+	switch node := node.(type) {
+	case *ir.Glyph:
+		text = node.Text
+	case *ir.Text:
+		text = node.Text
+	case *ir.Operator:
+		text = node.Text
+	case *ir.ErrorNode:
+		text = node.Text
+	case *ir.Placeholder:
+		text = node.Reason
+	default:
+		return nil
+	}
+	if len(text) > s.limits.MaxTextBytes {
+		return fmt.Errorf("%w: text byte count %d", ErrLimit, len(text))
+	}
+	return nil
 }

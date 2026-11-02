@@ -63,10 +63,9 @@ func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
 }
 
 type flattenState struct {
-	layout       *layoutState
-	box          *display.Box
-	pathSegments int
-	operations   int
+	layout     *layoutState
+	box        *display.Box
+	operations int
 }
 
 func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
@@ -105,7 +104,7 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 					Bound:  item.Bound,
 					FontID: draw.glyph.Glyph.FontID,
 					Glyph:  draw.glyph.Glyph.ID,
-					At:     geometry.Point{X: toFloat(itemX), Y: toFloat(itemY)},
+					At:     item.At,
 					Em:     item.Em,
 				}
 				f.box.Items = append(f.box.Items, ref)
@@ -115,6 +114,15 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 			}
 		case drawRule:
 			item, err := f.ruleItem(itemX, itemY, draw.rule)
+			if err != nil {
+				return err
+			}
+			f.box.Items = append(f.box.Items, item)
+			if len(f.box.Items) > f.layout.limits.MaxOutputItems {
+				return fmt.Errorf("%w: output item count", ErrLimit)
+			}
+		case drawPath:
+			item, err := f.pathItem(itemX, itemY, draw.path)
 			if err != nil {
 				return err
 			}
@@ -133,12 +141,20 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	if glyph == nil {
 		return display.Item{}, fmt.Errorf("%w: nil glyph", ErrInvalidInput)
 	}
+	hostX, err := f.layout.host(x)
+	if err != nil {
+		return display.Item{}, err
+	}
+	hostY, err := f.layout.host(y)
+	if err != nil {
+		return display.Item{}, err
+	}
 	item := display.Item{
 		Kind:   display.ItemGlyphRef,
 		Paint:  toDisplayPaint(glyph.Paint),
 		FontID: glyph.Glyph.FontID,
 		Glyph:  glyph.Glyph.ID,
-		At:     geometry.Point{X: toFloat(x), Y: toFloat(y)},
+		At:     geometry.Point{X: hostX, Y: hostY},
 	}
 	em, err := f.layout.host(glyph.Scale)
 	if err != nil {
@@ -159,8 +175,8 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 			return display.Item{}, err
 		}
 		item.Bound = geometry.Rect{
-			X:      toFloat(x),
-			Y:      toFloat(y) - ascent,
+			X:      hostX,
+			Y:      hostY - ascent,
 			Width:  width,
 			Height: ascent + descent,
 		}
@@ -168,13 +184,12 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	}
 
 	path := make([]geometry.Segment, len(glyph.Glyph.Outline))
-	f.pathSegments += len(path)
-	if f.pathSegments > f.layout.limits.MaxPathSegments {
-		return display.Item{}, fmt.Errorf("%w: path segment count %d", ErrLimit, f.pathSegments)
-	}
 	var minX, minY, maxX, maxY float32
 	havePoint := false
 	for i, segment := range glyph.Glyph.Outline {
+		if err := f.tick(); err != nil {
+			return display.Item{}, err
+		}
 		pointCount, ok := segmentPointCount(segment.Op)
 		if !ok {
 			return display.Item{}, fmt.Errorf("%w: invalid path operation %d", ErrInvalidInput, segment.Op)
@@ -217,6 +232,78 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		item.Bound = geometry.Rect{X: minX, Y: minY, Width: maxX - minX, Height: maxY - minY}
 	}
 	return item, nil
+}
+
+func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item, error) {
+	if path == nil {
+		return display.Item{}, fmt.Errorf("%w: nil path", ErrInvalidInput)
+	}
+	if len(path.path) == 0 {
+		return display.Item{}, fmt.Errorf("%w: empty path", ErrInvalidInput)
+	}
+	if err := f.layout.reservePathSegments(len(path.path)); err != nil {
+		return display.Item{}, err
+	}
+	hostX, err := f.layout.host(x)
+	if err != nil {
+		return display.Item{}, err
+	}
+	hostY, err := f.layout.host(y)
+	if err != nil {
+		return display.Item{}, err
+	}
+	segments := make([]geometry.Segment, len(path.path))
+	var minX, minY, maxX, maxY float32
+	havePoint := false
+	for i, segment := range path.path {
+		if err := f.tick(); err != nil {
+			return display.Item{}, err
+		}
+		pointCount, ok := segmentPointCount(segment.Op)
+		if !ok {
+			return display.Item{}, fmt.Errorf("%w: invalid path operation %d", ErrInvalidInput, segment.Op)
+		}
+		segments[i].Op = segment.Op
+		for j := 0; j < pointCount; j++ {
+			point := segment.Points[j]
+			px, err := add(x, point.X)
+			if err != nil {
+				return display.Item{}, err
+			}
+			py, err := add(y, point.Y)
+			if err != nil {
+				return display.Item{}, err
+			}
+			hx, err := f.layout.host(px)
+			if err != nil {
+				return display.Item{}, err
+			}
+			hy, err := f.layout.host(py)
+			if err != nil {
+				return display.Item{}, err
+			}
+			segments[i].Points[j] = geometry.Point{X: hx, Y: hy}
+			if !havePoint {
+				minX, maxX, minY, maxY = hx, hx, hy, hy
+				havePoint = true
+			} else {
+				minX = minFloat(minX, hx)
+				maxX = maxFloat(maxX, hx)
+				minY = minFloat(minY, hy)
+				maxY = maxFloat(maxY, hy)
+			}
+		}
+	}
+	bound := geometry.Rect{X: hostX, Y: hostY}
+	if havePoint {
+		bound = geometry.Rect{X: minX, Y: minY, Width: maxX - minX, Height: maxY - minY}
+	}
+	return display.Item{
+		Kind:  display.ItemGlyphPath,
+		Paint: toDisplayPaint(path.paint),
+		Bound: bound,
+		Path:  segments,
+	}, nil
 }
 
 func (f *flattenState) tick() error {

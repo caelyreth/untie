@@ -16,6 +16,11 @@ type MathMetrics struct {
 
 	SpaceWidth geometry.Em
 	XHeight    geometry.Em
+	// AccentBaseHeight and FlattenedAccentBaseHeight come from the font's
+	// typographic metrics. Zero uses the New Computer Modern-compatible
+	// fallbacks in normalized.
+	AccentBaseHeight          geometry.Em
+	FlattenedAccentBaseHeight geometry.Em
 
 	AxisHeight geometry.Em
 
@@ -78,6 +83,12 @@ func (m MathMetrics) normalized() MathMetrics {
 	}
 	if m.RadicalDegreeBottomRaisePct < 0 || m.RadicalDegreeBottomRaisePct > 100 {
 		m.RadicalDegreeBottomRaisePct = 60
+	}
+	if m.AccentBaseHeight <= 0 {
+		m.AccentBaseHeight = 29_491 // 0.45 em
+	}
+	if m.FlattenedAccentBaseHeight <= 0 {
+		m.FlattenedAccentBaseHeight = 43_516 // 0.664 em
 	}
 	return m
 }

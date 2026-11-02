@@ -1,6 +1,8 @@
 package layout
 
 import (
+	"fmt"
+
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -10,6 +12,30 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.Class = ir.ClassNormal
 	row.TextLike = true
 
+	type atom struct {
+		env      environment
+		fragment *Fragment
+	}
+	atoms := make([]atom, 0, len(nodes))
+	rawClasses := make([]ir.MathClass, 0, len(nodes))
+	for _, node := range nodes {
+		switch node.(type) {
+		case *ir.Space, *ir.Break, *ir.AlignMarker:
+			continue
+		}
+		nodeEnv := s.nodeEnvironment(node, env)
+		fragment, err := s.layoutNode(node, env, depth)
+		if err != nil {
+			return nil, err
+		}
+		atoms = append(atoms, atom{env: nodeEnv, fragment: fragment})
+		rawClasses = append(rawClasses, fragment.Class)
+	}
+	normalized := normalizeRowClasses(rawClasses)
+	for i := range atoms {
+		atoms[i].fragment.Class = normalized[i]
+	}
+
 	var x, ascent, descent, italic geometry.Em
 	var previousClass *ir.MathClass
 	var previousNode ir.Node
@@ -17,17 +43,25 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	var pendingSpace geometry.Em
 	var pendingVisible, pendingWeak bool
 	var afterExplicitSpace bool
+	atomIndex := 0
 
 	flushSpace := func() error {
-		if !pendingVisible || pendingSpace == 0 {
+		if !pendingVisible {
+			return nil
+		}
+		if pendingSpace == 0 {
 			pendingVisible = false
 			pendingWeak = false
+			afterExplicitSpace = true
 			return nil
 		}
 		var err error
 		x, err = add(x, pendingSpace)
 		if err != nil {
 			return err
+		}
+		if x < 0 {
+			return fmt.Errorf("%w: negative spacing before row origin", ErrInvalidInput)
 		}
 		pendingSpace = 0
 		pendingVisible = false
@@ -37,10 +71,10 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	}
 
 	for _, node := range nodes {
-		if err := s.check(depth); err != nil {
-			return nil, err
-		}
 		if space, ok := node.(*ir.Space); ok {
+			if err := s.check(depth); err != nil {
+				return nil, err
+			}
 			nodeEnv := s.nodeEnvironment(node, env)
 			if space.Type == ir.SpaceIgnored {
 				continue
@@ -51,7 +85,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			if space.Type == ir.SpaceInterword {
 				width, err = s.metricAt(metrics.SpaceWidth, nodeEnv.Style)
 			} else {
-				width, err = s.length(space.Amount, nodeEnv.Style, metrics)
+				width, err = s.signedLength(space.Amount, nodeEnv.Style, metrics)
 			}
 			if err != nil {
 				return nil, err
@@ -70,19 +104,23 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			continue
 		}
 		if _, ok := node.(*ir.Break); ok {
+			if err := s.check(depth); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		if _, ok := node.(*ir.AlignMarker); ok {
+			if err := s.check(depth); err != nil {
+				return nil, err
+			}
 			continue
 		}
 
-		nodeEnv := s.nodeEnvironment(node, env)
-		fragment, err := s.layoutNode(node, env, depth)
-		if err != nil {
-			return nil, err
-		}
-		class := NormalizeClass(previousClass, fragment.Class)
-		fragment.Class = class
+		current := atoms[atomIndex]
+		atomIndex++
+		nodeEnv := current.env
+		fragment := current.fragment
+		class := fragment.Class
 
 		var explicitBefore geometry.Em
 		var hasExplicit bool
@@ -122,10 +160,14 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 				explicitBefore = auto
 			}
 		}
+		var err error
 		if explicitBefore != 0 {
 			x, err = add(x, explicitBefore)
 			if err != nil {
 				return nil, err
+			}
+			if x < 0 {
+				return nil, fmt.Errorf("%w: negative spacing before row origin", ErrInvalidInput)
 			}
 		}
 
@@ -165,6 +207,9 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			if err != nil {
 				return nil, err
 			}
+			if x < 0 {
+				return nil, fmt.Errorf("%w: negative spacing after row", ErrInvalidInput)
+			}
 		}
 	}
 
@@ -174,6 +219,8 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.BaseAscent = ascent
 	row.BaseDescent = descent
 	row.Italic = italic
+	row.AccentTop = row.Width / 2
+	row.AccentBottom = row.Width / 2
 	return row, nil
 }
 
@@ -183,7 +230,7 @@ func (s *layoutState) leftSpacing(node ir.Node, env environment) (geometry.Em, b
 		return 0, false, nil
 	}
 	metrics := s.fontMetrics(env.Style, env.Variant)
-	value, err := s.length(base.LeftSpacing, env.Style, metrics)
+	value, err := s.signedLength(base.LeftSpacing, env.Style, metrics)
 	return value, true, err
 }
 
@@ -193,6 +240,6 @@ func (s *layoutState) rightSpacing(node ir.Node, env environment) (geometry.Em, 
 		return 0, false, nil
 	}
 	metrics := s.fontMetrics(env.Style, env.Variant)
-	value, err := s.length(base.RightSpacing, env.Style, metrics)
+	value, err := s.signedLength(base.RightSpacing, env.Style, metrics)
 	return value, true, err
 }

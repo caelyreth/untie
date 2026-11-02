@@ -1,6 +1,8 @@
 package layout
 
 import (
+	"fmt"
+
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -15,27 +17,48 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	top, err := s.optionalChild(node.Top, supEnv, depth)
+
+	var topNode, bottomNode ir.Node
+	topLeftNode, bottomLeftNode := node.TopLeft, node.BottomLeft
+	topRightNode, bottomRightNode := node.TopRight, node.BottomRight
+	if s.usesLimits(node, env) {
+		topNode, bottomNode = node.Top, node.Bottom
+	} else {
+		if node.Top != nil {
+			if topRightNode != nil {
+				return nil, fmt.Errorf("%w: semantic top script conflicts with forced side script", ErrInvalidInput)
+			}
+			topRightNode = node.Top
+		}
+		if node.Bottom != nil {
+			if bottomRightNode != nil {
+				return nil, fmt.Errorf("%w: semantic bottom script conflicts with forced side script", ErrInvalidInput)
+			}
+			bottomRightNode = node.Bottom
+		}
+	}
+
+	top, err := s.optionalChild(topNode, supEnv, depth)
 	if err != nil {
 		return nil, err
 	}
-	bottom, err := s.optionalChild(node.Bottom, subEnv, depth)
+	bottom, err := s.optionalChild(bottomNode, subEnv, depth)
 	if err != nil {
 		return nil, err
 	}
-	topLeft, err := s.optionalChild(node.TopLeft, supEnv, depth)
+	topLeft, err := s.optionalChild(topLeftNode, supEnv, depth)
 	if err != nil {
 		return nil, err
 	}
-	bottomLeft, err := s.optionalChild(node.BottomLeft, subEnv, depth)
+	bottomLeft, err := s.optionalChild(bottomLeftNode, subEnv, depth)
 	if err != nil {
 		return nil, err
 	}
-	topRight, err := s.optionalChild(node.TopRight, supEnv, depth)
+	topRight, err := s.optionalChild(topRightNode, supEnv, depth)
 	if err != nil {
 		return nil, err
 	}
-	bottomRight, err := s.optionalChild(node.BottomRight, subEnv, depth)
+	bottomRight, err := s.optionalChild(bottomRightNode, subEnv, depth)
 	if err != nil {
 		return nil, err
 	}
@@ -88,19 +111,24 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		return nil, err
 	}
 
-	preTop, err := sum(spaceAfter, widthOf(topLeft))
+	topLeftKern := mathKern(base, topLeft, supShift, KernTopLeft)
+	bottomLeftKern := mathKern(base, bottomLeft, subShift, KernBottomLeft)
+	topRightKern := mathKern(base, topRight, supShift, KernTopRight)
+	bottomRightKern := mathKern(base, bottomRight, subShift, KernBottomRight)
+
+	preTop, err := sum(spaceAfter, widthOf(topLeft), topLeftKern)
 	if err != nil {
 		return nil, err
 	}
-	preBottom, err := sum(spaceAfter, widthOf(bottomLeft))
+	preBottom, err := sum(spaceAfter, widthOf(bottomLeft), bottomLeftKern)
 	if err != nil {
 		return nil, err
 	}
-	postTop, err := sum(spaceAfter, widthOf(topRight))
+	postTop, err := sum(spaceAfter, widthOf(topRight), topRightKern)
 	if err != nil {
 		return nil, err
 	}
-	postBottom, err := sum(spaceAfter, widthOf(bottomRight))
+	postBottom, err := sum(spaceAfter, widthOf(bottomRight), bottomRightKern)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +210,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		}
 	}
 	if topRight != nil {
-		x, err := add(preWidth, base.Width)
+		x, err := sum(preWidth, base.Width, topRightKern)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +223,7 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		}
 	}
 	if bottomRight != nil {
-		x, err := add(preWidth, base.Width)
+		x, err := sum(preWidth, base.Width, bottomRightKern)
 		if err != nil {
 			return nil, err
 		}
@@ -242,6 +270,45 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		}
 	}
 	return withClass(fragment, node.Class), nil
+}
+
+func (s *layoutState) usesLimits(node *ir.Scripts, env environment) bool {
+	placement := node.Limits
+	if placement == ir.LimitsAuto {
+		if base := node.BaseItem.NodeBase(); base != nil && base.Limits != ir.LimitsAuto {
+			placement = base.Limits
+		}
+	}
+	switch placement {
+	case ir.LimitsAlways:
+		return true
+	case ir.LimitsNever:
+		return false
+	}
+	class := node.Class
+	if base := node.BaseItem.NodeBase(); base != nil && base.Class != ir.ClassNormal {
+		class = base.Class
+	}
+	return env.Style.Size == Display && class == ir.ClassLarge
+}
+
+func mathKern(base, script *Fragment, shift geometry.Em, corner KernCorner) geometry.Em {
+	if base == nil || script == nil {
+		return 0
+	}
+	var top, bottom geometry.Em
+	switch corner {
+	case KernTopLeft, KernTopRight:
+		top = base.Ascent - shift
+		bottom = shift - script.Descent
+	default:
+		top = script.Ascent - shift
+		bottom = shift - base.Descent
+	}
+	summed := func(height geometry.Em) geometry.Em {
+		return base.kernAtHeight(corner, height) + script.kernAtHeight(corner.inverse(), height)
+	}
+	return max(summed(top), summed(bottom))
 }
 
 func (s *layoutState) optionalChild(node ir.Node, env environment, depth int) (*Fragment, error) {

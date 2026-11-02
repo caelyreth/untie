@@ -85,12 +85,24 @@ func (s *layoutState) fenceDelimiter(node ir.Node, env environment, depth int, t
 	nodeEnv := s.nodeEnvironment(node, env)
 	switch item := node.(type) {
 	case *ir.Glyph:
+		if err := s.check(depth); err != nil {
+			return nil, err
+		}
+		if err := s.checkTextLimit(node); err != nil {
+			return nil, err
+		}
 		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{axis: Vertical, target: target})
 		if err != nil {
 			return nil, err
 		}
 		return withClass(fragment, item.Class), nil
 	case *ir.Operator:
+		if err := s.check(depth); err != nil {
+			return nil, err
+		}
+		if err := s.checkTextLimit(node); err != nil {
+			return nil, err
+		}
 		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{axis: Vertical, target: target})
 		if err != nil {
 			return nil, err

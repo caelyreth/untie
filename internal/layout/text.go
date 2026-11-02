@@ -20,7 +20,7 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 		Style:    env.Style,
 		Variant:  env.Variant,
 		Tracking: tracking,
-		Features: s.features,
+		Features: env.Features,
 	})
 	if !ok {
 		return nil, fmt.Errorf("%w: text %q", ErrMissingGlyph, node.Text)
