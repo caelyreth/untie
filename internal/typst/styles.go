@@ -230,12 +230,13 @@ func (l *lowerer) primeRow(span source.Range, count int) ir.Node {
 	if count <= 0 {
 		return l.glyph(span, "′")
 	}
+	if count <= 4 {
+		primes := [...]string{"′", "″", "‴", "⁗"}
+		return l.glyph(span, primes[count-1])
+	}
 	items := make([]ir.Node, 0, count)
 	for range count {
 		items = append(items, l.glyph(span, "′"))
-	}
-	if len(items) == 1 {
-		return items[0]
 	}
 	return ir.NewRow(span, items...)
 }

@@ -228,6 +228,7 @@ func (p *parser) parseExpr(minPrec int, stopAttach tokenKind, stops stopSet) *as
 			if prec < minPrec {
 				return left
 			}
+			leftSpan := left.span
 			p.advance()
 			right := p.parseExpr(prec+1, noAttach, stops)
 			if right == nil {
@@ -235,8 +236,12 @@ func (p *parser) parseExpr(minPrec int, stopAttach tokenKind, stops stopSet) *as
 				right = p.node(source.NewRange(tok.span.End, tok.span.End), astError)
 				right.raw = "missing denominator"
 			}
+			rightSpan := right.span
+			left = unparenthesize(left)
 			right = unparenthesize(right)
-			fr := p.node(source.Merge(left.span, right.span), astFraction)
+			// Keep the fraction's source evidence inclusive of the removed
+			// parentheses while the operand nodes retain their inner spans.
+			fr := p.node(source.Merge(leftSpan, rightSpan), astFraction)
 			fr.items = []*astNode{left, right}
 			left = fr
 

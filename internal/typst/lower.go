@@ -312,6 +312,16 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 	if hasCombiningMark(name) {
 		return l.lowerCombinedIdentifier(n)
 	}
+	if amount, ok := spacingSymbols[name]; ok {
+		space := ir.NewSpace(n.span, ir.SpaceExplicit, amount)
+		space.Class = ir.ClassSpace
+		return space
+	}
+	if name == "space" {
+		space := ir.NewSpace(n.span, ir.SpaceInterword, ir.Length{})
+		space.Class = ir.ClassSpace
+		return space
+	}
 	if def, ok := symbol(name); ok {
 		g := l.glyph(n.span, def.text)
 		g.Class = def.class
@@ -329,11 +339,6 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 			op.Limits = ir.LimitsNever
 		}
 		return op
-	}
-	if amount, ok := spacingSymbols[name]; ok {
-		space := ir.NewSpace(n.span, ir.SpaceExplicit, amount)
-		space.Class = ir.ClassSpace
-		return space
 	}
 	if n.inCode {
 		if kind, ok := codeKeywordValue(name); ok {
@@ -459,16 +464,31 @@ func containsIntegralText(text string) bool {
 }
 
 func inheritScriptMetadata(scripts *ir.Scripts) {
+	inheritScriptClass(scripts)
+	inheritScriptLimits(scripts)
+}
+
+func inheritScriptClass(scripts *ir.Scripts) {
 	if scripts == nil || scripts.BaseItem == nil {
 		return
 	}
 	base := scripts.BaseItem.NodeBase()
 	scripts.Class = base.Class
+}
+
+func inheritScriptLimits(scripts *ir.Scripts) {
+	if scripts == nil || scripts.BaseItem == nil {
+		return
+	}
+	base := scripts.BaseItem.NodeBase()
 	if scripts.Limits == ir.LimitsAuto {
 		scripts.Limits = base.Limits
 	}
 	if scripts.Limits == ir.LimitsAuto && base.Class == ir.ClassRelation {
 		scripts.Limits = ir.LimitsAlways
+		if scripts.Top != nil || scripts.Bottom != nil {
+			base.Limits = ir.LimitsAlways
+		}
 	}
 }
 

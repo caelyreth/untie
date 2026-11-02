@@ -103,7 +103,18 @@ func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 	if scripts.Role == ir.ScriptRoleOrdinary {
 		scripts.Role = attachmentScriptRole(scripts.BaseItem, scripts.Top != nil || scripts.Bottom != nil)
 	}
-	inheritScriptMetadata(scripts)
+	inheritScriptClass(scripts)
+	// Corner-only attachments decorate the base on both sides; they do not
+	// acquire the base's limit placement. This mirrors \sideset, whose outer
+	// corner-script layer remains auto while its inner base uses limits.
+	if scripts.Top != nil || scripts.Bottom != nil {
+		inheritScriptLimits(scripts)
+	} else if inner, ok := scripts.BaseItem.(*ir.Scripts); ok && scriptless(inner) {
+		// A script-less limits wrapper has no placement to perform. Its base
+		// still retains the explicit semantic limits, while the empty wrapper
+		// stays context-sensitive for the corner-script layer above it.
+		inner.Limits = ir.LimitsAuto
+	}
 	return scripts
 }
 
@@ -112,30 +123,37 @@ func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 	scripts := ir.NewScripts(call.span, body)
 	if name == "scripts" {
 		scripts.Limits = ir.LimitsNever
-		scripts.Role = baseScriptRole(body, false)
+		scripts.Role = baseScriptRole(body)
 	} else {
 		scripts.Limits = ir.LimitsAlways
-		scripts.Role = baseScriptRole(body, true)
+		scripts.Role = baseScriptRole(body)
 		if inlineArg := namedArgument(call, "inline"); inlineArg != nil {
 			if inline, ok := l.valueBool(inlineArg.node); ok && !inline {
 				scripts.Limits = ir.LimitsAuto
 			}
 		}
 	}
+	if body != nil {
+		body.NodeBase().Limits = scripts.Limits
+	}
 	inheritScriptMetadata(scripts)
 	return scripts
 }
 
-func baseScriptRole(node ir.Node, limits bool) ir.ScriptRole {
+func baseScriptRole(node ir.Node) ir.ScriptRole {
 	if hasLimitSemantics(node) {
 		return ir.ScriptRoleLimits
 	}
-	// limits() and scripts() only choose visual placement. A non-operator
-	// forced above/below is an overlay; forced side scripts remain ordinary.
-	if limits {
-		return ir.ScriptRoleOverlay
-	}
+	// limits() and scripts() only choose visual placement. Whether a non-operator
+	// becomes an overlay is decided by the attachment's selected script slots.
 	return ir.ScriptRoleOrdinary
+}
+
+func scriptless(node *ir.Scripts) bool {
+	return node != nil &&
+		node.Top == nil && node.Bottom == nil &&
+		node.TopLeft == nil && node.BottomLeft == nil &&
+		node.TopRight == nil && node.BottomRight == nil
 }
 
 func attachmentScriptRole(node ir.Node, smart bool) ir.ScriptRole {
