@@ -214,7 +214,6 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 	}
 	if !hasLinebreak && !hasAlign {
 		row := ir.NewRow(n.span)
-		row.Class = ir.ClassInner
 		row.Items = l.lowerItems(n.items)
 		return row
 	}
@@ -403,7 +402,6 @@ func (l *lowerer) lowerDelimited(n *astNode) ir.Node {
 		items = append(items, closeGlyph)
 	}
 	row := ir.NewRow(n.span, items...)
-	row.Class = ir.ClassInner
 	return row
 }
 

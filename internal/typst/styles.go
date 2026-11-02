@@ -241,7 +241,5 @@ func (l *lowerer) primeRow(span source.Range, count int) ir.Node {
 	if len(items) == 1 {
 		return items[0]
 	}
-	row := ir.NewRow(span, items...)
-	row.Class = ir.ClassInner
-	return row
+	return ir.NewRow(span, items...)
 }

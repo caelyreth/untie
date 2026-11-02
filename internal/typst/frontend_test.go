@@ -250,6 +250,31 @@ func TestFunctionArgumentsAndEvaluator(t *testing.T) {
 	}
 }
 
+func TestSyntaxGroupingRowsStayNeutral(t *testing.T) {
+	t.Parallel()
+
+	result := parse(t, `a+b^2`)
+	requireNoDiagnostics(t, "neutral grouping", result)
+	root, ok := result.Root.(*ir.Row)
+	if !ok || root.Class != ir.ClassNormal {
+		t.Fatalf("root = %#v, want a normal row", result.Root)
+	}
+	parenthesized := parse(t, `(a)`)
+	requireNoDiagnostics(t, "literal delimiters", parenthesized)
+	literal, ok := parenthesized.Root.(*ir.Row)
+	if !ok || literal.Class != ir.ClassNormal {
+		t.Fatalf("literal delimiter row = %#v, want normal", parenthesized.Root)
+	}
+
+	primes := parse(t, `f''`)
+	requireNoDiagnostics(t, "prime row", primes)
+	scripts := find[*ir.Scripts](t, primes.Root)
+	primeRow, ok := scripts.TopRight.(*ir.Row)
+	if !ok || primeRow.Class != ir.ClassNormal {
+		t.Fatalf("prime row = %#v, want normal", scripts.TopRight)
+	}
+}
+
 func TestEvaluatorValuesSpreadAndHSpace(t *testing.T) {
 	t.Parallel()
 
