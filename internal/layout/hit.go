@@ -1,0 +1,129 @@
+package layout
+
+import (
+	"fmt"
+
+	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/ir"
+)
+
+func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int) error {
+	if fragment == nil || node == nil || node.NodeBase() == nil {
+		return nil
+	}
+	fragment.ownHit = -1
+	kind, ok := nodeHitKind(node)
+	if !ok {
+		return nil
+	}
+	base := node.NodeBase()
+	span := base.Origin
+	if span.IsDetached() {
+		span = base.Span
+	}
+	if span.IsDetached() {
+		return nil
+	}
+	if !span.IsValid() {
+		return fmt.Errorf("%w: invalid hit source range %+v", ErrInvalidInput, span)
+	}
+	height, err := fragment.Height()
+	if err != nil {
+		return err
+	}
+	fragment.hits = append(fragment.hits, sourceHit{
+		source: span,
+		y:      -fragment.Ascent,
+		width:  fragment.Width,
+		height: height,
+		depth:  depth,
+		kind:   kind,
+	})
+	fragment.ownHit = len(fragment.hits) - 1
+	return nil
+}
+
+func (s *layoutState) attachNodeHitAs(fragment *Fragment, node ir.Node, depth int, kind display.HitKind) error {
+	if err := s.attachNodeHit(fragment, node, depth); err != nil {
+		return err
+	}
+	setOwnHitKind(fragment, kind)
+	return nil
+}
+
+func setOwnHitKind(fragment *Fragment, kind display.HitKind) {
+	if fragment == nil || fragment.ownHit < 0 || fragment.ownHit >= len(fragment.hits) {
+		return
+	}
+	fragment.hits[fragment.ownHit].kind = kind
+}
+
+func nodeHitKind(node ir.Node) (display.HitKind, bool) {
+	switch node.(type) {
+	case *ir.Glyph, *ir.Text, *ir.Operator, *ir.Space, *ir.ErrorNode, *ir.Placeholder:
+		return display.HitAtom, true
+	case *ir.Row:
+		return display.HitRow, true
+	case *ir.Multiline:
+		return display.HitRow, true
+	case *ir.Scripts:
+		return display.HitScript, true
+	case *ir.Fraction:
+		return display.HitOther, true
+	case *ir.Radical:
+		return display.HitRadical, true
+	case *ir.Fenced:
+		return display.HitFence, true
+	case *ir.Style, *ir.Color, *ir.Accent, *ir.Line, *ir.Cancel, *ir.Box, *ir.Phantom:
+		return display.HitGroup, true
+	case *ir.Table:
+		return display.HitOther, true
+	default:
+		return 0, false
+	}
+}
+
+func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x, y geometry.Em) error {
+	for _, hit := range fragment.hits {
+		if err := f.tick(); err != nil {
+			return err
+		}
+		hitX, err := add(x, hit.x)
+		if err != nil {
+			return err
+		}
+		hitY, err := add(y, hit.y)
+		if err != nil {
+			return err
+		}
+		hostX, err := s.host(hitX)
+		if err != nil {
+			return err
+		}
+		hostY, err := s.host(hitY)
+		if err != nil {
+			return err
+		}
+		width, err := s.host(hit.width)
+		if err != nil {
+			return err
+		}
+		height, err := s.host(hit.height)
+		if err != nil {
+			return err
+		}
+		f.box.Hits = append(f.box.Hits, display.Hit{
+			Source: hit.source,
+			Area: geometry.Rect{
+				X:      hostX,
+				Y:      hostY,
+				Width:  width,
+				Height: height,
+			},
+			Depth: hit.depth,
+			Kind:  hit.kind,
+		})
+	}
+	return nil
+}

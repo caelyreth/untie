@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -95,6 +96,9 @@ func (s *layoutState) fenceDelimiter(node ir.Node, env environment, depth int, t
 		if err != nil {
 			return nil, err
 		}
+		if err := s.attachNodeHitAs(fragment, node, depth, display.HitFence); err != nil {
+			return nil, err
+		}
 		return withClass(fragment, item.Class), nil
 	case *ir.Operator:
 		if err := s.check(depth); err != nil {
@@ -105,6 +109,9 @@ func (s *layoutState) fenceDelimiter(node ir.Node, env environment, depth int, t
 		}
 		fragment, err := s.layoutGlyphText(item.Text, nodeEnv, &stretchSpec{axis: Vertical, target: target})
 		if err != nil {
+			return nil, err
+		}
+		if err := s.attachNodeHitAs(fragment, node, depth, display.HitFence); err != nil {
 			return nil, err
 		}
 		return withClass(fragment, item.Class), nil

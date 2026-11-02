@@ -361,7 +361,7 @@ func (s *layoutState) nodeEnvironment(n ir.Node, env environment) environment {
 	return env
 }
 
-func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragment, error) {
+func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragment *Fragment, err error) {
 	if err := s.check(depth); err != nil {
 		return nil, err
 	}
@@ -371,36 +371,44 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragme
 	if err := s.checkTextLimit(n); err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err == nil && fragment != nil {
+			if hitErr := s.attachNodeHit(fragment, n, depth); hitErr != nil {
+				fragment = nil
+				err = hitErr
+			}
+		}
+	}()
 	env = s.nodeEnvironment(n, env)
 
 	switch node := n.(type) {
 	case *ir.Row:
-		fragment, err := s.layoutRow(node.Items, env, depth+1)
+		fragment, err = s.layoutRow(node.Items, env, depth+1)
 		if err != nil {
 			return nil, err
 		}
 		return withClass(fragment, node.Class), nil
 	case *ir.Glyph:
-		fragment, err := s.layoutGlyphText(node.Text, env, nil)
+		fragment, err = s.layoutGlyphText(node.Text, env, nil)
 		if err != nil {
 			return nil, err
 		}
 		return withClass(fragment, node.Class), nil
 	case *ir.Operator:
-		fragment, err := s.layoutOperator(node, env)
+		fragment, err = s.layoutOperator(node, env)
 		if err != nil {
 			return nil, err
 		}
 		return fragment, nil
 	case *ir.ErrorNode:
 		env.Paint = ir.Paint{Role: ir.PaintError}
-		fragment, err := s.layoutGlyphText(node.Text, env, nil)
+		fragment, err = s.layoutGlyphText(node.Text, env, nil)
 		if err != nil {
 			return nil, err
 		}
 		return withClass(fragment, node.Class), nil
 	case *ir.Text:
-		fragment, err := s.layoutText(node, env)
+		fragment, err = s.layoutText(node, env)
 		if err != nil {
 			return nil, err
 		}
@@ -420,7 +428,7 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (*Fragme
 	case *ir.Color:
 		child := env
 		child.Paint = node.Paint
-		fragment, err := s.layoutNode(node.Body, child, depth+1)
+		fragment, err = s.layoutNode(node.Body, child, depth+1)
 		if err != nil {
 			return nil, err
 		}

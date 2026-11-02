@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -43,10 +44,12 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		if err != nil {
 			return nil, err
 		}
+		setOwnHitKind(top, display.HitScript)
 		bottom, err = s.optionalChild(bottomNode, subEnv, depth)
 		if err != nil {
 			return nil, err
 		}
+		setOwnHitKind(bottom, display.HitScript)
 		base, err = s.layoutScriptBase(node.BaseItem, env, depth, max(widthOf(top), widthOf(bottom)))
 		if err != nil {
 			return nil, err
@@ -61,18 +64,22 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
+	setOwnHitKind(topLeft, display.HitScript)
 	bottomLeft, err := s.optionalChild(bottomLeftNode, subEnv, depth)
 	if err != nil {
 		return nil, err
 	}
+	setOwnHitKind(bottomLeft, display.HitScript)
 	topRight, err := s.optionalChild(topRightNode, supEnv, depth)
 	if err != nil {
 		return nil, err
 	}
+	setOwnHitKind(topRight, display.HitScript)
 	bottomRight, err := s.optionalChild(bottomRightNode, subEnv, depth)
 	if err != nil {
 		return nil, err
 	}
+	setOwnHitKind(bottomRight, display.HitScript)
 
 	metrics := s.fontMetrics(env.Style, env.Variant)
 	supShift, subShift, err := s.scriptShifts(env.Style, env.Style.Cramped, base, metrics, topLeft, topRight, bottomLeft, bottomRight)
@@ -289,6 +296,9 @@ func (s *layoutState) layoutScriptBase(node ir.Node, env environment, depth int,
 		if err != nil {
 			return nil, err
 		}
+		if err := s.attachNodeHit(fragment, node, depth); err != nil {
+			return nil, err
+		}
 		fragment = withClass(fragment, item.Class)
 		if fragment.Width < target {
 			return nil, fmt.Errorf("%w: %w: horizontal operator stretch to %d is not configured", ErrUnsupported, ErrInsufficientStretch, target)
@@ -300,6 +310,9 @@ func (s *layoutState) layoutScriptBase(node ir.Node, env environment, depth int,
 		target: target,
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := s.attachNodeHit(fragment, node, depth); err != nil {
 		return nil, err
 	}
 	return withClass(fragment, item.Class), nil

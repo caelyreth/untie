@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
@@ -194,6 +195,9 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			if err != nil {
 				return nil, err
 			}
+			for _, part := range parts {
+				setOwnHitKind(part.fragment, display.HitTableCell)
+			}
 			measured := measuredCell{parts: parts}
 			for _, part := range parts {
 				measured.ascent = max(measured.ascent, part.ascent)
@@ -208,6 +212,7 @@ func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth 
 			if err != nil {
 				return nil, err
 			}
+			setOwnHitKind(tag, display.HitTableCell)
 			rows[rowIndex].tag = tag
 			rows[rowIndex].ascent = max(rows[rowIndex].ascent, tag.Ascent)
 			rows[rowIndex].descent = max(rows[rowIndex].descent, tag.Descent)
