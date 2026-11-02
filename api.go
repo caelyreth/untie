@@ -1,6 +1,7 @@
 package untie
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/font"
+	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/tex"
 	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
@@ -39,6 +41,7 @@ type (
 	Diagnostic = source.Diagnostic
 	Severity   = source.Severity
 	Box        = display.Box
+	Alt        = display.Alt
 	Item       = display.Item
 	ItemKind   = display.ItemKind
 	Paint      = display.Paint
@@ -310,6 +313,30 @@ func (e *Expr) Diagnostics() []Diagnostic {
 		out[i] = d.Clone()
 	}
 	return out
+}
+
+// Alt returns deterministic plain text and speech derived from the neutral IR.
+// MathML is deferred and remains empty.
+func (e *Expr) Alt() Alt {
+	if e == nil {
+		return Alt{}
+	}
+	out, _ := e.AltContext(context.Background())
+	return out
+}
+
+// AltContext returns alternative text with cooperative cancellation.
+func (e *Expr) AltContext(ctx context.Context) (Alt, error) {
+	if ctx == nil {
+		return Alt{}, ErrInvalidContext
+	}
+	if err := ctx.Err(); err != nil {
+		return Alt{}, err
+	}
+	if e == nil || e.root == nil || e.root.Root == nil {
+		return Alt{}, ErrInvalidExpr
+	}
+	return internalalt.GenerateContext(ctx, e.root.Root, e.mode, e.limits)
 }
 
 // Key returns a stable convenience cache key for the parsed expression.

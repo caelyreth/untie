@@ -81,6 +81,61 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 }
 
+func TestAltCloneValidateAndMarshalCanonical(t *testing.T) {
+	t.Parallel()
+
+	alt := Alt{
+		Speech: "x sub i squared",
+		Text:   "x_i²",
+	}
+	if got := alt.Clone(); got != alt {
+		t.Fatalf("Clone() = %#v, want %#v", got, alt)
+	}
+	if err := alt.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	first, err := alt.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	second, err := alt.Clone().MarshalCanonical()
+	if err != nil {
+		t.Fatalf("clone MarshalCanonical() error = %v", err)
+	}
+	if string(first) != string(second) {
+		t.Fatalf("canonical output is nondeterministic:\n%s\n%s", first, second)
+	}
+	const want = `{"speech":"x sub i squared","text":"x_i²","mathml":""}`
+	if string(first) != want {
+		t.Fatalf("MarshalCanonical() = %s, want %s", first, want)
+	}
+}
+
+func TestAltValidationRejectsMalformedAndDeferredOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		alt  Alt
+	}{
+		{name: "speech UTF-8", alt: Alt{Speech: string([]byte{0xff})}},
+		{name: "text UTF-8", alt: Alt{Text: string([]byte{0xff})}},
+		{name: "NUL", alt: Alt{Text: "x\x00y"}},
+		{name: "deferred MathML", alt: Alt{MathML: "<math/>"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if err := tc.alt.Validate(); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+			if _, err := tc.alt.MarshalCanonical(); err == nil {
+				t.Fatal("MarshalCanonical() error = nil")
+			}
+		})
+	}
+}
+
 func TestValidateBox(t *testing.T) {
 	t.Parallel()
 

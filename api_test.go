@@ -337,3 +337,83 @@ func TestLayoutEmitsSourceAndMacroOriginHits(t *testing.T) {
 		t.Fatalf("At() = (%#v, %v), want innermost macro argument", hit, ok)
 	}
 }
+
+func TestExprAltIsSemanticAndDeterministic(t *testing.T) {
+	t.Parallel()
+
+	tex := ParseTeX(`x_i^2`, Inline, ParseOptions{})
+	typst := ParseTypst(`x_i^2`, Inline, ParseOptions{})
+	texAlt := tex.Alt()
+	typstAlt := typst.Alt()
+	if texAlt.Text != "x_i²" || texAlt.Speech != "x sub i squared" {
+		t.Fatalf("TeX Alt() = %#v", texAlt)
+	}
+	if typstAlt != texAlt {
+		t.Fatalf("equivalent source produced different alt text:\nTeX:   %#v\nTypst: %#v", texAlt, typstAlt)
+	}
+	if again := tex.Alt(); again != texAlt {
+		t.Fatalf("Alt() is nondeterministic: %#v != %#v", texAlt, again)
+	}
+	if texAlt.MathML != "" {
+		t.Fatalf("MathML = %q, want empty", texAlt.MathML)
+	}
+	if err := texAlt.Validate(); err != nil {
+		t.Fatalf("Alt().Validate() error = %v", err)
+	}
+}
+
+func TestExprAltIgnoresSourceSpans(t *testing.T) {
+	t.Parallel()
+
+	plain := ParseTeX(`x`, Inline, ParseOptions{}).Alt()
+	grouped := ParseTeX(`{x}`, Inline, ParseOptions{}).Alt()
+	if plain != grouped {
+		t.Fatalf("source grouping changed alternative text:\nplain:   %#v\ngrouped: %#v", plain, grouped)
+	}
+}
+
+func TestExprAltKeepsTextRunsReadable(t *testing.T) {
+	t.Parallel()
+
+	alt := ParseTeX(`\text{hello world}`, Inline, ParseOptions{}).Alt()
+	if alt.Text != "hello world" {
+		t.Fatalf("Alt().Text = %q, want %q", alt.Text, "hello world")
+	}
+	if alt.Speech != "hello world" {
+		t.Fatalf("Alt().Speech = %q, want %q", alt.Speech, "hello world")
+	}
+}
+
+func TestExprAltShowsRecoverableErrors(t *testing.T) {
+	t.Parallel()
+
+	alt := ParseTeX(`\definitelyunknown`, Inline, ParseOptions{}).Alt()
+	if !strings.Contains(alt.Text, "error") || !strings.Contains(alt.Text, "definitelyunknown") {
+		t.Fatalf("Alt().Text = %q, want visible error", alt.Text)
+	}
+	if !strings.Contains(alt.Speech, "error") || !strings.Contains(alt.Speech, "definitelyunknown") {
+		t.Fatalf("Alt().Speech = %q, want visible error", alt.Speech)
+	}
+}
+
+func TestExprAltContextCancellationAndNil(t *testing.T) {
+	t.Parallel()
+
+	expr := ParseTeX(`x`, Inline, ParseOptions{})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if alt, err := expr.AltContext(ctx); !errors.Is(err, context.Canceled) || alt != (Alt{}) {
+		t.Fatalf("AltContext() = %#v, %v, want zero, context.Canceled", alt, err)
+	}
+	//nolint:staticcheck // This assertion intentionally verifies nil-context handling.
+	if _, err := expr.AltContext(nil); !errors.Is(err, ErrInvalidContext) {
+		t.Fatalf("nil AltContext() error = %v", err)
+	}
+	var nilExpr *Expr
+	if got := nilExpr.Alt(); got != (Alt{}) {
+		t.Fatalf("nil Expr.Alt() = %#v, want zero", got)
+	}
+	if _, err := nilExpr.AltContext(context.Background()); !errors.Is(err, ErrInvalidExpr) {
+		t.Fatalf("nil Expr.AltContext() error = %v, want ErrInvalidExpr", err)
+	}
+}

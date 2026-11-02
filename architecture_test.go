@@ -34,6 +34,7 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{
 			modulePath + "/display",
 			modulePath + "/font",
+			modulePath + "/internal/alt",
 			modulePath + "/internal/engine",
 			modulePath + "/internal/tex",
 			modulePath + "/internal/typst",
@@ -75,6 +76,13 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/source",
 		},
 		Tests: []string{modulePath + "/internal/tex", modulePath + "/internal/typst"},
+	},
+	modulePath + "/internal/alt": {
+		Production: []string{
+			modulePath + "/display",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/internal/conformance": {
 		Production: []string{

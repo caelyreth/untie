@@ -4,11 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie/geometry"
 )
 
 var ErrInvalidBox = errors.New("display: invalid box")
+
+// ErrInvalidAlt reports malformed alternative text.
+var ErrInvalidAlt = errors.New("display: invalid alternative text")
 
 // Validate checks structural and numeric output invariants.
 func (b *Box) Validate() error {
@@ -40,6 +45,30 @@ func (b *Box) Validate() error {
 		if err := validateBreak(breakPoint); err != nil {
 			return fmt.Errorf("%w: break %d: %v", ErrInvalidBox, i, err)
 		}
+	}
+	return nil
+}
+
+// Validate checks that alternative text is valid UTF-8 and that deferred
+// output remains empty.
+func (a Alt) Validate() error {
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"speech", a.Speech},
+		{"text", a.Text},
+		{"mathml", a.MathML},
+	} {
+		if !utf8.ValidString(field.value) {
+			return fmt.Errorf("%w: %s is not valid UTF-8", ErrInvalidAlt, field.name)
+		}
+		if strings.ContainsRune(field.value, '\x00') {
+			return fmt.Errorf("%w: %s contains NUL", ErrInvalidAlt, field.name)
+		}
+	}
+	if a.MathML != "" {
+		return fmt.Errorf("%w: MathML is not implemented", ErrInvalidAlt)
 	}
 	return nil
 }
