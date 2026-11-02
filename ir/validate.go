@@ -3,6 +3,7 @@ package ir
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -45,48 +46,57 @@ func validate(f *Formula, sourceLen int, limits source.Limits) error {
 		sourceLen: sourceLen,
 		active:    make(map[Node]bool),
 	}
-	if err := state.visit(f.Root, "root", 0); err != nil {
+	state.path.frames = state.pathInline[:0]
+	state.path.pushText("root")
+	if err := state.visit(f.Root, 0); err != nil {
 		return err
 	}
-	manualLines := make(map[int]bool)
+	var manualLines map[int]bool
+	if len(f.Tags) > 0 {
+		manualLines = make(map[int]bool)
+	}
 	for i, tag := range f.Tags {
-		path := fmt.Sprintf("tags[%d]", i)
+		state.path.reset()
+		state.path.pushTag(i)
 		state.count++
 		if state.count > state.limits.MaxNodes {
-			return fmt.Errorf("%w: %w: %s: metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, path)
+			return fmt.Errorf("%w: %w: %s: metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, &state.path)
 		}
-		if err := state.validateRange(tag.Span, path+".span"); err != nil {
+		if err := state.validateRangeField(tag.Span, ".span"); err != nil {
 			return err
 		}
-		if err := state.validateRange(tag.Origin, path+".origin"); err != nil {
+		if err := state.validateRangeField(tag.Origin, ".origin"); err != nil {
 			return err
 		}
 		if tag.Line < -1 {
-			return fmt.Errorf("%w: %s: invalid line %d", ErrInvalidIR, path, tag.Line)
+			return fmt.Errorf("%w: %s: invalid line %d", ErrInvalidIR, &state.path, tag.Line)
 		}
 		if tag.Starred && !tag.Manual {
-			return fmt.Errorf("%w: %s: starred tag must be manual", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: starred tag must be manual", ErrInvalidIR, &state.path)
 		}
 		if tag.Suppressed {
 			if tag.Manual {
-				return fmt.Errorf("%w: %s: tag cannot be both manual and suppressed", ErrInvalidIR, path)
+				return fmt.Errorf("%w: %s: tag cannot be both manual and suppressed", ErrInvalidIR, &state.path)
 			}
 			if tag.Body != nil {
-				return fmt.Errorf("%w: %s: suppression event has a body", ErrInvalidIR, path)
+				return fmt.Errorf("%w: %s: suppression event has a body", ErrInvalidIR, &state.path)
 			}
 			continue
 		}
 		if !tag.Manual {
-			return fmt.Errorf("%w: %s: tag needs a manual body or suppression", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: tag needs a manual body or suppression", ErrInvalidIR, &state.path)
 		}
 		if tag.Body == nil {
-			return fmt.Errorf("%w: %s: manual tag has no body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: manual tag has no body", ErrInvalidIR, &state.path)
 		}
 		if manualLines[tag.Line] {
-			return fmt.Errorf("%w: %s: multiple manual tags for line %d", ErrInvalidIR, path, tag.Line)
+			return fmt.Errorf("%w: %s: multiple manual tags for line %d", ErrInvalidIR, &state.path, tag.Line)
 		}
 		manualLines[tag.Line] = true
-		if err := state.visit(tag.Body, path+".body", 0); err != nil {
+		state.path.pushText(".body")
+		err := state.visit(tag.Body, 0)
+		state.path.pop()
+		if err != nil {
 			return err
 		}
 	}
@@ -98,301 +108,442 @@ type validationState struct {
 	sourceLen int
 	count     int
 	active    map[Node]bool
+	path      validationPath
+	// Common nesting depths avoid a path allocation; deeper trees grow normally.
+	pathInline [8]validationPathFrame
 }
 
-func (s *validationState) visit(n Node, path string, depth int) error {
+func (s *validationState) visit(n Node, depth int) error {
 	if nodeIsNil(n) {
-		return fmt.Errorf("%w: %s: nil node", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: nil node", ErrInvalidIR, &s.path)
 	}
 	if s.active[n] {
-		return fmt.Errorf("%w: %w: %s", ErrInvalidIR, ErrCycle, path)
+		return fmt.Errorf("%w: %w: %s", ErrInvalidIR, ErrCycle, &s.path)
 	}
 	s.count++
 	if s.count > s.limits.MaxNodes {
-		return fmt.Errorf("%w: %w: %s: node limit exceeded", ErrInvalidIR, ErrTraversalLimit, path)
+		return fmt.Errorf("%w: %w: %s: node limit exceeded", ErrInvalidIR, ErrTraversalLimit, &s.path)
 	}
 	if depth > s.limits.MaxNesting {
-		return fmt.Errorf("%w: %w: %s: nesting limit exceeded", ErrInvalidIR, ErrTraversalLimit, path)
+		return fmt.Errorf("%w: %w: %s: nesting limit exceeded", ErrInvalidIR, ErrTraversalLimit, &s.path)
 	}
 
 	base := n.NodeBase()
 	if base == nil {
-		return fmt.Errorf("%w: %s: nil base", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: nil base", ErrInvalidIR, &s.path)
 	}
 	expected, ok := kindForNode(n)
 	if !ok {
-		return fmt.Errorf("%w: %s: unsupported node %T", ErrInvalidIR, path, n)
+		return fmt.Errorf("%w: %s: unsupported node %T", ErrInvalidIR, &s.path, n)
 	}
 	if base.kind == 0 {
-		return fmt.Errorf("%w: %s: zero node kind", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: zero node kind", ErrInvalidIR, &s.path)
 	}
 	if base.kind != expected {
 		return fmt.Errorf("%w: %s: node type %T has kind %s, want %s",
-			ErrInvalidIR, path, n, kindName(base.kind), kindName(expected))
+			ErrInvalidIR, &s.path, n, kindName(base.kind), kindName(expected))
 	}
-	if err := s.validateRange(base.Span, path+".span"); err != nil {
+	if err := s.validateRangeField(base.Span, ".span"); err != nil {
 		return err
 	}
-	if err := s.validateRange(base.Origin, path+".origin"); err != nil {
+	if err := s.validateRangeField(base.Origin, ".origin"); err != nil {
 		return err
 	}
 	if base.Class > ClassSpecial {
-		return fmt.Errorf("%w: %s: invalid math class %d", ErrInvalidIR, path, base.Class)
+		return fmt.Errorf("%w: %s: invalid math class %d", ErrInvalidIR, &s.path, base.Class)
 	}
 	if base.Size > SizeScriptScript {
-		return fmt.Errorf("%w: %s: invalid math size", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: invalid math size", ErrInvalidIR, &s.path)
 	}
 	if base.Variant > VariantMonospace {
-		return fmt.Errorf("%w: %s: invalid variant", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: invalid variant", ErrInvalidIR, &s.path)
 	}
 	if base.Limits > LimitsDisplay {
-		return fmt.Errorf("%w: %s: invalid limits placement", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: invalid limits placement", ErrInvalidIR, &s.path)
 	}
-	if err := validatePaint(base.Paint, path+".paint"); err != nil {
+	if err := s.validatePaintField(base.Paint, ".paint"); err != nil {
 		return err
 	}
 	if err := base.LeftSpacing.ValidateWithLimit(s.limits.MaxDimension); err != nil {
-		return fmt.Errorf("%w: %s: left spacing: %v", ErrInvalidIR, path, err)
+		return fmt.Errorf("%w: %s: left spacing: %v", ErrInvalidIR, &s.path, err)
 	}
 	if err := base.RightSpacing.ValidateWithLimit(s.limits.MaxDimension); err != nil {
-		return fmt.Errorf("%w: %s: right spacing: %v", ErrInvalidIR, path, err)
+		return fmt.Errorf("%w: %s: right spacing: %v", ErrInvalidIR, &s.path, err)
 	}
 
 	s.active[n] = true
 	defer delete(s.active, n)
-	if err := validateNode(n, path, s.limits); err != nil {
+	if err := validateNode(n, s); err != nil {
 		return err
 	}
-	children := Children(n)
-	for i, child := range children {
-		childPath := fmt.Sprintf("%s.%s[%d]", path, kindName(n.Kind()), i)
-		if child == nil {
-			return fmt.Errorf("%w: %s: nil child", ErrInvalidIR, childPath)
+	return s.visitChildren(n, depth)
+}
+
+func (s *validationState) validateRangeField(r source.Range, field string) error {
+	s.path.pushText(field)
+	err := s.validateRange(r)
+	s.path.pop()
+	return err
+}
+
+func (s *validationState) validateRange(r source.Range) error {
+	if !r.IsValid() {
+		return fmt.Errorf("%w: %s: invalid range", ErrInvalidIR, &s.path)
+	}
+	if s.sourceLen >= 0 && !r.IsValidFor(s.sourceLen) {
+		return fmt.Errorf("%w: %s: range %d:%d exceeds source length %d",
+			ErrInvalidIR, &s.path, r.Start, r.End, s.sourceLen)
+	}
+	return nil
+}
+
+func (s *validationState) visitChildren(n Node, depth int) error {
+	switch n := n.(type) {
+	case *Row:
+		return s.visitNodeSlice(n.Kind(), n.Items, depth)
+	case *Glyph, *Text, *Operator, *Space, *SizedDelimiter, *ErrorNode, *Placeholder, *Break, *AlignMarker:
+		return nil
+	case *Fraction:
+		if err := s.visitChild(n.Kind(), n.Numerator, 0, depth); err != nil {
+			return err
 		}
-		if err := s.visit(child, childPath, depth+1); err != nil {
+		return s.visitChild(n.Kind(), n.Denominator, 1, depth)
+	case *Radical:
+		if err := s.visitChild(n.Kind(), n.Radicand, 0, depth); err != nil {
+			return err
+		}
+		if n.Index != nil {
+			return s.visitChild(n.Kind(), n.Index, 1, depth)
+		}
+		return nil
+	case *Scripts:
+		index := 0
+		for _, child := range [...]Node{
+			n.BaseItem, n.Top, n.Bottom, n.TopLeft, n.BottomLeft, n.TopRight, n.BottomRight,
+		} {
+			if child == nil {
+				continue
+			}
+			if err := s.visitChild(n.Kind(), child, index, depth); err != nil {
+				return err
+			}
+			index++
+		}
+		return nil
+	case *Fenced:
+		index := 0
+		if n.Open != nil {
+			if err := s.visitChild(n.Kind(), n.Open, index, depth); err != nil {
+				return err
+			}
+			index++
+		}
+		for _, child := range n.Body {
+			if err := s.visitChild(n.Kind(), child, index, depth); err != nil {
+				return err
+			}
+			index++
+		}
+		if n.Close != nil {
+			return s.visitChild(n.Kind(), n.Close, index, depth)
+		}
+		return nil
+	case *Accent:
+		if err := s.visitChild(n.Kind(), n.Body, 0, depth); err != nil {
+			return err
+		}
+		return s.visitChild(n.Kind(), n.Accent, 1, depth)
+	case *Line:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Cancel:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Table:
+		index := 0
+		for _, row := range n.Rows {
+			for _, child := range row.Cells {
+				if err := s.visitChild(n.Kind(), child, index, depth); err != nil {
+					return err
+				}
+				index++
+			}
+		}
+		return nil
+	case *Multiline:
+		index := 0
+		for _, row := range n.Rows {
+			for _, child := range row {
+				if err := s.visitChild(n.Kind(), child, index, depth); err != nil {
+					return err
+				}
+				index++
+			}
+		}
+		return nil
+	case *Style:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Color:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Box:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Phantom:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	default:
+		return nil
+	}
+}
+
+func (s *validationState) visitNodeSlice(kind NodeKind, children []Node, depth int) error {
+	for i, child := range children {
+		if err := s.visitChild(kind, child, i, depth); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *validationState) validateRange(r source.Range, path string) error {
-	if !r.IsValid() {
-		return fmt.Errorf("%w: %s: invalid range", ErrInvalidIR, path)
+func (s *validationState) visitChild(kind NodeKind, child Node, index, depth int) error {
+	s.path.pushChild(kind, index)
+	if child == nil {
+		err := fmt.Errorf("%w: %s: nil child", ErrInvalidIR, &s.path)
+		s.path.pop()
+		return err
 	}
-	if s.sourceLen >= 0 && !r.IsValidFor(s.sourceLen) {
-		return fmt.Errorf("%w: %s: range %d:%d exceeds source length %d",
-			ErrInvalidIR, path, r.Start, r.End, s.sourceLen)
-	}
-	return nil
+	err := s.visit(child, depth+1)
+	s.path.pop()
+	return err
 }
 
-func validateNode(n Node, path string, limits source.Limits) error {
+func validateNode(n Node, s *validationState) error {
+	limits := s.limits
 	switch n := n.(type) {
 	case *Row:
 		// Empty rows are meaningful zero-ink roots and null-delimiter placeholders.
 	case *Glyph:
-		if err := validateTextBytes(n.Text, limits, path, "glyph"); err != nil {
+		if err := validateTextBytes(n.Text, limits, &s.path, "glyph"); err != nil {
 			return err
 		}
 	case *Text:
-		if err := validateTextBytes(n.Text, limits, path, "text"); err != nil {
+		if err := validateTextBytes(n.Text, limits, &s.path, "text"); err != nil {
 			return err
 		}
 		if n.Font > FontText {
-			return fmt.Errorf("%w: %s: invalid font role", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid font role", ErrInvalidIR, &s.path)
 		}
-		if err := validateNonNegative(n.Tracking, limits, path+".tracking"); err != nil {
+		if err := s.validateNonNegativeField(n.Tracking, ".tracking"); err != nil {
 			return err
 		}
 	case *Operator:
-		if err := validateTextBytes(n.Text, limits, path, "operator"); err != nil {
+		if err := validateTextBytes(n.Text, limits, &s.path, "operator"); err != nil {
 			return err
 		}
 	case *Space:
 		if n.Type > SpaceIgnored {
-			return fmt.Errorf("%w: %s: invalid space kind", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid space kind", ErrInvalidIR, &s.path)
 		}
 		if err := n.Amount.ValidateWithLimit(limits.MaxDimension); err != nil {
-			return fmt.Errorf("%w: %s: space amount: %v", ErrInvalidIR, path, err)
+			return fmt.Errorf("%w: %s: space amount: %v", ErrInvalidIR, &s.path, err)
 		}
 		if n.Type != SpaceExplicit && !n.Amount.IsZero() {
-			return fmt.Errorf("%w: %s: non-explicit space has an explicit amount", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: non-explicit space has an explicit amount", ErrInvalidIR, &s.path)
 		}
 	case *Fraction:
 		if n.Numerator == nil || n.Denominator == nil {
-			return fmt.Errorf("%w: %s: missing fraction part", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing fraction part", ErrInvalidIR, &s.path)
 		}
 		if n.Style > FractionHorizontal {
-			return fmt.Errorf("%w: %s: invalid fraction style", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid fraction style", ErrInvalidIR, &s.path)
 		}
 		if n.Role > FractionRoleStacked {
-			return fmt.Errorf("%w: %s: invalid fraction role", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid fraction role", ErrInvalidIR, &s.path)
 		}
 		if n.Role != FractionRoleFraction && n.Style != FractionNoBar {
-			return fmt.Errorf("%w: %s: semantic fraction role requires no-bar style", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: semantic fraction role requires no-bar style", ErrInvalidIR, &s.path)
 		}
 		if n.Style != FractionVertical && n.Bar {
-			return fmt.Errorf("%w: %s: non-vertical fraction has a bar", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: non-vertical fraction has a bar", ErrInvalidIR, &s.path)
 		}
-		if err := validateNonNegative(n.Padding, limits, path+".padding"); err != nil {
+		if err := s.validateNonNegativeField(n.Padding, ".padding"); err != nil {
 			return err
 		}
 	case *Radical:
 		if n.Radicand == nil {
-			return fmt.Errorf("%w: %s: missing radicand", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing radicand", ErrInvalidIR, &s.path)
 		}
 	case *Scripts:
 		if n.BaseItem == nil {
-			return fmt.Errorf("%w: %s: missing script base", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing script base", ErrInvalidIR, &s.path)
 		}
 		if n.Role > ScriptRoleBraceLabel {
-			return fmt.Errorf("%w: %s: invalid script role", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid script role", ErrInvalidIR, &s.path)
 		}
 	case *Fenced:
 		if len(n.Body) == 0 && n.Open == nil && n.Close == nil {
-			return fmt.Errorf("%w: %s: empty fence", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: empty fence", ErrInvalidIR, &s.path)
 		}
 		if n.Balanced && (n.Open == nil || n.Close == nil) {
-			return fmt.Errorf("%w: %s: balanced fence has a missing delimiter", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: balanced fence has a missing delimiter", ErrInvalidIR, &s.path)
 		}
-		if err := validateDelimiterSizing(n.Sizing, limits, path+".sizing", true); err != nil {
+		if err := s.validateDelimiterSizingField(n.Sizing, ".sizing", true); err != nil {
 			return err
 		}
 	case *SizedDelimiter:
-		if err := validateTextBytes(n.Text, limits, path, "sized delimiter"); err != nil {
+		if err := validateTextBytes(n.Text, limits, &s.path, "sized delimiter"); err != nil {
 			return err
 		}
 		if utf8.RuneCountInString(n.Text) != 1 {
-			return fmt.Errorf("%w: %s: sized delimiter text must be one rune", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: sized delimiter text must be one rune", ErrInvalidIR, &s.path)
 		}
-		if err := validateDelimiterSizing(n.Sizing, limits, path+".sizing", false); err != nil {
+		if err := s.validateDelimiterSizingField(n.Sizing, ".sizing", false); err != nil {
 			return err
 		}
 		switch n.Class {
 		case ClassNormal, ClassOpening, ClassClosing, ClassRelation:
 		default:
-			return fmt.Errorf("%w: %s: invalid sized delimiter class", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid sized delimiter class", ErrInvalidIR, &s.path)
 		}
 	case *Accent:
 		if n.Body == nil || n.Accent == nil {
-			return fmt.Errorf("%w: %s: missing accent part", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing accent part", ErrInvalidIR, &s.path)
 		}
 		if n.Position > PositionBelow {
-			return fmt.Errorf("%w: %s: invalid accent position", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid accent position", ErrInvalidIR, &s.path)
 		}
 	case *Line:
 		if n.Body == nil {
-			return fmt.Errorf("%w: %s: missing line body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing line body", ErrInvalidIR, &s.path)
 		}
 		if n.Position > PositionBelow {
-			return fmt.Errorf("%w: %s: invalid line position", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid line position", ErrInvalidIR, &s.path)
 		}
-		if err := validateNonNegative(n.Thickness, limits, path+".thickness"); err != nil {
+		if err := s.validateNonNegativeField(n.Thickness, ".thickness"); err != nil {
 			return err
 		}
-		if err := validateNonNegative(n.Gap, limits, path+".gap"); err != nil {
+		if err := s.validateNonNegativeField(n.Gap, ".gap"); err != nil {
 			return err
 		}
 	case *Cancel:
 		if n.Body == nil {
-			return fmt.Errorf("%w: %s: missing cancel body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing cancel body", ErrInvalidIR, &s.path)
 		}
-		if err := validateNonNegative(n.Thickness, limits, path+".thickness"); err != nil {
+		if err := s.validateNonNegativeField(n.Thickness, ".thickness"); err != nil {
 			return err
 		}
 		if n.Role > CancelRoleNegation {
-			return fmt.Errorf("%w: %s: invalid cancel role", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid cancel role", ErrInvalidIR, &s.path)
 		}
 		if n.Role == CancelRoleNegation && (n.Cross || n.Inverted) {
-			return fmt.Errorf("%w: %s: negation cannot use cross or inverted cancellation", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: negation cannot use cross or inverted cancellation", ErrInvalidIR, &s.path)
 		}
 	case *Table:
-		if err := validateTable(n, path, limits); err != nil {
+		if err := validateTable(n, s); err != nil {
 			return err
 		}
 	case *Multiline:
 		if len(n.Rows) == 0 {
-			return fmt.Errorf("%w: %s: empty multiline", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: empty multiline", ErrInvalidIR, &s.path)
 		}
 	case *Style:
 		if n.Body == nil {
-			return fmt.Errorf("%w: %s: missing style body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing style body", ErrInvalidIR, &s.path)
 		}
 		if n.SetSize && n.NewSize == SizeInherit {
-			return fmt.Errorf("%w: %s: inherit size cannot be explicit", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: inherit size cannot be explicit", ErrInvalidIR, &s.path)
 		}
 		if n.NewSize > SizeScriptScript {
-			return fmt.Errorf("%w: %s: invalid style size", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid style size", ErrInvalidIR, &s.path)
 		}
 		if !n.SetCramped && n.Cramped {
-			return fmt.Errorf("%w: %s: cramped value set without SetCramped", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: cramped value set without SetCramped", ErrInvalidIR, &s.path)
 		}
 	case *Color:
 		if n.Body == nil {
-			return fmt.Errorf("%w: %s: missing color body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing color body", ErrInvalidIR, &s.path)
 		}
-		if err := validatePaint(n.Paint, path+".paint"); err != nil {
+		if err := s.validatePaintField(n.Paint, ".paint"); err != nil {
 			return err
 		}
 	case *Box:
 		if n.Body == nil {
-			return fmt.Errorf("%w: %s: missing box body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing box body", ErrInvalidIR, &s.path)
 		}
 		for i, length := range n.Padding {
-			if err := validateNonNegative(length, limits, fmt.Sprintf("%s.padding[%d]", path, i)); err != nil {
+			s.path.pushPadding(i)
+			err := validateNonNegative(length, limits, &s.path)
+			s.path.pop()
+			if err != nil {
 				return err
 			}
 		}
 		if !n.HasFill && !paintIsZero(n.Fill) {
-			return fmt.Errorf("%w: %s: fill paint set without HasFill", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: fill paint set without HasFill", ErrInvalidIR, &s.path)
 		}
-		if err := validatePaint(n.Fill, path+".fill"); err != nil {
+		if err := s.validatePaintField(n.Fill, ".fill"); err != nil {
 			return err
 		}
 		if !n.HasBorder && (!paintIsZero(n.Border) || !n.BorderWidth.IsZero()) {
-			return fmt.Errorf("%w: %s: border fields set without HasBorder", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: border fields set without HasBorder", ErrInvalidIR, &s.path)
 		}
-		if err := validatePaint(n.Border, path+".border"); err != nil {
+		if err := s.validatePaintField(n.Border, ".border"); err != nil {
 			return err
 		}
-		if err := validateNonNegative(n.BorderWidth, limits, path+".border-width"); err != nil {
+		if err := s.validateNonNegativeField(n.BorderWidth, ".border-width"); err != nil {
 			return err
 		}
-		if err := validateNonNegative(n.Radius, limits, path+".radius"); err != nil {
+		if err := s.validateNonNegativeField(n.Radius, ".radius"); err != nil {
 			return err
 		}
 	case *Phantom:
 		if n.Body == nil {
-			return fmt.Errorf("%w: %s: missing phantom body", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: missing phantom body", ErrInvalidIR, &s.path)
 		}
 	case *ErrorNode:
-		if err := validateTextBytes(n.Text, limits, path, "error"); err != nil {
+		if err := validateTextBytes(n.Text, limits, &s.path, "error"); err != nil {
 			return err
 		}
 	case *Placeholder:
 		if n.Reason == "" {
-			return fmt.Errorf("%w: %s: empty placeholder reason", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: empty placeholder reason", ErrInvalidIR, &s.path)
 		}
 		if !utf8.ValidString(n.Reason) {
-			return fmt.Errorf("%w: %s: placeholder reason is not valid UTF-8", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: placeholder reason is not valid UTF-8", ErrInvalidIR, &s.path)
 		}
 		if len(n.Reason) > limits.MaxTextBytes {
-			return fmt.Errorf("%w: %s: placeholder reason too long", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: placeholder reason too long", ErrInvalidIR, &s.path)
 		}
 	case *Break:
 		if n.Break > BreakExplicit {
-			return fmt.Errorf("%w: %s: invalid break kind", ErrInvalidIR, path)
+			return fmt.Errorf("%w: %s: invalid break kind", ErrInvalidIR, &s.path)
 		}
 	case *AlignMarker:
 		// No extra fields.
 	default:
-		return fmt.Errorf("%w: %s: unsupported node %T", ErrInvalidIR, path, n)
+		return fmt.Errorf("%w: %s: unsupported node %T", ErrInvalidIR, &s.path, n)
 	}
 	return nil
 }
 
-func validateTextBytes(text string, limits source.Limits, path, label string) error {
+func (s *validationState) validateNonNegativeField(length Length, field string) error {
+	s.path.pushText(field)
+	err := validateNonNegative(length, s.limits, &s.path)
+	s.path.pop()
+	return err
+}
+
+func (s *validationState) validatePaintField(paint Paint, field string) error {
+	s.path.pushText(field)
+	err := validatePaint(paint, &s.path)
+	s.path.pop()
+	return err
+}
+
+func (s *validationState) validateDelimiterSizingField(sizing DelimiterSizing, field string, contentAllowed bool) error {
+	s.path.pushText(field)
+	err := validateDelimiterSizing(sizing, s.limits, &s.path, contentAllowed)
+	s.path.pop()
+	return err
+}
+
+func validateTextBytes(text string, limits source.Limits, path *validationPath, label string) error {
 	if text == "" {
 		return fmt.Errorf("%w: %s: empty %s", ErrInvalidIR, path, label)
 	}
@@ -405,7 +556,7 @@ func validateTextBytes(text string, limits source.Limits, path, label string) er
 	return nil
 }
 
-func validateDelimiterSizing(sizing DelimiterSizing, limits source.Limits, path string, contentAllowed bool) error {
+func validateDelimiterSizing(sizing DelimiterSizing, limits source.Limits, path *validationPath, contentAllowed bool) error {
 	if sizing.Kind > DelimiterSizingAbsolute {
 		return fmt.Errorf("%w: %s: invalid delimiter sizing kind %d", ErrInvalidIR, path, sizing.Kind)
 	}
@@ -428,7 +579,7 @@ func validateDelimiterSizing(sizing DelimiterSizing, limits source.Limits, path 
 	return nil
 }
 
-func validateNonNegative(length Length, limits source.Limits, path string) error {
+func validateNonNegative(length Length, limits source.Limits, path *validationPath) error {
 	if err := length.ValidateWithLimit(limits.MaxDimension); err != nil {
 		return fmt.Errorf("%w: %s: %v", ErrInvalidIR, path, err)
 	}
@@ -438,7 +589,7 @@ func validateNonNegative(length Length, limits source.Limits, path string) error
 	return nil
 }
 
-func validatePaint(paint Paint, path string) error {
+func validatePaint(paint Paint, path *validationPath) error {
 	if paint.Role > PaintPlaceholder {
 		return fmt.Errorf("%w: %s: invalid paint role %d", ErrInvalidIR, path, paint.Role)
 	}
@@ -455,9 +606,10 @@ func paintIsZero(paint Paint) bool {
 	return !paint.HasExplicit && paint.Role == PaintInk && paint.Explicit == (RGBA{})
 }
 
-func validateTable(table *Table, path string, limits source.Limits) error {
+func validateTable(table *Table, s *validationState) error {
+	limits := s.limits
 	if table.Role > TableRoleVector {
-		return fmt.Errorf("%w: %s: invalid table role", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: invalid table role", ErrInvalidIR, &s.path)
 	}
 	cells := 0
 	maxColumns := len(table.Columns)
@@ -466,27 +618,33 @@ func validateTable(table *Table, path string, limits source.Limits) error {
 		maxColumns = max(maxColumns, len(row.Cells))
 	}
 	if cells > limits.MaxTableCells {
-		return fmt.Errorf("%w: %s: table cell limit exceeded", ErrInvalidIR, path)
+		return fmt.Errorf("%w: %s: table cell limit exceeded", ErrInvalidIR, &s.path)
 	}
 	for i, column := range table.Columns {
 		if column > AlignRight {
-			return fmt.Errorf("%w: %s: invalid column alignment at %d", ErrInvalidIR, path, i)
+			return fmt.Errorf("%w: %s: invalid column alignment at %d", ErrInvalidIR, &s.path, i)
 		}
 	}
-	if err := validateNonNegative(table.RowGap, limits, path+".row-gap"); err != nil {
+	if err := s.validateNonNegativeField(table.RowGap, ".row-gap"); err != nil {
 		return err
 	}
-	if err := validateNonNegative(table.ColumnGap, limits, path+".column-gap"); err != nil {
+	if err := s.validateNonNegativeField(table.ColumnGap, ".column-gap"); err != nil {
 		return err
 	}
 	for i, line := range table.Horizontal {
 		if err := validateTableLine(line, len(table.Rows), "horizontal", limits); err != nil {
-			return fmt.Errorf("%w: %s.horizontal[%d]: %v", ErrInvalidIR, path, i, err)
+			s.path.pushTableLine("horizontal", i)
+			err = fmt.Errorf("%w: %s: %v", ErrInvalidIR, &s.path, err)
+			s.path.pop()
+			return err
 		}
 	}
 	for i, line := range table.Vertical {
 		if err := validateTableLine(line, maxColumns, "vertical", limits); err != nil {
-			return fmt.Errorf("%w: %s.vertical[%d]: %v", ErrInvalidIR, path, i, err)
+			s.path.pushTableLine("vertical", i)
+			err = fmt.Errorf("%w: %s: %v", ErrInvalidIR, &s.path, err)
+			s.path.pop()
+			return err
 		}
 	}
 	return nil
@@ -499,10 +657,102 @@ func validateTableLine(line TableLine, boundaryCount int, axis string, limits so
 	if line.Count <= 0 {
 		return fmt.Errorf("%s line count must be positive", axis)
 	}
-	if err := validateNonNegative(line.Thickness, limits, "thickness"); err != nil {
-		return err
+	if err := line.Thickness.ValidateWithLimit(limits.MaxDimension); err != nil || line.Thickness.Value < 0 {
+		var frames [1]validationPathFrame
+		path := validationPath{frames: frames[:0]}
+		path.pushText("thickness")
+		return validateNonNegative(line.Thickness, limits, &path)
 	}
 	return nil
+}
+
+// validationPath stores structural segments without rendering diagnostic text.
+type validationPath struct {
+	frames []validationPathFrame
+}
+
+type validationPathFrame struct {
+	text      string
+	kind      NodeKind
+	index     int
+	frameKind validationPathFrameKind
+}
+
+type validationPathFrameKind uint8
+
+const (
+	validationPathText validationPathFrameKind = iota
+	validationPathChild
+	validationPathTag
+	validationPathPadding
+	validationPathTableLine
+)
+
+func (p *validationPath) reset() {
+	p.frames = p.frames[:0]
+}
+
+func (p *validationPath) pushText(text string) {
+	p.frames = append(p.frames, validationPathFrame{frameKind: validationPathText, text: text})
+}
+
+func (p *validationPath) pushChild(kind NodeKind, index int) {
+	p.frames = append(p.frames, validationPathFrame{
+		frameKind: validationPathChild,
+		kind:      kind,
+		index:     index,
+	})
+}
+
+func (p *validationPath) pushTag(index int) {
+	p.frames = append(p.frames, validationPathFrame{frameKind: validationPathTag, index: index})
+}
+
+func (p *validationPath) pushPadding(index int) {
+	p.frames = append(p.frames, validationPathFrame{frameKind: validationPathPadding, index: index})
+}
+
+func (p *validationPath) pushTableLine(axis string, index int) {
+	p.frames = append(p.frames, validationPathFrame{
+		frameKind: validationPathTableLine,
+		text:      axis,
+		index:     index,
+	})
+}
+
+func (p *validationPath) pop() {
+	p.frames = p.frames[:len(p.frames)-1]
+}
+
+func (p *validationPath) String() string {
+	var b strings.Builder
+	for _, frame := range p.frames {
+		switch frame.frameKind {
+		case validationPathText:
+			b.WriteString(frame.text)
+		case validationPathChild:
+			b.WriteByte('.')
+			b.WriteString(kindName(frame.kind))
+			b.WriteByte('[')
+			b.WriteString(strconv.Itoa(frame.index))
+			b.WriteByte(']')
+		case validationPathTag:
+			b.WriteString("tags[")
+			b.WriteString(strconv.Itoa(frame.index))
+			b.WriteByte(']')
+		case validationPathPadding:
+			b.WriteString(".padding[")
+			b.WriteString(strconv.Itoa(frame.index))
+			b.WriteByte(']')
+		case validationPathTableLine:
+			b.WriteByte('.')
+			b.WriteString(frame.text)
+			b.WriteByte('[')
+			b.WriteString(strconv.Itoa(frame.index))
+			b.WriteByte(']')
+		}
+	}
+	return b.String()
 }
 
 func kindForNode(n Node) (NodeKind, bool) {
