@@ -131,3 +131,56 @@ func TestCloneFormulaIsDeep(t *testing.T) {
 		t.Fatal("CloneFormula shared a descendant")
 	}
 }
+
+func TestCloneFormulaCoversAllNodeKinds(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	glyph := func(text string) Node { return NewGlyph(span, text) }
+	body := func() Node { return NewRow(span, glyph("x")) }
+	nodes := map[string]Node{
+		"row":         body(),
+		"glyph":       glyph("x"),
+		"text":        NewText(span, "x"),
+		"operator":    NewOperator(span, "sin"),
+		"space":       NewSpace(span, SpaceExplicit, RawLength(LengthEm, 1_000_000)),
+		"fraction":    NewFraction(span, glyph("1"), glyph("2")),
+		"radical":     NewRadical(span, glyph("x"), nil),
+		"scripts":     &Scripts{Base: NewBase(KindScripts, span), BaseItem: glyph("x"), Top: glyph("2")},
+		"fenced":      &Fenced{Base: NewBase(KindFenced, span), Open: glyph("("), Close: glyph(")"), Body: []Node{glyph("x")}, Balanced: true},
+		"accent":      NewAccent(span, glyph("x"), glyph("^"), PositionAbove),
+		"line":        NewLine(span, glyph("x"), PositionAbove),
+		"cancel":      NewCancel(span, glyph("x")),
+		"table":       &Table{Base: NewBase(KindTable, span), Rows: []TableRow{{Cells: []Node{glyph("x")}}}, Columns: []ColumnAlign{AlignCenter}},
+		"multiline":   NewMultiline(span, []Node{glyph("x")}),
+		"style":       NewStyle(span, glyph("x")),
+		"color":       NewColor(span, glyph("x"), Paint{Explicit: RGBA{A: 255}, HasExplicit: true}),
+		"box":         NewBox(span, glyph("x")),
+		"phantom":     NewPhantom(span, glyph("x")),
+		"error":       NewError(span, "bad", source.CodeSyntax),
+		"placeholder": NewPlaceholder(span, "missing"),
+		"break":       NewBreak(span, BreakRelation, 0),
+		"align":       NewAlignMarker(span),
+	}
+	for name, node := range nodes {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			formula := &Formula{Root: node}
+			clone, err := CloneFormula(formula)
+			if err != nil {
+				t.Fatalf("CloneFormula() error = %v", err)
+			}
+			originalJSON, err := MarshalCanonical(formula)
+			if err != nil {
+				t.Fatalf("MarshalCanonical(original) error = %v", err)
+			}
+			cloneJSON, err := MarshalCanonical(clone)
+			if err != nil {
+				t.Fatalf("MarshalCanonical(clone) error = %v", err)
+			}
+			if string(originalJSON) != string(cloneJSON) {
+				t.Fatalf("clone differs:\noriginal: %s\nclone: %s", originalJSON, cloneJSON)
+			}
+		})
+	}
+}
