@@ -151,11 +151,11 @@ func canonicalTag(tag *TagBox) canonicalTagBox {
 }
 
 func canonicalItemRange(itemRange ItemRange) canonicalRange {
-	return canonicalRange{Start: itemRange.Start, Count: itemRange.Count}
+	return canonicalRange(itemRange)
 }
 
 func canonicalHitRange(hitRange HitRange) canonicalRange {
-	return canonicalRange{Start: hitRange.Start, Count: hitRange.Count}
+	return canonicalRange(hitRange)
 }
 
 type canonicalAlt struct {

@@ -63,13 +63,13 @@ func TestEquationTagLayoutAndAltContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayoutContext() error = %v", err)
 	}
-	if box.Tag == nil || box.Tag.Box == nil {
+	if box.Tag == nil || box.Tag.Items.Count == 0 {
 		t.Fatal("Box.Tag = nil")
 	}
 	if !box.Tag.Manual || box.Tag.Starred || box.Tag.Line != FormulaTagLine {
 		t.Fatalf("TagBox metadata = %+v", box.Tag)
 	}
-	if box.Tag.X <= 0 || box.Tag.Box.Width <= 0 || len(box.Tag.Box.Items) == 0 {
+	if box.Tag.X <= 0 || box.Tag.Width <= 0 || box.Tag.Items.Count == 0 {
 		t.Fatalf("TagBox geometry = %+v", box.Tag)
 	}
 	if len(box.Lines) != 0 || box.Tag.Y != 0 {
@@ -92,9 +92,9 @@ func TestEquationTagLayoutAndAltContract(t *testing.T) {
 		t.Fatalf("canonical box omitted tag metadata: %s", canonical)
 	}
 	clone := box.Clone()
-	clone.Tag.Box.Items[0].At.X++
-	if box.Tag.Box.Items[0].At.X == clone.Tag.Box.Items[0].At.X {
-		t.Fatal("Box.Clone shared tag box storage")
+	clone.Items[clone.Tag.Items.Start].At.X++
+	if box.Items[box.Tag.Items.Start].At.X == clone.Items[clone.Tag.Items.Start].At.X {
+		t.Fatal("Box.Clone shared tag item storage")
 	}
 }
 
@@ -117,8 +117,8 @@ func TestEquationTagConstrainedAlignmentAndOverflow(t *testing.T) {
 	if len(fitting.Lines) != 1 || fitting.Lines[0].Tag == nil {
 		t.Fatalf("constrained lines/tag = %+v", fitting.Lines)
 	}
-	if fitting.Width != 120 || !closeFloat(fitting.Lines[0].Tag.X+fitting.Tag.Box.Width, 120) {
-		t.Fatalf("tag right edge = %v, parent width = %v", fitting.Lines[0].Tag.X+fitting.Tag.Box.Width, fitting.Width)
+	if fitting.Width != 120 || !closeFloat(fitting.Lines[0].Tag.X+fitting.Tag.Width, 120) {
+		t.Fatalf("tag right edge = %v, parent width = %v", fitting.Lines[0].Tag.X+fitting.Tag.Width, fitting.Width)
 	}
 	if fitting.Lines[0].Tag.Source != fitting.Tag.Source ||
 		fitting.Lines[0].Tag.X != fitting.Tag.X ||
@@ -138,12 +138,12 @@ func TestEquationTagConstrainedAlignmentAndOverflow(t *testing.T) {
 	if end.Overflow != 0 {
 		t.Fatalf("end-aligned tag overflow = %v, want zero", end.Overflow)
 	}
-	if !closeFloat(end.Tag.X+end.Tag.Box.Width, 120) {
-		t.Fatalf("end-aligned tag right edge = %v, want 120", end.Tag.X+end.Tag.Box.Width)
+	if !closeFloat(end.Tag.X+end.Tag.Width, 120) {
+		t.Fatalf("end-aligned tag right edge = %v, want 120", end.Tag.X+end.Tag.Width)
 	}
-	if !closeFloat(end.Lines[0].OffsetX+end.Lines[0].Box.Width, end.Tag.X) {
+	if !closeFloat(end.Lines[0].OffsetX+end.Lines[0].Width, end.Tag.X) {
 		t.Fatalf("end-aligned formula right edge = %v, want tag left edge %v",
-			end.Lines[0].OffsetX+end.Lines[0].Box.Width, end.Tag.X)
+			end.Lines[0].OffsetX+end.Lines[0].Width, end.Tag.X)
 	}
 
 	overfull, err := engine.LayoutContext(context.Background(), expr, Style{
@@ -219,14 +219,16 @@ func TestEquationTagLayoutRejectsInlineButAllowsNestedMultilineValues(t *testing
 }
 
 func tagItemsAreAggregatedAtEnd(box *Box) bool {
-	if box == nil || box.Tag == nil || box.Tag.Box == nil ||
-		len(box.Tag.Box.Items) == 0 || len(box.Items) < len(box.Tag.Box.Items) {
+	if box == nil || box.Tag == nil || box.Tag.Items.Count == 0 {
 		return false
 	}
-	offset := len(box.Items) - len(box.Tag.Box.Items)
-	for i, item := range box.Tag.Box.Items {
-		if !closeFloat(box.Items[offset+i].Bound.X, item.Bound.X+box.Tag.X) ||
-			!closeFloat(box.Items[offset+i].Bound.Y, item.Bound.Y+box.Tag.Y) {
+	if box.Tag.Items.Start != len(box.Items)-box.Tag.Items.Count ||
+		box.Tag.Hits.Start != len(box.Hits)-box.Tag.Hits.Count {
+		return false
+	}
+	for _, item := range box.Items[box.Tag.Items.Start:box.Tag.Items.End()] {
+		if item.Bound.X < box.Tag.X || item.Bound.Y < box.Tag.Y-box.Tag.Ascent ||
+			item.Bound.Y+item.Bound.Height > box.Tag.Y+box.Tag.Descent {
 			return false
 		}
 	}

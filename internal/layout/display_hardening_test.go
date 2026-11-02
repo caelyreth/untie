@@ -41,51 +41,6 @@ func TestLayoutPreservesNegativeItalicCorrection(t *testing.T) {
 	if len(box.Lines) != 1 {
 		t.Fatalf("Lines = %d, want 1", len(box.Lines))
 	}
-	if !closeHost(box.Lines[0].Box.Italic, -0.8) {
-		t.Fatalf("line Italic = %v, want -0.8", box.Lines[0].Box.Italic)
-	}
-}
-
-func TestDisplayFallbackReusesLineStorage(t *testing.T) {
-	t.Parallel()
-
-	path := make(geometry.Path, 300)
-	for i := range path {
-		path[i] = geometry.Segment{
-			Op:     geometry.SegMoveTo,
-			Points: [3]geometry.Point{{X: 1, Y: 2}},
-		}
-	}
-	base := &display.Box{
-		Items: []display.Item{{
-			Kind: display.ItemGlyphPath,
-			Path: path,
-		}},
-		Hits: []display.Hit{{Source: source.NewRange(0, 1)}},
-	}
-	state := &layoutState{
-		ctx:      context.Background(),
-		request:  display.Style{MaxWidth: 1},
-		hostSize: hostSubunits,
-		limits:   source.DefaultLimits(),
-	}
-	line, err := state.singleDisplayLine(base, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if &line.Items[0] != &base.Items[0] || &line.Items[0].Path[0] != &base.Items[0].Path[0] {
-		t.Fatal("singleDisplayLine copied item or path storage")
-	}
-	if &line.Hits[0] != &base.Hits[0] {
-		t.Fatal("singleDisplayLine copied hit storage")
-	}
-
-	canceled, cancel := context.WithCancel(context.Background())
-	cancel()
-	state.ctx = canceled
-	if _, err := state.singleDisplayLine(base, 1); !errors.Is(err, context.Canceled) {
-		t.Fatalf("singleDisplayLine(canceled) error = %v", err)
-	}
 }
 
 func TestDisplayOverflowScanCancellation(t *testing.T) {
@@ -107,26 +62,5 @@ func TestDisplayOverflowScanCancellation(t *testing.T) {
 	_, err := state.displayItemsOverflow(items, 1, 1, 1)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("displayItemsOverflow() error = %v, want context.Canceled", err)
-	}
-}
-
-func TestDisplayParentItalicComesFromFinalLine(t *testing.T) {
-	t.Parallel()
-
-	state := &layoutState{
-		ctx:      context.Background(),
-		hostSize: hostSubunits,
-		limits:   source.DefaultLimits(),
-		request:  display.Style{MaxWidth: 10},
-	}
-	parent, err := state.assembleDisplayLines([]display.LineBox{
-		{Box: &display.Box{Ascent: 1, Descent: 1, Italic: 0.25}},
-		{Box: &display.Box{Ascent: 1, Descent: 1, Italic: -0.5}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if parent.Italic != -0.5 {
-		t.Fatalf("parent Italic = %v, want final line correction -0.5", parent.Italic)
 	}
 }

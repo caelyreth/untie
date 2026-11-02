@@ -29,13 +29,13 @@ func TestDisplayLineOffsetsAndAggregateTranslation(t *testing.T) {
 		t.Run(alignName(tc.align), func(t *testing.T) {
 			t.Parallel()
 			state := alignmentLayoutState(tc.align, maxWidth)
-			lines := make([]display.LineBox, len(widths))
+			lines := make([]displayLineInput, len(widths))
 			for i, width := range widths {
-				lines[i] = alignmentLine(width, maxWidth)
+				lines[i] = displayLineInput{Box: alignmentLine(width, maxWidth)}
 			}
-			box, err := state.assembleDisplayLines(lines)
+			box, err := assembleDisplayLinesForTest(state, lines)
 			if err != nil {
-				t.Fatalf("assembleDisplayLines() error = %v", err)
+				t.Fatalf("assembleDisplayLinesForTest() error = %v", err)
 			}
 			if box.Width != maxWidth {
 				t.Fatalf("Width = %v, want alignment frame %v", box.Width, maxWidth)
@@ -47,14 +47,15 @@ func TestDisplayLineOffsetsAndAggregateTranslation(t *testing.T) {
 				if line.OffsetX != tc.want[i] {
 					t.Fatalf("line %d OffsetX = %v, want %v", i, line.OffsetX, tc.want[i])
 				}
-				if line.Box.Items[0].Bound.X != 0 || line.Box.Hits[0].Area.X != 0 {
+				local := lineBoxForTest(box, line)
+				if local.Items[0].Bound.X != 0 || local.Hits[0].Area.X != 0 {
 					t.Fatalf("line %d local coordinates were mutated: item=%v hit=%v",
-						i, line.Box.Items[0].Bound.X, line.Box.Hits[0].Area.X)
+						i, local.Items[0].Bound.X, local.Hits[0].Area.X)
 				}
-				if got := box.Items[i].Bound.X; got != tc.want[i] {
+				if got := box.Items[line.Items.Start].Bound.X; got != tc.want[i] {
 					t.Fatalf("line %d parent item x = %v, want %v", i, got, tc.want[i])
 				}
-				if got := box.Hits[i].Area.X; got != tc.want[i] {
+				if got := box.Hits[line.Hits.Start].Area.X; got != tc.want[i] {
 					t.Fatalf("line %d parent hit x = %v, want %v", i, got, tc.want[i])
 				}
 			}
@@ -115,12 +116,10 @@ func TestDisplayAlignmentRealWrappedLines(t *testing.T) {
 			if !closeHost(box.Width, alignedStyle.MaxWidth) {
 				t.Fatalf("Width = %v, want frame %v", box.Width, alignedStyle.MaxWidth)
 			}
-			parentItem := 0
-			parentHit := 0
 			for i, line := range box.Lines {
 				wantOffset := float32(0)
-				if line.Box.Width < alignedStyle.MaxWidth {
-					remaining := alignedStyle.MaxWidth - line.Box.Width
+				if line.Width < alignedStyle.MaxWidth {
+					remaining := alignedStyle.MaxWidth - line.Width
 					if align == display.AlignCenter {
 						wantOffset = remaining / 2
 					} else {
@@ -130,28 +129,27 @@ func TestDisplayAlignmentRealWrappedLines(t *testing.T) {
 				if !closeHost(line.OffsetX, wantOffset) {
 					t.Fatalf("line %d OffsetX = %v, want %v", i, line.OffsetX, wantOffset)
 				}
-				if i == 0 && line.Box.Width == alignedStyle.MaxWidth && line.OffsetX != 0 {
+				if i == 0 && line.Width == alignedStyle.MaxWidth && line.OffsetX != 0 {
 					t.Fatalf("exact-boundary line OffsetX = %v, want 0", line.OffsetX)
 				}
-				for j, item := range line.Box.Items {
-					if got, want := box.Items[parentItem+j].Bound.X, item.Bound.X+wantOffset; !closeHost(got, want) {
+				local := lineBoxForTest(box, line)
+				for j, item := range local.Items {
+					if got, want := box.Items[line.Items.Start+j].Bound.X, item.Bound.X+wantOffset; !closeHost(got, want) {
 						t.Fatalf("line %d item %d parent x = %v, want %v", i, j, got, want)
 					}
 					if len(item.Path) > 0 {
-						got := box.Items[parentItem+j].Path[0].Points[0].X
+						got := box.Items[line.Items.Start+j].Path[0].Points[0].X
 						want := item.Path[0].Points[0].X + wantOffset
 						if !closeHost(got, want) {
 							t.Fatalf("line %d item %d path x = %v, want %v", i, j, got, want)
 						}
 					}
 				}
-				for j, hit := range line.Box.Hits {
-					if got, want := box.Hits[parentHit+j].Area.X, hit.Area.X+wantOffset; !closeHost(got, want) {
+				for j, hit := range local.Hits {
+					if got, want := box.Hits[line.Hits.Start+j].Area.X, hit.Area.X+wantOffset; !closeHost(got, want) {
 						t.Fatalf("line %d hit %d parent x = %v, want %v", i, j, got, want)
 					}
 				}
-				parentItem += len(line.Box.Items)
-				parentHit += len(line.Box.Hits)
 			}
 			if err := box.Validate(); err != nil {
 				t.Fatalf("Validate() error = %v", err)
@@ -219,9 +217,9 @@ func TestDisplayAlignmentFrameHonorsMaxDimension(t *testing.T) {
 
 	state := alignmentLayoutState(display.AlignCenter, 10)
 	state.limits.MaxDimension = 9
-	_, err := state.assembleDisplayLines([]display.LineBox{alignmentLine(4, 10)})
+	_, err := assembleDisplayLinesForTest(state, []displayLineInput{{Box: alignmentLine(4, 10)}})
 	if !errors.Is(err, ErrLimit) {
-		t.Fatalf("assembleDisplayLines() error = %v, want ErrLimit", err)
+		t.Fatalf("assembleDisplayLinesForTest() error = %v, want ErrLimit", err)
 	}
 }
 
@@ -260,8 +258,8 @@ func TestDisplayLogicalOverflowWithoutInk(t *testing.T) {
 			if want <= 0 {
 				t.Fatalf("fixture is not overfull: width %v max %v", unwrapped.Width, style.MaxWidth)
 			}
-			if !closeHost(box.Lines[0].Box.Overflow, want) {
-				t.Fatalf("line Overflow = %v, want logical excess %v", box.Lines[0].Box.Overflow, want)
+			if !closeHost(box.Lines[0].Overflow, want) {
+				t.Fatalf("line Overflow = %v, want logical excess %v", box.Lines[0].Overflow, want)
 			}
 			if !closeHost(box.Overflow, want) {
 				t.Fatalf("parent Overflow = %v, want logical excess %v", box.Overflow, want)
@@ -282,9 +280,9 @@ func alignmentLayoutState(align display.Align, maxWidth float32) *layoutState {
 	}
 }
 
-func alignmentLine(width, maxWidth float32) display.LineBox {
+func alignmentLine(width, maxWidth float32) *display.Box {
 	overflow := maxFloat(0, width-maxWidth)
-	return display.LineBox{Box: &display.Box{
+	return &display.Box{
 		Width:    width,
 		Ascent:   1,
 		Overflow: overflow,
@@ -298,7 +296,7 @@ func alignmentLine(width, maxWidth float32) display.LineBox {
 			Area:   geometry.Rect{Y: -1, Width: width, Height: 1},
 			Kind:   display.HitAtom,
 		}},
-	}}
+	}
 }
 
 func alignName(align display.Align) string {

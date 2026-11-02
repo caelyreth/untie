@@ -19,12 +19,12 @@ func TestSingleLineEquationTagLayoutContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayoutFormulaContext() error = %v", err)
 	}
-	if box.Tag == nil || box.Tag.Box == nil {
+	if box.Tag == nil || box.Tag.Items.Count == 0 {
 		t.Fatal("Tag = nil")
 	}
-	if !closeHost(box.Tag.X, 8) || !closeHost(box.Tag.Box.Width, 24) || !closeHost(box.Width, 32) {
+	if !closeHost(box.Tag.X, 8) || !closeHost(box.Tag.Width, 24) || !closeHost(box.Width, 32) {
 		t.Fatalf("tag geometry = x:%v width:%v parent:%v, want 8/24/32",
-			box.Tag.X, box.Tag.Box.Width, box.Width)
+			box.Tag.X, box.Tag.Width, box.Width)
 	}
 	if len(box.Items) != 4 {
 		t.Fatalf("parent items = %d, want formula plus parenthesized tag", len(box.Items))
@@ -54,8 +54,8 @@ func TestSingleLineEquationTagLayoutContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayoutFormulaContext(starred) error = %v", err)
 	}
-	if !closeHost(starred.Tag.Box.Width, 8) || len(starred.Items) != 2 || !closeHost(starred.Width, 16) {
-		t.Fatalf("starred tag geometry = width:%v items:%d parent:%v", starred.Tag.Box.Width, len(starred.Items), starred.Width)
+	if !closeHost(starred.Tag.Width, 8) || len(starred.Items) != 2 || !closeHost(starred.Width, 16) {
+		t.Fatalf("starred tag geometry = width:%v items:%d parent:%v", starred.Tag.Width, len(starred.Items), starred.Width)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestTaggedConstrainedLayoutAlwaysUsesOneCompleteLine(t *testing.T) {
 		if len(box.Lines) != 1 || box.Tag == nil || box.Width != maxWidth {
 			t.Fatalf("MaxWidth %v = lines:%d tag:%+v width:%v", maxWidth, len(box.Lines), box.Tag, box.Width)
 		}
-		logicalTagOverflow := maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width)
+		logicalTagOverflow := maxFloat(0, box.Tag.X+box.Tag.Width-box.Width)
 		if box.Overflow+1.0/1024 < logicalTagOverflow {
 			t.Fatalf("MaxWidth %v overflow = %v, want at least tag logical overflow %v", maxWidth, box.Overflow, logicalTagOverflow)
 		}
@@ -160,9 +160,9 @@ func TestTaggedConstrainedAlignmentReservesTagWidth(t *testing.T) {
 			if !closeHost(box.Lines[0].OffsetX, tc.wantOffset) {
 				t.Fatalf("OffsetX = %v, want %v", box.Lines[0].OffsetX, tc.wantOffset)
 			}
-			if !closeHost(box.Tag.X, 40) || !closeHost(box.Tag.X+box.Tag.Box.Width, 64) {
+			if !closeHost(box.Tag.X, 40) || !closeHost(box.Tag.X+box.Tag.Width, 64) {
 				t.Fatalf("tag frame = x:%v right:%v, want x 40 right 64",
-					box.Tag.X, box.Tag.X+box.Tag.Box.Width)
+					box.Tag.X, box.Tag.X+box.Tag.Width)
 			}
 			untagged, err := renderer.Layout(glyph("x", ir.ClassNormal), ir.Display, style)
 			if err != nil {

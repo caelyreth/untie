@@ -19,7 +19,7 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 		align := display.Align(cursor.next() % 3)
 		maxWidth := float32(cursor.next()%64 + 1)
 		lineCount := int(cursor.next() % 9)
-		lines := make([]display.LineBox, lineCount)
+		lines := make([]displayLineInput, lineCount)
 		for i := range lines {
 			width := float32(cursor.next() % 80)
 			ascent := float32(cursor.next()%24 + 1)
@@ -28,7 +28,7 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 			overflow := maxFloat(0, width-maxWidth)
 			overflow = maxFloat(overflow, maxFloat(0, -localX))
 			overflow = maxFloat(overflow, maxFloat(0, localX))
-			lines[i] = display.LineBox{Box: &display.Box{
+			lines[i] = displayLineInput{Box: &display.Box{
 				Width:    width,
 				Ascent:   ascent,
 				Descent:  descent,
@@ -46,7 +46,7 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 			}}
 		}
 		state := alignmentLayoutState(align, maxWidth)
-		box, err := state.assembleDisplayLines(lines)
+		box, err := assembleDisplayLinesForTest(state, lines)
 		if lineCount == 0 {
 			if err == nil {
 				t.Fatal("empty input assembled a box")
@@ -66,28 +66,25 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 			t.Fatalf("aggregate = %d items/%d hits, want %d", len(box.Items), len(box.Hits), lineCount)
 		}
 		for i, line := range box.Lines {
-			local := lines[i].Box
+			local := lineBoxForTest(box, line)
 			wantOffset := float32(0)
-			if local.Width < maxWidth {
+			if line.Width < maxWidth {
 				switch align {
 				case display.AlignCenter:
-					wantOffset = (maxWidth - local.Width) / 2
+					wantOffset = (maxWidth - line.Width) / 2
 				case display.AlignEnd:
-					wantOffset = maxWidth - local.Width
+					wantOffset = maxWidth - line.Width
 				}
 			}
 			if line.OffsetX != wantOffset {
 				t.Fatalf("line %d OffsetX = %v, want %v", i, line.OffsetX, wantOffset)
 			}
-			if line.Box.Items[0].Bound.X != local.Items[0].Bound.X {
-				t.Fatalf("line %d local item x changed", i)
-			}
 			wantX := local.Items[0].Bound.X + wantOffset
-			if !closeHost(box.Items[i].Bound.X, wantX) {
-				t.Fatalf("line %d aggregate x = %v, want %v", i, box.Items[i].Bound.X, wantX)
+			if !closeHost(box.Items[line.Items.Start].Bound.X, wantX) {
+				t.Fatalf("line %d aggregate x = %v, want %v", i, box.Items[line.Items.Start].Bound.X, wantX)
 			}
-			if !closeHost(box.Hits[i].Area.X, wantX) {
-				t.Fatalf("line %d aggregate hit x = %v, want %v", i, box.Hits[i].Area.X, wantX)
+			if !closeHost(box.Hits[line.Hits.Start].Area.X, wantX) {
+				t.Fatalf("line %d aggregate hit x = %v, want %v", i, box.Hits[line.Hits.Start].Area.X, wantX)
 			}
 		}
 		first, err := box.MarshalCanonical()

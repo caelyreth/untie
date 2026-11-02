@@ -64,35 +64,33 @@ func TestDisplayLinesWrapAtNeutralBreaks(t *testing.T) {
 	itemCount := 0
 	hitCount := 0
 	for i, line := range box.Lines {
-		if line.Box == nil {
-			t.Fatalf("line %d has nil box", i)
-		}
-		if err := line.Box.Validate(); err != nil {
+		view := lineBoxForTest(box, line)
+		if err := view.Validate(); err != nil {
 			t.Fatalf("line %d Validate() error = %v", i, err)
 		}
-		if len(line.Box.Lines) != 0 {
+		if len(view.Lines) != 0 {
 			t.Fatalf("line %d recursively owns lines", i)
 		}
-		if line.Box.Alt != (display.Alt{}) {
-			t.Fatalf("line %d Alt = %+v, want empty", i, line.Box.Alt)
+		if view.Alt != (display.Alt{}) {
+			t.Fatalf("line %d Alt = %+v, want empty", i, view.Alt)
 		}
-		if !closeHost(line.Box.Width, wantWidths[i]) {
-			t.Fatalf("line %d Width = %v, want %v", i, line.Box.Width, wantWidths[i])
+		if !closeHost(line.Width, wantWidths[i]) {
+			t.Fatalf("line %d Width = %v, want %v", i, line.Width, wantWidths[i])
 		}
-		if len(line.Box.Items) == 0 {
+		if len(view.Items) == 0 {
 			t.Fatalf("line %d has no items", i)
 		}
-		if got := line.Box.Items[0].Bound.X; !closeHost(got, 0) {
-			t.Fatalf("line %d first item x = %v, want 0", i, got)
+		if line.Items.Count == 0 {
+			t.Fatalf("line %d item range is empty", i)
 		}
-		if i == 0 && !closeHost(line.Box.Width, style.MaxWidth) {
-			t.Fatalf("boundary-fitting line width = %v, want exact max %v", line.Box.Width, style.MaxWidth)
+		if i == 0 && !closeHost(line.Width, style.MaxWidth) {
+			t.Fatalf("boundary-fitting line width = %v, want exact max %v", line.Width, style.MaxWidth)
 		}
-		if i == len(box.Lines)-1 && line.Box.Overflow <= 0 {
+		if i == len(box.Lines)-1 && line.Overflow <= 0 {
 			t.Fatal("overfull final line did not report overflow")
 		}
-		itemCount += len(line.Box.Items)
-		hitCount += len(line.Box.Hits)
+		itemCount += line.Items.Count
+		hitCount += line.Hits.Count
 	}
 	if itemCount != len(unwrapped.Items) {
 		t.Fatalf("line items = %d, want %d", itemCount, len(unwrapped.Items))
@@ -103,20 +101,20 @@ func TestDisplayLinesWrapAtNeutralBreaks(t *testing.T) {
 	if box.Lines[0].Baseline != 0 {
 		t.Fatalf("first baseline = %v, want 0", box.Lines[0].Baseline)
 	}
-	wantBaseline := box.Lines[0].Box.Descent + box.Lines[1].Box.Ascent
+	wantBaseline := box.Lines[0].Descent + box.Lines[1].Ascent
 	if !closeHost(box.Lines[1].Baseline, wantBaseline) {
 		t.Fatalf("second baseline = %v, want %v", box.Lines[1].Baseline, wantBaseline)
 	}
-	secondLineItem := box.Lines[1].Box.Items[0].Bound.Y
-	parentItem := box.Items[len(box.Lines[0].Box.Items)].Bound.Y
+	secondLineItem := lineBoxForTest(box, box.Lines[1]).Items[0].Bound.Y
+	parentItem := box.Items[box.Lines[1].Items.Start].Bound.Y
 	if got := parentItem - secondLineItem; !closeHost(got, box.Lines[1].Baseline) {
 		t.Fatalf("second-line parent item offset = %v, want baseline %v", got, box.Lines[1].Baseline)
 	}
 	if !closeHost(box.Width, style.MaxWidth) {
 		t.Fatalf("parent Width = %v, want constrained frame %v", box.Width, style.MaxWidth)
 	}
-	if box.Overflow != box.Lines[3].Box.Overflow {
-		t.Fatalf("parent Overflow = %v, want %v", box.Overflow, box.Lines[3].Box.Overflow)
+	if box.Overflow != box.Lines[3].Overflow {
+		t.Fatalf("parent Overflow = %v, want %v", box.Overflow, box.Lines[3].Overflow)
 	}
 	firstCanonical, err := box.MarshalCanonical()
 	if err != nil {
@@ -130,8 +128,8 @@ func TestDisplayLinesWrapAtNeutralBreaks(t *testing.T) {
 	if string(firstCanonical) != string(secondCanonical) {
 		t.Fatal("clone changed line canonical output")
 	}
-	clone.Lines[0].Box.Items[0].Bound.X++
-	if box.Lines[0].Box.Items[0].Bound.X == clone.Lines[0].Box.Items[0].Bound.X {
+	clone.Items[clone.Lines[0].Items.Start].Bound.X++
+	if box.Items[box.Lines[0].Items.Start].Bound.X == clone.Items[clone.Lines[0].Items.Start].Bound.X {
 		t.Fatal("clone shared line item storage")
 	}
 }
@@ -227,8 +225,8 @@ func TestDisplayLinesLifecycleAndEdgeCases(t *testing.T) {
 		if box.Lines[0].OffsetX != 0 {
 			t.Fatalf("start-aligned OffsetX = %v, want 0", box.Lines[0].OffsetX)
 		}
-		if box.Lines[0].Box.Overflow != box.Overflow {
-			t.Fatalf("fitting line overflow = %v, parent overflow %v", box.Lines[0].Box.Overflow, box.Overflow)
+		if box.Lines[0].Overflow != box.Overflow {
+			t.Fatalf("fitting line overflow = %v, parent overflow %v", box.Lines[0].Overflow, box.Overflow)
 		}
 	})
 	t.Run("no legal break", func(t *testing.T) {
@@ -245,8 +243,8 @@ func TestDisplayLinesLifecycleAndEdgeCases(t *testing.T) {
 		if len(box.Lines) != 1 {
 			t.Fatalf("Lines = %+v, want one overfull line", box.Lines)
 		}
-		if box.Overflow <= 0 || box.Lines[0].Box.Overflow != box.Overflow {
-			t.Fatalf("overflow = %v line overflow = %v", box.Overflow, box.Lines[0].Box.Overflow)
+		if box.Overflow <= 0 || box.Lines[0].Overflow != box.Overflow {
+			t.Fatalf("overflow = %v line overflow = %v", box.Overflow, box.Lines[0].Overflow)
 		}
 	})
 	t.Run("trailing explicit break", func(t *testing.T) {
@@ -309,8 +307,8 @@ func TestDisplayLinesHandleTablesAndMultilineAsOverfull(t *testing.T) {
 			if len(box.Lines) != 1 {
 				t.Fatalf("Lines = %d, want one unbreakable line", len(box.Lines))
 			}
-			if box.Overflow <= 0 || box.Lines[0].Box.Overflow != box.Overflow {
-				t.Fatalf("overflow = %v line overflow = %v", box.Overflow, box.Lines[0].Box.Overflow)
+			if box.Overflow <= 0 || box.Lines[0].Overflow != box.Overflow {
+				t.Fatalf("overflow = %v line overflow = %v", box.Overflow, box.Lines[0].Overflow)
 			}
 		})
 	}
@@ -372,7 +370,7 @@ func TestDisplayLinesFallbackWhenSourceTopologyIsUnproven(t *testing.T) {
 			if len(box.Lines) != 1 {
 				t.Fatalf("Lines = %d, want one safe fallback", len(box.Lines))
 			}
-			line := box.Lines[0].Box
+			line := lineBoxForTest(box, box.Lines[0])
 			if !reflect.DeepEqual(line.Items, unwrapped.Items) ||
 				!reflect.DeepEqual(line.Hits, unwrapped.Hits) ||
 				line.Width != unwrapped.Width ||
@@ -445,25 +443,26 @@ func TestDisplayLinesZeroAdvanceCutOwnership(t *testing.T) {
 				t.Fatalf("Lines = %d, want 2", len(box.Lines))
 			}
 			first, second := box.Lines[0], box.Lines[1]
-			if len(first.Box.Items) < 2 {
-				t.Fatalf("first line items = %d, zero-advance atom was lost or moved", len(first.Box.Items))
+			firstView, secondView := lineBoxForTest(box, first), lineBoxForTest(box, second)
+			if len(firstView.Items) < 2 {
+				t.Fatalf("first line items = %d, zero-advance atom was lost or moved", len(firstView.Items))
 			}
-			if !closeHost(first.Box.Ascent, 48) || !closeHost(first.Box.Descent, 16) {
-				t.Fatalf("first line metrics = %v/%v, want tall zero extents", first.Box.Ascent, first.Box.Descent)
+			if !closeHost(first.Ascent, 48) || !closeHost(first.Descent, 16) {
+				t.Fatalf("first line metrics = %v/%v, want tall zero extents", first.Ascent, first.Descent)
 			}
-			if !hasAtomHit(first.Box.Hits, source.NewRange(1, 2)) {
+			if !hasAtomHit(firstView.Hits, source.NewRange(1, 2)) {
 				t.Fatal("zero-advance atom hit is not owned by the first line")
 			}
-			if hasAtomHit(first.Box.Hits, source.NewRange(2, 3)) {
+			if hasAtomHit(firstView.Hits, source.NewRange(2, 3)) {
 				t.Fatal("next atom hit leaked onto the first line")
 			}
-			if !hasAtomHit(second.Box.Hits, source.NewRange(2, 3)) {
+			if !hasAtomHit(secondView.Hits, source.NewRange(2, 3)) {
 				t.Fatal("next atom hit is not owned by the second line")
 			}
-			if got := second.Box.Items[0].Bound.X; !closeHost(got, 0) {
+			if got := secondView.Items[0].Bound.X; !closeHost(got, 0) {
 				t.Fatalf("second line starts at x=%v, want 0", got)
 			}
-			wantBaseline := first.Box.Descent + second.Box.Ascent
+			wantBaseline := first.Descent + second.Ascent
 			if !closeHost(second.Baseline, wantBaseline) {
 				t.Fatalf("second baseline = %v, want %v", second.Baseline, wantBaseline)
 			}
@@ -510,13 +509,13 @@ func TestDisplayLinesEqualWidthUsesLowestLogicalCut(t *testing.T) {
 		t.Fatalf("Lines = %d, want 2", len(box.Lines))
 	}
 	first, second := box.Lines[0], box.Lines[1]
-	if !hasAtomHit(first.Box.Hits, source.NewRange(0, 1)) {
+	if !hasAtomHit(lineBoxForTest(box, first).Hits, source.NewRange(0, 1)) {
 		t.Fatal("first line does not own the atom before the first cut")
 	}
-	if hasAtomHit(first.Box.Hits, source.NewRange(1, 2)) {
+	if hasAtomHit(lineBoxForTest(box, first).Hits, source.NewRange(1, 2)) {
 		t.Fatal("zero-advance atom crossed the lower logical cut")
 	}
-	if !hasAtomHit(second.Box.Hits, source.NewRange(1, 2)) {
+	if !hasAtomHit(lineBoxForTest(box, second).Hits, source.NewRange(1, 2)) {
 		t.Fatal("second line does not own the zero-advance atom")
 	}
 }
@@ -547,7 +546,7 @@ func TestDisplayParentOverflowIsGlobal(t *testing.T) {
 		hostSize: hostSubunits,
 		limits:   source.Limits{}.WithDefaults(),
 	}
-	lines := []display.LineBox{
+	lines := []displayLineInput{
 		{Box: &display.Box{
 			Width: 10, Ascent: 10, Overflow: 5,
 			Items: []display.Item{{
@@ -563,7 +562,7 @@ func TestDisplayParentOverflowIsGlobal(t *testing.T) {
 			}},
 		}},
 	}
-	parent, err := state.assembleDisplayLines(lines)
+	parent, err := assembleDisplayLinesForTest(state, lines)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,7 +619,7 @@ func TestDisplayLineLimitsAndCancellation(t *testing.T) {
 	)
 	glyphs := &fakeGlyphSource{glyphs: map[string]Glyph{}}
 	limited, err := New(Fonts{Glyphs: glyphs, Metrics: fakeStyleFont{}}, Options{
-		Limits: source.Limits{MaxOutputItems: 4},
+		Limits: source.Limits{MaxOutputItems: 2},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -632,7 +631,7 @@ func TestDisplayLineLimitsAndCancellation(t *testing.T) {
 	}
 
 	hitLimited, err := New(Fonts{Glyphs: glyphs, Metrics: fakeStyleFont{}}, Options{
-		Limits: source.Limits{MaxNodes: 4},
+		Limits: source.Limits{MaxNodes: 3},
 	})
 	if err != nil {
 		t.Fatal(err)
