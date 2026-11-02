@@ -322,6 +322,8 @@ func (s *layoutState) usesLimits(node *ir.Scripts, env environment) bool {
 		return true
 	case ir.LimitsNever:
 		return false
+	case ir.LimitsDisplay:
+		return env.Style.Size == Display
 	}
 	class := node.Class
 	if base := node.BaseItem.NodeBase(); base != nil && base.Class != ir.ClassNormal {

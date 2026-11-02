@@ -130,7 +130,11 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"base": base, "body": body, "accent": accent, "position": n.Position, "stretchy": n.Stretchy, "dotless": n.Dotless, "exact-width": n.ExactFrameWidth}, nil
+		return map[string]any{
+			"base": base, "body": body, "accent": accent, "position": n.Position,
+			"stretchy": n.Stretchy, "natural-fit": n.NaturalFit,
+			"dotless": n.Dotless, "exact-width": n.ExactFrameWidth,
+		}, nil
 	case *Line:
 		body, err := s.node(n.Body, depth+1)
 		if err != nil {
