@@ -5,6 +5,9 @@ languages into one language-neutral IR, lays formulas out with an OpenType MATH
 font supplied by the host, and returns a UI-independent display list of glyph
 paths and filled rules.
 
+See the [documentation](docs/README.md) for integration, rendering, font,
+parsing, accessibility, and compatibility guidance.
+
 ### Properties
 
 - `CGO_ENABLED=0`
