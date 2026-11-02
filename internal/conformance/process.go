@@ -46,9 +46,7 @@ func ProcessFrontend(config ProcessConfig) FrontendFunc {
 		if config.Path == "" {
 			return FrontendResult{}, errors.New("empty worker executable")
 		}
-		wireRequest, err := json.Marshal(workerRequest{
-			Source: request.Source, Preamble: request.Preamble, Mode: request.Mode, Limits: request.Limits,
-		})
+		wireRequest, err := json.Marshal(workerRequest(request))
 		if err != nil {
 			return FrontendResult{}, err
 		}
@@ -131,9 +129,7 @@ func callFrontend(ctx context.Context, frontend FrontendFunc, request workerRequ
 			err = errors.New("frontend returned no IR observation")
 		}
 	}()
-	return frontend(ctx, Request{
-		Source: request.Source, Preamble: request.Preamble, Mode: request.Mode, Limits: request.Limits,
-	})
+	return frontend(ctx, Request(request))
 }
 
 func diagnosticsFromRefs(refs []DiagnosticRef) []source.Diagnostic {

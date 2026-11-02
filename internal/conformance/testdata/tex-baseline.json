@@ -3979,7 +3979,7 @@
           "message": "undefined control sequence: \\limits"
         }
       ],
-      "detail": "diagnostics do not include an expected code"
+      "detail": "diagnostics do not include an expected code and source span"
     },
     {
       "id": "errors/double-superscript",
@@ -4305,7 +4305,7 @@
           "message": "unexpected token '#'"
         }
       ],
-      "detail": "diagnostics do not include an expected code"
+      "detail": "diagnostics do not include an expected code and source span"
     },
     {
       "id": "errors/invalid-size-unit",
@@ -4333,7 +4333,7 @@
           "message": "undefined control sequence: \\rule"
         }
       ],
-      "detail": "diagnostics do not include an expected code"
+      "detail": "diagnostics do not include an expected code and source span"
     },
     {
       "id": "errors/lone-backslash",

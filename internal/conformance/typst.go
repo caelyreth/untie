@@ -155,7 +155,7 @@ func typstInput(corpus string, testCase fixture.Case, policy *Policy) (Input, er
 		input.Expect = ExpectDiagnostic
 		codes, ok := policy.expectedCodes(corpus, testCase.ID)
 		if !ok {
-			return Input{}, fmt.Errorf("Typst error case %q has no reviewed diagnostic expectation", testCase.ID)
+			return Input{}, fmt.Errorf("typst error case %q has no reviewed diagnostic expectation", testCase.ID)
 		}
 		input.ExpectCode = codes
 		if diagnostic.HasSpan {
