@@ -211,9 +211,17 @@ the top-level placed fragment groups at those neutral boundaries and emits
 baseline-offset `LineBox` values; it does not slice flattened items or rescan
 source. Public orchestration derives alternative text from the neutral IR after
 geometry succeeds, so an accessibility failure never changes formula layout.
+The greedy pass chooses the furthest cut that fits. Penalty is consulted only
+when distinct cuts project to the same width; this is not TeX badness
+optimization. If exact source topology cannot be proven, display wrapping
+returns one complete overfull line instead of guessing from paint order.
 Wrapped output charges the parent and line draw items plus `LineBox` records to
 `MaxOutputItems`; parent and line path copies remain bounded by
-`MaxPathSegments`.
+`MaxPathSegments`; aggregated parent hits remain bounded by `MaxNodes`. Parent
+`Items` are the vertically translated aggregate. Hosts draw either parent items
+or per-line items, never both. Parent `Overflow` is recomputed from the
+assembled aggregate bounds and the requested maximum width; line-local overflow
+is not treated as the parent value.
 
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.

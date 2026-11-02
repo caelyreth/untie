@@ -51,6 +51,9 @@ type fragmentBreak struct {
 	x       geometry.Em
 	penalty int
 	kind    display.BreakKind
+	// cut is the number of source-ordered top-level placed groups before this
+	// opportunity. It is independent of paint order and x coordinates.
+	cut int
 }
 
 type sourceHit struct {
