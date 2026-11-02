@@ -11,120 +11,56 @@ import (
 func TestTagBoxCloneCanonicalAndValidation(t *testing.T) {
 	t.Parallel()
 
-	tag := validDisplayTagBox(2, 0)
-	parent := &Box{
-		Width:    3,
-		Ascent:   1,
-		Items:    translatedBoxItems(tag),
-		Hits:     translatedTagHits(tag),
-		Tag:      tag,
-		Overflow: 0,
-	}
-	if err := parent.Validate(); err != nil {
+	box := taggedRangeBox(2)
+	if err := box.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
-	canonical, err := parent.MarshalCanonical()
+	canonical, err := box.MarshalCanonical()
 	if err != nil {
 		t.Fatalf("MarshalCanonical() error = %v", err)
 	}
-	if !strings.Contains(string(canonical), `"tag":{"box":`) ||
-		!strings.Contains(string(canonical), `"source":[1,2]`) {
-		t.Fatalf("canonical output omitted tag: %s", canonical)
+	if !strings.Contains(string(canonical), `"tag":{"source":[1,2]`) ||
+		!strings.Contains(string(canonical), `"items":{"start":1,"count":1}`) {
+		t.Fatalf("canonical output omitted tag metadata or range: %s", canonical)
 	}
-	clone := parent.Clone()
-	clone.Tag.Box.Items[0].Bound.X++
-	clone.Tag.Box.Hits[0].Area.X++
-	if parent.Tag.Box.Items[0].Bound.X == clone.Tag.Box.Items[0].Bound.X {
-		t.Fatal("Clone shared tag item storage")
+	if strings.Contains(string(canonical), `"tag":{"box":`) {
+		t.Fatalf("canonical output retained nested tag box: %s", canonical)
 	}
-	if parent.Tag.Box.Hits[0].Area.X == clone.Tag.Box.Hits[0].Area.X {
-		t.Fatal("Clone shared tag hit storage")
+	clone := box.Clone()
+	clone.Items[clone.Tag.Items.Start].Bound.X++
+	clone.Tag.Width++
+	if box.Items[box.Tag.Items.Start].Bound.X == clone.Items[clone.Tag.Items.Start].Bound.X {
+		t.Fatal("Clone shared item storage")
+	}
+	if box.Tag.Width == clone.Tag.Width {
+		t.Fatal("Clone shared tag metadata")
 	}
 }
 
-func TestTagBoxValidationRejectsMalformedContracts(t *testing.T) {
+func TestTagBoxValidationRejectsMalformedRangesAndMetadata(t *testing.T) {
 	t.Parallel()
 
-	base := validDisplayTagBox(2, 0)
 	tests := []struct {
 		name   string
 		mutate func(*Box)
 	}{
-		{
-			name: "missing aggregate item",
-			mutate: func(box *Box) {
-				box.Items = box.Items[:len(box.Items)-1]
-			},
-		},
-		{
-			name: "wrong aggregate translation",
-			mutate: func(box *Box) {
-				box.Items[len(box.Items)-1].Bound.X++
-			},
-		},
-		{
-			name: "nested tag",
-			mutate: func(box *Box) {
-				inner := validDisplayTagBox(0, 0)
-				box.Tag.Box.Tag = inner
-			},
-		},
-		{
-			name: "invalid source",
-			mutate: func(box *Box) {
-				box.Tag.Source = source.Detached()
-			},
-		},
-		{
-			name: "negative x",
-			mutate: func(box *Box) {
-				box.Tag.X = -1
-			},
-		},
-		{
-			name: "starred non-manual",
-			mutate: func(box *Box) {
-				box.Tag.Manual = false
-				box.Tag.Starred = true
-			},
-		},
-		{
-			name: "non-manual formula tag",
-			mutate: func(box *Box) {
-				box.Tag.Manual = false
-				box.Tag.Starred = false
-			},
-		},
-		{
-			name: "zero line tag",
-			mutate: func(box *Box) {
-				box.Tag.Line = 0
-			},
-		},
-		{
-			name: "future row tag",
-			mutate: func(box *Box) {
-				box.Tag.Line = 5
-			},
-		},
-		{
-			name: "italic does not match tag",
-			mutate: func(box *Box) {
-				box.Italic = 1
-			},
-		},
+		{name: "invalid source", mutate: func(box *Box) { box.Tag.Source = source.Detached() }},
+		{name: "negative x", mutate: func(box *Box) { box.Tag.X = -1 }},
+		{name: "negative width", mutate: func(box *Box) { box.Tag.Width = -1 }},
+		{name: "non-manual", mutate: func(box *Box) { box.Tag.Manual = false }},
+		{name: "future line", mutate: func(box *Box) { box.Tag.Line = 5 }},
+		{name: "italic mismatch", mutate: func(box *Box) { box.Italic = 1 }},
+		{name: "item overflow", mutate: func(box *Box) { box.Tag.Items.Count = 2 }},
+		{name: "hit overflow", mutate: func(box *Box) { box.Tag.Hits.Count = 2 }},
+		{name: "not suffix", mutate: func(box *Box) {
+			box.Items = append(box.Items, box.Items[len(box.Items)-1])
+			box.Hits = append(box.Hits, box.Hits[len(box.Hits)-1])
+		}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			tag := cloneTestTag(base)
-			box := &Box{
-				Width:  3,
-				Ascent: 1,
-				Items:  translatedBoxItems(tag),
-				Hits:   translatedTagHits(tag),
-				Tag:    tag,
-			}
+			box := taggedRangeBox(2)
 			tc.mutate(box)
 			if err := box.Validate(); err == nil {
 				t.Fatal("Validate() error = nil")
@@ -136,23 +72,13 @@ func TestTagBoxValidationRejectsMalformedContracts(t *testing.T) {
 func TestTagLogicalWidthRequiresParentOverflow(t *testing.T) {
 	t.Parallel()
 
-	tag := validDisplayTagBox(2, 0)
-	parent := &Box{
-		Width:  3,
-		Ascent: 1,
-		Items:  translatedBoxItems(tag),
-		Hits:   translatedTagHits(tag),
-		Tag:    tag,
-	}
-	if err := parent.Validate(); err != nil {
-		t.Fatalf("base Validate() error = %v", err)
-	}
-	parent.Tag.Box.Width = 5
-	if err := parent.Validate(); err == nil {
+	box := taggedRangeBox(2)
+	box.Tag.Width = 5
+	if err := box.Validate(); err == nil {
 		t.Fatal("Validate() ignored logical tag-width overflow")
 	}
-	parent.Overflow = 4
-	if err := parent.Validate(); err != nil {
+	box.Overflow = 4
+	if err := box.Validate(); err != nil {
 		t.Fatalf("Validate() with logical overflow error = %v", err)
 	}
 }
@@ -160,149 +86,103 @@ func TestTagLogicalWidthRequiresParentOverflow(t *testing.T) {
 func TestConstrainedTagRequiresTargetedLineTag(t *testing.T) {
 	t.Parallel()
 
-	tag := validDisplayTagBox(9, 0)
-	line := &Box{
-		Width:  1,
-		Ascent: 1,
-		Items: []Item{{
-			Kind:  ItemRule,
-			Paint: Paint{Role: RoleInk},
-			Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-			Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-		}},
-	}
-	parent := &Box{
-		Width:  10,
-		Ascent: 1,
-		Lines:  []LineBox{{Box: line, Tag: tag}},
-		Items:  append(cloneItems(line.Items), translatedBoxItems(tag)...),
-		Hits:   translatedTagHits(tag),
-		Tag:    tag,
-	}
-	if err := parent.Validate(); err != nil {
+	box := constrainedTaggedRangeBox()
+	if err := box.Validate(); err != nil {
 		t.Fatalf("base Validate() error = %v", err)
 	}
 
-	withoutLineTag := parent.Clone()
+	withoutLineTag := box.Clone()
 	withoutLineTag.Lines[0].Tag = nil
 	if err := withoutLineTag.Validate(); err == nil {
 		t.Fatal("Validate() accepted a constrained parent tag without its targeted line tag")
 	}
 
-	withoutParentTag := parent.Clone()
+	withoutParentTag := box.Clone()
 	withoutParentTag.Tag = nil
 	if err := withoutParentTag.Validate(); err == nil {
 		t.Fatal("Validate() accepted a line tag without a parent tag")
 	}
 
-	nestedLineTag := parent.Clone()
-	nestedLineTag.Lines[0].Box.Tag = cloneTestTag(tag)
-	if err := nestedLineTag.Validate(); err == nil {
-		t.Fatal("Validate() accepted a nested tag inside a LineBox.Box")
+	mismatched := box.Clone()
+	mismatched.Lines[0].Tag.X++
+	if err := mismatched.Validate(); err == nil {
+		t.Fatal("Validate() accepted mismatched parent and line tag metadata")
 	}
 
-	wrongLine := parent.Clone()
-	wrongLine.Tag.Line = 1
-	wrongLine.Lines[0].Tag.Line = 1
-	if err := wrongLine.Validate(); err == nil {
-		t.Fatal("Validate() accepted an out-of-range tag line association")
+	badLineRange := box.Clone()
+	badLineRange.Lines[0].Items.Count = 2
+	if err := badLineRange.Validate(); err == nil {
+		t.Fatal("Validate() accepted a line range that overlaps the tag")
 	}
 }
 
 func TestTaggedLineValidationAndCanonical(t *testing.T) {
 	t.Parallel()
 
-	tag := validDisplayTagBox(9, 0)
-	line := &Box{
-		Width:  1,
-		Ascent: 1,
-		Items: []Item{{
-			Kind:  ItemRule,
-			Paint: Paint{Role: RoleInk},
-			Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-			Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-		}},
-	}
-	parent := &Box{
-		Width:  10,
-		Ascent: 1,
-		Lines: []LineBox{{
-			Baseline: 0,
-			OffsetX:  0,
-			Box:      line,
-			Tag:      tag,
-		}},
-		Items: append(cloneItems(line.Items), translatedBoxItems(tag)...),
-		Hits:  translatedTagHits(tag),
-		Tag:   tag,
-	}
-	if err := parent.Validate(); err != nil {
-		t.Fatalf("Validate() error = %v", err)
-	}
-	canonical, err := parent.MarshalCanonical()
+	box := constrainedTaggedRangeBox()
+	canonical, err := box.MarshalCanonical()
 	if err != nil {
 		t.Fatalf("MarshalCanonical() error = %v", err)
 	}
-	if !strings.Contains(string(canonical), `"lines":[{"baseline":0,"offsetX":0,"box":`) ||
-		!strings.Contains(string(canonical), `"tag":{"box":`) {
+	if !strings.Contains(string(canonical), `"lines":[{"baseline":0`) ||
+		!strings.Contains(string(canonical), `"tag":{`) {
 		t.Fatalf("canonical output omitted line tag: %s", canonical)
 	}
+}
 
-	parent.Lines[0].Tag.X++
-	if err := parent.Validate(); err == nil {
-		t.Fatal("Validate() accepted mismatched parent and line tag metadata")
+func taggedRangeBox(tagX float32) *Box {
+	formulaItem := ruleItemAt(0, 1)
+	tagItem := ruleItemAt(tagX, 1)
+	formulaHit := ruleHitAt(0, 1)
+	tagHit := ruleHitAt(tagX, 1)
+	tag := &TagBox{
+		Source:  source.NewRange(1, 2),
+		Manual:  true,
+		Line:    FormulaTagLine,
+		X:       tagX,
+		Width:   1,
+		Ascent:  1,
+		Italic:  -0.25,
+		Items:   ItemRange{Start: 1, Count: 1},
+		Hits:    HitRange{Start: 1, Count: 1},
+		Starred: false,
+	}
+	return &Box{
+		Width:  tagX + 1,
+		Ascent: 1,
+		Italic: -0.25,
+		Items:  []Item{formulaItem, tagItem},
+		Hits:   []Hit{formulaHit, tagHit},
+		Tag:    tag,
 	}
 }
 
-func validDisplayTagBox(x, y float32) *TagBox {
-	return &TagBox{
-		Box: &Box{
-			Width:  1,
-			Ascent: 1,
-			Items: []Item{{
-				Kind:  ItemRule,
-				Paint: Paint{Role: RoleInk},
-				Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-				Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
-			}},
-			Hits: []Hit{{
-				Source: source.NewRange(1, 2),
-				Area:   geometry.Rect{Width: 1, Height: 1},
-				Kind:   HitAtom,
-			}},
-		},
+func constrainedTaggedRangeBox() *Box {
+	box := taggedRangeBox(9)
+	box.Width = 10
+	box.Lines = []LineBox{{
+		Width:  1,
+		Ascent: 1,
+		Items:  ItemRange{Count: 1},
+		Hits:   HitRange{Count: 1},
+		Tag:    box.Tag,
+	}}
+	return box
+}
+
+func ruleItemAt(x, width float32) Item {
+	return Item{
+		Kind:  ItemRule,
+		Paint: Paint{Role: RoleInk},
+		Bound: geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
+		Rect:  geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
+	}
+}
+
+func ruleHitAt(x, width float32) Hit {
+	return Hit{
 		Source: source.NewRange(1, 2),
-		Manual: true,
-		Line:   FormulaTagLine,
-		X:      x,
-		Y:      y,
+		Area:   geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
+		Kind:   HitAtom,
 	}
-}
-
-func cloneTestTag(tag *TagBox) *TagBox {
-	out := *tag
-	out.Box = tag.Box.Clone()
-	return &out
-}
-
-func translatedBoxItems(tag *TagBox) []Item {
-	out := cloneItems(tag.Box.Items)
-	for i := range out {
-		out[i].Bound.X += tag.X
-		out[i].Bound.Y += tag.Y
-		out[i].Rect.X += tag.X
-		out[i].Rect.Y += tag.Y
-		out[i].At.X += tag.X
-		out[i].At.Y += tag.Y
-	}
-	return out
-}
-
-func translatedTagHits(tag *TagBox) []Hit {
-	out := append([]Hit(nil), tag.Box.Hits...)
-	for i := range out {
-		out[i].Area.X += tag.X
-		out[i].Area.Y += tag.Y
-	}
-	return out
 }

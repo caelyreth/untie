@@ -23,9 +23,6 @@ func FuzzTaggedLineGraph(f *testing.F) {
 		if box.Tag.Line != FormulaTagLine || box.Lines[0].Tag.Line != FormulaTagLine {
 			t.Fatalf("tag lines = parent %d line %d", box.Tag.Line, box.Lines[0].Tag.Line)
 		}
-		if box.Lines[0].Box.Tag != nil {
-			t.Fatal("generated line box contains a nested tag")
-		}
 
 		clone := box.Clone()
 		if err := clone.Validate(); err != nil {
@@ -47,31 +44,11 @@ func FuzzTaggedLineGraph(f *testing.F) {
 			name   string
 			mutate func(*Box)
 		}{
-			{
-				name: "missing line tag",
-				mutate: func(box *Box) {
-					box.Lines[0].Tag = nil
-				},
-			},
-			{
-				name: "nested line tag",
-				mutate: func(box *Box) {
-					lineTag := *box.Lines[0].Tag
-					box.Lines[0].Box.Tag = &lineTag
-				},
-			},
-			{
-				name: "zero formula line",
-				mutate: func(box *Box) {
-					box.Tag.Line = 0
-				},
-			},
-			{
-				name: "non-manual tag",
-				mutate: func(box *Box) {
-					box.Tag.Manual = false
-				},
-			},
+			{name: "missing line tag", mutate: func(box *Box) { box.Lines[0].Tag = nil }},
+			{name: "line range overlaps tag", mutate: func(box *Box) { box.Lines[0].Items.Count = 2 }},
+			{name: "zero formula line", mutate: func(box *Box) { box.Tag.Line = 0 }},
+			{name: "non-manual tag", mutate: func(box *Box) { box.Tag.Manual = false }},
+			{name: "detached range", mutate: func(box *Box) { box.Tag.Items.Start = len(box.Items) }},
 		}
 		selected := malformed[len(data)%len(malformed)]
 		bad := box.Clone()
@@ -95,62 +72,36 @@ func fuzzValidTaggedLineGraph(data []byte) *Box {
 
 	lineWidth := floatAt(0)
 	tagWidth := floatAt(1)
-	parentWidth := lineWidth + tagWidth + floatAt(2)
-	tagX := parentWidth - tagWidth
-	frameWidth := parentWidth - tagWidth
-	offset := float32(0)
-	switch byteAt(3) % 3 {
-	case 1:
-		offset = (frameWidth - lineWidth) / 2
-	case 2:
-		offset = frameWidth - lineWidth
-	}
-
-	lineItem := fuzzTagItem(0, lineWidth)
-	tagItem := fuzzTagItem(tagX, tagWidth)
-	lineHit := fuzzTagHit(0, lineWidth)
-	tagHit := fuzzTagHit(tagX, tagWidth)
-	line := &Box{
-		Width:  lineWidth,
-		Ascent: 1,
-		Items:  []Item{lineItem},
-		Hits:   []Hit{lineHit},
-	}
+	parentWidth := lineWidth + tagWidth
+	tagX := lineWidth
+	lineItem := ruleItemAt(0, lineWidth)
+	tagItem := ruleItemAt(tagX, tagWidth)
 	tag := &TagBox{
-		Box: &Box{
-			Width:  tagWidth,
-			Ascent: 1,
-			Items:  []Item{fuzzTagItem(0, tagWidth)},
-			Hits:   []Hit{fuzzTagHit(0, tagWidth)},
-		},
 		Source: source.NewRange(0, 1),
 		Manual: true,
 		Line:   FormulaTagLine,
 		X:      tagX,
+		Width:  tagWidth,
+		Ascent: 1,
+		Items:  ItemRange{Start: 1, Count: 1},
+		Hits:   HitRange{Start: 1, Count: 1},
 	}
-	translatedLine := lineItem
-	translatedLine.Bound.X += offset
-	translatedLine.Rect.X += offset
-	translatedLine.At.X += offset
-	translatedLineHit := lineHit
-	translatedLineHit.Area.X += offset
 	return &Box{
 		Width:  parentWidth,
 		Ascent: 1,
-		Lines:  []LineBox{{OffsetX: offset, Box: line, Tag: tag}},
-		Items:  []Item{translatedLine, tagItem},
-		Hits:   []Hit{translatedLineHit, tagHit},
-		Tag:    tag,
-	}
-}
-
-func fuzzTagItem(x, width float32) Item {
-	return Item{
-		Kind:  ItemRule,
-		Paint: Paint{Role: RoleInk},
-		Bound: geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
-		Rect:  geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
-		At:    geometry.Point{X: x, Y: -1},
+		Lines: []LineBox{{
+			Width:  lineWidth,
+			Ascent: 1,
+			Items:  ItemRange{Count: 1},
+			Hits:   HitRange{Count: 1},
+			Tag:    tag,
+		}},
+		Items: []Item{lineItem, tagItem},
+		Hits: []Hit{
+			fuzzTagHit(0, lineWidth),
+			fuzzTagHit(tagX, tagWidth),
+		},
+		Tag: tag,
 	}
 }
 
