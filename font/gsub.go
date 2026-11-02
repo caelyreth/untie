@@ -302,6 +302,9 @@ func parseAlternateSubstitution(b []byte, format uint16) (gsubSubtable, error) {
 		if err != nil {
 			return gsubSubtable{}, err
 		}
+		if len(glyphs) == 0 {
+			return gsubSubtable{}, fmt.Errorf("alternate substitution glyph %d has no alternates", gid)
+		}
 		alt := make([]GlyphID, len(glyphs))
 		for i := range glyphs {
 			alt[i] = GlyphID(glyphs[i])
@@ -321,6 +324,35 @@ func (g gsubTable) featureTags() []string {
 	}
 	sort.Strings(tags)
 	return tags
+}
+
+func (g gsubTable) validateGlyphIDs(glyphCount int) error {
+	if glyphCount <= 0 {
+		return errors.New("GSUB requires a positive glyph count")
+	}
+	valid := func(gid GlyphID) bool { return int(gid) < glyphCount }
+	for tag, lookups := range g.features {
+		for lookupIndex, lookup := range lookups {
+			for subtableIndex, st := range lookup.subtables {
+				for source, replacement := range st.single {
+					if !valid(source) || !valid(replacement) {
+						return fmt.Errorf("feature %q lookup %d subtable %d single substitution %d->%d is outside %d glyphs", tag, lookupIndex, subtableIndex, source, replacement, glyphCount)
+					}
+				}
+				for source, alternates := range st.alternates {
+					if !valid(source) {
+						return fmt.Errorf("feature %q lookup %d subtable %d source glyph %d is outside %d glyphs", tag, lookupIndex, subtableIndex, source, glyphCount)
+					}
+					for alternateIndex, replacement := range alternates {
+						if !valid(replacement) {
+							return fmt.Errorf("feature %q lookup %d subtable %d alternate %d glyph %d is outside %d glyphs", tag, lookupIndex, subtableIndex, alternateIndex, replacement, glyphCount)
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (g gsubTable) shape(glyphs []GlyphID, features []Feature) []GlyphID {

@@ -308,7 +308,8 @@ type AssemblyPart struct {
 	Extender       bool
 }
 
-// Assembly is the recipe for constructing a stretchy glyph.
+// Assembly is the complete recipe for constructing a stretchy glyph. Parts
+// retain OpenType order, and the first and last parts are the endpoint glyphs.
 type Assembly struct {
 	ItalicCorrection    int32
 	MinConnectorOverlap int32
