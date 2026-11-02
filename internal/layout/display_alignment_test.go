@@ -225,6 +225,54 @@ func TestDisplayAlignmentFrameHonorsMaxDimension(t *testing.T) {
 	}
 }
 
+func TestDisplayLogicalOverflowWithoutInk(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	trailingSpace := ir.NewRow(source.NewRange(0, 2),
+		glyph("x", ir.ClassNormal),
+		ir.NewSpace(source.NewRange(1, 2), ir.SpaceExplicit, emLength(t, 4)),
+	)
+	spaceOnly := ir.NewSpace(source.NewRange(0, 1), ir.SpaceExplicit, emLength(t, 4))
+	tests := []struct {
+		name string
+		root ir.Node
+	}{
+		{name: "space only", root: spaceOnly},
+		{name: "trailing space", root: trailingSpace},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			unwrapped, err := renderer.Layout(tc.root, ir.Display, testStyle(16))
+			if err != nil {
+				t.Fatalf("unwrapped Layout() error = %v", err)
+			}
+			style := testStyle(16)
+			style.MaxWidth = 8
+			box, err := renderer.Layout(tc.root, ir.Display, style)
+			if err != nil {
+				t.Fatalf("constrained Layout() error = %v", err)
+			}
+			if len(box.Lines) != 1 {
+				t.Fatalf("Lines = %d, want one constrained line", len(box.Lines))
+			}
+			want := unwrapped.Width - style.MaxWidth
+			if want <= 0 {
+				t.Fatalf("fixture is not overfull: width %v max %v", unwrapped.Width, style.MaxWidth)
+			}
+			if !closeHost(box.Lines[0].Box.Overflow, want) {
+				t.Fatalf("line Overflow = %v, want logical excess %v", box.Lines[0].Box.Overflow, want)
+			}
+			if !closeHost(box.Overflow, want) {
+				t.Fatalf("parent Overflow = %v, want logical excess %v", box.Overflow, want)
+			}
+			if err := box.Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
+	}
+}
+
 func alignmentLayoutState(align display.Align, maxWidth float32) *layoutState {
 	return &layoutState{
 		ctx:      context.Background(),

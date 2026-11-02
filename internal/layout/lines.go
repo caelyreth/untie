@@ -519,8 +519,15 @@ func (s *layoutState) assembleDisplayLines(base *display.Box, lines []display.Li
 	if err != nil {
 		return nil, err
 	}
+	for i, line := range parent.Lines {
+		if i%64 == 0 {
+			if err := s.ctx.Err(); err != nil {
+				return nil, err
+			}
+		}
+		overflow = maxFloat(overflow, maxFloat(0, line.Box.Width-parent.Width))
+	}
 	parent.Overflow = overflow
-	parent.Overflow = maxFloat(0, parent.Overflow)
 	if err := parent.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}

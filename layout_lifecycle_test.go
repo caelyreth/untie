@@ -484,6 +484,35 @@ func TestLayoutAlignmentContract(t *testing.T) {
 	}
 }
 
+func TestLayoutTeXQuadReportsLogicalOverflow(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	expr := ParseTeX(`\quad`, Display, ParseOptions{})
+	unwrapped, err := Layout(expr, fonts, Style{Size: 16})
+	if err != nil {
+		t.Fatal(err)
+	}
+	box, err := Layout(expr, fonts, Style{Size: 16, MaxWidth: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(box.Lines) != 1 {
+		t.Fatalf("Lines = %d, want one constrained line", len(box.Lines))
+	}
+	want := unwrapped.Width - 1
+	assertHostClose(t, box.Lines[0].Box.Overflow, want)
+	assertHostClose(t, box.Overflow, want)
+}
+
+func assertHostClose(t *testing.T, got, want float32) {
+	t.Helper()
+	const tolerance = float32(1e-4)
+	if diff := got - want; diff > tolerance || diff < -tolerance {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
 func mustCanonical(t testing.TB, box *Box) []byte {
 	t.Helper()
 	data, err := box.MarshalCanonical()
