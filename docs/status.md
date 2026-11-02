@@ -6,7 +6,8 @@ is not a compatibility claim.
 
 ## Snapshot
 
-- Repository commit: `b879aefd610d86f4e1fad3992d5d5b455fc847a2`
+- Repository state: post engine hardening, generated/fixture import, and
+  TeX/Typst conformance baselines
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
@@ -30,6 +31,8 @@ tests and migration notes.
 - Parsing facade with dialect selection, TeX macro options, Typst preamble
   options, diagnostics, stable parse keys, cancellation checks, and a panic
   containment boundary.
+- Public end-to-end layout through `internal/engine`, with real font, IR,
+  layout, and display-list validation.
 
 ### TeX Frontend
 
@@ -69,6 +72,20 @@ The generator records its input paths and hashes. Generation requires the
 ignored reference checkout; normal builds and tests consume only checked-in
 tables.
 
+### Font Backend
+
+`font` provides:
+
+- SFNT and TTC face selection from copied host bytes;
+- cmap and Unicode variation-sequence mapping;
+- OpenType MATH constants, italic corrections, accent attachments, corner
+  kerns, variants, assemblies, and connector metadata in design units;
+- `dtls`/`ssty` math shaping in canonical order;
+- quadratic and cubic glyph outlines;
+- checked malformed-input rejection and a concurrency-safe outline cache;
+- exact conformance against the tracked NewCM font fixture, with a small,
+  explicitly listed CFF legacy-composition exception.
+
 ### Fixture Infrastructure
 
 - Pinned NewCM font bytes, Typlet formulas and static frames, RaTeX core TeX
@@ -86,35 +103,59 @@ tables.
 
 - display, text, script, and script-script styles, normal and cramped;
 - neutral math classes and automatic class spacing;
-- rows, explicit spaces, glyphs, scripts, fractions, radicals, fences, lines,
-  styles, colors, placeholders, and basic text through narrow ports;
+- rows, explicit spaces, glyphs, scripts, fractions, radicals, fences, accents,
+  cancel, lines, boxes, phantom, styles, colors, placeholders, and text through
+  narrow ports;
+- baseline-origin placement verified with real NewCM outputs;
+- signed explicit spacing, binary lookahead/demotion, and MATH corner kerning;
 - optional table and stretch ports;
 - fragment bounds, output quantization, overflow measurement, cancellation, and
   resource limits;
-- flattening to `display.Box` using mocked font ports in tests.
+- flattening to `display.Box` using real and mocked font ports.
 
-This code is not yet connected to the public `LayoutContext` API.
+`internal/engine` adapts `font.FontSet` to layout, performs rune/class-aware
+variant selection, multi-glyph operator shaping, text tracking and fallback,
+and MATH variant/assembly selection.
+
+### Typst Frontend
+
+The bounded Typst math frontend includes:
+
+- UTF-8 byte-span lexing and a private AST;
+- math identifiers, shorthands, scripts, primes, fractions, roots, alignment,
+  rows, and math calls;
+- named and spread arguments for core math functions;
+- matrices, vectors, cases, accents, lines, cancel, text, boxes, styles, and
+  alphabets;
+- a deterministic evaluator subset for values required by math calls;
+- source, token, nesting, node, call-depth, table-cell, and text limits;
+- explicit diagnostics for unsupported code, parameters, and scope boundaries.
+
+### Conformance Baselines
+
+- 1,111 TeX cases from RaTeX and selected KaTeX inputs are classified with zero
+  unexplained cases.
+- 171 selected Typst cases are classified with zero unexplained cases.
+- All 81 paired Typst/TeX formulas are classified with zero unexplained cases.
+- The committed paired baseline currently records zero full passes, showing
+  the remaining cross-dialect semantic differences rather than hiding them.
 
 ## Not Yet Implemented
 
 The following are genuine gaps, not hidden behavior:
 
-- `LayoutContext` currently returns an empty `display.Box`; public end-to-end
-  formula layout is unavailable.
-- `font.Load` copies font bytes and computes a font-set key but does not parse
-  SFNT/TTC, cmap, CFF or TrueType outlines, GSUB, GPOS, or OpenType MATH data.
-- There is no production font adapter from `font.FontSet` to the internal layout
-  ports.
-- The Typst frontend is a stub that diagnoses all non-empty input.
-- No public path produces glyph outlines from a real font.
-- The internal table layout requires a host-supplied extension port and is not a
-  complete built-in table implementation.
-- Text shaping, MATH variants and assemblies, glyph fallback, font matching, and
-  production glyph caching are not implemented.
-- No renderer-produced layout golden has been compared with the imported Typlet
-  frame fixtures.
-- The imported corpora are not yet a complete conformance runner with a status
-  for every case.
+- The internal table layout still requires a host-supplied extension port and is
+  not yet a complete built-in table implementation.
+- `ir.Multiline` still needs a built-in layout implementation.
+- Paired Typst/TeX semantic and geometry conformance still has substantial
+  reviewed gaps.
+- TeX conformance still records hundreds of reviewed parser coverage gaps,
+  especially text-mode commands, environments, groups, rows, and alignment.
+- Typst conformance still records reviewed symbol/evaluator and matrix gaps.
+- Some MATH assemblies and metric differences remain within documented fixture
+  tolerances; comparison against every static Typlet frame is not yet green.
+- Public renderer instances are currently constructed per layout call; a
+  renderer cache keyed by FontSet and limits remains a performance follow-up.
 - Break placement, display wrapping, inline source hits, accessibility output,
   equation numbering, tags, links, MathML, rasterization, and SVG export are not
   product features. SVG support is test-only.

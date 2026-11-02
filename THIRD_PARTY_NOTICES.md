@@ -21,6 +21,10 @@ the material.
 | `typst-assets` | Source distribution of the tracked NewCM font and its notices | `94dcb990edb36311ef85162baa26e4a8205e0bf0` | Asset-specific; NewCM is under GUST 1.0 | `testdata/upstream/licenses/typst-assets-NOTICE.txt` |
 | codex | Transitive source of generated Typst symbol metadata | 0.3.0, Typst revision `2e43ab9` | Apache-2.0 | No standalone full text tracked; see owner actions below |
 | unicode-math-class | Transitive source of generated Unicode math-class runs | 0.1.0, MathClass.txt revision 15 | MIT or Apache-2.0; recorded use is MIT | No standalone full text tracked; see owner actions below |
+| `go-opentype/opentype` | Pure-Go OpenType container, metadata, MATH, and GSUB parsing | pseudoversion `2c8922cb87c69d7555957e90370c19f890758b36` | BSD-3-Clause | Declared in `go.mod` |
+| `go-text/typesetting` | Pure-Go Type 2/CFF and TrueType glyph outline extraction | `v0.3.5` | Unlicense OR BSD-3-Clause | Declared in `go.mod` |
+| `dsnet/compress` | Transitive WOFF2/brotli support through `go-opentype` | `v0.0.2-0.20230904184137-39efe44ab707` | BSD-3-Clause | Indirect module in `go.mod` |
+| `golang.org/x/image` | Transitive font geometry dependency | `v0.47.0` | BSD-3-Clause | Indirect module in `go.mod` |
 
 ## Text, Metadata, And Fixtures
 
