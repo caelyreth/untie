@@ -195,8 +195,9 @@ ordered list of positioned items:
 It also owns the public source-hit and inline-break types. A hit maps a UTF-8
 byte range to one placed rectangle and carries depth/kind for deterministic
 lookup. The layout engine emits hits from the placed fragment tree rather than
-reconstructing geometry from a flattened item list. Break metadata is
-baseline-relative and does not yet imply that layout populates split pieces.
+reconstructing geometry from a flattened item list. Inline layout emits
+top-level relation, binary, and explicit break metadata; it does not yet emit
+split pieces or width-constrained display lines.
 
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.
