@@ -222,16 +222,15 @@ func TestRuleLayoutAndExplicitStyle(t *testing.T) {
 	}
 }
 
-func TestTextTableAndPlaceholderExtensions(t *testing.T) {
+func TestTextBuiltInTableAndPlaceholderNodes(t *testing.T) {
 	t.Parallel()
 
 	glyphs := &fakeGlyphSource{glyphs: map[string]Glyph{}}
-	table := &fakeTableLayouter{}
 	renderer, err := New(Fonts{
 		Glyphs:  glyphs,
 		Metrics: fakeStyleFont{},
 		Text:    fakeTextSource{},
-	}, Options{Tables: table})
+	}, Options{})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -246,11 +245,15 @@ func TestTextTableAndPlaceholderExtensions(t *testing.T) {
 
 	row := ir.NewRow(source.NewRange(0, 1), glyph("x", ir.ClassNormal))
 	matrix := ir.NewTable(source.NewRange(0, 1), ir.TableRow{Cells: []ir.Node{row}})
-	if _, err := renderer.Layout(matrix, ir.Inline, testStyle(16)); err != nil {
+	matrixBox, err := renderer.Layout(matrix, ir.Inline, testStyle(16))
+	if err != nil {
 		t.Fatalf("Layout(table) error = %v", err)
 	}
-	if !table.called {
-		t.Fatal("table extension was not called")
+	if err := matrixBox.Validate(); err != nil {
+		t.Fatalf("table box validation error = %v", err)
+	}
+	if len(matrixBox.Items) != 1 || matrixBox.Items[0].Kind != display.ItemGlyphPath {
+		t.Fatalf("table items = %+v, want one built-in cell glyph", matrixBox.Items)
 	}
 
 	placeholder := ir.NewPlaceholder(source.NewRange(0, 1), "missing")

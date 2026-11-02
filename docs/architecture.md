@@ -220,7 +220,6 @@ to the documented display precision. Rasterization is not a core dependency.
 - `StyleFont` supplies MATH constants for a requested style and variant.
 - `GlyphStretcher` optionally returns MATH size variants and assemblies.
 - `TextSource` optionally shapes text runs deterministically.
-- `TableLayouter` optionally measures matrix and table cells.
 
 These ports keep font-file parsing, glyph selection, shaping, and layout
 separable. The layout engine requires glyph and metric ports. Optional ports

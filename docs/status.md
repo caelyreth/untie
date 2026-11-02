@@ -217,8 +217,6 @@ The bounded Typst math frontend includes:
 
 The following are genuine gaps, not hidden behavior:
 
-- The built-in table and multiline layout paths are implemented; custom table
-  providers remain optional extensions.
 - Paired Typst/TeX semantic and geometry conformance still has substantial
   reviewed gaps.
 - TeX conformance records no reviewed parser gaps; remaining non-passes are

@@ -132,30 +132,6 @@ func (fakeTextSource) ShapeText(req TextRequest) (TextRun, error) {
 	}, nil
 }
 
-type fakeTableLayouter struct {
-	called bool
-	req    TableRequest
-}
-
-func (f *fakeTableLayouter) LayoutTable(req TableRequest) (Fragment, bool) {
-	f.called = true
-	f.req = req
-	width := geometry.Em(0)
-	ascent, descent := geometry.Em(0), geometry.Em(0)
-	for _, row := range req.Rows {
-		for _, cell := range row.Cells {
-			width = max(width, cell.Width)
-			ascent = max(ascent, cell.Ascent)
-			descent = max(descent, cell.Descent)
-		}
-	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassInner, Text, geometry.Em(geometry.EmScale))
-	if err != nil {
-		return Fragment{}, false
-	}
-	return *fragment, true
-}
-
 func testMetrics() MathMetrics {
 	return MathMetrics{
 		ScriptPercentScaleDown:        80,

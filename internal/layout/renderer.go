@@ -17,14 +17,12 @@ const hostSubunits int64 = 1 << 16
 // Options configures a Renderer. Zero limits use source.DefaultLimits.
 type Options struct {
 	Limits source.Limits
-	Tables TableLayouter
 }
 
 // Renderer is an immutable layout engine. It is safe for concurrent use if its
-// supplied ports are safe for concurrent use.
+// supplied font ports are safe for concurrent use.
 type Renderer struct {
 	fonts  Fonts
-	tables TableLayouter
 	limits source.Limits
 }
 
@@ -38,7 +36,6 @@ func New(fonts Fonts, options Options) (*Renderer, error) {
 	}
 	return &Renderer{
 		fonts:  fonts,
-		tables: options.Tables,
 		limits: options.Limits.WithDefaults(),
 	}, nil
 }

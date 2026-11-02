@@ -13,9 +13,6 @@ func (s *layoutState) layoutTable(node *ir.Table, env environment, depth int) (*
 	if err != nil {
 		return nil, err
 	}
-	if s.renderer.tables != nil {
-		return s.layoutTableExtension(node, env, depth)
-	}
 	return s.layoutTableBuiltIn(node, env, depth, shape)
 }
 
@@ -94,62 +91,6 @@ func (s *layoutState) tableShape(node *ir.Table) (tableShape, error) {
 		return tableShape{}, fmt.Errorf("%w: table output item count exceeds %d", ErrLimit, s.limits.MaxOutputItems)
 	}
 	return shape, nil
-}
-
-func (s *layoutState) layoutTableExtension(node *ir.Table, env environment, depth int) (*Fragment, error) {
-	cellEnv := env
-	rows := make([]TableRow, len(node.Rows))
-	for rowIndex, row := range node.Rows {
-		if rowIndex%64 == 0 {
-			if err := s.ctx.Err(); err != nil {
-				return nil, err
-			}
-		}
-		rows[rowIndex].Cells = make([]Fragment, len(row.Cells))
-		for columnIndex, cell := range row.Cells {
-			fragment, err := s.layoutNode(cell, cellEnv, depth)
-			if err != nil {
-				return nil, err
-			}
-			setOwnHitKind(fragment, display.HitTableCell)
-			rows[rowIndex].Cells[columnIndex] = *fragment
-		}
-	}
-	metrics := s.fontMetrics(env.Style, env.Variant)
-	rowGap, err := s.length(node.RowGap, env.Style, metrics)
-	if err != nil {
-		return nil, err
-	}
-	columnGap, err := s.length(node.ColumnGap, env.Style, metrics)
-	if err != nil {
-		return nil, err
-	}
-	horizontal, err := s.tableLines(node.Horizontal, env.Style, metrics)
-	if err != nil {
-		return nil, err
-	}
-	vertical, err := s.tableLines(node.Vertical, env.Style, metrics)
-	if err != nil {
-		return nil, err
-	}
-	fragment, ok := s.renderer.tables.LayoutTable(TableRequest{
-		Context:    s.ctx,
-		Limits:     s.limits,
-		Style:      env.Style,
-		Rows:       rows,
-		Columns:    append([]ir.ColumnAlign(nil), node.Columns...),
-		RowGap:     rowGap,
-		ColumnGap:  columnGap,
-		Horizontal: horizontal,
-		Vertical:   vertical,
-	})
-	if !ok {
-		return nil, fmt.Errorf("%w: table extension rejected input", ErrUnsupported)
-	}
-	if err := s.ctx.Err(); err != nil {
-		return nil, err
-	}
-	return withClass(&fragment, node.Class), nil
 }
 
 type measuredPart struct {

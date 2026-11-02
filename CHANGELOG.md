@@ -22,6 +22,9 @@
 - `TableRow.Tag` and the table-provider tag fragment were removed. They had no
   producing frontend and incorrectly suggested that top-level equation tags
   belonged inside table rows. Use `ir.Formula.Tags` and `display.TagBox`.
+- The unreachable internal table-provider extension seam was removed. Built-in
+  table, matrix, and multiline layout now have one production path with no
+  host-configurable provider option.
 - `display.Break.Penalty` and `ir.Break.Penalty` were removed, and
   `ir.NewBreak` no longer accepts a penalty argument. Break metadata now carries
   only source position and legal-cut kind. Constrained display wrapping remains
