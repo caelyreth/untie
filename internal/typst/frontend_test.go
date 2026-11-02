@@ -267,11 +267,11 @@ func TestSyntaxGroupingRowsStayNeutral(t *testing.T) {
 	}
 
 	primes := parse(t, `f''`)
-	requireNoDiagnostics(t, "prime row", primes)
+	requireNoDiagnostics(t, "grouped primes", primes)
 	scripts := find[*ir.Scripts](t, primes.Root)
-	primeRow, ok := scripts.TopRight.(*ir.Row)
-	if !ok || primeRow.Class != ir.ClassNormal {
-		t.Fatalf("prime row = %#v, want normal", scripts.TopRight)
+	prime, ok := scripts.TopRight.(*ir.Glyph)
+	if !ok || prime.Text != "″" || prime.Class != ir.ClassNormal {
+		t.Fatalf("grouped prime = %#v, want normal double prime", scripts.TopRight)
 	}
 }
 

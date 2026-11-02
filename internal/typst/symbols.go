@@ -99,10 +99,12 @@ var typstSymbols = map[string]symbolDef{
 	"sum": {text: "∑", class: ir.ClassLarge}, "product": {text: "∏", class: ir.ClassLarge},
 	"coproduct": {text: "∐", class: ir.ClassLarge}, "integral": {text: "∫", class: ir.ClassLarge},
 	"integral.double": {text: "∬", class: ir.ClassLarge}, "integral.triple": {text: "∭", class: ir.ClassLarge},
-	"integral.cont": {text: "∮", class: ir.ClassLarge}, "union": {text: "⋃", class: ir.ClassLarge},
-	"intersection": {text: "⋂", class: ir.ClassLarge}, "union.big": {text: "⋃", class: ir.ClassLarge},
-	"intersection.big": {text: "⋂", class: ir.ClassLarge}, "sect": {text: "⋀", class: ir.ClassLarge},
-	"vee": {text: "⋁", class: ir.ClassLarge}, "wedge": {text: "⋀", class: ir.ClassLarge},
+	"integral.cont": {text: "∮", class: ir.ClassLarge},
+	"union":         {text: "∪", class: ir.ClassBinary}, "union.big": {text: "⋃", class: ir.ClassLarge},
+	"inter": {text: "∩", class: ir.ClassBinary}, "inter.big": {text: "⋂", class: ir.ClassLarge},
+	"intersection": {text: "∩", class: ir.ClassBinary}, "intersection.big": {text: "⋂", class: ir.ClassLarge},
+	"sect": {text: "⋀", class: ir.ClassLarge}, "vee": {text: "⋁", class: ir.ClassLarge},
+	"wedge":  {text: "⋀", class: ir.ClassLarge},
 	"tensor": {text: "⊗", class: ir.ClassLarge},
 
 	"plus": {text: "+", class: ir.ClassBinary}, "minus": {text: "−", class: ir.ClassBinary},
@@ -174,12 +176,11 @@ var textOperators = map[string]bool{
 }
 
 var spacingSymbols = map[string]ir.Length{
-	"space": builtinEmLength(0.25),
-	"thin":  builtinMuLength(3),
-	"med":   builtinMuLength(4),
-	"thick": builtinMuLength(5),
-	"quad":  builtinMuLength(18),
-	"wide":  builtinMuLength(36),
+	"thin":  builtinEmLength(1.0 / 6.0),
+	"med":   builtinEmLength(2.0 / 9.0),
+	"thick": builtinEmLength(5.0 / 18.0),
+	"quad":  builtinEmLength(1),
+	"wide":  builtinEmLength(2),
 }
 
 func builtinEmLength(value float64) ir.Length {

@@ -35,7 +35,8 @@ func (l *lowerer) lowerAccentCall(call *astNode) ir.Node {
 		position = ir.PositionBelow
 	}
 	out := ir.NewAccent(call.span, body, accent, position)
-	out.Stretchy = true
+	out.Stretchy = false
+	out.NaturalFit = true
 	if arg := namedArgument(call, "dotless"); arg != nil {
 		if dotless, ok := l.valueBool(arg.node); ok {
 			out.Dotless = dotless
@@ -60,7 +61,8 @@ func (l *lowerer) lowerAccentWithMark(call *astNode, mark string) ir.Node {
 		position = ir.PositionBelow
 	}
 	out := ir.NewAccent(call.span, body, accent, position)
-	out.Stretchy = true
+	out.Stretchy = false
+	out.NaturalFit = true
 	if arg := namedArgument(call, "dotless"); arg != nil {
 		if dotless, ok := l.valueBool(arg.node); ok {
 			out.Dotless = dotless
@@ -135,6 +137,9 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 	accent.Class = ir.ClassDiacritic
 	decor := ir.NewAccent(call.span, body, accent, position)
 	decor.Stretchy = true
+	decor.NaturalFit = true
+	decor.Class = ir.ClassInner
+	decor.Limits = ir.LimitsAlways
 	var annotation ir.Node
 	if named := l.contentNamed(call, "annotation"); named != nil {
 		annotation = named
@@ -153,6 +158,7 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 	} else {
 		scripts.Bottom = annotation
 	}
+	scripts.Class = ir.ClassInner
 	scripts.Limits = ir.LimitsAlways
 	scripts.Role = ir.ScriptRoleBraceLabel
 	return scripts

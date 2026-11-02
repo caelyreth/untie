@@ -210,6 +210,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["accent"] = accent
 		baseValue["position"] = positionName(node.Position)
 		baseValue["stretchy"] = node.Stretchy
+		baseValue["natural-fit"] = node.NaturalFit
 		baseValue["dotless"] = node.Dotless
 		baseValue["exact-width"] = node.ExactFrameWidth
 		return baseValue, nil
@@ -462,6 +463,8 @@ func usesLimits(node *ir.Scripts, size ir.MathSize) bool {
 		return true
 	case ir.LimitsNever:
 		return false
+	case ir.LimitsDisplay:
+		return size == ir.SizeDisplay
 	}
 	return size == ir.SizeDisplay && class == ir.ClassLarge
 }
@@ -623,7 +626,7 @@ func variantName(v ir.Variant) string {
 }
 
 func limitsName(v ir.LimitsPlacement) string {
-	return enumName(v, []string{"auto", "always", "never"})
+	return enumName(v, []string{"auto", "always", "never", "display"})
 }
 
 func paintRoleName(v ir.PaintRole) string {

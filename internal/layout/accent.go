@@ -35,7 +35,7 @@ func (s *layoutState) layoutAccent(node *ir.Accent, env environment, depth int) 
 	}
 
 	var stretch *stretchSpec
-	if node.Stretchy {
+	if node.Stretchy || node.NaturalFit {
 		shortFall, err := s.metricAt(accentShortFall, env.Style)
 		if err != nil {
 			return nil, err

@@ -31,6 +31,8 @@ func TestScriptAndLimitPlacementPolicy(t *testing.T) {
 		{"sum nolimits", glyph("sum", ir.ClassLarge), glyph("wide", ir.ClassNormal), true, ir.LimitsNever, ir.Display, false},
 		{"display lim", glyph("lim", ir.ClassLarge), glyph("wide", ir.ClassNormal), true, ir.LimitsAuto, ir.Display, true},
 		{"forced limits", glyph("x", ir.ClassAlphabetic), glyph("wide", ir.ClassNormal), true, ir.LimitsAlways, ir.Inline, true},
+		{"display-only limits inline", glyph("x", ir.ClassAlphabetic), glyph("wide", ir.ClassNormal), true, ir.LimitsDisplay, ir.Inline, false},
+		{"display-only limits display", glyph("x", ir.ClassAlphabetic), glyph("wide", ir.ClassNormal), true, ir.LimitsDisplay, ir.Display, true},
 	}
 	for _, test := range tests {
 		test := test

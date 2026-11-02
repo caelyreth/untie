@@ -96,7 +96,7 @@ func TestAttachAndCasesPreserveNeutralMetadata(t *testing.T) {
 		class  ir.MathClass
 		limits ir.LimitsPlacement
 	}{
-		{`attach(limits(sum), tl: b, bl: a, tr: d, br: c)`, ir.ClassLarge, ir.LimitsAlways},
+		{`attach(limits(sum), tl: b, bl: a, tr: d, br: c)`, ir.ClassLarge, ir.LimitsAuto},
 		{`attach(limits(=), t: "def")`, ir.ClassRelation, ir.LimitsAlways},
 		{`op("argmax", limits: #true)_x`, ir.ClassLarge, ir.LimitsAlways},
 	}
@@ -284,7 +284,7 @@ func assertSpacingClasses(t *testing.T, row *ir.Row, wrapper ir.MathClass) {
 	}
 }
 
-func TestDifferentialAndBuiltinSpacingUseExactMathUnits(t *testing.T) {
+func TestDifferentialAndBuiltinSpacingUseExactUnits(t *testing.T) {
 	t.Parallel()
 
 	result := parse(t, `integral f(x) dif x + Dif`)
@@ -309,19 +309,19 @@ func TestDifferentialAndBuiltinSpacingUseExactMathUnits(t *testing.T) {
 		t.Fatalf("differentials = %d, want 2", len(differentials))
 	}
 
-	spacing := map[string]int64{
-		"thin":  3,
-		"med":   4,
-		"thick": 5,
-		"quad":  18,
-		"wide":  36,
+	spacing := map[string]float64{
+		"thin":  1.0 / 6.0,
+		"med":   2.0 / 9.0,
+		"thick": 5.0 / 18.0,
+		"quad":  1,
+		"wide":  2,
 	}
 	for name, want := range spacing {
 		result := parse(t, name)
 		requireNoDiagnostics(t, name, result)
 		space := find[*ir.Space](t, result.Root)
-		if space.Amount != builtinMuLength(float64(want)) {
-			t.Fatalf("%s amount = %#v, want %d mu", name, space.Amount, want)
+		if space.Amount != builtinEmLength(want) {
+			t.Fatalf("%s amount = %#v, want %v em", name, space.Amount, want)
 		}
 	}
 }

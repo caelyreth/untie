@@ -99,7 +99,7 @@ func (s *validationState) visit(n Node, path string, depth int) error {
 	if base.Variant > VariantMonospace {
 		return fmt.Errorf("%w: %s: invalid variant", ErrInvalidIR, path)
 	}
-	if base.Limits > LimitsNever {
+	if base.Limits > LimitsDisplay {
 		return fmt.Errorf("%w: %s: invalid limits placement", ErrInvalidIR, path)
 	}
 	if err := validatePaint(base.Paint, path+".paint"); err != nil {
