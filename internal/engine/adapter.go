@@ -132,7 +132,7 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 		}
 	}
 	if construction.Assembly != nil {
-		assembled, err := a.assembleGlyph(req.Context, base, mapped, construction, target, axis, text)
+		assembled, err := a.assembleGlyph(req.Context, base, mapped, construction, target, req.Target, axis, text)
 		if err != nil {
 			return layout.Glyph{}, err
 		}

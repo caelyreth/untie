@@ -269,6 +269,33 @@ func TestAdapterStretchShortfallAssemblyAndLimits(t *testing.T) {
 	}
 }
 
+func TestAdapterStretchReachesTallMatrixDelimiter(t *testing.T) {
+	t.Parallel()
+
+	set, _ := newNewCMEngine(t, source.Limits{})
+	adapter, err := newAdapter(set, source.Limits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := geometry.Em(300_418)
+	glyph, err := adapter.Stretch(layout.StretchRequest{
+		GlyphRequest: layout.GlyphRequest{
+			Context: context.Background(),
+			Text:    "[",
+			Style:   layout.Style{Size: layout.Display},
+			Font:    ir.FontMath,
+		},
+		Axis:   layout.Vertical,
+		Target: target,
+	})
+	if err != nil {
+		t.Fatalf("Stretch() error = %v", err)
+	}
+	if extent, err := glyphExtent(glyph, layout.Vertical); err != nil || extent < target {
+		t.Fatalf("stretched extent = %d, %v; want at least %d", extent, err, target)
+	}
+}
+
 func TestExpandAssemblyPreservesPartOrder(t *testing.T) {
 	parts := []font.AssemblyPart{
 		{Glyph: 1, FullAdvance: 10},

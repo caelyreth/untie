@@ -22,6 +22,7 @@ func (a *adapter) assembleGlyph(
 	mapped font.Glyph,
 	construction font.MathConstruction,
 	target int32,
+	targetEm geometry.Em,
 	axis font.MathAxis,
 	text string,
 ) (layout.Glyph, error) {
@@ -300,6 +301,11 @@ func (a *adapter) assembleGlyph(
 		if err != nil {
 			return layout.Glyph{}, err
 		}
+		// Vertical assembly extent is defined by the spread part advances, not
+		// by the union of part ink. Typst sets the assembled frame height to the
+		// resolved target before centering it on the math axis.
+		result.Ascent = targetEm
+		result.Descent = 0
 	}
 	return result, nil
 }
