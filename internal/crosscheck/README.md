@@ -108,9 +108,9 @@ Current reviewed baseline:
 
 ```text
 pass                        22
-semantic-ir-mismatch        55
+semantic-ir-mismatch        54
 layout-mismatch              0
-fixture-mismatch             2
+fixture-mismatch             3
 documented-pair-difference   2
 unexplained                  0
 ```
