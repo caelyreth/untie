@@ -115,7 +115,7 @@ var allowedProjectImports = map[string]packageRules{
 		},
 	},
 	modulePath + "/internal/daily": {
-		Production: []string{modulePath},
+		Production: []string{modulePath, modulePath + "/ir", modulePath + "/source"},
 	},
 	modulePath + "/internal/fixture": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},

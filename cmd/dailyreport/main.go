@@ -27,8 +27,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	font := flags.String("font", filepath.Join("testdata", "upstream", "fonts", "NewCMMath-Book.otf"), "OpenType MATH font")
 	timeout := flags.Duration("case-timeout", 2*time.Second, "per-case time budget")
 	asJSON := flags.Bool("json", false, "print the complete canonical report")
+	allowKnownIssues := flags.Bool("allow-known-issues", false, "diagnostic mode: do not fail on matched tracked issues")
+	updateManifest := flags.Bool("update-manifest", false, "explicitly rewrite manifest invariants and content digest after review")
 	flags.Usage = func() {
-		_, _ = fmt.Fprintln(stderr, "usage: dailyreport [-corpus FILE] [-manifest FILE] [-font FILE] [-case-timeout DURATION] [-json]")
+		_, _ = fmt.Fprintln(stderr, "usage: dailyreport [-corpus FILE] [-manifest FILE] [-font FILE] [-case-timeout DURATION] [-json] [-allow-known-issues] [-update-manifest]")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -46,6 +48,21 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fail(stderr, err)
 		return 1
 	}
+	caseFile := filepath.Base(*corpus)
+	if *updateManifest {
+		updated, err := daily.BuildManifest(cases, caseFile)
+		if err != nil {
+			fail(stderr, err)
+			return 1
+		}
+		if err := daily.WriteManifest(*manifest, updated); err != nil {
+			fail(stderr, err)
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "updated manifest: %d cases, %d coverage groups, %d source-specific, digest %s\n",
+			updated.Count, updated.CoverageGroups, updated.SourceSpecific, updated.ContentSHA256)
+		return 0
+	}
 	declared, err := daily.LoadManifest(*manifest)
 	if err != nil {
 		fail(stderr, err)
@@ -55,31 +72,33 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fail(stderr, err)
 		return 1
 	}
-	if filepath.Base(*corpus) != declared.CaseFile {
+	if caseFile != declared.CaseFile {
 		fail(stderr, fmt.Errorf("corpus basename %q does not match manifest caseFile %q",
-			filepath.Base(*corpus), declared.CaseFile))
+			caseFile, declared.CaseFile))
 		return 1
 	}
-	engine, err := daily.LoadEngine(*font)
+	fonts, err := daily.LoadFonts(*font)
 	if err != nil {
 		fail(stderr, err)
 		return 1
 	}
-	runner, err := daily.NewRunner(engine, *timeout)
+	runner, err := daily.NewRunner(fonts, *timeout)
 	if err != nil {
 		fail(stderr, err)
 		return 1
 	}
 	report, err := runner.Run(context.Background(), cases)
-	if err != nil {
-		fail(stderr, err)
-		return 1
-	}
-	if err := report.Validate(); err != nil {
-		fail(stderr, err)
-		return 1
+	if report.SchemaVersion != 0 {
+		if validationErr := report.Validate(); validationErr != nil {
+			fail(stderr, validationErr)
+			return 1
+		}
 	}
 	if *asJSON {
+		if report.SchemaVersion == 0 {
+			fail(stderr, errors.New("runner returned no report"))
+			return 1
+		}
 		data, err := report.MarshalCanonical()
 		if err != nil {
 			fail(stderr, err)
@@ -90,12 +109,23 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	} else {
-		if err := printSummary(stdout, report); err != nil {
-			fail(stderr, err)
-			return 1
+		if report.SchemaVersion != 0 {
+			if err := printSummary(stdout, report); err != nil {
+				fail(stderr, err)
+				return 1
+			}
 		}
 	}
-	if report.Summary.Fail != 0 {
+	if err != nil {
+		fail(stderr, err)
+		return 1
+	}
+	if reportExitCode(report, *allowKnownIssues) != 0 {
+		if !*allowKnownIssues && report.Summary.KnownIssueFailures != 0 {
+			fail(stderr, errors.New("matched tracked issues require -allow-known-issues for a zero exit"))
+		} else {
+			fail(stderr, errors.New("unexpected corpus failures"))
+		}
 		return 1
 	}
 	return 0
@@ -103,15 +133,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 func printSummary(writer io.Writer, report daily.Report) error {
 	summary := report.Summary
-	if _, err := fmt.Fprintf(writer, "daily STEM: %d cases, %d pass, %d fail\n",
-		summary.Total, summary.Pass, summary.Fail); err != nil {
+	if _, err := fmt.Fprintf(writer,
+		"daily STEM: %d cases, %d pass, %d known-issue failures, %d unexpected failures\n",
+		summary.Total, summary.Pass, summary.KnownIssueFailures, summary.UnexpectedFailures); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintf(writer, "outcomes: %d rendered, %d recovered, %d missing-glyph, %d layout-error, %d failure\n",
 		summary.Rendered, summary.Recovered, summary.MissingGlyph, summary.LayoutError, summary.Failure); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(writer, "known issues: %d\n", summary.KnownIssues); err != nil {
 		return err
 	}
 	parts := make([]string, 0, len(report.Categories))
@@ -121,15 +149,25 @@ func printSummary(writer io.Writer, report daily.Report) error {
 	if _, err := fmt.Fprintf(writer, "categories: %s\n", strings.Join(parts, " ")); err != nil {
 		return err
 	}
-	for _, result := range report.Cases {
-		if result.Pass {
-			continue
+	for _, result := range report.KnownIssueCases() {
+		if _, err := fmt.Fprintf(writer, "KNOWN ISSUE %s (%s): %s\n",
+			result.ID, result.Issue, result.Detail); err != nil {
+			return err
 		}
-		if _, err := fmt.Fprintf(writer, "FAIL %s: %s\n", result.ID, result.Detail); err != nil {
+	}
+	for _, result := range report.UnexpectedFailureCases() {
+		if _, err := fmt.Fprintf(writer, "UNEXPECTED FAILURE %s: %s\n", result.ID, result.Detail); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func reportExitCode(report daily.Report, allowKnownIssues bool) int {
+	if report.Blocking(allowKnownIssues) {
+		return 1
+	}
+	return 0
 }
 
 func fail(writer io.Writer, err error) {

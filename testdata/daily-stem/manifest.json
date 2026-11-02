@@ -1,28 +1,29 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "caseFile": "cases.jsonl",
-  "count": 81,
+  "contentSHA256": "b23e1be5af8bfce6598aa8c0d6a6141dd001219b654f621d896e5556a57e4ac2",
+  "count": 87,
   "categories": {
     "algebra": 10,
     "calculus": 12,
     "delimiters": 6,
-    "display-wrapping": 1,
+    "display-wrapping": 5,
     "linear-algebra": 10,
     "malformed-input": 4,
     "multiline-cases": 6,
     "physics-engineering": 10,
     "probability-statistics": 8,
-    "resource-limits": 2,
+    "resource-limits": 4,
     "sets-logic": 8,
     "text-and-fallback": 4
   },
   "dialects": {
-    "tex": 41,
+    "tex": 47,
     "typst": 40
   },
   "modes": {
-    "inline": 33,
-    "display": 48
+    "display": 52,
+    "inline": 35
   },
   "caseIDs": [
     "algebra.absolute.tex",
@@ -55,6 +56,8 @@
     "delimiter.paired.typst",
     "limits.byte-limit.tex",
     "limits.byte-limit.typst",
+    "limits.nodes.tex",
+    "limits.output.tex",
     "linear.determinant.tex",
     "linear.determinant.typst",
     "linear.eigen.tex",
@@ -105,11 +108,12 @@
     "text.cjk.typst",
     "text.english.tex",
     "text.english.typst",
-    "wrapping.display.tex"
+    "wrapping.align.center.tex",
+    "wrapping.align.end.tex",
+    "wrapping.display.tex",
+    "wrapping.overfull.tex",
+    "wrapping.zero-width-break.tex"
   ],
-  "equivalentGroups": 34,
-  "sourceSpecific": 13,
-  "expectedIssues": {
-    "physics.units.typst": "typst-decimal-text-run"
-  }
+  "coverageGroups": 34,
+  "sourceSpecific": 19
 }

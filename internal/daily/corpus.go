@@ -2,6 +2,7 @@ package daily
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 
 const (
 	// SchemaVersion is the supported daily-corpus schema.
-	SchemaVersion = 1
+	SchemaVersion = 2
 
 	maxCases     = 1_000
 	maxCaseBytes = 2 << 20
@@ -27,21 +28,22 @@ var stableID = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]*[a-z0-9]$`)
 
 // Case is one independently reviewed daily-STEM formula.
 type Case struct {
-	ID              string      `json:"id"`
-	Category        string      `json:"category"`
-	EquivalentGroup string      `json:"equivalentGroup,omitempty"`
-	SourceSpecific  string      `json:"sourceSpecific,omitempty"`
-	Dialect         string      `json:"dialect"`
-	Mode            string      `json:"mode"`
-	Source          string      `json:"source"`
-	Limits          *LimitsSpec `json:"limits,omitempty"`
-	Style           *StyleSpec  `json:"style,omitempty"`
-	Expect          Expectation `json:"expect"`
-	Issue           string      `json:"issue,omitempty"`
+	ID                 string      `json:"id"`
+	Category           string      `json:"category"`
+	CoverageGroup      string      `json:"coverageGroup,omitempty"`
+	ExpectedDifference string      `json:"expectedDifference,omitempty"`
+	SourceSpecific     string      `json:"sourceSpecific,omitempty"`
+	Dialect            string      `json:"dialect"`
+	Mode               string      `json:"mode"`
+	Source             string      `json:"source"`
+	Limits             *LimitsSpec `json:"limits,omitempty"`
+	Style              *StyleSpec  `json:"style,omitempty"`
+	Expect             Expectation `json:"expect"`
+	Issue              string      `json:"issue,omitempty"`
 }
 
-// LimitsSpec overrides parse limits for one case. Omitted or zero fields use
-// the public defaults.
+// LimitsSpec overrides parse and layout limits for one case. Omitted or zero
+// fields use the public defaults.
 type LimitsSpec struct {
 	MaxSourceBytes     int   `json:"maxSourceBytes,omitempty"`
 	MaxTokens          int   `json:"maxTokens,omitempty"`
@@ -62,18 +64,32 @@ type LimitsSpec struct {
 type StyleSpec struct {
 	Size     float32 `json:"size,omitempty"`
 	MaxWidth float32 `json:"maxWidth,omitempty"`
+	Align    string  `json:"align,omitempty"`
 }
 
 // Expectation is a closed model for one acceptance case. There are no
 // catch-all skip or known-failure statuses.
 type Expectation struct {
-	Parse               string   `json:"parse"`
-	DiagnosticCodes     []string `json:"diagnosticCodes,omitempty"`
-	Layout              string   `json:"layout"`
-	LayoutErrorContains []string `json:"layoutErrorContains,omitempty"`
-	Alt                 string   `json:"alt,omitempty"`
-	AltErrorContains    []string `json:"altErrorContains,omitempty"`
-	MinLines            int      `json:"minLines,omitempty"`
+	Parse               string           `json:"parse"`
+	DiagnosticCodes     []string         `json:"diagnosticCodes,omitempty"`
+	Layout              string           `json:"layout"`
+	LayoutErrorContains []string         `json:"layoutErrorContains,omitempty"`
+	Alt                 string           `json:"alt,omitempty"`
+	AltText             string           `json:"altText,omitempty"`
+	AltSpeech           string           `json:"altSpeech,omitempty"`
+	AltErrorContains    []string         `json:"altErrorContains,omitempty"`
+	RootKind            string           `json:"rootKind,omitempty"`
+	MinLines            int              `json:"minLines,omitempty"`
+	RequireOverflow     bool             `json:"requireOverflow,omitempty"`
+	Hits                []HitExpectation `json:"hits,omitempty"`
+}
+
+// HitExpectation pins one source range and semantic hit kind. Text must occur in
+// the case source; Occurrence is zero-based.
+type HitExpectation struct {
+	Text       string `json:"text"`
+	Occurrence int    `json:"occurrence,omitempty"`
+	Kind       string `json:"kind"`
 }
 
 const (
@@ -86,20 +102,63 @@ const (
 
 	altOK    = "ok"
 	altError = "error"
+
+	alignStart  = "start"
+	alignCenter = "center"
+	alignEnd    = "end"
 )
+
+// sourceSpecificReasons is the closed taxonomy for cases that deliberately
+// cover one dialect rather than a paired product scenario.
+var sourceSpecificReasons = map[string]struct{}{
+	"tex-delimiter-sizing":   {},
+	"typst-delimiter-sizing": {},
+	"tex-environment":        {},
+	"typst-multiline":        {},
+	"tex-recovery":           {},
+	"typst-recovery":         {},
+	"tex-resource-limit":     {},
+	"typst-resource-limit":   {},
+	"display-alignment":      {},
+	"display-breaks":         {},
+	"display-overflow":       {},
+	"host-font-boundary":     {},
+}
+
+// expectedDifferences is the closed taxonomy for why a coverage group is not
+// asserting semantic equality between its TeX and Typst cases.
+var expectedDifferences = map[string]struct{}{
+	"source-syntax":     {},
+	"relation-spacing":  {},
+	"text-preservation": {},
+	"symbol-selection":  {},
+	"layout-geometry":   {},
+	"alternative-text":  {},
+}
+
+var hitKinds = map[string]struct{}{
+	"atom": {}, "group": {}, "script": {},
+	"fraction-numerator": {}, "fraction-denominator": {}, "radical": {},
+	"fence": {}, "table-cell": {}, "row": {}, "other": {},
+}
+
+var rootKinds = map[string]struct{}{
+	"row": {}, "placeholder": {}, "error": {},
+}
 
 // Manifest declares exact corpus membership and reviewed classifications.
 type Manifest struct {
-	SchemaVersion    int               `json:"schemaVersion"`
-	CaseFile         string            `json:"caseFile"`
-	Count            int               `json:"count"`
-	Categories       map[string]int    `json:"categories"`
-	Dialects         map[string]int    `json:"dialects"`
-	Modes            map[string]int    `json:"modes"`
-	CaseIDs          []string          `json:"caseIDs"`
-	EquivalentGroups int               `json:"equivalentGroups"`
-	SourceSpecific   int               `json:"sourceSpecific"`
-	ExpectedIssues   map[string]string `json:"expectedIssues,omitempty"`
+	SchemaVersion  int               `json:"schemaVersion"`
+	CaseFile       string            `json:"caseFile"`
+	ContentSHA256  string            `json:"contentSHA256"`
+	Count          int               `json:"count"`
+	Categories     map[string]int    `json:"categories"`
+	Dialects       map[string]int    `json:"dialects"`
+	Modes          map[string]int    `json:"modes"`
+	CaseIDs        []string          `json:"caseIDs"`
+	CoverageGroups int               `json:"coverageGroups"`
+	SourceSpecific int               `json:"sourceSpecific"`
+	ExpectedIssues map[string]string `json:"expectedIssues,omitempty"`
 }
 
 // LoadCases reads and validates a JSON Lines corpus.
@@ -182,14 +241,29 @@ func (c Case) Validate() error {
 	if !stableID.MatchString(c.Category) {
 		return fmt.Errorf("case %q: category %q is not stable", c.ID, c.Category)
 	}
-	if (c.EquivalentGroup == "") == (c.SourceSpecific == "") {
-		return fmt.Errorf("case %q: exactly one of equivalentGroup or sourceSpecific is required", c.ID)
+	if (c.CoverageGroup == "") == (c.SourceSpecific == "") {
+		return fmt.Errorf("case %q: exactly one of coverageGroup or sourceSpecific is required", c.ID)
 	}
-	if c.EquivalentGroup != "" && !stableID.MatchString(c.EquivalentGroup) {
-		return fmt.Errorf("case %q: equivalent group %q is not stable", c.ID, c.EquivalentGroup)
+	if c.CoverageGroup != "" && !stableID.MatchString(c.CoverageGroup) {
+		return fmt.Errorf("case %q: coverage group %q is not stable", c.ID, c.CoverageGroup)
 	}
-	if c.SourceSpecific != "" && !stableID.MatchString(c.SourceSpecific) {
-		return fmt.Errorf("case %q: source-specific reason %q is not stable", c.ID, c.SourceSpecific)
+	if c.CoverageGroup != "" {
+		if _, ok := expectedDifferences[c.ExpectedDifference]; !ok {
+			return fmt.Errorf("case %q: unknown expected difference %q", c.ID, c.ExpectedDifference)
+		}
+	} else if c.ExpectedDifference != "" {
+		return fmt.Errorf("case %q: source-specific case has an expected difference", c.ID)
+	}
+	if c.SourceSpecific != "" {
+		if _, ok := sourceSpecificReasons[c.SourceSpecific]; !ok {
+			return fmt.Errorf("case %q: source-specific reason %q is outside the taxonomy", c.ID, c.SourceSpecific)
+		}
+		if strings.HasPrefix(c.SourceSpecific, "tex-") && c.Dialect != "tex" {
+			return fmt.Errorf("case %q: source-specific reason %q requires the TeX dialect", c.ID, c.SourceSpecific)
+		}
+		if strings.HasPrefix(c.SourceSpecific, "typst-") && c.Dialect != "typst" {
+			return fmt.Errorf("case %q: source-specific reason %q requires the Typst dialect", c.ID, c.SourceSpecific)
+		}
 	}
 	if c.Dialect != "tex" && c.Dialect != "typst" {
 		return fmt.Errorf("case %q: unknown dialect %q", c.ID, c.Dialect)
@@ -233,6 +307,21 @@ func (c Case) Validate() error {
 		if c.Style.Size < 0 || c.Style.MaxWidth < 0 {
 			return fmt.Errorf("case %q: negative style value", c.ID)
 		}
+		switch c.Style.Align {
+		case "", alignStart, alignCenter, alignEnd:
+		default:
+			return fmt.Errorf("case %q: unknown alignment %q", c.ID, c.Style.Align)
+		}
+		if c.Style.Align != "" && c.Style.MaxWidth <= 0 {
+			return fmt.Errorf("case %q: alignment requires a positive maxWidth", c.ID)
+		}
+		if c.Mode == "inline" && c.Style.MaxWidth > 0 {
+			return fmt.Errorf("case %q: inline layout ignores maxWidth", c.ID)
+		}
+	}
+	if (c.Expect.MinLines > 0 || c.Expect.RequireOverflow) &&
+		(c.Style == nil || c.Style.MaxWidth <= 0) {
+		return fmt.Errorf("case %q: constrained-line expectations require a positive maxWidth", c.ID)
 	}
 	if err := c.Expect.validate(c.ID, c.Mode); err != nil {
 		return err
@@ -292,32 +381,48 @@ func (e Expectation) validate(id, mode string) error {
 	default:
 		return fmt.Errorf("case %q: invalid alt expectation %q", id, e.Alt)
 	}
+	if (e.AltText == "") != (e.AltSpeech == "") {
+		return fmt.Errorf("case %q: exact alt expectations require both text and speech", id)
+	}
+	if e.AltText != "" && e.Alt == altError {
+		return fmt.Errorf("case %q: exact alt expectations cannot be combined with an alt error", id)
+	}
+	if e.RootKind != "" {
+		if _, ok := rootKinds[e.RootKind]; !ok {
+			return fmt.Errorf("case %q: unknown root kind %q", id, e.RootKind)
+		}
+	}
 	if e.MinLines < 0 {
 		return fmt.Errorf("case %q: negative minLines", id)
 	}
 	if e.MinLines > 0 && mode != "display" {
 		return fmt.Errorf("case %q: minLines requires display mode", id)
 	}
+	if e.RequireOverflow && mode != "display" {
+		return fmt.Errorf("case %q: requireOverflow requires display mode", id)
+	}
+	for i, hit := range e.Hits {
+		if hit.Text == "" {
+			return fmt.Errorf("case %q: hit %d has empty text", id, i)
+		}
+		if hit.Occurrence < 0 {
+			return fmt.Errorf("case %q: hit %d has negative occurrence", id, i)
+		}
+		if _, ok := hitKinds[hit.Kind]; !ok {
+			return fmt.Errorf("case %q: hit %d has unknown kind %q", id, i, hit.Kind)
+		}
+	}
 	return nil
 }
 
-// ValidateCorpus checks exact manifest membership, categories, pair shape,
-// source-specific classification, and expected issues.
-func ValidateCorpus(cases []Case, manifest Manifest) error {
-	if manifest.SchemaVersion != SchemaVersion {
-		return fmt.Errorf("daily: manifest schema %d, want %d", manifest.SchemaVersion, SchemaVersion)
+// BuildManifest derives every reviewed manifest invariant and content digest
+// from cases. It is also the explicit update path used after corpus review.
+func BuildManifest(cases []Case, caseFile string) (Manifest, error) {
+	if caseFile == "" || filepath.Base(caseFile) != caseFile {
+		return Manifest{}, fmt.Errorf("daily: invalid case file %q", caseFile)
 	}
-	if manifest.CaseFile == "" || filepath.Base(manifest.CaseFile) != manifest.CaseFile {
-		return fmt.Errorf("daily: invalid case file %q", manifest.CaseFile)
-	}
-	if manifest.Count != len(cases) {
-		return fmt.Errorf("daily: manifest count %d, actual %d", manifest.Count, len(cases))
-	}
-	if len(manifest.Categories) == 0 {
-		return errors.New("daily: manifest has no categories")
-	}
-	if !slices.IsSorted(manifest.CaseIDs) {
-		return errors.New("daily: manifest case IDs are not sorted")
+	if len(cases) == 0 {
+		return Manifest{}, errors.New("daily: corpus is empty")
 	}
 
 	byID := make(map[string]Case, len(cases))
@@ -325,86 +430,181 @@ func ValidateCorpus(cases []Case, manifest Manifest) error {
 	dialectCounts := make(map[string]int)
 	modeCounts := make(map[string]int)
 	type groupShape struct {
-		dialects map[string]int
-		category string
-		mode     string
+		dialects   map[string]int
+		category   string
+		mode       string
+		difference string
 	}
 	groups := make(map[string]groupShape)
 	sourceSpecific := 0
 	issues := make(map[string]string)
 	for _, item := range cases {
 		if err := item.Validate(); err != nil {
-			return err
+			return Manifest{}, err
 		}
 		if _, exists := byID[item.ID]; exists {
-			return fmt.Errorf("daily: duplicate case ID %q", item.ID)
+			return Manifest{}, fmt.Errorf("daily: duplicate case ID %q", item.ID)
 		}
 		byID[item.ID] = item
 		categoryCounts[item.Category]++
 		dialectCounts[item.Dialect]++
 		modeCounts[item.Mode]++
-		if item.EquivalentGroup != "" {
-			group := groups[item.EquivalentGroup]
+		if item.CoverageGroup != "" {
+			group := groups[item.CoverageGroup]
 			if group.dialects == nil {
 				group.dialects = make(map[string]int)
 				group.category = item.Category
 				group.mode = item.Mode
+				group.difference = item.ExpectedDifference
 			}
-			if group.category != item.Category || group.mode != item.Mode {
-				return fmt.Errorf("daily: equivalent group %q mixes category or mode", item.EquivalentGroup)
+			if group.category != item.Category || group.mode != item.Mode ||
+				group.difference != item.ExpectedDifference {
+				return Manifest{}, fmt.Errorf(
+					"daily: coverage group %q mixes category, mode, or expected difference",
+					item.CoverageGroup,
+				)
 			}
 			group.dialects[item.Dialect]++
-			groups[item.EquivalentGroup] = group
+			groups[item.CoverageGroup] = group
 		} else {
 			sourceSpecific++
 		}
 		if item.Issue != "" {
-			if previous, exists := issues[item.ID]; exists && previous != item.Issue {
-				return fmt.Errorf("daily: case %q has conflicting issues", item.ID)
-			}
 			issues[item.ID] = item.Issue
 		}
 	}
-	if len(manifest.CaseIDs) != len(cases) {
-		return fmt.Errorf("daily: manifest lists %d IDs, actual %d", len(manifest.CaseIDs), len(cases))
+	groupNames := make([]string, 0, len(groups))
+	for group := range groups {
+		groupNames = append(groupNames, group)
 	}
-	for i, id := range manifest.CaseIDs {
-		if i > 0 && manifest.CaseIDs[i-1] == id {
-			return fmt.Errorf("daily: manifest repeats case ID %q", id)
-		}
-		if _, exists := byID[id]; !exists {
-			return fmt.Errorf("daily: manifest case ID %q is absent", id)
-		}
-	}
-	for id := range byID {
-		if !slices.Contains(manifest.CaseIDs, id) {
-			return fmt.Errorf("daily: case ID %q is absent from manifest", id)
-		}
-	}
-	if !mapsEqual(categoryCounts, manifest.Categories) {
-		return fmt.Errorf("daily: category counts %v, manifest %v", categoryCounts, manifest.Categories)
-	}
-	if !mapsEqual(dialectCounts, manifest.Dialects) {
-		return fmt.Errorf("daily: dialect counts %v, manifest %v", dialectCounts, manifest.Dialects)
-	}
-	if !mapsEqual(modeCounts, manifest.Modes) {
-		return fmt.Errorf("daily: mode counts %v, manifest %v", modeCounts, manifest.Modes)
-	}
-	for group, shape := range groups {
+	slices.Sort(groupNames)
+	for _, group := range groupNames {
+		shape := groups[group]
 		if len(shape.dialects) != 2 || shape.dialects["tex"] != 1 || shape.dialects["typst"] != 1 {
-			return fmt.Errorf("daily: equivalent group %q must contain one TeX and one Typst case", group)
+			return Manifest{}, fmt.Errorf("daily: coverage group %q must contain one TeX and one Typst case", group)
 		}
 	}
-	if manifest.EquivalentGroups != len(groups) {
-		return fmt.Errorf("daily: manifest groups %d, actual %d", manifest.EquivalentGroups, len(groups))
+
+	ids := make([]string, len(cases))
+	for i, item := range cases {
+		ids[i] = item.ID
 	}
-	if manifest.SourceSpecific != sourceSpecific {
-		return fmt.Errorf("daily: manifest source-specific %d, actual %d", manifest.SourceSpecific, sourceSpecific)
+	slices.Sort(ids)
+	manifest := Manifest{
+		SchemaVersion:  SchemaVersion,
+		CaseFile:       caseFile,
+		Count:          len(cases),
+		Categories:     categoryCounts,
+		Dialects:       dialectCounts,
+		Modes:          modeCounts,
+		CaseIDs:        ids,
+		CoverageGroups: len(groups),
+		SourceSpecific: sourceSpecific,
 	}
-	if !mapsEqual(issues, manifest.ExpectedIssues) {
-		return fmt.Errorf("daily: expected issues %v, manifest %v", issues, manifest.ExpectedIssues)
+	if len(issues) != 0 {
+		manifest.ExpectedIssues = issues
+	}
+	digest, err := contentDigest(cases, manifest)
+	if err != nil {
+		return Manifest{}, err
+	}
+	manifest.ContentSHA256 = digest
+	return manifest, nil
+}
+
+// ValidateCorpus checks exact manifest invariants and the canonical content
+// digest. Any unreviewed case or manifest edit fails closed.
+func ValidateCorpus(cases []Case, manifest Manifest) error {
+	if manifest.SchemaVersion != SchemaVersion {
+		return fmt.Errorf("daily: manifest schema %d, want %d", manifest.SchemaVersion, SchemaVersion)
+	}
+	actual, err := BuildManifest(cases, manifest.CaseFile)
+	if err != nil {
+		return err
+	}
+	if !manifestInvariantsEqual(manifest, actual) {
+		return errors.New("daily: manifest invariants are stale; run dailyreport -update-manifest after review")
+	}
+	if len(manifest.ContentSHA256) != sha256.Size*2 {
+		return errors.New("daily: manifest content digest is missing or malformed")
+	}
+	if manifest.ContentSHA256 != actual.ContentSHA256 {
+		return fmt.Errorf(
+			"daily: content digest %s, want %s; run dailyreport -update-manifest after review",
+			manifest.ContentSHA256,
+			actual.ContentSHA256,
+		)
 	}
 	return nil
+}
+
+func contentDigest(cases []Case, manifest Manifest) (string, error) {
+	ordered := slices.Clone(cases)
+	slices.SortFunc(ordered, func(left, right Case) int {
+		return strings.Compare(left.ID, right.ID)
+	})
+	digest := sha256.New()
+	_, _ = digest.Write([]byte("untie-daily-stem-v2\n"))
+	for _, item := range ordered {
+		data, err := json.Marshal(item)
+		if err != nil {
+			return "", fmt.Errorf("daily: canonical case %q: %w", item.ID, err)
+		}
+		_, _ = digest.Write(data)
+		_, _ = digest.Write([]byte{'\n'})
+	}
+	invariants := manifest
+	invariants.ContentSHA256 = ""
+	data, err := json.Marshal(invariants)
+	if err != nil {
+		return "", fmt.Errorf("daily: canonical manifest: %w", err)
+	}
+	_, _ = digest.Write(data)
+	return fmt.Sprintf("%x", digest.Sum(nil)), nil
+}
+
+func manifestInvariantsEqual(left, right Manifest) bool {
+	return left.SchemaVersion == right.SchemaVersion &&
+		left.CaseFile == right.CaseFile &&
+		left.Count == right.Count &&
+		mapsEqual(left.Categories, right.Categories) &&
+		mapsEqual(left.Dialects, right.Dialects) &&
+		mapsEqual(left.Modes, right.Modes) &&
+		slices.Equal(left.CaseIDs, right.CaseIDs) &&
+		left.CoverageGroups == right.CoverageGroups &&
+		left.SourceSpecific == right.SourceSpecific &&
+		mapsEqual(left.ExpectedIssues, right.ExpectedIssues)
+}
+
+// WriteManifest writes a reviewed manifest update atomically.
+func WriteManifest(path string, manifest Manifest) error {
+	if manifest.ContentSHA256 == "" {
+		return errors.New("daily: refusing to write a manifest without a content digest")
+	}
+	data, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	directory := filepath.Dir(path)
+	file, err := os.CreateTemp(directory, "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	tempPath := file.Name()
+	defer func() { _ = os.Remove(tempPath) }()
+	if _, err := file.Write(data); err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Chmod(0o644); err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempPath, path)
 }
 
 func ensureJSONEOF(decoder *json.Decoder) error {

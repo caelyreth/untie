@@ -5,49 +5,93 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie"
+	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
 )
 
-const defaultCaseTimeout = 2 * time.Second
+const (
+	defaultCaseTimeout = 2 * time.Second
+	cancellationGrace  = 50 * time.Millisecond
+)
 
-// Runner evaluates cases with one reusable public Engine.
-type Runner struct {
-	Engine      *untie.Engine
-	CaseTimeout time.Duration
+var (
+	// ErrCaseTimeout identifies a case worker that exceeded its time budget.
+	ErrCaseTimeout = errors.New("daily: case timeout")
+	// ErrRunnerFatal identifies a runner whose worker could not be confirmed
+	// terminated. A fatal runner must not be reused.
+	ErrRunnerFatal = errors.New("daily: fatal runner state")
+)
+
+// Evaluator observes one reviewed corpus case.
+type Evaluator interface {
+	Evaluate(context.Context, Case) CaseResult
 }
 
-// NewRunner returns a corpus runner. A non-positive timeout uses two seconds.
-func NewRunner(engine *untie.Engine, timeout time.Duration) (*Runner, error) {
-	if engine == nil {
-		return nil, errors.New("daily: nil engine")
+// EvaluatorFunc adapts a function to Evaluator for focused tests.
+type EvaluatorFunc func(context.Context, Case) CaseResult
+
+// Evaluate calls f.
+func (f EvaluatorFunc) Evaluate(ctx context.Context, testCase Case) CaseResult {
+	return f(ctx, testCase)
+}
+
+// Runner evaluates cases sequentially. A timed-out or canceled worker makes the
+// Runner fatal because process-local goroutines cannot be force-killed.
+type Runner struct {
+	evaluator   Evaluator
+	CaseTimeout time.Duration
+
+	mu    sync.Mutex
+	fatal error
+}
+
+// NewRunner prepares one public-Engine evaluator over an immutable font set.
+// Every case owns a fresh Engine using that case's limits.
+func NewRunner(fonts *untie.FontSet, timeout time.Duration) (*Runner, error) {
+	if fonts == nil {
+		return nil, errors.New("daily: nil font set")
+	}
+	return NewRunnerWithEvaluator(engineEvaluator{fonts: fonts}, timeout)
+}
+
+// NewRunnerWithEvaluator injects the case evaluator for containment tests.
+func NewRunnerWithEvaluator(evaluator Evaluator, timeout time.Duration) (*Runner, error) {
+	if evaluator == nil {
+		return nil, errors.New("daily: nil evaluator")
 	}
 	if timeout <= 0 {
 		timeout = defaultCaseTimeout
 	}
-	return &Runner{Engine: engine, CaseTimeout: timeout}, nil
+	return &Runner{evaluator: evaluator, CaseTimeout: timeout}, nil
 }
 
 // CaseResult records one observed expectation result.
 type CaseResult struct {
-	ID              string   `json:"id"`
-	Category        string   `json:"category"`
-	EquivalentGroup string   `json:"equivalentGroup,omitempty"`
-	SourceSpecific  string   `json:"sourceSpecific,omitempty"`
-	Dialect         string   `json:"dialect"`
-	Mode            string   `json:"mode"`
-	Outcome         string   `json:"outcome"`
-	Pass            bool     `json:"pass"`
-	Diagnostics     []string `json:"diagnostics,omitempty"`
-	Items           int      `json:"items,omitempty"`
-	Hits            int      `json:"hits,omitempty"`
-	Lines           int      `json:"lines,omitempty"`
-	Issue           string   `json:"issue,omitempty"`
-	Detail          string   `json:"detail,omitempty"`
+	ID                 string   `json:"id"`
+	Category           string   `json:"category"`
+	CoverageGroup      string   `json:"coverageGroup,omitempty"`
+	ExpectedDifference string   `json:"expectedDifference,omitempty"`
+	SourceSpecific     string   `json:"sourceSpecific,omitempty"`
+	Dialect            string   `json:"dialect"`
+	Mode               string   `json:"mode"`
+	Outcome            string   `json:"outcome"`
+	Verdict            string   `json:"verdict"`
+	Matched            bool     `json:"matched"`
+	Diagnostics        []string `json:"diagnostics,omitempty"`
+	Items              int      `json:"items,omitempty"`
+	Hits               int      `json:"hits,omitempty"`
+	Lines              int      `json:"lines,omitempty"`
+	Issue              string   `json:"issue,omitempty"`
+	Detail             string   `json:"detail,omitempty"`
 }
 
 // Report is the deterministic result of one daily-corpus run.
@@ -58,25 +102,27 @@ type Report struct {
 	Cases         []CaseResult      `json:"cases"`
 }
 
-// Summary contains exact result counts.
+// Summary separates clean passes, matched tracked issues, and unexpected
+// failures. Only unexpected failures are permitted by default.
 type Summary struct {
-	Total        int `json:"total"`
-	Pass         int `json:"pass"`
-	Fail         int `json:"fail"`
-	Rendered     int `json:"rendered"`
-	Recovered    int `json:"recovered"`
-	MissingGlyph int `json:"missingGlyph"`
-	LayoutError  int `json:"layoutError"`
-	Failure      int `json:"failure"`
-	KnownIssues  int `json:"knownIssues"`
+	Total              int `json:"total"`
+	Pass               int `json:"pass"`
+	KnownIssueFailures int `json:"knownIssueFailures"`
+	UnexpectedFailures int `json:"unexpectedFailures"`
+	Rendered           int `json:"rendered"`
+	Recovered          int `json:"recovered"`
+	MissingGlyph       int `json:"missingGlyph"`
+	LayoutError        int `json:"layoutError"`
+	Failure            int `json:"failure"`
 }
 
-// CategorySummary contains exact per-category counts.
+// CategorySummary contains exact per-category result counts.
 type CategorySummary struct {
-	Category string `json:"category"`
-	Total    int    `json:"total"`
-	Pass     int    `json:"pass"`
-	Fail     int    `json:"fail"`
+	Category           string `json:"category"`
+	Total              int    `json:"total"`
+	Pass               int    `json:"pass"`
+	KnownIssueFailures int    `json:"knownIssueFailures"`
+	UnexpectedFailures int    `json:"unexpectedFailures"`
 }
 
 const (
@@ -85,100 +131,175 @@ const (
 	outcomeMissingGlyph = "missing-glyph"
 	outcomeLayoutError  = "layout-error"
 	outcomeFailure      = "failure"
+
+	verdictPass       = "pass"
+	verdictKnownIssue = "known-issue"
+	verdictFailure    = "failure"
 )
 
-// Run evaluates every case. It stops early only when ctx is canceled.
+// Run evaluates every case in order. A context error or ErrCaseTimeout returns
+// a finalized partial report. Timeout and incomplete cancellation poison the
+// runner so its Engine/evaluator cannot be reused while a worker may still run.
 func (r *Runner) Run(ctx context.Context, cases []Case) (Report, error) {
-	if r == nil || r.Engine == nil {
-		return Report{}, errors.New("daily: nil runner or engine")
+	if r == nil || r.evaluator == nil {
+		return Report{}, errors.New("daily: nil runner or evaluator")
 	}
 	if ctx == nil {
 		return Report{}, errors.New("daily: nil context")
 	}
-	timeout := r.CaseTimeout
-	if timeout <= 0 {
-		timeout = defaultCaseTimeout
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.fatal != nil {
+		return Report{}, r.fatal
 	}
+
 	report := Report{SchemaVersion: SchemaVersion, Cases: make([]CaseResult, 0, len(cases))}
 	for _, testCase := range cases {
 		if err := ctx.Err(); err != nil {
-			return Report{}, err
+			report.finalize()
+			return report, err
 		}
-		result := r.runBounded(ctx, testCase, timeout)
+		result, err := r.runIsolated(ctx, testCase)
 		report.Cases = append(report.Cases, result)
+		if err != nil {
+			report.finalize()
+			return report, err
+		}
 	}
 	report.finalize()
 	return report, nil
 }
 
-func (r *Runner) runBounded(ctx context.Context, testCase Case, timeout time.Duration) CaseResult {
-	ch := make(chan CaseResult, 1)
-	caseCtx, cancel := context.WithTimeout(ctx, timeout)
+func (r *Runner) runIsolated(ctx context.Context, testCase Case) (CaseResult, error) {
+	caseCtx, cancel := context.WithTimeout(ctx, r.CaseTimeout)
 	defer cancel()
+	done := make(chan CaseResult, 1)
 	go func() {
-		ch <- r.runRecovered(caseCtx, testCase)
+		done <- r.evaluateRecovered(caseCtx, testCase)
 	}()
+
 	select {
-	case result := <-ch:
-		return result
+	case result := <-done:
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return result, ctxErr
+		}
+		if errors.Is(caseCtx.Err(), context.DeadlineExceeded) {
+			return r.timeoutWorker(testCase)
+		}
+		return result, nil
 	case <-caseCtx.Done():
-		detail := "case timed out after " + timeout.String()
-		if err := ctx.Err(); err != nil {
-			detail = "corpus canceled: " + err.Error()
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			timer := time.NewTimer(cancellationGrace)
+			defer timer.Stop()
+			select {
+			case result := <-done:
+				return result, ctxErr
+			case <-timer.C:
+				return r.incompleteWorker(testCase, ctxErr)
+			}
 		}
-		return CaseResult{
-			ID: testCase.ID, Category: testCase.Category,
-			EquivalentGroup: testCase.EquivalentGroup, SourceSpecific: testCase.SourceSpecific,
-			Dialect: testCase.Dialect, Mode: testCase.Mode, Issue: testCase.Issue,
-			Outcome: outcomeFailure, Pass: false, Detail: detail,
+		// Prefer a worker result that raced with the context edge.
+		select {
+		case result := <-done:
+			if errors.Is(caseCtx.Err(), context.DeadlineExceeded) {
+				return r.timeoutWorker(testCase)
+			}
+			return result, nil
+		default:
 		}
+		return r.timeoutWorker(testCase)
 	}
 }
 
-func (r *Runner) runRecovered(ctx context.Context, testCase Case) (result CaseResult) {
-	result = CaseResult{
-		ID: testCase.ID, Category: testCase.Category,
-		EquivalentGroup: testCase.EquivalentGroup, SourceSpecific: testCase.SourceSpecific,
-		Dialect: testCase.Dialect, Mode: testCase.Mode, Outcome: outcomeFailure, Issue: testCase.Issue,
-	}
+func (r *Runner) timeoutWorker(testCase Case) (CaseResult, error) {
+	result := failedResult(testCase, fmt.Sprintf("case timed out after %s", r.CaseTimeout))
+	timeoutErr := fmt.Errorf("%w: case %q exceeded %s", ErrCaseTimeout, testCase.ID, r.CaseTimeout)
+	fatalErr := errors.Join(ErrRunnerFatal, timeoutErr)
+	r.fatal = fatalErr
+	return result, fatalErr
+}
+
+func (r *Runner) incompleteWorker(testCase Case, ctxErr error) (CaseResult, error) {
+	result := failedResult(testCase, "case canceled before worker termination: "+ctxErr.Error())
+	r.fatal = fmt.Errorf("%w: cancellation left case %q running", ErrRunnerFatal, testCase.ID)
+	return result, ctxErr
+}
+
+func (r *Runner) evaluateRecovered(ctx context.Context, testCase Case) (result CaseResult) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			result.Pass = false
-			result.Detail = fmt.Sprintf("panic: %v", recovered)
+			result = failedResult(testCase, fmt.Sprintf("panic: %v", recovered))
 		}
 	}()
+	result = r.evaluator.Evaluate(ctx, testCase)
+	result.ID = testCase.ID
+	result.Category = testCase.Category
+	result.CoverageGroup = testCase.CoverageGroup
+	result.ExpectedDifference = testCase.ExpectedDifference
+	result.SourceSpecific = testCase.SourceSpecific
+	result.Dialect = testCase.Dialect
+	result.Mode = testCase.Mode
+	result.Issue = testCase.Issue
+	if result.Outcome == "" {
+		result.Outcome = outcomeFailure
+	}
+	return result
+}
 
-	dialect, mode, err := parseMode(testCase)
-	if err != nil {
-		result.Detail = err.Error()
+func failedResult(testCase Case, detail string) CaseResult {
+	return CaseResult{
+		ID: testCase.ID, Category: testCase.Category,
+		CoverageGroup: testCase.CoverageGroup, ExpectedDifference: testCase.ExpectedDifference,
+		SourceSpecific: testCase.SourceSpecific, Dialect: testCase.Dialect, Mode: testCase.Mode,
+		Outcome: outcomeFailure, Matched: false, Issue: testCase.Issue, Detail: detail,
+	}
+}
+
+type engineEvaluator struct {
+	fonts *untie.FontSet
+}
+
+func (e engineEvaluator) Evaluate(ctx context.Context, testCase Case) CaseResult {
+	result := CaseResult{Outcome: outcomeFailure}
+	fail := func(detail string) CaseResult {
+		result.Detail = detail
 		return result
 	}
-	expr := untie.Parse(testCase.Source, dialect, mode, untie.ParseOptions{
-		Limits: testCase.Limits.untieLimits(),
-	})
+	dialect, mode, err := parseMode(testCase)
+	if err != nil {
+		return fail(err.Error())
+	}
+	limits := testCase.Limits.untieLimits()
+	expr := untie.Parse(testCase.Source, dialect, mode, untie.ParseOptions{Limits: limits})
 	if expr == nil || expr.Key() == 0 {
-		result.Detail = "parse returned a nil or unkeyed expression"
-		return result
+		return fail("parse returned a nil or unkeyed expression")
 	}
 	result.Diagnostics = diagnosticCodes(expr.Diagnostics())
 	if problem := checkParseExpectation(testCase.Expect, result.Diagnostics); problem != "" {
-		result.Detail = problem
-		return result
+		return fail(problem)
 	}
 	root, err := expr.RootSnapshot()
 	if err != nil {
-		result.Detail = "root snapshot: " + err.Error()
-		return result
+		return fail("root snapshot: " + err.Error())
 	}
 	if root == nil || root.Root == nil {
-		result.Detail = "root snapshot is empty"
-		return result
+		return fail("root snapshot is empty")
+	}
+	if testCase.Expect.RootKind != "" {
+		if got := rootKindName(root.Root); got != testCase.Expect.RootKind {
+			return fail(fmt.Sprintf("root kind = %q, want %q", got, testCase.Expect.RootKind))
+		}
 	}
 
 	alt, altErr := expr.AltContext(ctx)
+	if err := ctx.Err(); err != nil {
+		return fail(err.Error())
+	}
 	if err := alt.Validate(); err != nil {
-		result.Detail = "alt validation: " + err.Error()
-		return result
+		return fail("alt validation: " + err.Error())
+	}
+	if alt.Text == "" || alt.Speech == "" {
+		return fail("alt text and speech must both be nonempty")
 	}
 	altExpectation := testCase.Expect.Alt
 	if altExpectation == "" {
@@ -187,81 +308,68 @@ func (r *Runner) runRecovered(ctx context.Context, testCase Case) (result CaseRe
 	switch altExpectation {
 	case altOK:
 		if altErr != nil {
-			result.Detail = "alt error: " + altErr.Error()
-			return result
+			return fail("alt error: " + altErr.Error())
 		}
 	case altError:
 		if altErr == nil {
-			result.Detail = "alt succeeded, expected an error"
-			return result
+			return fail("alt succeeded, expected an error")
 		}
 		if problem := containsAll(altErr.Error(), testCase.Expect.AltErrorContains); problem != "" {
-			result.Detail = "alt error mismatch: " + problem
-			return result
+			return fail("alt error mismatch: " + problem)
+		}
+	default:
+		return fail("invalid alt expectation")
+	}
+	if testCase.Expect.AltText != "" {
+		if alt.Text != testCase.Expect.AltText || alt.Speech != testCase.Expect.AltSpeech {
+			return fail(fmt.Sprintf("alt = %q/%q, want %q/%q",
+				alt.Text, alt.Speech, testCase.Expect.AltText, testCase.Expect.AltSpeech))
 		}
 	}
 
-	style := untie.Style{Size: 16}
-	if testCase.Style != nil {
-		if testCase.Style.Size > 0 {
-			style.Size = testCase.Style.Size
-		}
-		style.MaxWidth = testCase.Style.MaxWidth
+	engine, err := untie.NewEngine(e.fonts, limits)
+	if err != nil {
+		return fail("new engine: " + err.Error())
 	}
-	box, layoutErr := r.Engine.LayoutContext(ctx, expr, style)
+	style, err := testCase.Style.layoutStyle()
+	if err != nil {
+		return fail(err.Error())
+	}
+	box, layoutErr := engine.LayoutContext(ctx, expr, style)
+	if err := ctx.Err(); err != nil {
+		return fail(err.Error())
+	}
 	switch testCase.Expect.Layout {
 	case layoutOK:
 		if layoutErr != nil {
-			result.Detail = "layout error: " + layoutErr.Error()
-			return result
+			return fail("layout error: " + layoutErr.Error())
 		}
 		if box == nil {
-			result.Detail = "layout returned a nil box"
-			return result
+			return fail("layout returned a nil box")
 		}
 		if err := box.Validate(); err != nil {
-			result.Detail = "box validation: " + err.Error()
-			return result
+			return fail("box validation: " + err.Error())
 		}
 		if err := box.Alt.Validate(); err != nil {
-			result.Detail = "box alt validation: " + err.Error()
-			return result
+			return fail("box alt validation: " + err.Error())
 		}
 		if altExpectation == altOK && box.Alt != alt {
-			result.Detail = "Box.Alt differs from Expr.Alt"
-			return result
+			return fail("Box.Alt differs from Expr.Alt")
+		}
+		if box.Alt.Text == "" || box.Alt.Speech == "" {
+			return fail("Box.Alt text and speech must both be nonempty")
 		}
 		if len(box.Items) == 0 {
-			result.Detail = "rendered box has no items"
-			return result
+			return fail("rendered box has no items")
 		}
 		if len(box.Hits) == 0 {
-			result.Detail = "rendered box has no source hits"
-			return result
+			return fail("rendered box has no source hits")
 		}
-		for i, hit := range box.Hits {
-			if hit.Source.Start < 0 || hit.Source.End > len(testCase.Source) ||
-				hit.Source.Start > hit.Source.End {
-				result.Detail = fmt.Sprintf("hit %d range %v is outside source", i, hit.Source)
-				return result
-			}
+		if problem := validateHits(root.Root, testCase, box); problem != "" {
+			return fail(problem)
 		}
-		if mode == untie.Inline && len(box.Lines) != 0 {
-			result.Detail = "inline box unexpectedly contains lines"
-			return result
-		}
-		if style.MaxWidth > 0 {
-			minLines := testCase.Expect.MinLines
-			if minLines < 1 {
-				minLines = 1
-			}
-			if len(box.Lines) < minLines {
-				result.Detail = fmt.Sprintf("box lines %d, want at least %d", len(box.Lines), minLines)
-				return result
-			}
-		} else if len(box.Lines) != 0 {
-			result.Detail = "unconstrained box unexpectedly contains lines"
-			return result
+		if problem := validateLines(testCase, style, box); problem != "" {
+			return fail(problem)
 		}
 		result.Items = len(box.Items)
 		result.Hits = len(box.Hits)
@@ -270,27 +378,249 @@ func (r *Runner) runRecovered(ctx context.Context, testCase Case) (result CaseRe
 		if testCase.Expect.Parse == parseDiagnostic {
 			result.Outcome = outcomeRecovered
 		}
-		result.Pass = true
+		result.Matched = true
 	case layoutMissingGlyph, layoutError:
 		if layoutErr == nil || box != nil {
-			result.Detail = "layout succeeded, expected an error"
-			return result
+			return fail("layout succeeded, expected an error")
 		}
 		if testCase.Expect.Layout == layoutMissingGlyph && !strings.Contains(layoutErr.Error(), "missing glyph") {
-			result.Detail = "layout error is not a missing-glyph error: " + layoutErr.Error()
-			return result
+			return fail("layout error is not a missing-glyph error: " + layoutErr.Error())
 		}
 		if problem := containsAll(layoutErr.Error(), testCase.Expect.LayoutErrorContains); problem != "" {
-			result.Detail = "layout error mismatch: " + problem
-			return result
+			return fail("layout error mismatch: " + problem)
 		}
 		result.Outcome = outcomeLayoutError
 		if testCase.Expect.Layout == layoutMissingGlyph {
 			result.Outcome = outcomeMissingGlyph
 		}
-		result.Pass = true
+		result.Matched = true
+	default:
+		return fail("invalid layout expectation")
+	}
+	if result.Issue != "" {
+		result.Detail = "tracked issue: " + result.Issue
 	}
 	return result
+}
+
+func (s *StyleSpec) layoutStyle() (untie.Style, error) {
+	style := untie.Style{Size: 16}
+	if s == nil {
+		return style, nil
+	}
+	if s.Size > 0 {
+		style.Size = s.Size
+	}
+	style.MaxWidth = s.MaxWidth
+	switch s.Align {
+	case "", alignStart:
+		style.Align = untie.AlignStart
+	case alignCenter:
+		style.Align = untie.AlignCenter
+	case alignEnd:
+		style.Align = untie.AlignEnd
+	default:
+		return untie.Style{}, fmt.Errorf("unknown alignment %q", s.Align)
+	}
+	return style, nil
+}
+
+func validateHits(root ir.Node, testCase Case, box *untie.Box) string {
+	for i, hit := range box.Hits {
+		if hit.Source.Start < 0 || hit.Source.End > len(testCase.Source) ||
+			hit.Source.Start > hit.Source.End {
+			return fmt.Sprintf("hit %d range %v is outside source", i, hit.Source)
+		}
+		if hit.Source.Len() == 0 {
+			// Fence and row boundaries are intentionally zero-width structural
+			// hits. They cannot claim visible characters, but they are useful to
+			// hosts navigating groups.
+			if hit.Kind != untie.HitFence && hit.Kind != untie.HitRow {
+				return fmt.Sprintf("hit %d has zero-length source range for visible kind %s",
+					i, hitKindName(hit.Kind))
+			}
+			if hit.Source.Start < 0 || hit.Source.Start > len(testCase.Source) ||
+				(hit.Source.Start < len(testCase.Source) && !utf8.RuneStart(testCase.Source[hit.Source.Start])) {
+				return fmt.Sprintf("hit %d has invalid zero-width source boundary %v", i, hit.Source)
+			}
+			continue
+		}
+	}
+	for _, span := range meaningfulLeafSpans(root) {
+		if !hitOverlaps(box.Hits, span) {
+			return fmt.Sprintf("meaningful source range %v has no hit coverage", span)
+		}
+	}
+	for i, expected := range testCase.Expect.Hits {
+		start, err := sourceOccurrence(testCase.Source, expected.Text, expected.Occurrence)
+		if err != nil {
+			return fmt.Sprintf("hit expectation %d: %v", i, err)
+		}
+		want := source.NewRange(start, start+len(expected.Text))
+		found := false
+		for _, hit := range box.Hits {
+			if hit.Source == want && hitKindName(hit.Kind) == expected.Kind {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Sprintf("hit expectation %d: no %s hit for source range %v", i, expected.Kind, want)
+		}
+	}
+	return ""
+}
+
+func meaningfulLeafSpans(root ir.Node) []source.Range {
+	var spans []source.Range
+	ir.Walk(root, func(node ir.Node) bool {
+		var text string
+		switch value := node.(type) {
+		case *ir.Glyph:
+			text = value.Text
+		case *ir.Operator:
+			text = value.Text
+		case *ir.Text:
+			text = value.Text
+		case *ir.ErrorNode:
+			text = value.Text
+		default:
+			return true
+		}
+		span := node.NodeBase().Span
+		if strings.TrimSpace(text) != "" && span.IsValid() && !span.IsDetached() && span.Len() > 0 {
+			spans = append(spans, span)
+		}
+		return true
+	})
+	return spans
+}
+
+func hitOverlaps(hits []untie.Hit, span source.Range) bool {
+	for _, hit := range hits {
+		if hit.Source.Start < span.End && hit.Source.End > span.Start {
+			return true
+		}
+	}
+	return false
+}
+
+func sourceOccurrence(src, text string, occurrence int) (int, error) {
+	if text == "" {
+		return 0, errors.New("empty search text")
+	}
+	offset := 0
+	for i := 0; ; i++ {
+		index := strings.Index(src[offset:], text)
+		if index < 0 {
+			return 0, fmt.Errorf("%q occurrence %d is absent", text, occurrence)
+		}
+		index += offset
+		if i == occurrence {
+			return index, nil
+		}
+		offset = index + len(text)
+	}
+}
+
+func hitKindName(kind untie.HitKind) string {
+	switch kind {
+	case untie.HitAtom:
+		return "atom"
+	case untie.HitGroup:
+		return "group"
+	case untie.HitScript:
+		return "script"
+	case untie.HitFractionNumerator:
+		return "fraction-numerator"
+	case untie.HitFractionDenominator:
+		return "fraction-denominator"
+	case untie.HitRadical:
+		return "radical"
+	case untie.HitFence:
+		return "fence"
+	case untie.HitTableCell:
+		return "table-cell"
+	case untie.HitRow:
+		return "row"
+	case untie.HitOther:
+		return "other"
+	default:
+		return ""
+	}
+}
+
+func rootKindName(root ir.Node) string {
+	switch root.(type) {
+	case *ir.Row:
+		return "row"
+	case *ir.Placeholder:
+		return "placeholder"
+	case *ir.ErrorNode:
+		return "error"
+	default:
+		return ""
+	}
+}
+
+func validateLines(testCase Case, style untie.Style, box *untie.Box) string {
+	if style.MaxWidth <= 0 {
+		if len(box.Lines) != 0 {
+			return "unconstrained box unexpectedly contains lines"
+		}
+		if testCase.Expect.MinLines != 0 || testCase.Expect.RequireOverflow {
+			return "line expectation requires a constrained display style"
+		}
+		return ""
+	}
+	minLines := testCase.Expect.MinLines
+	if minLines < 1 {
+		minLines = 1
+	}
+	if len(box.Lines) < minLines {
+		return fmt.Sprintf("box lines %d, want at least %d", len(box.Lines), minLines)
+	}
+	for i, line := range box.Lines {
+		wantOffset := float32(0)
+		if line.Box.Width < style.MaxWidth {
+			remaining := style.MaxWidth - line.Box.Width
+			switch style.Align {
+			case untie.AlignStart:
+			case untie.AlignCenter:
+				wantOffset = remaining / 2
+			case untie.AlignEnd:
+				wantOffset = remaining
+			default:
+				return "unknown layout alignment"
+			}
+		}
+		if !closeHost(line.OffsetX, wantOffset) {
+			return fmt.Sprintf("line %d offset-x %v, want %v for align %v",
+				i, line.OffsetX, wantOffset, style.Align)
+		}
+	}
+	if testCase.Expect.RequireOverflow {
+		if box.Overflow <= 0 {
+			return "constrained box overflow is not positive"
+		}
+		lineOverflow := false
+		for _, line := range box.Lines {
+			if line.Box.Overflow > 0 {
+				lineOverflow = true
+				break
+			}
+		}
+		if !lineOverflow {
+			return "no constrained line reports overflow"
+		}
+	}
+	return ""
+}
+
+func closeHost(left, right float32) bool {
+	difference := math.Abs(float64(left - right))
+	scale := math.Max(1, math.Max(math.Abs(float64(left)), math.Abs(float64(right))))
+	return difference <= 1e-5*scale
 }
 
 func parseMode(testCase Case) (untie.Dialect, untie.Mode, error) {
@@ -357,11 +687,24 @@ func containsAll(text string, fragments []string) string {
 func (r *Report) finalize() {
 	r.Summary = Summary{Total: len(r.Cases)}
 	categories := make(map[string]*CategorySummary)
-	for _, result := range r.Cases {
-		if result.Pass {
+	for i := range r.Cases {
+		result := &r.Cases[i]
+		switch {
+		case result.Matched && result.Issue == "":
+			result.Verdict = verdictPass
 			r.Summary.Pass++
-		} else {
-			r.Summary.Fail++
+		case result.Matched:
+			result.Verdict = verdictKnownIssue
+			r.Summary.KnownIssueFailures++
+			if result.Detail == "" {
+				result.Detail = "tracked issue: " + result.Issue
+			}
+		default:
+			result.Verdict = verdictFailure
+			r.Summary.UnexpectedFailures++
+			if result.Detail == "" {
+				result.Detail = "expectation mismatch"
+			}
 		}
 		switch result.Outcome {
 		case outcomeRender:
@@ -375,19 +718,19 @@ func (r *Report) finalize() {
 		case outcomeFailure:
 			r.Summary.Failure++
 		}
-		if result.Issue != "" {
-			r.Summary.KnownIssues++
-		}
 		summary := categories[result.Category]
 		if summary == nil {
 			summary = &CategorySummary{Category: result.Category}
 			categories[result.Category] = summary
 		}
 		summary.Total++
-		if result.Pass {
+		switch result.Verdict {
+		case verdictPass:
 			summary.Pass++
-		} else {
-			summary.Fail++
+		case verdictKnownIssue:
+			summary.KnownIssueFailures++
+		case verdictFailure:
+			summary.UnexpectedFailures++
 		}
 	}
 	r.Categories = r.Categories[:0]
@@ -402,7 +745,33 @@ func (r *Report) finalize() {
 	})
 }
 
-// Validate checks report conservation and stable ordering.
+// Blocking reports whether default non-diagnostic execution must fail.
+func (r Report) Blocking(allowKnownIssues bool) bool {
+	return r.Summary.UnexpectedFailures != 0 ||
+		(!allowKnownIssues && r.Summary.KnownIssueFailures != 0)
+}
+
+// KnownIssueCases returns matched tracked issues in stable case order.
+func (r Report) KnownIssueCases() []CaseResult {
+	return r.casesWithVerdict(verdictKnownIssue)
+}
+
+// UnexpectedFailureCases returns mismatched cases in stable case order.
+func (r Report) UnexpectedFailureCases() []CaseResult {
+	return r.casesWithVerdict(verdictFailure)
+}
+
+func (r Report) casesWithVerdict(verdict string) []CaseResult {
+	var out []CaseResult
+	for _, result := range r.Cases {
+		if result.Verdict == verdict {
+			out = append(out, result)
+		}
+	}
+	return out
+}
+
+// Validate checks report conservation, verdict discipline, and stable ordering.
 func (r Report) Validate() error {
 	if r.SchemaVersion != SchemaVersion {
 		return fmt.Errorf("daily: report schema %d, want %d", r.SchemaVersion, SchemaVersion)
@@ -410,13 +779,15 @@ func (r Report) Validate() error {
 	if r.Summary.Total != len(r.Cases) {
 		return fmt.Errorf("daily: summary total %d, actual %d", r.Summary.Total, len(r.Cases))
 	}
-	if r.Summary.Pass+r.Summary.Fail != r.Summary.Total {
-		return errors.New("daily: pass/fail counts do not conserve total")
+	if r.Summary.Pass+r.Summary.KnownIssueFailures+r.Summary.UnexpectedFailures != r.Summary.Total {
+		return errors.New("daily: verdict counts do not conserve total")
 	}
-	if r.Summary.Rendered+r.Summary.Recovered+r.Summary.MissingGlyph+r.Summary.LayoutError+r.Summary.Failure != r.Summary.Total {
+	if r.Summary.Rendered+r.Summary.Recovered+r.Summary.MissingGlyph+
+		r.Summary.LayoutError+r.Summary.Failure != r.Summary.Total {
 		return errors.New("daily: outcomes do not conserve total")
 	}
-	pass, fail, known := 0, 0, 0
+
+	pass, known, unexpected := 0, 0, 0
 	actualCategories := make(map[string]CategorySummary)
 	for i, result := range r.Cases {
 		if i > 0 && r.Cases[i-1].ID >= result.ID {
@@ -427,36 +798,58 @@ func (r Report) Validate() error {
 		default:
 			return fmt.Errorf("daily: case %q has unknown outcome %q", result.ID, result.Outcome)
 		}
-		if result.Pass {
-			pass++
-		} else {
-			fail++
-			if result.Detail == "" {
-				return fmt.Errorf("daily: failed case %q has no detail", result.ID)
+		switch result.Verdict {
+		case verdictPass:
+			if !result.Matched || result.Issue != "" {
+				return fmt.Errorf("daily: case %q has inconsistent pass verdict", result.ID)
 			}
-		}
-		if result.Issue != "" {
+			if result.Outcome == outcomeFailure {
+				return fmt.Errorf("daily: passed case %q has a failure outcome", result.ID)
+			}
+			pass++
+		case verdictKnownIssue:
+			if !result.Matched || result.Issue == "" || result.Detail == "" {
+				return fmt.Errorf("daily: case %q has inconsistent known-issue verdict", result.ID)
+			}
+			if result.Outcome == outcomeFailure {
+				return fmt.Errorf("daily: known-issue case %q has a failure outcome", result.ID)
+			}
 			known++
+		case verdictFailure:
+			if result.Matched || result.Detail == "" {
+				return fmt.Errorf("daily: case %q has inconsistent failure verdict", result.ID)
+			}
+			if result.Outcome != outcomeFailure {
+				return fmt.Errorf("daily: failed case %q has non-failure outcome %q", result.ID, result.Outcome)
+			}
+			unexpected++
+		default:
+			return fmt.Errorf("daily: case %q has unknown verdict %q", result.ID, result.Verdict)
 		}
 		category := actualCategories[result.Category]
 		category.Category = result.Category
 		category.Total++
-		if result.Pass {
+		switch result.Verdict {
+		case verdictPass:
 			category.Pass++
-		} else {
-			category.Fail++
+		case verdictKnownIssue:
+			category.KnownIssueFailures++
+		case verdictFailure:
+			category.UnexpectedFailures++
 		}
 		actualCategories[result.Category] = category
 	}
-	if pass != r.Summary.Pass || fail != r.Summary.Fail || known != r.Summary.KnownIssues {
-		return errors.New("daily: case counts disagree with summary")
+	if pass != r.Summary.Pass || known != r.Summary.KnownIssueFailures ||
+		unexpected != r.Summary.UnexpectedFailures {
+		return errors.New("daily: case verdict counts disagree with summary")
 	}
-	categoryTotal, categoryPass, categoryFail := 0, 0, 0
+
+	categoryTotal, categoryPass, categoryKnown, categoryUnexpected := 0, 0, 0, 0
 	for i, category := range r.Categories {
 		if i > 0 && r.Categories[i-1].Category >= category.Category {
 			return errors.New("daily: categories are not strictly sorted")
 		}
-		if category.Total != category.Pass+category.Fail {
+		if category.Total != category.Pass+category.KnownIssueFailures+category.UnexpectedFailures {
 			return fmt.Errorf("daily: category %q does not conserve counts", category.Category)
 		}
 		if actual := actualCategories[category.Category]; actual != category {
@@ -465,12 +858,15 @@ func (r Report) Validate() error {
 		delete(actualCategories, category.Category)
 		categoryTotal += category.Total
 		categoryPass += category.Pass
-		categoryFail += category.Fail
+		categoryKnown += category.KnownIssueFailures
+		categoryUnexpected += category.UnexpectedFailures
 	}
 	if len(actualCategories) != 0 {
 		return fmt.Errorf("daily: %d case categories are absent from summary", len(actualCategories))
 	}
-	if categoryTotal != r.Summary.Total || categoryPass != r.Summary.Pass || categoryFail != r.Summary.Fail {
+	if categoryTotal != r.Summary.Total || categoryPass != r.Summary.Pass ||
+		categoryKnown != r.Summary.KnownIssueFailures ||
+		categoryUnexpected != r.Summary.UnexpectedFailures {
 		return errors.New("daily: category totals disagree with summary")
 	}
 	return nil
