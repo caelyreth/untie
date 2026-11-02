@@ -11,7 +11,6 @@ import (
 type lineBoundary struct {
 	itemIndex int
 	x         geometry.Em
-	penalty   int
 }
 
 type linePlan struct {
@@ -176,7 +175,6 @@ func (s *layoutState) displayLineBoundaries(root *Fragment) ([]lineBoundary, boo
 		boundaries = append(boundaries, lineBoundary{
 			itemIndex: candidate.cut,
 			x:         candidate.x,
-			penalty:   candidate.penalty,
 		})
 	}
 	if root.Width < boundaries[len(boundaries)-1].x {
@@ -216,8 +214,10 @@ func (s *layoutState) greedyLinePlans(boundaries []lineBoundary) ([]linePlan, er
 				return nil, err
 			}
 			if hostWidth <= s.request.MaxWidth {
-				if best < 0 || hostWidth > bestWidth ||
-					(hostWidth == bestWidth && boundaries[end].penalty <= boundaries[best].penalty) {
+				// Boundaries are scanned in source order. Keeping the first
+				// equal-width candidate makes the lowest logical cut the stable
+				// tie-break without inventing a public cost.
+				if best < 0 || hostWidth > bestWidth {
 					best = end
 					bestWidth = hostWidth
 				}

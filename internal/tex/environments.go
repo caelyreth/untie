@@ -171,14 +171,11 @@ func (p *parser) consumeMatrixAlignment(span source.Range) *arraySpec {
 }
 
 func (p *parser) consumeRawGroupTextChecked(owner token) (string, source.Range, bool) {
-	p.exp.consumeSpaces()
-	open := p.exp.popRaw()
-	if !open.is(tokBeginGroup) {
-		p.exp.push(open)
+	text, _, open, ok := p.consumeRawGroupTextRange()
+	if !ok {
 		return "", normalizeRange(owner.span), false
 	}
-	p.exp.push(open)
-	return p.consumeRawGroupText(), source.Merge(owner.span, open.span), true
+	return text, source.Merge(owner.span, open), true
 }
 
 type arraySpec struct {

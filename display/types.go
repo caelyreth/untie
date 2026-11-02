@@ -208,16 +208,12 @@ const (
 )
 
 // Break is an inline wrapping opportunity relative to the box baseline origin.
-// Automatically derived relation and binary opportunities use penalty zero
-// because the pinned TeX and Typst paths define eligibility, not a relative
-// cost. An explicit neutral IR break marker supplies its reviewed Penalty.
-// Lower values are preferable. Display line wrapping is width-greedy rather
-// than an upstream optimal breaker; it uses Penalty only to choose between
-// otherwise equal-width cuts at the same X position.
+// Relation, binary, and explicit kinds describe why a cut is legal; they do not
+// carry a relative cost. Display wrapping is width-greedy and chooses the
+// earliest source cut when multiple opportunities have equal width.
 type Break struct {
-	X       float32
-	Penalty int
-	Kind    BreakKind
+	X    float32
+	Kind BreakKind
 }
 
 // At returns the innermost hit containing p.

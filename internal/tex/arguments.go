@@ -586,16 +586,22 @@ func (p *parser) parseHref(command token) astNode {
 }
 
 func (p *parser) parseURL(command token) astNode {
-	text, span, ok := p.consumeRawGroupTextChecked(command)
+	text, span, _, ok := p.consumeRawGroupTextRange()
 	if !ok {
 		p.report(source.Diagnostic{
-			Range:    normalizeRange(span),
+			Range:    normalizeRange(command.span),
 			Severity: source.SeverityError,
 			Code:     source.CodeMissingArgument,
 			Message:  "\\url requires a braced URL",
 		})
-		return newPlaceholderAST(span, "missing URL")
+		return newPlaceholderAST(command.span, "missing URL")
 	}
+	p.report(source.Diagnostic{
+		Range:    normalizeRange(command.span),
+		Severity: source.SeverityWarning,
+		Code:     source.CodeUnsupported,
+		Message:  "hyperlinks are outside the formula IR; link destination was discarded",
+	})
 	return astLiteralText(token{span: span, origin: tokenOrigin(command)}, text)
 }
 

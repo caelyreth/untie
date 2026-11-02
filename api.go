@@ -134,7 +134,9 @@ var (
 )
 
 // Parse parses source into an expression. Malformed source produces diagnostics
-// and a drawable fallback tree rather than an ordinary error.
+// and a drawable fallback tree rather than an ordinary error. Links are
+// text-only: the visible body is rendered with its source spans preserved, the
+// destination is discarded, and an unsupported diagnostic is reported.
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Expr) {
 	limits := opts.Limits.WithDefaults()
 	return parseRecovered(src, dialect, mode, opts, limits, func(limits source.Limits) frontendResult {

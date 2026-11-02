@@ -253,7 +253,7 @@ func TestDisplayLinesLifecycleAndEdgeCases(t *testing.T) {
 		trailing := ir.NewRow(source.NewRange(0, 3),
 			glyph("x", ir.ClassNormal),
 			glyph("y", ir.ClassNormal),
-			ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit, 0),
+			ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit),
 		)
 		style := testStyle(16)
 		style.MaxWidth = 1
@@ -410,15 +410,10 @@ func TestDisplayLinesZeroAdvanceCutOwnership(t *testing.T) {
 		breakNode  ir.Node
 		beforeZero ir.Node
 		wantBreaks int
-		penalties  []int
 	}{
 		{name: "explicit break after zero", zeroClass: ir.ClassNormal,
-			breakNode: ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit, 0), wantBreaks: 1},
+			breakNode: ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit), wantBreaks: 1},
 		{name: "automatic break after zero binary", zeroClass: ir.ClassBinary, wantBreaks: 1},
-		{name: "penalty chooses zero cut", zeroClass: ir.ClassNormal,
-			beforeZero: ir.NewBreak(source.NewRange(1, 2), ir.BreakExplicit, 50),
-			breakNode:  ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit, 0),
-			wantBreaks: 2, penalties: []int{50, 0}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -474,15 +469,57 @@ func TestDisplayLinesZeroAdvanceCutOwnership(t *testing.T) {
 			if !closeHost(second.Baseline, wantBaseline) {
 				t.Fatalf("second baseline = %v, want %v", second.Baseline, wantBaseline)
 			}
-			if test.penalties != nil {
-				if len(inline.Breaks) != 2 ||
-					inline.Breaks[0].X != inline.Breaks[1].X ||
-					inline.Breaks[0].Penalty != test.penalties[0] ||
-					inline.Breaks[1].Penalty != test.penalties[1] {
-					t.Fatalf("same-X public breaks = %+v, want penalties %+v", inline.Breaks, test.penalties)
-				}
-			}
 		})
+	}
+}
+
+func TestDisplayLinesEqualWidthUsesLowestLogicalCut(t *testing.T) {
+	t.Parallel()
+
+	renderer, glyphs, _ := newTestRenderer(t)
+	glyphs.glyphs["tall"] = Glyph{
+		ID:      tallGlyphID,
+		FontID:  "test-math",
+		Advance: 0,
+		Ascent:  em(3, 1),
+		Descent: em(1, 1),
+	}
+	a := glyphAt("a", ir.ClassNormal, 0, 1)
+	zero := glyphAt("tall", ir.ClassNormal, 1, 2)
+	b := glyphAt("b", ir.ClassNormal, 2, 3)
+	root := ir.NewRow(source.NewRange(0, 3),
+		a,
+		ir.NewBreak(source.NewRange(1, 2), ir.BreakExplicit),
+		zero,
+		ir.NewBreak(source.NewRange(2, 3), ir.BreakExplicit),
+		b,
+	)
+	inline, err := renderer.Layout(root, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inline.Breaks) != 2 || inline.Breaks[0].X != inline.Breaks[1].X {
+		t.Fatalf("inline Breaks = %+v, want two distinct equal-width cuts", inline.Breaks)
+	}
+
+	style := testStyle(16)
+	style.MaxWidth = inline.Breaks[0].X
+	box, err := renderer.Layout(root, ir.Display, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(box.Lines) != 2 {
+		t.Fatalf("Lines = %d, want 2", len(box.Lines))
+	}
+	first, second := box.Lines[0], box.Lines[1]
+	if !hasAtomHit(first.Box.Hits, source.NewRange(0, 1)) {
+		t.Fatal("first line does not own the atom before the first cut")
+	}
+	if hasAtomHit(first.Box.Hits, source.NewRange(1, 2)) {
+		t.Fatal("zero-advance atom crossed the lower logical cut")
+	}
+	if !hasAtomHit(second.Box.Hits, source.NewRange(1, 2)) {
+		t.Fatal("second line does not own the zero-advance atom")
 	}
 }
 

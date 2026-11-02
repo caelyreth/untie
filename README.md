@@ -67,6 +67,7 @@ engine cache that can be released with `ClearLayoutEngineCache`.
 - reusable caller-owned layout engines with bounded convenience caching
 - source-linked hit rectangles emitted from placed layout fragments
 - deterministic inline break metadata and constrained display line boxes
+- text-only link bodies with explicit unsupported destination diagnostics
 - deterministic text/speech alternative output with bounded fallbacks
 - no reference project is compiled or executed by the test suite
 

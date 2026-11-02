@@ -50,7 +50,77 @@ func TestUnsupportedLayoutConstructsAreExplicit(t *testing.T) {
 	}
 
 	result := parseTest(t, `x\nobreak y`, Options{})
-	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-		t.Errorf("nobreak diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+	foundNoBreak := false
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Code == source.CodeUnsupported &&
+			diagnostic.Message == "line-break suppression is not represented in the neutral IR" {
+			foundNoBreak = true
+			break
+		}
+	}
+	if !foundNoBreak {
+		t.Errorf("nobreak diagnostics = %v, want explicit suppression boundary", diagnosticCodes(result.Diagnostics))
+	}
+}
+
+func TestHrefRendersBodyAsTextOnly(t *testing.T) {
+	t.Parallel()
+
+	const src = `\href{https://example.com}{x^2}`
+	result := parseTest(t, src, Options{})
+	var scripts *ir.Scripts
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		if candidate, ok := node.(*ir.Scripts); ok {
+			scripts = candidate
+		}
+		return true
+	})
+	if scripts == nil {
+		t.Fatalf("href body root = %T, want nested scripts", result.Root)
+	}
+	if got := string(scripts.NodeBase().Span.Slice(src)); got != "x^2" {
+		t.Fatalf("href body span = %q, want %q", got, "x^2")
+	}
+	foundWarning := false
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Code == source.CodeUnsupported &&
+			diagnostic.Message == "hyperlinks are outside the formula IR; link target was discarded" {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Fatalf("href diagnostics = %v, want discarded destination warning", result.Diagnostics)
+	}
+}
+
+func TestURLRendersVisibleTextWithoutDestinationMetadata(t *testing.T) {
+	t.Parallel()
+
+	const src = `\url{https://example.com/a#b}`
+	result := parseTest(t, src, Options{})
+	var text *ir.Text
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		if candidate, ok := node.(*ir.Text); ok {
+			text = candidate
+		}
+		return true
+	})
+	if text == nil {
+		t.Fatalf("url body root = %T, want text", result.Root)
+	}
+	if got := string(text.NodeBase().Span.Slice(src)); got != "https://example.com/a#b" {
+		t.Fatalf("url body span = %q, want visible URL", got)
+	}
+	foundWarning := false
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Code == source.CodeUnsupported &&
+			diagnostic.Message == "hyperlinks are outside the formula IR; link destination was discarded" {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Fatalf("url diagnostics = %v, want discarded destination warning", result.Diagnostics)
 	}
 }
