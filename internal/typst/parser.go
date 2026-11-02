@@ -646,7 +646,6 @@ func (p *parser) parseDelimited() *astNode {
 		stops = stopRBrace
 	}
 	body := p.parseRow(stops)
-	end := p.current().span.End
 	if p.current().kind == closeKind {
 		close := p.advance()
 		delim := p.node(source.NewRange(open.span.Start, close.span.End), astDelimited)
@@ -658,7 +657,7 @@ func (p *parser) parseDelimited() *astNode {
 		return delim
 	}
 	p.errorAt(open.span, source.CodeUnclosedGroup, "unclosed delimiter")
-	end = p.current().span.Start
+	end := p.current().span.Start
 	delim := p.node(source.NewRange(open.span.Start, end), astDelimited)
 	delim.openSpan = open.span
 	delim.open = openText
