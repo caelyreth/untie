@@ -20,7 +20,7 @@ parsing, accessibility, and compatibility guidance.
 - reusable caller-owned layout engines with bounded convenience caching
 - source-linked hit rectangles emitted from placed layout fragments
 - deterministic inline break metadata and constrained display line boxes
-- TeX display equation-tag metadata and independently drawable tag boxes
+- TeX display equation-tag metadata and separately selectable tag ranges
 - text-only link bodies with explicit unsupported destination diagnostics
 - deterministic text/speech alternative output with bounded fallbacks
 - a tracked daily-STEM acceptance corpus
