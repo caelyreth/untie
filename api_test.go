@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -304,5 +306,34 @@ func TestFallbackIRValidates(t *testing.T) {
 	expr := Parse(`\frac{1}{2}`, TeX, Inline, ParseOptions{})
 	if err := ir.Validate(expr.Root(), source.Limits{}); err != nil {
 		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestLayoutEmitsSourceAndMacroOriginHits(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	expr := ParseTeX(`\sq{x}`, Inline, ParseOptions{
+		Macros: map[string]Macro{"sq": {Body: `#1^2`, Args: 1}},
+	})
+	box, err := LayoutContext(context.Background(), expr, fonts, Style{Size: 16})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var foundArgument, foundScript bool
+	for _, hit := range box.Hits {
+		if hit.Source == source.NewRange(4, 5) && hit.Kind == display.HitAtom {
+			foundArgument = true
+		}
+		if hit.Source == source.NewRange(0, 6) && hit.Kind == display.HitScript {
+			foundScript = true
+		}
+	}
+	if !foundArgument || !foundScript {
+		t.Fatalf("hits = %#v, want macro argument atom and call-origin script", box.Hits)
+	}
+	hit, ok := box.At(geometry.Point{X: 4, Y: 0})
+	if !ok || hit.Source != source.NewRange(4, 5) || hit.Kind != display.HitAtom {
+		t.Fatalf("At() = (%#v, %v), want innermost macro argument", hit, ok)
 	}
 }

@@ -40,7 +40,7 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
-		Tests: []string{modulePath},
+		Tests: []string{modulePath, modulePath + "/geometry"},
 	},
 	modulePath + "/cmd/formula-check": {
 		Production: []string{modulePath, modulePath + "/ir"},
