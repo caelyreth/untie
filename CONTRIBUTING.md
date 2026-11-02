@@ -13,9 +13,10 @@ nix develop
 go version
 ```
 
-The module currently has no external Go dependencies. Do not add cgo, native
-libraries, system font discovery, a browser, a JavaScript runtime, or an image
-rasterizer to the core.
+The module deliberately limits external Go dependencies to the pinned pure-Go
+font/text substrate recorded in `go.mod` and `THIRD_PARTY_NOTICES.md`. Do not
+add cgo, native libraries, system font discovery, a browser, a JavaScript
+runtime, or an image rasterizer to the core.
 
 ## Required Checks
 
