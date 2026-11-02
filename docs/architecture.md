@@ -292,8 +292,8 @@ The root package is a coordinator:
 - `Parse`, `ParseTeX`, and `ParseTypst` validate inputs, apply defaults, invoke
   one frontend, and return an immutable expression.
 - `Expr.Diagnostics` returns copies.
-- `Expr.Key` hashes source, dialect, mode, limits, Typst preamble, and sorted TeX
-  macro definitions. It is a convenience identity, not a font or layout key.
+- `Expr.Key` hashes source, dialect, mode, limits, and sorted TeX macro
+  definitions. It is a convenience identity, not a font or layout key.
 - `LoadFonts` delegates font-set ownership.
 - `NewEngine` prepares a caller-owned, concurrency-safe layout environment.
 - `Engine.Layout` and `Engine.LayoutContext` are the explicit lifecycle API.

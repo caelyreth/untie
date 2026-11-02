@@ -29,7 +29,7 @@ func BenchmarkParseBothDialects(b *testing.B) {
 						}
 						_ = untie.ParseTeX(testCase.TeX, caseMode(testCase), untie.ParseOptions{})
 					} else {
-						_ = untie.ParseTypst(testCase.Source, caseMode(testCase), untie.ParseOptions{Preamble: testCase.Preamble})
+						_ = untie.ParseTypst(testCase.Source, caseMode(testCase), untie.ParseOptions{})
 					}
 				}
 			}

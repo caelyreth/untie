@@ -25,10 +25,9 @@ type ProcessConfig struct {
 }
 
 type workerRequest struct {
-	Source   string        `json:"source"`
-	Preamble string        `json:"preamble,omitempty"`
-	Mode     ir.Mode       `json:"mode"`
-	Limits   source.Limits `json:"limits"`
+	Source string        `json:"source"`
+	Mode   ir.Mode       `json:"mode"`
+	Limits source.Limits `json:"limits"`
 }
 
 type workerResponse struct {

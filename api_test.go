@@ -19,7 +19,7 @@ func TestParseCopiesOptionsAndDiagnostics(t *testing.T) {
 	macros := map[string]Macro{
 		"R": {Body: `\mathbb{R}`, Args: 0},
 	}
-	opts := ParseOptions{Macros: macros, Preamble: "x", Limits: source.Limits{MaxSourceBytes: 100}}
+	opts := ParseOptions{Macros: macros, Limits: source.Limits{MaxSourceBytes: 100}}
 	expr := Parse("x", TeX, Inline, opts)
 	macros["R"] = Macro{Body: "changed"}
 	opts.Limits.MaxSourceBytes = 1

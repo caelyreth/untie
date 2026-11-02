@@ -10,8 +10,7 @@ import (
 
 // Options configure Typst parsing and its restricted evaluator.
 type Options struct {
-	Preamble string
-	Limits   source.Limits
+	Limits source.Limits
 }
 
 // Result is a recoverable parse result.
@@ -49,14 +48,6 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	lowered := lower(root, src, limits)
 	result = lowered
 	result.Diagnostics = source.NormalizeDiagnostics(append(diagnostics, result.Diagnostics...))
-	if opts.Preamble != "" {
-		result.Diagnostics = source.NormalizeDiagnostics(append(result.Diagnostics, source.Diagnostic{
-			Range:    source.NewRange(0, min(len(src), 1)),
-			Severity: source.SeverityWarning,
-			Code:     source.CodeUnsupported,
-			Message:  "Typst preamble definitions are not supported by the P1 math frontend",
-		}))
-	}
 	if result.Root == nil {
 		result.Root = ir.NewRow(source.NewRange(0, len(src)))
 	}
