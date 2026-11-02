@@ -286,6 +286,23 @@ func TestValueDisplayAndMathStylesPreserveSemantics(t *testing.T) {
 		}
 	}
 
+	for _, src := range []string{`#text(fill: red, $x$)`} {
+		result := parse(t, src)
+		requireNoDiagnostics(t, src, result)
+		find[*ir.Color](t, result.Root)
+	}
+	for _, src := range []string{
+		`#box(fill: red, $x$)`,
+		`#box(fill: rgb(255, 0, 0), $x$)`,
+	} {
+		result := parse(t, src)
+		requireNoDiagnostics(t, src, result)
+		box := find[*ir.Box](t, result.Root)
+		if !box.HasFill || !box.Fill.HasExplicit || box.Fill.Explicit.R != 0xff {
+			t.Fatalf("%s fill = %#v", src, box.Fill)
+		}
+	}
+
 	for _, test := range []struct {
 		src   string
 		class ir.MathClass

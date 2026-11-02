@@ -54,17 +54,15 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 		if resolved.unknownRoot != "" {
 			return value{}, false
 		}
-		if n.inCode {
-			if v, ok := codeKeywordValue(resolved.name); ok {
-				return v, true
-			}
-			if v, ok := namedColor(resolved.name); ok {
-				return v, true
-			}
-			switch resolved.name {
-			case "left", "right", "center", "start", "end", "top", "bottom", "horizon":
-				return symbolValue(resolved.name), true
-			}
+		if v, ok := codeKeywordValue(resolved.name); ok {
+			return v, true
+		}
+		if v, ok := namedColor(resolved.name); ok {
+			return v, true
+		}
+		switch resolved.name {
+		case "left", "right", "center", "start", "end", "top", "bottom", "horizon":
+			return symbolValue(resolved.name), true
 		}
 		if def, ok := symbol(resolved.name); ok {
 			return symbolValue(def.text), true
@@ -134,13 +132,9 @@ func (l *lowerer) evalValue(n *astNode) (value, bool) {
 		name := callName(n.base)
 		switch name {
 		case "rgb":
-			if n.inCode {
-				return l.evalRGB(n)
-			}
+			return l.evalRGB(n)
 		case "luma":
-			if n.inCode {
-				return l.evalLuma(n)
-			}
+			return l.evalLuma(n)
 		default:
 			return contentValue(n), true
 		}
