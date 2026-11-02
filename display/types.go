@@ -27,6 +27,16 @@ type Style struct {
 	GlyphRefs   bool
 }
 
+// LineBox is one baseline-relative display line inside a wrapped Box.
+// Baseline is the line baseline's vertical offset from the parent box baseline,
+// positive downward. Adjacent baselines are separated by the previous line's
+// descent plus the current line's ascent; no additional leading is invented.
+// Box must not contain nested Lines.
+type LineBox struct {
+	Baseline float32
+	Box      *Box
+}
+
 // Role is a theme-resolved paint role.
 type Role uint8
 
@@ -88,6 +98,11 @@ type Box struct {
 	Hits   []Hit
 	Breaks []Break
 	Alt    Alt
+	// Lines is populated only for display layout with a positive Style.MaxWidth.
+	// A constrained display result always has at least one line, including when
+	// the complete formula fits. Line boxes are source ordered and carry their
+	// own baseline-relative items and hits.
+	Lines []LineBox
 }
 
 // Alt is semantic alternative text derived from the neutral expression tree.
@@ -108,17 +123,40 @@ func (b *Box) Clone() *Box {
 	if b == nil {
 		return nil
 	}
+	return cloneBox(b, true)
+}
+
+func cloneBox(b *Box, cloneLines bool) *Box {
 	out := *b
-	out.Items = make([]Item, len(b.Items))
-	for i, item := range b.Items {
-		out.Items[i] = item
-		if item.Path != nil {
-			out.Items[i].Path = append([]geometry.Segment(nil), item.Path...)
-		}
-	}
+	out.Items = cloneItems(b.Items)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
+	if !cloneLines || len(b.Lines) == 0 {
+		out.Lines = nil
+		return &out
+	}
+	out.Lines = make([]LineBox, len(b.Lines))
+	for i, line := range b.Lines {
+		out.Lines[i].Baseline = line.Baseline
+		if line.Box != nil {
+			// Nested Lines are invalid, so a line's box is copied without
+			// descending again. This also makes Clone safe on malformed graphs.
+			out.Lines[i].Box = cloneBox(line.Box, false)
+		}
+	}
 	return &out
+}
+
+func cloneItems(items []Item) []Item {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]Item, len(items))
+	for i, item := range items {
+		out[i] = item
+		out[i].Path = append([]geometry.Segment(nil), item.Path...)
+	}
+	return out
 }
 
 // HitKind identifies the source semantic represented by a hit area.

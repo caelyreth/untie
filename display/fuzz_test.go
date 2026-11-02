@@ -116,6 +116,17 @@ func randomBox(data []byte) *Box {
 			Kind:    BreakKind(next() % (byte(BreakExplicit) + 1)),
 		})
 	}
+	if next()%3 == 0 {
+		line := &Box{
+			Width:      box.Width,
+			Ascent:     box.Ascent,
+			Descent:    box.Descent,
+			Italic:     box.Italic,
+			AxisHeight: box.AxisHeight,
+			Overflow:   box.Overflow,
+		}
+		box.Lines = []LineBox{{Baseline: 0, Box: line}}
+	}
 	return box
 }
 
