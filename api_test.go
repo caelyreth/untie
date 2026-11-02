@@ -153,6 +153,51 @@ func TestLayoutContextRejectsNilAndDoesNotReportFalseSuccess(t *testing.T) {
 	}
 }
 
+func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	expr := ParseTeX(`x_i^2+\frac{1}{2}`, Inline, ParseOptions{})
+	box, err := engine.LayoutContext(context.Background(), expr, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("LayoutContext() error = %v", err)
+	}
+	if box.Alt != expr.Alt() {
+		t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, expr.Alt())
+	}
+	if box.Alt.Text == "" || box.Alt.Speech == "" {
+		t.Fatalf("Box.Alt = %#v, want visible text and speech", box.Alt)
+	}
+	if err := box.Alt.Validate(); err != nil {
+		t.Fatalf("Box.Alt.Validate() error = %v", err)
+	}
+
+	plain := box.Clone()
+	plain.Alt = Alt{}
+	if len(plain.Items) != len(box.Items) || plain.Width != box.Width || plain.Ascent != box.Ascent {
+		t.Fatal("alt population changed geometry")
+	}
+
+	limited := ParseTeX(`(x)`, Inline, ParseOptions{Limits: Limits{
+		MaxSourceBytes: 3,
+		MaxTextBytes:   5,
+	}})
+	box, err = engine.LayoutContext(context.Background(), limited, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("LayoutContext(limited alt) error = %v", err)
+	}
+	if box.Alt.Text == "" || box.Alt.Speech == "" || len(box.Alt.Text) > 5 || len(box.Alt.Speech) > 5 {
+		t.Fatalf("bounded alt fallback = %#v", box.Alt)
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("layout with bounded alt fallback is invalid: %v", err)
+	}
+}
+
 func loadTestFonts(t testing.TB) *FontSet {
 	t.Helper()
 	data := testFontBytes(t)

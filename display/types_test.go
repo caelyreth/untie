@@ -24,6 +24,7 @@ func TestCloneIndependent(t *testing.T) {
 			Area:   geometry.Rect{Width: 1, Height: 1},
 		}},
 		Breaks: []Break{{X: 1, Kind: BreakRelation}},
+		Alt:    Alt{Text: "x", Speech: "x"},
 	}
 	got := box.Clone()
 	got.Items[0].Path[0].Op = geometry.SegClose
@@ -37,6 +38,9 @@ func TestCloneIndependent(t *testing.T) {
 	}
 	if box.Breaks[0].X != 1 {
 		t.Fatal("Clone shared break storage")
+	}
+	if box.Alt != (Alt{Text: "x", Speech: "x"}) {
+		t.Fatal("Clone changed alternative text")
 	}
 }
 
@@ -58,6 +62,7 @@ func TestMarshalCanonical(t *testing.T) {
 			Kind:   HitAtom,
 		}},
 		Breaks: []Break{{X: 0.5, Penalty: 10, Kind: BreakRelation}},
+		Alt:    Alt{Text: "x", Speech: "x"},
 	}
 	first, err := box.MarshalCanonical()
 	if err != nil {
@@ -73,8 +78,10 @@ func TestMarshalCanonical(t *testing.T) {
 	if !json.Valid(first) {
 		t.Fatalf("invalid JSON: %s", first)
 	}
-	if !strings.Contains(string(first), `"hits"`) || !strings.Contains(string(first), `"breaks"`) {
-		t.Fatalf("canonical output omitted hits or breaks: %s", first)
+	if !strings.Contains(string(first), `"hits"`) ||
+		!strings.Contains(string(first), `"breaks"`) ||
+		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x","mathml":""}`) {
+		t.Fatalf("canonical output omitted hits, breaks, or alt: %s", first)
 	}
 	if _, err := (*Box)(nil).MarshalCanonical(); err == nil {
 		t.Fatal("nil box MarshalCanonical() error = nil")
@@ -240,6 +247,10 @@ func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
 		{
 			name: "break kind",
 			box:  &Box{Breaks: []Break{{Kind: BreakExplicit + 1}}},
+		},
+		{
+			name: "alt",
+			box:  &Box{Alt: Alt{Text: "x\x00y"}},
 		},
 	}
 	for _, tc := range tests {

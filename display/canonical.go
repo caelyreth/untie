@@ -46,6 +46,12 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		Items      []canonicalItem  `json:"items"`
 		Hits       []canonicalHit   `json:"hits,omitempty"`
 		Breaks     []canonicalBreak `json:"breaks,omitempty"`
+		Alt        *canonicalAlt    `json:"alt,omitempty"`
+	}
+	var alt *canonicalAlt
+	if b.Alt != (Alt{}) {
+		snapshot := canonicalAlt(b.Alt)
+		alt = &snapshot
 	}
 	return json.Marshal(boxSnapshot{
 		Width:      b.Width,
@@ -57,6 +63,7 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		Items:      items,
 		Hits:       canonicalHits(b.Hits),
 		Breaks:     canonicalBreaks(b.Breaks),
+		Alt:        alt,
 	})
 }
 

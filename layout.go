@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/engine"
 )
 
@@ -105,6 +106,15 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if box == nil {
 		return nil, fmt.Errorf("untie: layout returned a nil box")
 	}
+	alt, altErr := internalalt.GenerateContext(ctx, root.Root, expr.mode, expr.limits)
+	if altErr != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		// Accessibility failure never invalidates otherwise correct geometry.
+		// GenerateContext returns a bounded visible fallback for this case.
+	}
+	box.Alt = alt
 	if err := box.Validate(); err != nil {
 		return nil, fmt.Errorf("untie: invalid layout output: %w", err)
 	}

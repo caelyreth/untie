@@ -69,6 +69,7 @@ func randomBox(data []byte) *Box {
 	box := &Box{
 		Width: fuzzAbsFloat(number()), Ascent: fuzzAbsFloat(number()), Descent: fuzzAbsFloat(number()),
 		Italic: fuzzAbsFloat(number()), AxisHeight: fuzzAbsFloat(number()), Overflow: fuzzAbsFloat(number()),
+		Alt: Alt{Speech: string(data), Text: string(data)},
 	}
 	itemCount := int(next() % 8)
 	for range itemCount {

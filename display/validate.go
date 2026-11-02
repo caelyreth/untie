@@ -46,6 +46,9 @@ func (b *Box) Validate() error {
 			return fmt.Errorf("%w: break %d: %v", ErrInvalidBox, i, err)
 		}
 	}
+	if err := b.Alt.Validate(); err != nil {
+		return fmt.Errorf("%w: alt: %v", ErrInvalidBox, err)
+	}
 	return nil
 }
 

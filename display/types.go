@@ -87,6 +87,7 @@ type Box struct {
 	Items  []Item
 	Hits   []Hit
 	Breaks []Break
+	Alt    Alt
 }
 
 // Alt is semantic alternative text derived from the neutral expression tree.
