@@ -154,7 +154,7 @@ func (d FixtureDiagnostic) Validate() error {
 // LoadFormulas decodes a Typlet JSON Lines formula corpus.
 func LoadFormulas(path string) ([]Formula, error) {
 	var records []Formula
-	err := readJSONLines(path, false, func(_ int, data []byte) error {
+	err := readJSONLines(path, func(_ int, data []byte) error {
 		var record Formula
 		if err := decodeJSONObject(data, &record, false); err != nil {
 			return err
@@ -174,7 +174,7 @@ func LoadFormulas(path string) ([]Formula, error) {
 // LoadFixtures decodes a Typlet JSON Lines fixture file.
 func LoadFixtures(path string) ([]Fixture, error) {
 	var records []Fixture
-	err := readJSONLines(path, false, func(_ int, data []byte) error {
+	err := readJSONLines(path, func(_ int, data []byte) error {
 		var record Fixture
 		if err := decodeJSONObject(data, &record, false); err != nil {
 			return err

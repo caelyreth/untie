@@ -22,6 +22,7 @@ type PathInfo struct {
 func InspectPath(path geometry.Path) (PathInfo, error) {
 	info := PathInfo{}
 	moved := false
+	var minX, minY, maxX, maxY float64
 	for i, segment := range path {
 		info.Segments++
 		switch segment.Op {
@@ -31,7 +32,7 @@ func InspectPath(path geometry.Path) (PathInfo, error) {
 			}
 			info.Subpaths++
 			moved = true
-			includePoint(&info, segment.Points[0])
+			includePoint(&info, segment.Points[0], &minX, &minY, &maxX, &maxY)
 		case geometry.SegLineTo:
 			if !moved {
 				return PathInfo{}, fmt.Errorf("fixture: path segment %d draws before move-to", i)
@@ -39,7 +40,7 @@ func InspectPath(path geometry.Path) (PathInfo, error) {
 			if !finitePoint(segment.Points[0]) {
 				return PathInfo{}, invalidPathPoint(i, 0)
 			}
-			includePoint(&info, segment.Points[0])
+			includePoint(&info, segment.Points[0], &minX, &minY, &maxX, &maxY)
 		case geometry.SegQuadTo:
 			if !moved {
 				return PathInfo{}, fmt.Errorf("fixture: path segment %d draws before move-to", i)
@@ -48,7 +49,7 @@ func InspectPath(path geometry.Path) (PathInfo, error) {
 				if !finitePoint(segment.Points[j]) {
 					return PathInfo{}, invalidPathPoint(i, j)
 				}
-				includePoint(&info, segment.Points[j])
+				includePoint(&info, segment.Points[j], &minX, &minY, &maxX, &maxY)
 			}
 		case geometry.SegCubeTo:
 			if !moved {
@@ -58,7 +59,7 @@ func InspectPath(path geometry.Path) (PathInfo, error) {
 				if !finitePoint(segment.Points[j]) {
 					return PathInfo{}, invalidPathPoint(i, j)
 				}
-				includePoint(&info, segment.Points[j])
+				includePoint(&info, segment.Points[j], &minX, &minY, &maxX, &maxY)
 			}
 		case geometry.SegClose:
 			if !moved {
@@ -72,24 +73,28 @@ func InspectPath(path geometry.Path) (PathInfo, error) {
 	if len(path) == 0 {
 		return PathInfo{}, errors.New("fixture: empty path")
 	}
+	width, height := maxX-minX, maxY-minY
+	if !finite(width) || width > math.MaxFloat32 || !finite(height) || height > math.MaxFloat32 {
+		return PathInfo{}, fmt.Errorf("fixture: path bounds %.17g x %.17g exceed float32 range", width, height)
+	}
+	info.Bounds = geometry.Rect{
+		X: float32(minX), Y: float32(minY),
+		Width: float32(width), Height: float32(height),
+	}
 	return info, nil
 }
 
-func includePoint(info *PathInfo, point geometry.Point) {
+func includePoint(info *PathInfo, point geometry.Point, minX, minY, maxX, maxY *float64) {
 	x, y := float64(point.X), float64(point.Y)
 	if !info.HasBounds {
-		info.Bounds = geometry.Rect{X: point.X, Y: point.Y}
+		*minX, *minY, *maxX, *maxY = x, y, x, y
 		info.HasBounds = true
 		return
 	}
-	minX := math.Min(float64(info.Bounds.X), x)
-	minY := math.Min(float64(info.Bounds.Y), y)
-	maxX := math.Max(float64(info.Bounds.X)+float64(info.Bounds.Width), x)
-	maxY := math.Max(float64(info.Bounds.Y)+float64(info.Bounds.Height), y)
-	info.Bounds.X = float32(minX)
-	info.Bounds.Y = float32(minY)
-	info.Bounds.Width = float32(maxX - minX)
-	info.Bounds.Height = float32(maxY - minY)
+	*minX = math.Min(*minX, x)
+	*minY = math.Min(*minY, y)
+	*maxX = math.Max(*maxX, x)
+	*maxY = math.Max(*maxY, y)
 }
 
 func finitePoint(point geometry.Point) bool {

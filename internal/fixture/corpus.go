@@ -277,18 +277,32 @@ func (r Report) Validate() error {
 	if r.Total != len(r.Results) {
 		return fmt.Errorf("report total %d does not match %d results", r.Total, len(r.Results))
 	}
-	if sum := r.Pass + r.DiagnosticExpected + r.UnsupportedByScope + r.KnownDifference + r.Bug; sum != r.Total {
-		return fmt.Errorf("classification counts sum to %d, want %d", sum, r.Total)
-	}
+	counts := make(map[Classification]int, 5)
 	seen := make(map[string]struct{}, len(r.Results))
 	for _, result := range r.Results {
 		if !result.Classification.valid() {
 			return fmt.Errorf("result %q has invalid classification %q", result.ID, result.Classification)
 		}
+		counts[result.Classification]++
 		if _, ok := seen[result.ID]; ok {
 			return fmt.Errorf("duplicate result ID %q", result.ID)
 		}
 		seen[result.ID] = struct{}{}
+	}
+	for _, field := range []struct {
+		name  string
+		class Classification
+		got   int
+	}{
+		{"Pass", Pass, r.Pass},
+		{"DiagnosticExpected", DiagnosticExpected, r.DiagnosticExpected},
+		{"UnsupportedByScope", UnsupportedByScope, r.UnsupportedByScope},
+		{"KnownDifference", KnownDifference, r.KnownDifference},
+		{"Bug", Bug, r.Bug},
+	} {
+		if field.got != counts[field.class] {
+			return fmt.Errorf("report %s count is %d, but results contain %d", field.name, field.got, counts[field.class])
+		}
 	}
 	return nil
 }
