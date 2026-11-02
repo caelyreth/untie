@@ -38,8 +38,8 @@ type Style struct {
 // OffsetX is the nonnegative horizontal offset of the line inside the parent's
 // MaxWidth-wide alignment frame. Box uses line-local coordinates: hosts draw it
 // at (OffsetX, Baseline). Box must not contain nested Lines. Box.Overflow is
-// local to that line; the parent Box.Overflow is recomputed from the assembled
-// aggregate.
+// max(line-local ink overflow, line width minus the parent frame width); the
+// parent Box.Overflow covers the assembled aligned aggregate.
 type LineBox struct {
 	Baseline float32
 	OffsetX  float32
@@ -103,7 +103,9 @@ type Box struct {
 	// box. It may be negative; hosts must not treat it as a nonnegative size.
 	Italic     float32
 	AxisHeight float32
-	Overflow   float32
+	// Overflow is a nonnegative lower bound for rendered ink outside the box and,
+	// for constrained display boxes, the largest logical line-width excess.
+	Overflow float32
 
 	Items  []Item
 	Hits   []Hit
@@ -322,6 +324,13 @@ func absFloat(v float32) float32 {
 		return -v
 	}
 	return v
+}
+
+func minFloat(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func maxFloat(a, b float32) float32 {

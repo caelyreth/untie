@@ -22,14 +22,17 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 		lines := make([]display.LineBox, lineCount)
 		for i := range lines {
 			width := float32(cursor.next() % 80)
-			ascent := float32(cursor.next() % 24)
+			ascent := float32(cursor.next()%24 + 1)
 			descent := float32(cursor.next() % 12)
 			localX := float32(int8(cursor.next())) / 8
+			overflow := maxFloat(0, width-maxWidth)
+			overflow = maxFloat(overflow, maxFloat(0, -localX))
+			overflow = maxFloat(overflow, maxFloat(0, localX))
 			lines[i] = display.LineBox{Box: &display.Box{
 				Width:    width,
 				Ascent:   ascent,
 				Descent:  descent,
-				Overflow: maxFloat(0, width-maxWidth),
+				Overflow: overflow,
 				Items: []display.Item{{
 					Kind:  display.ItemRule,
 					Bound: geometry.Rect{X: localX, Y: -ascent, Width: width, Height: 1},

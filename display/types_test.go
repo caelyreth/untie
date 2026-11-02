@@ -73,8 +73,8 @@ func TestMarshalCanonical(t *testing.T) {
 		Items: []Item{{
 			Kind:  ItemRule,
 			Paint: Paint{Role: RoleInk},
-			Bound: geometry.Rect{Y: 1, Width: 1, Height: 0.1},
-			Rect:  geometry.Rect{Y: 1, Width: 1, Height: 0.1},
+			Bound: geometry.Rect{Y: 0.9, Width: 1, Height: 0.1},
+			Rect:  geometry.Rect{Y: 0.9, Width: 1, Height: 0.1},
 			At:    geometry.Point{Y: 1},
 		}},
 		Hits: []Hit{{
@@ -94,8 +94,8 @@ func TestMarshalCanonical(t *testing.T) {
 				Items: []Item{{
 					Kind:  ItemRule,
 					Paint: Paint{Role: RoleInk},
-					Bound: geometry.Rect{Width: 1, Height: 0.1},
-					Rect:  geometry.Rect{Width: 1, Height: 0.1},
+					Bound: geometry.Rect{Y: -0.1, Width: 1, Height: 0.1},
+					Rect:  geometry.Rect{Y: -0.1, Width: 1, Height: 0.1},
 				}},
 				Hits: []Hit{{
 					Source: source.NewRange(0, 1),
@@ -573,6 +573,96 @@ func TestValidateWrappedBoxAggregates(t *testing.T) {
 				t.Fatal("MarshalCanonical() error = nil")
 			}
 		})
+	}
+}
+
+func TestValidateWrappedOverflowCertification(t *testing.T) {
+	t.Parallel()
+
+	rule := Item{
+		Kind:  ItemRule,
+		Paint: Paint{Role: RoleInk},
+		Bound: geometry.Rect{Y: -1, Width: 4, Height: 1},
+		Rect:  geometry.Rect{Y: -1, Width: 4, Height: 1},
+	}
+	wrapped := func(line *Box) *Box {
+		box := &Box{
+			Width:  4,
+			Ascent: 1,
+			Lines:  []LineBox{{Box: line}},
+		}
+		for _, item := range line.Items {
+			box.Items = append(box.Items, translateTestItem(item, 0, 0))
+		}
+		return box
+	}
+
+	valid := wrapped(&Box{Width: 4, Ascent: 1, Items: []Item{rule}})
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid wrapped box error = %v", err)
+	}
+
+	lineLogical := wrapped(&Box{Width: 6, Ascent: 1, Items: []Item{rule}})
+	lineLogical.Overflow = 1
+	if err := lineLogical.Validate(); err == nil {
+		t.Fatal("line logical overflow was not rejected")
+	}
+
+	parentLogical := wrapped(&Box{
+		Width: 6, Ascent: 1, Overflow: 1,
+		Items: []Item{rule},
+	})
+	if err := parentLogical.Validate(); err == nil {
+		t.Fatal("parent logical overflow was not rejected")
+	}
+
+	wideRule := rule
+	wideRule.Bound.Width = 5
+	wideRule.Rect.Width = 5
+	exactInk := wrapped(&Box{Width: 4, Ascent: 1, Overflow: 1, Items: []Item{wideRule}})
+	exactInk.Overflow = 1
+	if err := exactInk.Validate(); err != nil {
+		t.Fatalf("exact ink overflow error = %v", err)
+	}
+
+	lineInk := wrapped(&Box{Width: 4, Ascent: 1, Items: []Item{wideRule}})
+	lineInk.Overflow = 1
+	if err := lineInk.Validate(); err == nil {
+		t.Fatal("line ink overflow was not rejected")
+	}
+
+	parentInk := wrapped(&Box{Width: 4, Ascent: 1, Overflow: 0.5, Items: []Item{wideRule}})
+	if err := parentInk.Validate(); err == nil {
+		t.Fatal("parent ink overflow was not rejected")
+	}
+
+	path := geometry.Path{
+		{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: 0, Y: -1}}},
+		{Op: geometry.SegLineTo, Points: [3]geometry.Point{{X: 6, Y: -1}}},
+	}
+	pathItem := Item{
+		Kind:  ItemGlyphPath,
+		Paint: Paint{Role: RoleInk},
+		Bound: geometry.Rect{Y: -1, Width: 4, Height: 1},
+		Path:  path,
+	}
+	linePath := wrapped(&Box{Width: 4, Ascent: 1, Items: []Item{pathItem}})
+	linePath.Overflow = 2
+	if err := linePath.Validate(); err == nil {
+		t.Fatal("line path extrema overflow was not rejected")
+	}
+
+	parentPath := wrapped(&Box{Width: 4, Ascent: 1, Overflow: 2, Items: []Item{pathItem}})
+	parentPath.Overflow = 1
+	if err := parentPath.Validate(); err == nil {
+		t.Fatal("parent path extrema overflow was not rejected")
+	}
+
+	tallRule := rule
+	tallRule.Bound.Y = -2
+	parentVertical := wrapped(&Box{Width: 4, Ascent: 1, Overflow: 1, Items: []Item{tallRule}})
+	if err := parentVertical.Validate(); err == nil {
+		t.Fatal("parent vertical ink overflow was not rejected")
 	}
 }
 

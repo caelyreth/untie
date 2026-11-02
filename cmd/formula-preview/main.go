@@ -25,9 +25,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fontPath := flags.String("font", "", "OpenType MATH font path")
 	size := flags.Float64("size", 24, "font size in DIP")
 	maxWidth := flags.Float64("max-width", 0, "maximum display width in DIP")
+	alignName := flags.String("align", "start", "constrained display alignment: start, center, or end")
 	output := flags.String("o", "", "output SVG file; stdout when empty")
 	flags.Usage = func() {
-		_, _ = fmt.Fprintln(stderr, "usage: formula-preview -font FONT [-dialect tex|typst] [-display] [-size DIP] [SOURCE]")
+		_, _ = fmt.Fprintln(stderr, "usage: formula-preview -font FONT [-dialect tex|typst] [-display] [-size DIP] [-max-width DIP] [-align start|center|end] [SOURCE]")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -38,6 +39,11 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 	dialect, err := parseDialect(*dialectName)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err)
+		return 2
+	}
+	align, err := parseAlign(*alignName)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 2
@@ -67,6 +73,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	box, err := untie.LayoutContext(context.Background(), expr, fonts, untie.Style{
 		Size:     float32(*size),
 		MaxWidth: float32(*maxWidth),
+		Align:    align,
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "formula-preview: layout: %v\n", err)
@@ -88,6 +95,19 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+func parseAlign(value string) (untie.Align, error) {
+	switch strings.ToLower(value) {
+	case "start":
+		return untie.AlignStart, nil
+	case "center":
+		return untie.AlignCenter, nil
+	case "end":
+		return untie.AlignEnd, nil
+	default:
+		return 0, fmt.Errorf("unknown align %q", value)
+	}
 }
 
 func parseDialect(value string) (untie.Dialect, error) {

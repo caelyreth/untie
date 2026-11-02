@@ -4,9 +4,9 @@
   "toleranceDIP": 0.002,
   "total": 81,
   "pass": 22,
-  "semanticIRMismatch": 55,
+  "semanticIRMismatch": 54,
   "layoutMismatch": 0,
-  "fixtureMismatch": 2,
+  "fixtureMismatch": 3,
   "documentedPairDifference": 2,
   "unexplained": 0,
   "cases": [
@@ -276,9 +276,9 @@
       "id": "alignat",
       "index": 38,
       "category": "alignment",
-      "kind": "semantic-ir-mismatch",
-      "detail": "root.rows[0][0]: expected [{\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"1\",\"variant\":\"auto\"},{\"class\":\"normal\",\"cramped\":false,\"ignore...\u003csha256:bdced587a437504b\u003e, got {\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"operator-text\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"10\",\"variant\":\"auto\"}",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "kind": "fixture-mismatch",
+      "detail": "Typst: fixture.width: expected 90.141333, got 83.622818",
+      "reason": "Typst integer runs now lower as source glyph runs instead of a single operator-text atom, so the reviewed semantic blocker advances to the remaining fixture width difference. This is the intended decimal/number-run correction."
     },
     {
       "id": "tag",
