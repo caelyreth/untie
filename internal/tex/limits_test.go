@@ -2,6 +2,7 @@ package tex
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/ir"
@@ -41,6 +42,21 @@ func TestNodeLimitRecoveryStaysWithinBudget(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestLoweringNestingBudgetStaysValid(t *testing.T) {
+	t.Parallel()
+
+	limits := source.DefaultLimits()
+	limits.MaxNesting = 32
+	src := strings.Repeat("^", 96) + "x"
+	result := Parse(src, ir.Inline, Options{Limits: limits})
+	if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
+		t.Fatalf("invalid deep-script recovery IR: %v", err)
+	}
+	if !hasDiagnostic(result.Diagnostics, source.CodeLimitExceeded) {
+		t.Fatalf("diagnostics = %v, want nesting limit", diagnosticCodes(result.Diagnostics))
 	}
 }
 

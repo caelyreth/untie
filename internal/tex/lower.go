@@ -16,6 +16,7 @@ type lowerer struct {
 	limits     source.Limits
 	diagnostic func(source.Diagnostic)
 	count      int
+	depth      int
 	limitHit   bool
 	exhausted  bool
 }
@@ -27,6 +28,12 @@ func newLowerer(limits source.Limits, diagnostic func(source.Diagnostic)) *lower
 func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	if node == nil {
 		return nil
+	}
+	l.depth++
+	defer func() { l.depth-- }()
+	if l.depth > l.limits.MaxNesting {
+		l.limit(node.base().span, "TeX IR nesting limit exceeded")
+		return l.placeholder(node.base().span, "IR nesting limit exceeded")
 	}
 
 	// A variant wrapper is inherited by leaves and does not allocate an IR node.
