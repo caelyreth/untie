@@ -43,6 +43,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   types, diagnostic serialization, and internal packages.
 - [Compatibility evidence](quality.md) lists the tracked corpora and the
   commands that verify parser, layout, font, and corpus contracts.
+- [Performance](performance.md) explains the tracked corpus benchmarks,
+  cache strategies, allocation metrics, and profiling commands.
 
 ## Recommended Reading Paths
 
@@ -65,6 +67,7 @@ For a host that stores or transforms formula trees:
 1. [Canonical IR](canonical-ir.md)
 2. [API stability tiers](stability.md)
 3. [Compatibility evidence](quality.md)
+4. [Performance](performance.md)
 
 ## Scope
 

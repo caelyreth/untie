@@ -76,6 +76,8 @@ draw(box.Items)
   [stability.md](stability.md)
 - Tracked corpora and verification:
   [quality.md](quality.md)
+- Tracked performance benchmarks and metric semantics:
+  [performance.md](performance.md)
 
 ## Key API
 
