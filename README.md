@@ -82,6 +82,9 @@ The repository-wide corpus and compatibility gates live under
 go test ./internal/quality
 ```
 
+A two-pane native editor example is in
+[examples/mygo](examples/mygo).
+
 ### License
 
 Copyright 2026 Yu (Caelyreth).

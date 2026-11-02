@@ -34,6 +34,13 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: go test ./...
+      - name: Test MyGo example
+        working-directory: examples/mygo
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go test ./...
+          go vet ./...
       - name: Tagged TeX layout integration
         env:
           CGO_ENABLED: "0"
