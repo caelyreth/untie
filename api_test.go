@@ -2,6 +2,7 @@ package untie
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -38,14 +39,28 @@ func TestParseCopiesOptionsAndDiagnostics(t *testing.T) {
 func TestParseRecoversPanics(t *testing.T) {
 	t.Parallel()
 
-	// An invalid dialect exercises the normal diagnostic path; this test mainly
-	// protects the public panic boundary when a frontend regresses.
-	expr := Parse("x", Dialect(99), Inline, ParseOptions{})
-	if expr == nil || len(expr.Diagnostics()) == 0 {
-		t.Fatal("Parse() did not return a diagnosed fallback")
+	expr := parseRecovered(
+		"x",
+		TeX,
+		Inline,
+		ParseOptions{},
+		source.DefaultLimits(),
+		func(source.Limits) frontendResult {
+			panic("injected frontend failure")
+		},
+	)
+	if expr == nil {
+		t.Fatal("parseRecovered() = nil")
 	}
-	if !strings.Contains(expr.Diagnostics()[0].Message, "dialect") {
-		t.Fatalf("diagnostic = %+v", expr.Diagnostics()[0])
+	diagnostics := expr.Diagnostics()
+	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "injected frontend failure") {
+		t.Fatalf("diagnostics = %+v", diagnostics)
+	}
+	if expr.Key() == 0 {
+		t.Fatal("recovered expression has zero key")
+	}
+	if err := ir.ValidateSource(expr.Root(), "x", source.Limits{}); err != nil {
+		t.Fatalf("recovered Root() invalid: %v", err)
 	}
 }
 
@@ -92,6 +107,112 @@ func TestLayoutContextCancellation(t *testing.T) {
 	cancel()
 	if _, err := LayoutContext(ctx, Parse("x", TeX, Inline, ParseOptions{}), nil, Style{Size: 16}); err == nil {
 		t.Fatal("LayoutContext() error = nil, want cancellation")
+	}
+}
+
+func TestLayoutContextRejectsNilAndDoesNotReportFalseSuccess(t *testing.T) {
+	t.Parallel()
+
+	expr := Parse("x", TeX, Inline, ParseOptions{})
+	//nolint:staticcheck // This assertion intentionally verifies nil-context handling.
+	if _, err := LayoutContext(nil, expr, nil, Style{}); !errors.Is(err, ErrInvalidContext) {
+		t.Fatalf("nil context error = %v", err)
+	}
+	if _, err := LayoutContext(context.Background(), nil, nil, Style{}); !errors.Is(err, ErrInvalidExpr) {
+		t.Fatalf("nil expression error = %v", err)
+	}
+	if _, err := LayoutContext(context.Background(), expr, nil, Style{}); !errors.Is(err, ErrInvalidFonts) {
+		t.Fatalf("nil fonts error = %v", err)
+	}
+	if box, err := LayoutContext(context.Background(), expr, &FontSet{}, Style{}); !errors.Is(err, ErrLayoutNotImplemented) || box != nil {
+		t.Fatalf("LayoutContext() = %v, %v, want nil, ErrLayoutNotImplemented", box, err)
+	}
+	if box := Layout(expr, &FontSet{}, Style{}); box != nil {
+		t.Fatalf("Layout() = %v, want nil while backend is unavailable", box)
+	}
+}
+
+func TestRootReturnsIndependentSnapshots(t *testing.T) {
+	t.Parallel()
+
+	expr := Parse(`\frac{1}{2}`, TeX, Inline, ParseOptions{})
+	key := expr.Key()
+	first, err := expr.RootSnapshot()
+	if err != nil {
+		t.Fatalf("RootSnapshot() error = %v", err)
+	}
+	row := first.Root.(*ir.Row)
+	ir.Walk(first.Root, func(node ir.Node) bool {
+		if glyph, ok := node.(*ir.Glyph); ok {
+			glyph.Text = "changed"
+			return false
+		}
+		return true
+	})
+	row.Items = row.Items[:0]
+
+	second := expr.Root()
+	if second == nil {
+		t.Fatal("Root() = nil after snapshot mutation")
+	}
+	secondRow := second.Root.(*ir.Row)
+	if len(secondRow.Items) != 1 {
+		t.Fatalf("second snapshot items = %d, want 1", len(secondRow.Items))
+	}
+	restored := false
+	ir.Walk(second.Root, func(node ir.Node) bool {
+		if glyph, ok := node.(*ir.Glyph); ok && glyph.Text == "1" {
+			restored = true
+		}
+		return true
+	})
+	if !restored {
+		t.Fatalf("second snapshot was mutated: %#v", secondRow.Items[0])
+	}
+	if expr.Key() != key {
+		t.Fatalf("Key changed from %d to %d", key, expr.Key())
+	}
+	if second == expr.root || secondRow == expr.root.Root {
+		t.Fatal("Root() exposed internal storage")
+	}
+	if expr.rootForLayout() != expr.root {
+		t.Fatal("internal layout path unexpectedly copied the root")
+	}
+}
+
+func TestTextLimitAffectsParsedFallback(t *testing.T) {
+	t.Parallel()
+
+	const src = "abcdefgh"
+	expr := Parse(src, Typst, Inline, ParseOptions{Limits: source.Limits{
+		MaxSourceBytes: len(src),
+		MaxTextBytes:   3,
+	}})
+	root := expr.Root()
+	var texts []string
+	ir.Walk(root.Root, func(node ir.Node) bool {
+		if text, ok := node.(*ir.ErrorNode); ok {
+			texts = append(texts, text.Text)
+		}
+		return true
+	})
+	if len(texts) != 1 || len(texts[0]) > 3 {
+		t.Fatalf("fallback texts = %q, want one <= 3 bytes", texts)
+	}
+}
+
+func TestNodeLimitAffectsParse(t *testing.T) {
+	t.Parallel()
+
+	expr := Parse("x+y", TeX, Inline, ParseOptions{Limits: source.Limits{MaxNodes: 1}})
+	foundLimit := false
+	for _, diagnostic := range expr.Diagnostics() {
+		if diagnostic.Code == source.CodeLimitExceeded {
+			foundLimit = true
+		}
+	}
+	if !foundLimit {
+		t.Fatalf("diagnostics = %+v, want limit diagnostic", expr.Diagnostics())
 	}
 }
 

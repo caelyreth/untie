@@ -3,6 +3,12 @@ package source
 // Limits bound work for untrusted input. Zero fields are replaced with Default
 // Limits by WithDefaults. Negative fields are also replaced with defaults so a
 // zero-value Limits cannot accidentally become unbounded.
+//
+// Enforcement is split by layer: parsers enforce token, expansion, call, and
+// table-cell limits; ir.Validate enforces source, node, nesting, text, and
+// dimension limits; internal/layout enforces output-item and path-segment
+// limits. MaxAssemblyRepeats is reserved for the Typst evaluator, which
+// currently rejects evaluator-dependent input before assembly can run.
 type Limits struct {
 	MaxSourceBytes     int
 	MaxTokens          int

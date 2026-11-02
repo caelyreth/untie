@@ -65,12 +65,22 @@ func (d Diagnostic) Clone() Diagnostic {
 // NormalizeDiagnostics filters invalid ranges, copies the slice, and returns a
 // deterministic ordering by source position, severity, code, and message.
 func NormalizeDiagnostics(in []Diagnostic) []Diagnostic {
+	return normalizeDiagnostics(in, -1)
+}
+
+// NormalizeDiagnosticsFor filters diagnostics whose ranges fall outside a
+// source string, copies retained data, and returns a deterministic ordering.
+func NormalizeDiagnosticsFor(in []Diagnostic, sourceLen int) []Diagnostic {
+	return normalizeDiagnostics(in, sourceLen)
+}
+
+func normalizeDiagnostics(in []Diagnostic, sourceLen int) []Diagnostic {
 	if len(in) == 0 {
 		return nil
 	}
 	out := make([]Diagnostic, 0, len(in))
 	for _, d := range in {
-		if !d.Range.IsValid() {
+		if !d.Range.IsValid() || (sourceLen >= 0 && !d.Range.IsValidFor(sourceLen)) {
 			continue
 		}
 		out = append(out, d.Clone())

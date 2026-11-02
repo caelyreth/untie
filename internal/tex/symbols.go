@@ -451,21 +451,35 @@ func addAccents() {
 }
 
 func addSpaces() {
-	spacingCommands["\\,"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.MuLength(3)}
+	mustMuLength := func(value float64) ir.Length {
+		length, err := ir.MuLength(value)
+		if err != nil {
+			panic("invalid built-in TeX math-unit space: " + err.Error())
+		}
+		return length
+	}
+	mustEmLength := func(value float64) ir.Length {
+		length, err := ir.EmLength(value)
+		if err != nil {
+			panic("invalid built-in TeX em space: " + err.Error())
+		}
+		return length
+	}
+	spacingCommands["\\,"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(3)}
 	spacingCommands["\\thinspace"] = spacingCommands["\\,"]
-	spacingCommands["\\:"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.MuLength(4)}
+	spacingCommands["\\:"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(4)}
 	spacingCommands["\\>"] = spacingCommands["\\:"]
 	spacingCommands["\\medspace"] = spacingCommands["\\:"]
-	spacingCommands["\\;"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.MuLength(5)}
+	spacingCommands["\\;"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(5)}
 	spacingCommands["\\thickspace"] = spacingCommands["\\;"]
-	spacingCommands["\\!"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.MuLength(-3)}
+	spacingCommands["\\!"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(-3)}
 	spacingCommands["\\negthinspace"] = spacingCommands["\\!"]
-	spacingCommands["\\negmedspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.MuLength(-4)}
-	spacingCommands["\\negthickspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.MuLength(-5)}
-	spacingCommands["\\enspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.EmLength(0.5)}
+	spacingCommands["\\negmedspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(-4)}
+	spacingCommands["\\negthickspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustMuLength(-5)}
+	spacingCommands["\\enspace"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(0.5)}
 	spacingCommands["\\enskip"] = spacingCommands["\\enspace"]
-	spacingCommands["\\quad"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.EmLength(1)}
-	spacingCommands["\\qquad"] = spaceSpec{kind: ir.SpaceExplicit, amount: ir.EmLength(2)}
+	spacingCommands["\\quad"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(1)}
+	spacingCommands["\\qquad"] = spaceSpec{kind: ir.SpaceExplicit, amount: mustEmLength(2)}
 	spacingCommands["\\ "] = spaceSpec{kind: ir.SpaceInterword}
 	spacingCommands["\\space"] = spacingCommands["\\ "]
 	spacingCommands["\\nobreakspace"] = spacingCommands["\\ "]

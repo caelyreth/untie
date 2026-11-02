@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"sort"
+	"unicode/utf8"
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/font"
@@ -70,13 +72,71 @@ type Expr struct {
 	dialect     Dialect
 	mode        Mode
 	root        *ir.Formula
+	limits      source.Limits
 	diagnostics []source.Diagnostic
 	key         uint64
 }
 
+var (
+	// ErrInvalidContext reports a nil context.
+	ErrInvalidContext = errors.New("untie: nil context")
+	// ErrInvalidExpr reports a nil expression.
+	ErrInvalidExpr = errors.New("untie: nil expression")
+	// ErrInvalidFonts reports a missing prepared font set.
+	ErrInvalidFonts = errors.New("untie: nil font set")
+	// ErrLayoutNotImplemented reports that the production layout backend is not
+	// wired into the public facade yet.
+	ErrLayoutNotImplemented = errors.New("untie: layout backend not implemented")
+)
+
 // Parse parses source into an expression. Malformed source produces diagnostics
 // and a drawable fallback tree rather than an ordinary error.
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Expr) {
+	limits := opts.Limits.WithDefaults()
+	return parseRecovered(src, dialect, mode, opts, limits, func(limits source.Limits) frontendResult {
+		switch dialect {
+		case TeX:
+			macros := make(map[string]tex.Macro, len(opts.Macros))
+			for name, macro := range opts.Macros {
+				macros[name] = tex.Macro{Body: macro.Body, Args: macro.Args}
+			}
+			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
+			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
+		case Typst:
+			result := typst.Parse(src, mode, typst.Options{Preamble: opts.Preamble, Limits: limits})
+			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
+		default:
+			span := source.NewRange(0, len(src))
+			return frontendResult{
+				root: fallbackRoot(src, limits),
+				diagnostics: []source.Diagnostic{{
+					Range:    span,
+					Severity: source.SeverityError,
+					Code:     source.CodeInvalidValue,
+					Message:  "unknown math dialect",
+				}},
+			}
+		}
+	})
+}
+
+type frontendResult struct {
+	root        ir.Node
+	diagnostics []source.Diagnostic
+}
+
+type frontendParser func(source.Limits) frontendResult
+
+func parseRecovered(
+	src string,
+	dialect Dialect,
+	mode Mode,
+	opts ParseOptions,
+	limits source.Limits,
+	parser frontendParser,
+) (expr *Expr) {
+	root := fallbackFormula(src, limits)
+	var diagnostics []source.Diagnostic
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			diagnostic := source.Diagnostic{
@@ -85,20 +145,11 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 				Code:     source.CodeInternal,
 				Message:  fmt.Sprintf("parser invariant failure: %v", recovered),
 			}
-			expr = &Expr{
-				source:      src,
-				dialect:     dialect,
-				mode:        mode,
-				root:        fallbackFormula(src),
-				diagnostics: []source.Diagnostic{diagnostic},
-			}
-			expr.key = computeKey(expr, opts)
+			root = fallbackFormula(src, limits)
+			diagnostics = []source.Diagnostic{diagnostic}
+			expr = newExpr(src, dialect, mode, limits, root, diagnostics, opts)
 		}
 	}()
-
-	limits := opts.Limits.WithDefaults()
-	diagnostics := make([]source.Diagnostic, 0, 2)
-	root := fallbackFormula(src)
 
 	if len(src) > limits.MaxSourceBytes {
 		diagnostics = append(diagnostics, source.Diagnostic{
@@ -108,38 +159,50 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 			Message:  "source exceeds configured byte limit",
 		})
 	} else {
-		switch dialect {
-		case TeX:
-			macros := make(map[string]tex.Macro, len(opts.Macros))
-			for name, macro := range opts.Macros {
-				macros[name] = tex.Macro{Body: macro.Body, Args: macro.Args}
-			}
-			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
-			root = &ir.Formula{Root: result.Root}
-			diagnostics = append(diagnostics, result.Diagnostics...)
-		case Typst:
-			result := typst.Parse(src, mode, typst.Options{Preamble: opts.Preamble, Limits: limits})
-			root = &ir.Formula{Root: result.Root}
-			diagnostics = append(diagnostics, result.Diagnostics...)
-		default:
-			span := source.NewRange(0, len(src))
+		result := parser(limits)
+		candidate := &ir.Formula{Root: result.root}
+		if result.root == nil {
 			diagnostics = append(diagnostics, source.Diagnostic{
-				Range:    span,
+				Range:    source.NewRange(0, len(src)),
 				Severity: source.SeverityError,
-				Code:     source.CodeInvalidValue,
-				Message:  "unknown math dialect",
+				Code:     source.CodeInternal,
+				Message:  "frontend returned a nil IR root",
 			})
+		} else if err := ir.ValidateSource(candidate, src, limits); err != nil {
+			diagnostics = append(diagnostics, result.diagnostics...)
+			diagnostics = append(diagnostics, source.Diagnostic{
+				Range:    source.NewRange(0, len(src)),
+				Severity: source.SeverityError,
+				Code:     source.CodeInternal,
+				Message:  fmt.Sprintf("frontend returned invalid IR: %v", err),
+			})
+		} else {
+			root = candidate
+			diagnostics = append(diagnostics, result.diagnostics...)
 		}
 	}
 
-	expr = &Expr{
+	return newExpr(src, dialect, mode, limits, root, diagnostics, opts)
+}
+
+func newExpr(
+	src string,
+	dialect Dialect,
+	mode Mode,
+	limits source.Limits,
+	root *ir.Formula,
+	diagnostics []source.Diagnostic,
+	opts ParseOptions,
+) *Expr {
+	expr := &Expr{
 		source:      src,
 		dialect:     dialect,
 		mode:        mode,
 		root:        root,
-		diagnostics: source.NormalizeDiagnostics(diagnostics),
+		limits:      limits,
+		diagnostics: source.NormalizeDiagnosticsFor(diagnostics, len(src)),
 	}
-	expr.key = computeKey(expr, opts)
+	expr.key = computeKey(expr, limits, opts)
 	return expr
 }
 
@@ -177,8 +240,27 @@ func (e *Expr) Mode() Mode {
 	return e.mode
 }
 
-// Root returns the canonical IR. Callers must treat it as read-only.
+// Root returns an independent snapshot of the canonical IR. Mutating the
+// snapshot never changes the expression or its Key.
 func (e *Expr) Root() *ir.Formula {
+	root, err := e.RootSnapshot()
+	if err != nil {
+		return nil
+	}
+	return root
+}
+
+// RootSnapshot returns an independent, validated copy of the canonical IR.
+func (e *Expr) RootSnapshot() (*ir.Formula, error) {
+	if e == nil {
+		return nil, ErrInvalidExpr
+	}
+	return ir.CloneFormula(e.root, e.limits)
+}
+
+// rootForLayout exposes the owned tree to the in-package layout orchestration.
+// The tree must be treated as immutable for the duration of layout.
+func (e *Expr) rootForLayout() *ir.Formula {
 	if e == nil {
 		return nil
 	}
@@ -213,31 +295,58 @@ func LoadFonts(fonts Fonts) (*FontSet, error) {
 // LayoutContext lays out an expression. The layout backend is installed in a
 // later work package; the initial implementation reports that clearly.
 func LayoutContext(ctx context.Context, e *Expr, fonts *FontSet, style Style) (*Box, error) {
-	if err := ctx.Err(); err != nil {
-		return &display.Box{}, err
+	if ctx == nil {
+		return nil, ErrInvalidContext
 	}
-	return &display.Box{}, nil
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if e == nil {
+		return nil, ErrInvalidExpr
+	}
+	if fonts == nil {
+		return nil, ErrInvalidFonts
+	}
+	return nil, ErrLayoutNotImplemented
 }
 
 // Layout lays out an expression with a background context.
 func Layout(e *Expr, fonts *FontSet, style Style) *Box {
 	box, err := LayoutContext(context.Background(), e, fonts, style)
 	if err != nil {
-		return &display.Box{}
+		return nil
 	}
 	return box
 }
 
-func fallbackFormula(src string) *ir.Formula {
+func fallbackFormula(src string, limits source.Limits) *ir.Formula {
+	return &ir.Formula{Root: fallbackRoot(src, limits)}
+}
+
+func fallbackRoot(src string, limits source.Limits) ir.Node {
 	span := source.NewRange(0, len(src))
 	row := &ir.Row{Base: ir.NewBase(ir.KindRow, span)}
 	if src != "" {
-		row.Items = []ir.Node{ir.NewError(span, src, source.CodeUnsupported)}
+		row.Items = []ir.Node{ir.NewError(span, truncateUTF8(src, limits.MaxTextBytes), source.CodeUnsupported)}
 	}
-	return &ir.Formula{Root: row}
+	return row
 }
 
-func computeKey(e *Expr, opts ParseOptions) uint64 {
+func truncateUTF8(text string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	if len(text) <= limit {
+		return text
+	}
+	text = text[:limit]
+	for !utf8.ValidString(text) {
+		text = text[:len(text)-1]
+	}
+	return text
+}
+
+func computeKey(e *Expr, limits source.Limits, opts ParseOptions) uint64 {
 	h := sha256.New()
 	writeString := func(s string) {
 		var size [8]byte
@@ -257,22 +366,22 @@ func computeKey(e *Expr, opts ParseOptions) uint64 {
 	writeString(e.source)
 	writeString(opts.Preamble)
 	for _, limit := range []int{
-		opts.Limits.MaxSourceBytes,
-		opts.Limits.MaxTokens,
-		opts.Limits.MaxNesting,
-		opts.Limits.MaxNodes,
-		opts.Limits.MaxMacroExpansions,
-		opts.Limits.MaxExpandedTokens,
-		opts.Limits.MaxCallDepth,
-		opts.Limits.MaxTableCells,
-		opts.Limits.MaxAssemblyRepeats,
-		opts.Limits.MaxTextBytes,
-		opts.Limits.MaxOutputItems,
-		opts.Limits.MaxPathSegments,
+		limits.MaxSourceBytes,
+		limits.MaxTokens,
+		limits.MaxNesting,
+		limits.MaxNodes,
+		limits.MaxMacroExpansions,
+		limits.MaxExpandedTokens,
+		limits.MaxCallDepth,
+		limits.MaxTableCells,
+		limits.MaxAssemblyRepeats,
+		limits.MaxTextBytes,
+		limits.MaxOutputItems,
+		limits.MaxPathSegments,
 	} {
 		writeInt(int64(limit))
 	}
-	writeInt(opts.Limits.MaxDimension)
+	writeInt(limits.MaxDimension)
 
 	names := make([]string, 0, len(opts.Macros))
 	for name := range opts.Macros {

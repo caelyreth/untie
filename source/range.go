@@ -30,6 +30,15 @@ func (r Range) IsValid() bool {
 	return r.IsDetached() || (r.Start >= 0 && r.End >= r.Start)
 }
 
+// IsValidFor reports whether r is detached or lies within a source string of
+// sourceLen bytes.
+func (r Range) IsValidFor(sourceLen int) bool {
+	if sourceLen < 0 {
+		return false
+	}
+	return r.IsDetached() || (r.Start >= 0 && r.End >= r.Start && r.End <= sourceLen)
+}
+
 // Len returns the byte length of the range.
 func (r Range) Len() int {
 	if !r.IsValid() || r.IsDetached() {
@@ -59,7 +68,7 @@ func (r Range) ContainsRange(inner Range) bool {
 
 // Slice returns the bytes selected by r. Invalid and detached ranges return nil.
 func (r Range) Slice(src string) []byte {
-	if !r.IsValid() || r.IsDetached() || r.End > len(src) {
+	if !r.IsValidFor(len(src)) || r.IsDetached() {
 		return nil
 	}
 	return []byte(src[r.Start:r.End])

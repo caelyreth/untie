@@ -18,6 +18,9 @@ func TestRange(t *testing.T) {
 	if !Detached().IsDetached() || !Detached().IsValid() {
 		t.Fatal("detached range metadata is inconsistent")
 	}
+	if !NewRange(2, 5).IsValidFor(5) || NewRange(2, 6).IsValidFor(5) || NewRange(0, 1).IsValidFor(-1) {
+		t.Fatal("IsValidFor accepted a range outside its source")
+	}
 }
 
 func TestNormalizeDiagnostics(t *testing.T) {
@@ -34,5 +37,12 @@ func TestNormalizeDiagnostics(t *testing.T) {
 	}
 	if got[0].Code != CodeSyntax || got[0].Message != "z" || got[1].Code != CodeUnknownSymbol || got[2].Range.Start != 5 {
 		t.Fatalf("unexpected ordering: %+v", got)
+	}
+	got = NormalizeDiagnosticsFor([]Diagnostic{
+		{Range: NewRange(1, 2), Code: CodeSyntax, Message: "inside"},
+		{Range: NewRange(1, 3), Code: CodeSyntax, Message: "outside"},
+	}, 2)
+	if len(got) != 1 || got[0].Message != "inside" {
+		t.Fatalf("NormalizeDiagnosticsFor() = %+v", got)
 	}
 }

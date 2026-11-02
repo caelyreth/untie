@@ -45,6 +45,9 @@ func TestEmErrors(t *testing.T) {
 	if _, err := (Em(1)).Add(Em(math.MaxInt64)); err != ErrOverflow {
 		t.Fatalf("add overflow error = %v, want %v", err, ErrOverflow)
 	}
+	if _, err := Em(math.MinInt64).Abs(); err != ErrOverflow {
+		t.Fatalf("Abs(MinInt64) error = %v, want %v", err, ErrOverflow)
+	}
 }
 
 func TestEmFloat(t *testing.T) {
@@ -58,7 +61,10 @@ func TestEmFloat(t *testing.T) {
 func TestDipConversions(t *testing.T) {
 	t.Parallel()
 
-	size := DipFromFloat(16)
+	size, err := DipFromFloat(16)
+	if err != nil {
+		t.Fatalf("DipFromFloat() error = %v", err)
+	}
 	if got := size.Float(); got != 16 {
 		t.Fatalf("Dip.Float() = %v, want 16", got)
 	}
@@ -71,6 +77,29 @@ func TestDipConversions(t *testing.T) {
 	}
 	if got != Dip(DipScale*8) {
 		t.Fatalf("EmToDip() = %v, want %v", got, Dip(DipScale*8))
+	}
+	if _, err := EmToDip(1, 0); err != ErrInvalidScale {
+		t.Fatalf("EmToDip(zero size) error = %v, want %v", err, ErrInvalidScale)
+	}
+}
+
+func TestDipFromFloatRejectsInvalidValues(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []float64{
+		math.NaN(),
+		math.Inf(1),
+		math.Inf(-1),
+		float64(MaxDimension) + 1,
+		math.MaxFloat64,
+		-math.MaxFloat64,
+	} {
+		if _, err := DipFromFloat(value); err == nil {
+			t.Fatalf("DipFromFloat(%v) error = nil", value)
+		}
+	}
+	if _, err := EmFromParts(MaxDimension+1, 1); err != ErrDimension {
+		t.Fatalf("EmFromParts(dimension overflow) error = %v, want %v", err, ErrDimension)
 	}
 }
 

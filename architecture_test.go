@@ -2,100 +2,158 @@ package untie_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"slices"
 	"strings"
 	"testing"
 )
 
+const modulePath = "github.com/caelyreth/untie"
+
 type listedPackage struct {
-	ImportPath string
-	Imports    []string
+	ImportPath   string
+	ForTest      string
+	Imports      []string
+	TestImports  []string
+	XTestImports []string
+}
+
+// This is an exact allowlist for every project package. Standard-library
+// imports are permitted by convention; every non-standard import must appear
+// here. Keep the table small and make dependency changes visible in review.
+var allowedProjectImports = map[string][]string{
+	modulePath: {
+		modulePath + "/display",
+		modulePath + "/font",
+		modulePath + "/internal/tex",
+		modulePath + "/internal/typst",
+		modulePath + "/ir",
+		modulePath + "/source",
+	},
+	modulePath + "/cmd/formula-check": {
+		modulePath,
+		modulePath + "/ir",
+	},
+	modulePath + "/display": {
+		modulePath + "/geometry",
+	},
+	modulePath + "/font": {
+		modulePath + "/geometry",
+		modulePath + "/internal/mathdata",
+		modulePath + "/source",
+	},
+	modulePath + "/geometry": nil,
+	modulePath + "/internal/fixture": {
+		modulePath + "/geometry",
+		modulePath + "/source",
+	},
+	modulePath + "/internal/layout": {
+		modulePath + "/display",
+		modulePath + "/geometry",
+		modulePath + "/ir",
+		modulePath + "/source",
+	},
+	modulePath + "/internal/mathdata":     nil,
+	modulePath + "/internal/mathdata/gen": nil,
+	modulePath + "/internal/testrender": {
+		modulePath + "/display",
+		modulePath + "/geometry",
+	},
+	modulePath + "/internal/tex": {
+		modulePath + "/geometry",
+		modulePath + "/internal/mathdata",
+		modulePath + "/ir",
+		modulePath + "/source",
+	},
+	modulePath + "/internal/typst": {
+		modulePath + "/geometry",
+		modulePath + "/internal/mathdata",
+		modulePath + "/ir",
+		modulePath + "/source",
+	},
+	modulePath + "/ir": {
+		modulePath + "/source",
+	},
+	modulePath + "/source": nil,
 }
 
 func TestArchitectureImportRules(t *testing.T) {
 	t.Parallel()
 
-	cmd := exec.Command("go", "list", "-json", "./...")
+	cmd := exec.Command("go", "list", "-test", "-json", "./...")
 	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("go list: %v", err)
+		t.Fatalf("go list -test: %v", err)
 	}
 	dec := json.NewDecoder(strings.NewReader(string(out)))
+	seen := make(map[string]bool)
 	for dec.More() {
 		var pkg listedPackage
 		if err := dec.Decode(&pkg); err != nil {
 			t.Fatalf("decode go list output: %v", err)
 		}
-		checkImports(t, pkg.ImportPath, pkg.Imports)
+		// go list -test emits synthetic test-main packages. The real package
+		// records include TestImports and XTestImports, so those are sufficient.
+		if pkg.ForTest != "" || strings.HasSuffix(pkg.ImportPath, ".test") {
+			continue
+		}
+		seen[pkg.ImportPath] = true
+		imports := append([]string(nil), pkg.Imports...)
+		imports = append(imports, pkg.TestImports...)
+		imports = append(imports, pkg.XTestImports...)
+		for _, violation := range packageImportViolations(pkg.ImportPath, imports, allowedProjectImports) {
+			t.Error(violation)
+		}
+	}
+	for pkg := range allowedProjectImports {
+		if !seen[pkg] {
+			t.Errorf("allowlist package %s was not returned by go list", pkg)
+		}
 	}
 }
 
-func checkImports(t *testing.T, pkg string, imports []string) {
-	t.Helper()
+func TestArchitectureRuleDetectsViolation(t *testing.T) {
+	t.Parallel()
 
-	forbiddenExternal := []string{
-		"fyne.io/",
-		"gioui.org/",
-		"github.com/go-gl/",
-		"github.com/hajimehoshi/ebiten",
-		"github.com/veandco/go-sdl2/",
+	violations := packageImportViolations(modulePath+"/font", []string{
+		modulePath + "/ir",
+		"github.com/example/ui-toolkit",
+	}, allowedProjectImports)
+	if len(violations) != 2 {
+		t.Fatalf("violations = %v, want two", violations)
 	}
-	for _, imp := range imports {
-		for _, prefix := range forbiddenExternal {
-			if strings.HasPrefix(imp, prefix) {
-				t.Errorf("%s imports forbidden UI/platform package %s", pkg, imp)
-			}
-		}
-	}
-
-	switch {
-	case pkg == "github.com/caelyreth/untie/source" || pkg == "github.com/caelyreth/untie/geometry":
-		for _, imp := range imports {
-			if strings.Contains(strings.Split(imp, "/")[0], ".") {
-				t.Errorf("%s imports non-standard package %s", pkg, imp)
-			}
-		}
-	case pkg == "github.com/caelyreth/untie/ir":
-		rejectPrefixes(t, pkg, imports,
-			"github.com/caelyreth/untie/font",
-			"github.com/caelyreth/untie/display",
-			"github.com/caelyreth/untie/internal/",
-		)
-	case pkg == "github.com/caelyreth/untie/font":
-		rejectPrefixes(t, pkg, imports,
-			"github.com/caelyreth/untie/ir",
-			"github.com/caelyreth/untie/display",
-			"github.com/caelyreth/untie/internal/",
-		)
-	case pkg == "github.com/caelyreth/untie/internal/layout" || strings.HasPrefix(pkg, "github.com/caelyreth/untie/internal/layout/"):
-		rejectPrefixes(t, pkg, imports,
-			"github.com/caelyreth/untie/internal/tex",
-			"github.com/caelyreth/untie/internal/typst",
-		)
-	case pkg == "github.com/caelyreth/untie/internal/tex" || strings.HasPrefix(pkg, "github.com/caelyreth/untie/internal/tex/") ||
-		pkg == "github.com/caelyreth/untie/internal/typst" || strings.HasPrefix(pkg, "github.com/caelyreth/untie/internal/typst/"):
-		rejectPrefixes(t, pkg, imports,
-			"github.com/caelyreth/untie/font",
-			"github.com/caelyreth/untie/display",
-			"github.com/caelyreth/untie/internal/layout",
-		)
-	case pkg == "github.com/caelyreth/untie/display":
-		rejectPrefixes(t, pkg, imports,
-			"github.com/caelyreth/untie/font",
-			"github.com/caelyreth/untie/internal/",
-		)
+	if got := packageImportViolations(modulePath+"/font", []string{modulePath + "/internal/mathdata"}, allowedProjectImports); len(got) != 0 {
+		t.Fatalf("font -> internal/mathdata rejected: %v", got)
 	}
 }
 
-func rejectPrefixes(t *testing.T, pkg string, imports []string, prefixes ...string) {
-	t.Helper()
-	slices.Sort(prefixes)
+func packageImportViolations(pkg string, imports []string, allow map[string][]string) []string {
+	allowed, known := allow[pkg]
+	if !known {
+		return []string{fmt.Sprintf("%s is not in the architecture allowlist", pkg)}
+	}
+	allowedSet := make(map[string]bool, len(allowed))
+	for _, imp := range allowed {
+		allowedSet[imp] = true
+	}
+	slices.Sort(imports)
+	var violations []string
 	for _, imp := range imports {
-		for _, prefix := range prefixes {
-			if imp == prefix || strings.HasPrefix(imp, prefix+"/") {
-				t.Errorf("%s imports forbidden package %s", pkg, imp)
+		if imp == "C" {
+			violations = append(violations, fmt.Sprintf("%s imports cgo", pkg))
+			continue
+		}
+		if !strings.HasPrefix(imp, modulePath+"/") && imp != modulePath {
+			first := strings.SplitN(imp, "/", 2)[0]
+			if strings.Contains(first, ".") {
+				violations = append(violations, fmt.Sprintf("%s imports external package %s", pkg, imp))
 			}
+			continue
+		}
+		if !allowedSet[imp] {
+			violations = append(violations, fmt.Sprintf("%s imports %s outside its exact allowlist", pkg, imp))
 		}
 	}
+	return violations
 }
