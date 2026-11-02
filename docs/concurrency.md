@@ -173,12 +173,13 @@ fallback or text face changes the key.
 - dialect;
 - mode;
 - source;
-- effective limits;
-- host macro names, bodies, and arities.
+- effective parse-affecting limits;
+- TeX host macro names, bodies, and arities.
 
-It is stable for equivalent maps independent of Go map iteration order. It is
-not a cryptographic content hash. Use the source and version directly if a
-host needs stronger identity.
+Layout-only limits and Typst-ignored TeX macros do not participate. The key is
+stable for equivalent maps independent of Go map iteration order. It is not a
+cryptographic content hash. Use the source and version directly if a host needs
+stronger identity.
 
 ### Version
 

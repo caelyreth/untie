@@ -152,8 +152,8 @@ imports of Untie internals from the separate example module. See
 Two identities are exposed for different jobs:
 
 - `Expr.Key()` is a stable 64-bit convenience key over library version,
-  dialect, mode, source, effective limits, and TeX host macros. It is suitable
-  for host caches, not for cryptographic identity.
+  dialect, mode, source, parse-affecting limits, and TeX host macros. It is
+  suitable for host caches, not for cryptographic identity.
 - `FontSet.KeySHA256()` is the collision-resistant identity of the complete
   font set, including face IDs and selected file indexes. `FontSet.Key()` is
   the first 64 bits for simpler host maps.

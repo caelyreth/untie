@@ -104,7 +104,8 @@ Font identity is separate and collision-resistant:
 Expression identity is convenience-only:
 
 - `Expr.Key()` is 64-bit;
-- it includes source, dialect, mode, version, limits, and TeX macros;
+- it includes source, dialect, mode, version, parse-affecting limits, and TeX
+  macros;
 - it is not cryptographic.
 
 ## Diagnostic Codes

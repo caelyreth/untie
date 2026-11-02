@@ -141,7 +141,8 @@ the others are counts.
 
 These limits govern parsing and the parse-boundary validation of the returned
 tree. The normalized values are retained by `Expr` and participate in
-`Expr.Key()`.
+`Expr.Key()` when they can affect parsing or diagnostics. Layout-only limits
+such as `MaxOutputItems` and `MaxPathSegments` do not change the parse key.
 
 ### `NewEngine(fonts, limits)`
 
