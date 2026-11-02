@@ -75,6 +75,16 @@ func TestKeyIncludesLimits(t *testing.T) {
 	}
 }
 
+func TestKeyNormalizesDefaultLimits(t *testing.T) {
+	t.Parallel()
+
+	zero := Parse("x", TeX, Inline, ParseOptions{})
+	defaults := Parse("x", TeX, Inline, ParseOptions{Limits: source.DefaultLimits()})
+	if zero.Key() != defaults.Key() {
+		t.Fatalf("zero and explicit default limits have different keys: %d != %d", zero.Key(), defaults.Key())
+	}
+}
+
 func TestKeyIgnoresMapInsertionOrder(t *testing.T) {
 	t.Parallel()
 
@@ -235,6 +245,28 @@ func TestNodeLimitAffectsParse(t *testing.T) {
 	}
 	if !foundLimit {
 		t.Fatalf("diagnostics = %+v, want limit diagnostic", expr.Diagnostics())
+	}
+}
+
+func TestParseBoundaryRejectsOutOfSourceFrontendIR(t *testing.T) {
+	t.Parallel()
+
+	expr := parseRecovered(
+		"x",
+		TeX,
+		Inline,
+		ParseOptions{},
+		source.DefaultLimits(),
+		func(source.Limits) frontendResult {
+			return frontendResult{root: ir.NewGlyph(source.NewRange(0, 99), "bad")}
+		},
+	)
+	diagnostics := expr.Diagnostics()
+	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "invalid IR") {
+		t.Fatalf("diagnostics = %+v", diagnostics)
+	}
+	if err := ir.ValidateSource(expr.Root(), "x", source.Limits{}); err != nil {
+		t.Fatalf("fallback Root() invalid: %v", err)
 	}
 }
 
