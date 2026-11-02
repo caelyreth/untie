@@ -44,6 +44,7 @@ type canonicalBoxSnapshot struct {
 
 type canonicalLine struct {
 	Baseline float32              `json:"baseline"`
+	OffsetX  float32              `json:"offsetX"`
 	Box      canonicalBoxSnapshot `json:"box"`
 }
 
@@ -84,6 +85,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 		for i, line := range b.Lines {
 			out.Lines[i] = canonicalLine{
 				Baseline: line.Baseline,
+				OffsetX:  line.OffsetX,
 				Box:      canonicalBoxValue(line.Box, false),
 			}
 		}

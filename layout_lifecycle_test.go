@@ -436,21 +436,51 @@ func TestLayoutRejectsInvalidStyleAndNilEngine(t *testing.T) {
 	}
 }
 
-func TestLayoutAlignmentRemainsInactive(t *testing.T) {
+func TestLayoutAlignmentContract(t *testing.T) {
 	t.Parallel()
 
 	fonts := loadTestFonts(t)
 	expr := Parse("x", TeX, Inline, ParseOptions{})
-	start, err := Layout(expr, fonts, Style{Size: 16, Align: display.AlignStart})
+	start, err := Layout(expr, fonts, Style{Size: 16, MaxWidth: 1, Align: display.AlignStart})
 	if err != nil {
 		t.Fatal(err)
 	}
-	end, err := Layout(expr, fonts, Style{Size: 16, Align: display.AlignEnd})
+	end, err := Layout(expr, fonts, Style{Size: 16, MaxWidth: 1, Align: display.AlignEnd})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if startCanonical, endCanonical := mustCanonical(t, start), mustCanonical(t, end); !bytes.Equal(startCanonical, endCanonical) {
-		t.Fatal("Style.Align became active without updating its lifecycle contract and tests")
+		t.Fatal("inline layout did not ignore Style.Align")
+	}
+
+	displayExpr := Parse("x", TeX, Display, ParseOptions{})
+	unconstrained, err := Layout(displayExpr, fonts, Style{Size: 16, Align: display.AlignEnd})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unconstrained.Lines) != 0 {
+		t.Fatalf("zero-MaxWidth Lines = %d, want none", len(unconstrained.Lines))
+	}
+	center, err := Layout(displayExpr, fonts, Style{Size: 16, MaxWidth: 100, Align: display.AlignCenter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	endDisplay, err := Layout(displayExpr, fonts, Style{Size: 16, MaxWidth: 100, Align: display.AlignEnd})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(center.Lines) != 1 || len(endDisplay.Lines) != 1 {
+		t.Fatalf("constrained Lines = %d/%d, want one each", len(center.Lines), len(endDisplay.Lines))
+	}
+	if center.Width != 100 || endDisplay.Width != 100 {
+		t.Fatalf("constrained widths = %v/%v, want frame 100", center.Width, endDisplay.Width)
+	}
+	if center.Lines[0].OffsetX <= 0 || endDisplay.Lines[0].OffsetX <= center.Lines[0].OffsetX {
+		t.Fatalf("center/end offsets = %v/%v, want positive and increasing",
+			center.Lines[0].OffsetX, endDisplay.Lines[0].OffsetX)
+	}
+	if centerCanonical, endCanonical := mustCanonical(t, center), mustCanonical(t, endDisplay); bytes.Equal(centerCanonical, endCanonical) {
+		t.Fatal("display alignment did not change canonical output")
 	}
 }
 

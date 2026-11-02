@@ -126,7 +126,11 @@ func randomBox(data []byte) *Box {
 			AxisHeight: box.AxisHeight,
 			Overflow:   box.Overflow,
 		}
-		box.Lines = []LineBox{{Baseline: 0, Box: line}}
+		box.Lines = []LineBox{{
+			Baseline: 0,
+			OffsetX:  fuzzAbsFloat(number()),
+			Box:      line,
+		}}
 	}
 	return box
 }

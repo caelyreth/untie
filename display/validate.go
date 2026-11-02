@@ -72,6 +72,9 @@ func validateLines(box *Box) error {
 		if !finite(line.Baseline) || line.Baseline < 0 {
 			return fmt.Errorf("line %d baseline is %v", i, line.Baseline)
 		}
+		if !finite(line.OffsetX) || line.OffsetX < 0 {
+			return fmt.Errorf("line %d offset-x is %v", i, line.OffsetX)
+		}
 		if line.Box == nil {
 			return fmt.Errorf("line %d has nil box", i)
 		}
@@ -86,7 +89,11 @@ func validateLines(box *Box) error {
 			return fmt.Errorf("line %d: %v", i, err)
 		}
 		if line.Box.Width > box.Width+lineTolerance(box.Width) {
-			return fmt.Errorf("line %d width %v exceeds parent width %v", i, line.Box.Width, box.Width)
+			if line.OffsetX != 0 || line.Box.Overflow <= 0 {
+				return fmt.Errorf("line %d overflows parent frame without a zero offset and overflow", i)
+			}
+		} else if line.OffsetX+line.Box.Width > box.Width+lineTolerance(box.Width) {
+			return fmt.Errorf("line %d exceeds parent frame", i)
 		}
 		top := line.Baseline - line.Box.Ascent
 		bottom := line.Baseline + line.Box.Descent
@@ -103,7 +110,81 @@ func validateLines(box *Box) error {
 	if len(box.Hits) != hitCount {
 		return fmt.Errorf("parent hit count %d, want line aggregate %d", len(box.Hits), hitCount)
 	}
+	itemOffset := 0
+	hitOffset := 0
+	for i, line := range box.Lines {
+		for j, item := range line.Box.Items {
+			if err := validateTranslatedItem(box.Items[itemOffset+j], item, line.OffsetX, line.Baseline); err != nil {
+				return fmt.Errorf("line %d item %d aggregate: %v", i, j, err)
+			}
+		}
+		for j, hit := range line.Box.Hits {
+			if err := validateTranslatedHit(box.Hits[hitOffset+j], hit, line.OffsetX, line.Baseline); err != nil {
+				return fmt.Errorf("line %d hit %d aggregate: %v", i, j, err)
+			}
+		}
+		itemOffset += len(line.Box.Items)
+		hitOffset += len(line.Box.Hits)
+	}
 	return nil
+}
+
+func validateTranslatedItem(got, local Item, dx, dy float32) error {
+	if got.Kind != local.Kind || got.Paint != local.Paint ||
+		got.FontID != local.FontID || got.Glyph != local.Glyph || got.Em != local.Em {
+		return errors.New("item metadata differs from line-local item")
+	}
+	if err := validateTranslatedRect(got.Bound, local.Bound, dx, dy); err != nil {
+		return fmt.Errorf("bound: %v", err)
+	}
+	if err := validateTranslatedRect(got.Rect, local.Rect, dx, dy); err != nil {
+		return fmt.Errorf("rect: %v", err)
+	}
+	if !closeCoordinate(got.At.X, local.At.X+dx) || !closeCoordinate(got.At.Y, local.At.Y+dy) {
+		return errors.New("placement differs from line-local item")
+	}
+	if len(got.Path) != len(local.Path) {
+		return errors.New("path length differs from line-local item")
+	}
+	for i := range local.Path {
+		if got.Path[i].Op != local.Path[i].Op {
+			return fmt.Errorf("path segment %d op differs from line-local item", i)
+		}
+		for j, point := range local.Path[i].Points {
+			if !closeCoordinate(got.Path[i].Points[j].X, point.X+dx) ||
+				!closeCoordinate(got.Path[i].Points[j].Y, point.Y+dy) {
+				return fmt.Errorf("path segment %d point %d differs from line-local item", i, j)
+			}
+		}
+	}
+	return nil
+}
+
+func validateTranslatedHit(got, local Hit, dx, dy float32) error {
+	if got.Source != local.Source || got.Depth != local.Depth || got.Kind != local.Kind {
+		return errors.New("hit metadata differs from line-local hit")
+	}
+	return validateTranslatedRect(got.Area, local.Area, dx, dy)
+}
+
+func validateTranslatedRect(got, local geometry.Rect, dx, dy float32) error {
+	want := geometry.Rect{
+		X:      local.X + dx,
+		Y:      local.Y + dy,
+		Width:  local.Width,
+		Height: local.Height,
+	}
+	if !closeCoordinate(got.X, want.X) ||
+		!closeCoordinate(got.Y, want.Y) ||
+		!closeCoordinate(got.Width, want.Width) ||
+		!closeCoordinate(got.Height, want.Height) {
+		return fmt.Errorf("rectangle %+v differs from translated line-local rectangle %+v", got, want)
+	}
+	return nil
+}
+
+func closeCoordinate(got, want float32) bool {
+	return absFloat(got-want) <= lineTolerance(want)
 }
 
 func lineTolerance(value float32) float32 {

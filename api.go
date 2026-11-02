@@ -58,10 +58,10 @@ type (
 	FontSet    = font.FontSet
 )
 
-// Style is a display.Style layout request. Style.Align is currently inactive:
-// it is validated for forward compatibility but does not change output geometry.
-// Display layout with a positive MaxWidth emits wrapped Box.Lines; inline layout
-// ignores MaxWidth. Wrapped lines use start-origin coordinates.
+// Style is a display.Style layout request. Display layout with a positive
+// MaxWidth emits Box.Lines in a MaxWidth-wide alignment frame. Align positions
+// each line within that frame; line items remain line-local and expose OffsetX.
+// Inline layout ignores both MaxWidth and Align.
 type Style = display.Style
 
 const (
