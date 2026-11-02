@@ -99,7 +99,7 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if root == nil || root.Root == nil {
 		return nil, ErrInvalidExpr
 	}
-	box, err := e.inner.LayoutFormula(ctx, root, expr.mode, style)
+	box, err := e.inner.LayoutParsedFormula(ctx, root, expr.mode, style)
 	if err != nil {
 		return nil, err
 	}

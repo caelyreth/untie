@@ -471,6 +471,20 @@ func TestLayoutLimitsFlowThroughFacade(t *testing.T) {
 	}
 }
 
+func TestParsedLayoutRetainsStricterEngineTraversalLimit(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	engine, err := NewEngine(fonts, Limits{MaxNodes: 1})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	expr := ParseTeX(`x+y`, Inline, ParseOptions{})
+	if box, err := engine.Layout(expr, Style{Size: 16}); err == nil || box != nil {
+		t.Fatalf("Layout() = %v, %v, want engine traversal-limit error", box, err)
+	}
+}
+
 func TestFallbackIRValidates(t *testing.T) {
 	t.Parallel()
 

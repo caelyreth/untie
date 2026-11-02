@@ -54,6 +54,23 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 // LayoutFormulaContext lays out a complete formula with cancellation and
 // deterministic resource limits.
 func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
+	return r.layoutFormulaContext(ctx, formula, mode, style, true)
+}
+
+// LayoutParsedFormulaContext lays out a formula that was structurally
+// validated and frozen by the parser boundary. Engine-configured limits and
+// final output invariants are still enforced.
+func (r *Renderer) LayoutParsedFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
+	return r.layoutFormulaContext(ctx, formula, mode, style, false)
+}
+
+func (r *Renderer) layoutFormulaContext(
+	ctx context.Context,
+	formula *ir.Formula,
+	mode ir.Mode,
+	style display.Style,
+	validateStructure bool,
+) (*display.Box, error) {
 	if r == nil {
 		return nil, fmt.Errorf("%w: nil renderer", ErrInvalidInput)
 	}
@@ -70,8 +87,10 @@ func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula
 	if err := validateConfiguredLimits(ctx, formula, r.limits); err != nil {
 		return nil, err
 	}
-	if err := ir.Validate(formula, structuralValidationLimits()); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	if validateStructure {
+		if err := ir.Validate(formula, structuralValidationLimits()); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
 	}
 	hostSize, err := hostSizeFromDisplay(style.Size)
 	if err != nil {
