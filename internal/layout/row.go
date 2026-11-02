@@ -54,6 +54,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	var pendingSpace geometry.Em
 	var pendingVisible, pendingWeak bool
 	var afterExplicitSpace bool
+	var pending pendingBreak
 	atomIndex := 0
 
 	flushSpace := func() error {
@@ -79,6 +80,17 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		pendingWeak = false
 		afterExplicitSpace = true
 		return nil
+	}
+	flushBreak := func() {
+		if !pending.valid {
+			return
+		}
+		row.breaks = append(row.breaks, fragmentBreak{
+			x:       x,
+			penalty: pending.penalty,
+			kind:    pending.kind,
+		})
+		pending = pendingBreak{}
 	}
 
 	for _, node := range nodes {
@@ -114,10 +126,15 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			afterExplicitSpace = true
 			continue
 		}
-		if _, ok := node.(*ir.Break); ok {
+		if breakNode, ok := node.(*ir.Break); ok {
 			if err := s.check(depth); err != nil {
 				return nil, err
 			}
+			if err := flushSpace(); err != nil {
+				return nil, err
+			}
+			kind, penalty := neutralBreak(breakNode.Break, breakNode.Penalty)
+			pending.offer(kind, penalty)
 			continue
 		}
 		if _, ok := node.(*ir.AlignMarker); ok {
@@ -184,6 +201,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			}
 		}
 
+		flushBreak()
 		if err := row.pushGroup(x, 0, fragment); err != nil {
 			return nil, err
 		}
@@ -204,6 +222,16 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		previousNode = node
 		previousEnv = nodeEnv
 		afterExplicitSpace = false
+
+		nextIndex := atomIndex
+		nextClass := ir.ClassNormal
+		hasNext := nextIndex < len(atoms)
+		if hasNext {
+			nextClass = atoms[nextIndex].fragment.Class
+		}
+		if kind, penalty, ok := automaticBreakKind(fragment.Class, nextClass, hasNext); ok {
+			pending.offer(kind, penalty)
+		}
 	}
 
 	if pendingVisible {
@@ -226,6 +254,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			}
 		}
 	}
+	flushBreak()
 
 	row.Width = x
 	row.Ascent = ascent
@@ -235,6 +264,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.Italic = italic
 	row.AccentTop = row.Width / 2
 	row.AccentBottom = row.Width / 2
+	row.breaks = normalizeFragmentBreaks(row.breaks)
 	return row, nil
 }
 

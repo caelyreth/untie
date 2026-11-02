@@ -76,6 +76,12 @@ func (s *layoutState) flatten(root *Fragment) (*display.Box, error) {
 	if len(state.box.Items) > s.limits.MaxOutputItems {
 		return nil, fmt.Errorf("%w: output item count %d", ErrLimit, len(state.box.Items))
 	}
+	if s.mode == ir.Inline {
+		state.box.Breaks, err = s.displayBreaks(s.ctx, root.breaks)
+		if err != nil {
+			return nil, err
+		}
+	}
 	state.box.Overflow = state.overflow()
 	if state.layout.mode == ir.Display && state.layout.request.MaxWidth > 0 {
 		state.box.Overflow = maxFloat(state.box.Overflow, state.box.Width-state.layout.request.MaxWidth)
