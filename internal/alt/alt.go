@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/caelyreth/untie/display"
@@ -35,10 +36,11 @@ func Generate(root ir.Node, mode ir.Mode, limits source.Limits) display.Alt {
 // traversal/output limits. It returns a visible fallback alongside non-context
 // errors so callers that ignore the error still never receive invented text.
 func GenerateContext(ctx context.Context, root ir.Node, mode ir.Mode, limits source.Limits) (out display.Alt, err error) {
+	effectiveLimits := limits.WithDefaults()
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("%w: alternative-text panic: %v", ErrInvalidRoot, recovered)
-			out = failedAlt(err)
+			err = fmt.Errorf("%w: alternative-text panic", ErrInvalidRoot)
+			out = failedAlt(err, effectiveLimits.MaxTextBytes)
 		}
 	}()
 	if ctx == nil {
@@ -48,16 +50,16 @@ func GenerateContext(ctx context.Context, root ir.Node, mode ir.Mode, limits sou
 		return display.Alt{}, err
 	}
 	if nilNode(root) {
-		return failedAlt(ErrInvalidRoot), ErrInvalidRoot
+		return failedAlt(ErrInvalidRoot, effectiveLimits.MaxTextBytes), ErrInvalidRoot
 	}
 	if mode != ir.Inline && mode != ir.Display {
-		return failedAlt(fmt.Errorf("%w: unknown math mode %d", ErrInvalidRoot, mode)),
+		return failedAlt(fmt.Errorf("%w: unknown math mode %d", ErrInvalidRoot, mode), effectiveLimits.MaxTextBytes),
 			fmt.Errorf("%w: unknown math mode %d", ErrInvalidRoot, mode)
 	}
 
 	r := renderer{
 		ctx:    ctx,
-		limits: limits.WithDefaults(),
+		limits: effectiveLimits,
 		active: make(map[ir.Node]bool),
 	}
 	parts, err := r.render(root, renderEnv{display: mode == ir.Display}, 0)
@@ -65,14 +67,14 @@ func GenerateContext(ctx context.Context, root ir.Node, mode ir.Mode, limits sou
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return display.Alt{}, ctxErr
 		}
-		return failedAlt(err), err
+		return failedAlt(err, r.limits.MaxTextBytes), err
 	}
 	out = display.Alt{
 		Speech: strings.TrimSpace(parts.speech),
 		Text:   strings.TrimSpace(parts.text),
 	}
 	if err := out.Validate(); err != nil {
-		return failedAlt(err), fmt.Errorf("%w: %v", ErrInvalidRoot, err)
+		return failedAlt(err, r.limits.MaxTextBytes), fmt.Errorf("%w: %v", ErrInvalidRoot, err)
 	}
 	return out, r.firstErr
 }
@@ -94,6 +96,7 @@ type piece struct {
 	speech string
 	atomic bool
 	attach bool
+	word   bool
 }
 
 func (r *renderer) render(node ir.Node, env renderEnv, depth int) (piece, error) {
@@ -130,8 +133,10 @@ func (r *renderer) render(node ir.Node, env renderEnv, depth int) (piece, error)
 	case *ir.Text:
 		out = r.leaf(n.Text, textSpeech(n.Text), n.Variant)
 		out.attach = true
+		out.word = strings.TrimSpace(n.Text) != ""
 	case *ir.Operator:
 		out = r.leaf(n.Text, operatorSpeech(n.Text), n.Variant)
+		out.word = isWordText(n.Text)
 	case *ir.Space:
 		out = spacePiece(n)
 	case *ir.Fraction:
@@ -192,6 +197,8 @@ func (r *renderer) row(n *ir.Row, env renderEnv, depth int) (piece, error) {
 	var speech strings.Builder
 	haveSpeech := false
 	lastSpace := false
+	lastWord := false
+	lastText := ""
 	atomic := false
 	rendered := 0
 	for _, child := range n.Items {
@@ -202,19 +209,33 @@ func (r *renderer) row(n *ir.Row, env renderEnv, depth int) (piece, error) {
 		if text.Len()+len(part.text) > r.limits.MaxTextBytes {
 			return piece{}, fmt.Errorf("%w: text output exceeds %d bytes", ErrLimitExceeded, r.limits.MaxTextBytes)
 		}
+		if needsTextBoundary(lastText, lastWord, part) {
+			if text.Len()+1 > r.limits.MaxTextBytes {
+				return piece{}, fmt.Errorf("%w: text output exceeds %d bytes", ErrLimitExceeded, r.limits.MaxTextBytes)
+			}
+			text.WriteByte(' ')
+		}
 		text.WriteString(part.text)
 		if err := r.appendSpeech(&speech, &haveSpeech, &lastSpace, part); err != nil {
 			return piece{}, err
 		}
-		if strings.TrimSpace(part.text) != "" {
+		trimmed := strings.TrimSpace(part.text)
+		if trimmed != "" {
 			rendered++
 			atomic = part.atomic
+			lastWord = part.word
+		} else if part.text != "" {
+			lastWord = false
+		}
+		if part.text != "" {
+			lastText = part.text
 		}
 	}
 	return piece{
 		text:   text.String(),
 		speech: speech.String(),
 		atomic: rendered == 1 && atomic,
+		word:   rendered == 1 && lastWord,
 	}, nil
 }
 
@@ -226,6 +247,27 @@ func (r *renderer) fraction(n *ir.Fraction, env renderEnv, depth int) (piece, er
 	denominator, err := r.render(n.Denominator, env, depth+1)
 	if err != nil {
 		return piece{}, err
+	}
+	switch n.Role {
+	case ir.FractionRoleBinomial:
+		return piece{
+			text:   "binom(" + numerator.text + ", " + denominator.text + ")",
+			speech: "binomial coefficient " + numerator.speech + " choose " + denominator.speech,
+			atomic: true,
+		}, nil
+	case ir.FractionRoleStacked:
+		return piece{
+			text:   "stack(" + numerator.text + ", " + denominator.text + ")",
+			speech: numerator.speech + " over " + denominator.speech,
+			atomic: true,
+		}, nil
+	}
+	if n.Style == ir.FractionNoBar {
+		return piece{
+			text:   "stack(" + numerator.text + ", " + denominator.text + ")",
+			speech: numerator.speech + " over " + denominator.speech,
+			atomic: true,
+		}, nil
 	}
 	verb := " over "
 	if n.Style == ir.FractionHorizontal {
@@ -273,7 +315,12 @@ func (r *renderer) scripts(n *ir.Scripts, env renderEnv, depth int) (piece, erro
 	if err != nil {
 		return piece{}, err
 	}
-	limits := r.usesLimits(n, env)
+	role := n.Role
+	if role == ir.ScriptRoleOrdinary && r.usesLimits(n, env) && (n.Top != nil || n.Bottom != nil) {
+		// Preserve legacy manually constructed limit nodes whose frontend did not
+		// yet attach a semantic role.
+		role = ir.ScriptRoleLimits
+	}
 
 	top := piece{}
 	if n.Top != nil {
@@ -318,60 +365,138 @@ func (r *renderer) scripts(n *ir.Scripts, env renderEnv, depth int) (piece, erro
 		}
 	}
 
-	if !limits {
+	if role == ir.ScriptRoleOrdinary {
 		topRight = appendScriptPiece(top, topRight)
 		bottomRight = appendScriptPiece(bottom, bottomRight)
 		top = piece{}
 		bottom = piece{}
 	}
 
+	switch role {
+	case ir.ScriptRoleLimits:
+		return limitsPiece(base, top, bottom, topLeft, bottomLeft, topRight, bottomRight), nil
+	case ir.ScriptRoleOverlay:
+		return overlayPiece(base, top, bottom), nil
+	case ir.ScriptRoleBraceLabel:
+		return braceLabelPiece(base, top, bottom), nil
+	default:
+		return ordinaryScriptPiece(base, topLeft, bottomLeft, topRight, bottomRight), nil
+	}
+}
+
+func limitsPiece(base, top, bottom, topLeft, bottomLeft, topRight, bottomRight piece) piece {
 	var text strings.Builder
-	if n.TopLeft != nil || n.BottomLeft != nil {
+	writeSideScripts(&text, base, topLeft, bottomLeft, bottom, top, topRight, bottomRight)
+	speech := base.speech
+	if trimmedPieceText(bottom) != "" {
+		speech += " from " + bottom.speech
+	}
+	if trimmedPieceText(top) != "" {
+		speech += " to " + top.speech
+	}
+	speech = appendSideScriptSpeech(speech, topLeft, bottomLeft, topRight, bottomRight)
+	return piece{text: text.String(), speech: speech, atomic: true, word: base.word}
+}
+
+func ordinaryScriptPiece(base, topLeft, bottomLeft, topRight, bottomRight piece) piece {
+	var text strings.Builder
+	writeSideScripts(&text, base, topLeft, bottomLeft, piece{}, piece{}, topRight, bottomRight)
+	speech := base.speech
+	if trimmedPieceText(bottomRight) != "" {
+		speech += " sub " + bottomRight.speech
+	}
+	if trimmedPieceText(topRight) != "" {
+		speech += powerSpeech(topRight)
+	}
+	speech = appendSideScriptSpeech(speech, topLeft, bottomLeft, piece{}, piece{})
+	return piece{text: text.String(), speech: speech, atomic: true, word: base.word}
+}
+
+func overlayPiece(base, top, bottom piece) piece {
+	topText := trimmedPieceText(top)
+	bottomText := trimmedPieceText(bottom)
+	switch {
+	case topText != "" && bottomText != "":
+		return piece{
+			text:   "overlay(" + top.text + ", " + base.text + ", " + bottom.text + ")",
+			speech: base.speech + " with " + top.speech + " above and " + bottom.speech + " below",
+			atomic: true,
+		}
+	case topText != "":
+		return piece{
+			text:   "overset(" + top.text + ", " + base.text + ")",
+			speech: base.speech + " with " + top.speech + " above",
+			atomic: true,
+		}
+	case bottomText != "":
+		return piece{
+			text:   "underset(" + bottom.text + ", " + base.text + ")",
+			speech: base.speech + " with " + bottom.speech + " below",
+			atomic: true,
+		}
+	default:
+		return base
+	}
+}
+
+func braceLabelPiece(base, top, bottom piece) piece {
+	label := top
+	if trimmedPieceText(label) == "" {
+		label = bottom
+	}
+	if trimmedPieceText(label) == "" {
+		return base
+	}
+	return piece{
+		text:   "labeled(" + base.text + ", " + label.text + ")",
+		speech: base.speech + " labeled " + label.speech,
+		atomic: true,
+	}
+}
+
+func writeSideScripts(
+	text *strings.Builder,
+	base piece,
+	topLeft, bottomLeft, bottom, top, topRight, bottomRight piece,
+) {
+	if trimmedPieceText(topLeft) != "" || trimmedPieceText(bottomLeft) != "" {
 		text.WriteString("{}")
 	}
-	if n.TopLeft != nil {
+	if trimmedPieceText(topLeft) != "" {
 		text.WriteString(sideScriptText("^", topLeft))
 	}
-	if n.BottomLeft != nil {
+	if trimmedPieceText(bottomLeft) != "" {
 		text.WriteString(sideScriptText("_", bottomLeft))
 	}
 	text.WriteString(scriptBaseText(base))
-	if bottom.text != "" {
+	if trimmedPieceText(bottom) != "" {
 		text.WriteString(sideScriptText("_", bottom))
 	}
-	if top.text != "" {
+	if trimmedPieceText(top) != "" {
 		text.WriteString(sideScriptText("^", top))
 	}
-	if bottomRight.text != "" {
+	if trimmedPieceText(bottomRight) != "" {
 		text.WriteString(sideScriptText("_", bottomRight))
 	}
-	if topRight.text != "" {
+	if trimmedPieceText(topRight) != "" {
 		text.WriteString(sideScriptText("^", topRight))
 	}
+}
 
-	speech := base.speech
-	if limits {
-		if n.Bottom != nil {
-			speech += " from " + bottom.speech
-		}
-		if n.Top != nil {
-			speech += " to " + top.speech
-		}
-	} else {
-		if bottomRight.text != "" {
-			speech += " sub " + bottomRight.speech
-		}
-		if topRight.text != "" {
-			speech += powerSpeech(topRight)
-		}
-	}
-	if n.BottomLeft != nil {
+func appendSideScriptSpeech(speech string, topLeft, bottomLeft, topRight, bottomRight piece) string {
+	if trimmedPieceText(bottomLeft) != "" {
 		speech += " with pre-subscript " + bottomLeft.speech
 	}
-	if n.TopLeft != nil {
+	if trimmedPieceText(topLeft) != "" {
 		speech += " with pre-superscript " + topLeft.speech
 	}
-	return piece{text: text.String(), speech: speech, atomic: true}, nil
+	if trimmedPieceText(bottomRight) != "" {
+		speech += " sub " + bottomRight.speech
+	}
+	if trimmedPieceText(topRight) != "" {
+		speech += powerSpeech(topRight)
+	}
+	return speech
 }
 
 func (r *renderer) fenced(n *ir.Fenced, env renderEnv, depth int) (piece, error) {
@@ -452,6 +577,16 @@ func (r *renderer) cancel(n *ir.Cancel, env renderEnv, depth int) (piece, error)
 	if err != nil {
 		return piece{}, err
 	}
+	if n.Role == ir.CancelRoleNegation {
+		if text, speech, ok := negatedRelation(body.text); ok {
+			return piece{text: text, speech: speech, atomic: true}, nil
+		}
+		return piece{
+			text:   "not(" + body.text + ")",
+			speech: "not " + body.speech,
+			atomic: true,
+		}, nil
+	}
 	name := "cancel"
 	speech := body.speech + " canceled"
 	if n.Cross {
@@ -527,11 +662,32 @@ func (r *renderer) table(n *ir.Table, env renderEnv, depth int) (piece, error) {
 	if err != nil {
 		return piece{}, err
 	}
-	return piece{
-		text:   "matrix(" + text + ")",
-		speech: fmt.Sprintf("matrix with %d rows: %s", len(n.Rows), speech),
-		atomic: true,
-	}, nil
+	switch n.Role {
+	case ir.TableRoleArray:
+		return piece{
+			text:   "array(" + text + ")",
+			speech: fmt.Sprintf("array with %d rows: %s", len(n.Rows), speech),
+			atomic: true,
+		}, nil
+	case ir.TableRoleCases:
+		return piece{
+			text:   "cases(" + text + ")",
+			speech: fmt.Sprintf("piecewise definition with %d rows: %s", len(n.Rows), speech),
+			atomic: true,
+		}, nil
+	case ir.TableRoleVector:
+		return piece{
+			text:   "vector(" + text + ")",
+			speech: fmt.Sprintf("column vector with %d entries: %s", len(n.Rows), speech),
+			atomic: true,
+		}, nil
+	default:
+		return piece{
+			text:   "matrix(" + text + ")",
+			speech: fmt.Sprintf("matrix with %d rows: %s", len(n.Rows), speech),
+			atomic: true,
+		}, nil
+	}
 }
 
 func (r *renderer) multiline(n *ir.Multiline, env renderEnv, depth int) (piece, error) {
@@ -639,6 +795,8 @@ func (r *renderer) renderList(nodes []ir.Node, env renderEnv, depth int) (piece,
 	var speech strings.Builder
 	haveSpeech := false
 	lastSpace := false
+	lastWord := false
+	lastText := ""
 	atomic := false
 	rendered := 0
 	for _, node := range nodes {
@@ -649,19 +807,33 @@ func (r *renderer) renderList(nodes []ir.Node, env renderEnv, depth int) (piece,
 		if text.Len()+len(part.text) > r.limits.MaxTextBytes {
 			return piece{}, fmt.Errorf("%w: text output exceeds %d bytes", ErrLimitExceeded, r.limits.MaxTextBytes)
 		}
+		if needsTextBoundary(lastText, lastWord, part) {
+			if text.Len()+1 > r.limits.MaxTextBytes {
+				return piece{}, fmt.Errorf("%w: text output exceeds %d bytes", ErrLimitExceeded, r.limits.MaxTextBytes)
+			}
+			text.WriteByte(' ')
+		}
 		text.WriteString(part.text)
 		if err := r.appendSpeech(&speech, &haveSpeech, &lastSpace, part); err != nil {
 			return piece{}, err
 		}
-		if strings.TrimSpace(part.text) != "" {
+		trimmed := strings.TrimSpace(part.text)
+		if trimmed != "" {
 			rendered++
 			atomic = part.atomic
+			lastWord = part.word
+		} else if part.text != "" {
+			lastWord = false
+		}
+		if part.text != "" {
+			lastText = part.text
 		}
 	}
 	return piece{
 		text:   text.String(),
 		speech: speech.String(),
 		atomic: rendered == 1 && atomic,
+		word:   rendered == 1 && lastWord,
 	}, nil
 }
 
@@ -974,12 +1146,120 @@ func marker(message string) piece {
 	}
 }
 
-func failedAlt(err error) display.Alt {
+func trimmedPieceText(piece piece) string {
+	return strings.TrimSpace(piece.text)
+}
+
+func isWordText(text string) bool {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return false
+	}
+	sawWord := false
+	for _, r := range text {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+			sawWord = true
+		case unicode.IsSpace(r):
+		default:
+			return false
+		}
+	}
+	return sawWord
+}
+
+func needsTextBoundary(lastText string, lastWord bool, next piece) bool {
+	if lastText == "" || next.text == "" || !lastWord && !next.word {
+		return false
+	}
+	if endsWithSpace(lastText) || startsWithSpace(next.text) {
+		return false
+	}
+	first, _ := utf8.DecodeRuneInString(next.text)
+	return !strings.ContainsRune("([{⟨⌈⌊)]}⟩⌉⌋,.;:!?", first)
+}
+
+func startsWithSpace(text string) bool {
+	first, _ := utf8.DecodeRuneInString(text)
+	return unicode.IsSpace(first)
+}
+
+func endsWithSpace(text string) bool {
+	last, _ := utf8.DecodeLastRuneInString(text)
+	return unicode.IsSpace(last)
+}
+
+func negatedRelation(text string) (string, string, bool) {
+	switch strings.TrimSpace(text) {
+	case "=":
+		return "≠", "not equal to", true
+	case "∈":
+		return "∉", "not an element of", true
+	case "<":
+		return "≮", "not less than", true
+	case ">":
+		return "≯", "not greater than", true
+	case "≤":
+		return "≰", "not less than or equal to", true
+	case "≥":
+		return "≱", "not greater than or equal to", true
+	case "∼":
+		return "≁", "not similar to", true
+	case "≡":
+		return "≢", "not equivalent to", true
+	case "⊂":
+		return "⊄", "not a subset of", true
+	case "⊆":
+		return "⊈", "not a subset of or equal to", true
+	case "⊃":
+		return "⊅", "not a superset of", true
+	case "⊇":
+		return "⊉", "not a superset of or equal to", true
+	default:
+		return "", "", false
+	}
+}
+
+func failedAlt(err error, limit int) display.Alt {
+	if limit <= 0 {
+		limit = 1
+	}
 	message := "alternative text generation failed"
 	if err != nil {
-		message += ": " + err.Error()
+		detail := sanitizeFallbackText(err.Error())
+		detail = truncateUTF8Bytes(detail, limit)
+		message += ": " + detail
 	}
-	return display.Alt{Text: "[" + message + "]", Speech: message}
+	message = sanitizeFallbackText(message)
+	return display.Alt{
+		Text:   truncateUTF8Bytes(sanitizeFallbackText("["+message+"]"), limit),
+		Speech: truncateUTF8Bytes(message, limit),
+	}
+}
+
+func sanitizeFallbackText(text string) string {
+	text = strings.ToValidUTF8(text, "\uFFFD")
+	text = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, text)
+	return strings.TrimSpace(text)
+}
+
+func truncateUTF8Bytes(text string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	if len(text) <= limit {
+		return text
+	}
+	text = text[:limit]
+	for !utf8.ValidString(text) {
+		text = text[:len(text)-1]
+	}
+	return text
 }
 
 func joinSpeech(parts ...string) string {

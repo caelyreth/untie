@@ -333,6 +333,46 @@ func TestGenerateRejectsCyclesAndLimits(t *testing.T) {
 	}
 }
 
+func TestGenerateFailureFallbacksObeyLimitsAndValidation(t *testing.T) {
+	t.Parallel()
+
+	out, err := GenerateContext(context.Background(), glyph("abcd"), ir.Inline,
+		source.Limits{MaxTextBytes: 3})
+	if !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("GenerateContext() error = %v, want ErrLimitExceeded", err)
+	}
+	if len(out.Text) > 3 || len(out.Speech) > 3 {
+		t.Fatalf("fallback exceeds limit: text=%d speech=%d", len(out.Text), len(out.Speech))
+	}
+	if err := out.Validate(); err != nil {
+		t.Fatalf("fallback Validate() error = %v", err)
+	}
+}
+
+func TestGenerateSanitizesPanicFallback(t *testing.T) {
+	t.Parallel()
+
+	panicValue := string([]byte{0xff}) + "\x00\x01" + strings.Repeat("x", 256)
+	limits := source.Limits{MaxTextBytes: 16}
+	first, firstErr := GenerateContext(context.Background(), panicValueNode{value: panicValue}, ir.Inline, limits)
+	second, secondErr := GenerateContext(context.Background(), panicValueNode{value: panicValue}, ir.Inline, limits)
+	if !errors.Is(firstErr, ErrInvalidRoot) || !errors.Is(secondErr, ErrInvalidRoot) {
+		t.Fatalf("errors = %v, %v, want ErrInvalidRoot", firstErr, secondErr)
+	}
+	if first != second {
+		t.Fatalf("panic fallback is nondeterministic: %#v != %#v", first, second)
+	}
+	if len(first.Text) > 16 || len(first.Speech) > 16 {
+		t.Fatalf("panic fallback exceeds limit: text=%d speech=%d", len(first.Text), len(first.Speech))
+	}
+	if strings.ContainsRune(first.Text+first.Speech, '\x00') {
+		t.Fatalf("panic fallback contains NUL: %#v", first)
+	}
+	if err := first.Validate(); err != nil {
+		t.Fatalf("panic fallback Validate() error = %v", err)
+	}
+}
+
 func TestGenerateCancellation(t *testing.T) {
 	t.Parallel()
 
@@ -391,6 +431,15 @@ type panicNode struct {
 
 func (panicNode) Kind() ir.NodeKind {
 	panic("invalid kind")
+}
+
+type panicValueNode struct {
+	ir.Node
+	value string
+}
+
+func (n panicValueNode) Kind() ir.NodeKind {
+	panic(n.value)
 }
 
 func glyph(text string) *ir.Glyph {

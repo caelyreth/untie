@@ -28,6 +28,10 @@ tests and migration notes.
   structural validation in `ir`.
 - Immutable display-list types, validation, cloning, paint variants, source
   hit and break contracts, and canonical test encoding in `display`.
+- Expression-level alternative text through `Expr.Alt` and `Expr.AltContext`,
+  with deterministic plain text, speech, bounded validated fallbacks, and a
+  public error contract. `display.Box.Alt` is intentionally not populated yet,
+  and MathML remains unimplemented.
 - Layout emits source-linked hit regions for atoms, groups, scripts, fraction
   parts, fences, and table cells from their actual placed fragment extents.
 - Parsing facade with dialect selection, TeX macro options, Typst preamble
@@ -166,9 +170,9 @@ The following are genuine gaps, not hidden behavior:
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
 - Break output types exist, but layout does not yet populate legal break
-  metadata. Display wrapping, split pieces, accessibility output, equation
-  numbering, tags, links, MathML, rasterization, and SVG export are not product
-  features. SVG support is test-only.
+  metadata. Display wrapping, split pieces, `display.Box.Alt` integration,
+  equation numbering, tags, links, MathML, rasterization, and SVG export are not
+  product features. SVG support is test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary

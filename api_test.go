@@ -418,6 +418,171 @@ func TestExprAltContextCancellationAndNil(t *testing.T) {
 	}
 }
 
+func TestExprAltSemanticRoleRegressions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		source     string
+		dialect    Dialect
+		wantText   string
+		wantSpeech string
+	}{
+		{
+			name:       "integral bounds",
+			source:     `\int_0^1 x\,dx`,
+			dialect:    TeX,
+			wantSpeech: "integral from 0 to 1",
+		},
+		{
+			name:       "overset",
+			source:     `\overset{a}{b}`,
+			dialect:    TeX,
+			wantText:   "overset(a, b)",
+			wantSpeech: "b with a above",
+		},
+		{
+			name:       "stackrel",
+			source:     `\stackrel{a}{=}`,
+			dialect:    TeX,
+			wantText:   "overset(a, =)",
+			wantSpeech: "equals with a above",
+		},
+		{
+			name:       "brace label",
+			source:     `\overbrace{x+y}^{n}`,
+			dialect:    TeX,
+			wantText:   "labeled(overbrace(x+y), n)",
+			wantSpeech: "x plus y with overbrace labeled n",
+		},
+		{
+			name:       "TeX binomial",
+			source:     `\binom nk`,
+			dialect:    TeX,
+			wantText:   "(binom(n, k))",
+			wantSpeech: "left parenthesis binomial coefficient n choose k right parenthesis",
+		},
+		{
+			name:       "Typst binomial",
+			source:     `binom(n, k)`,
+			dialect:    Typst,
+			wantText:   "(binom(n, k))",
+			wantSpeech: "left parenthesis binomial coefficient n choose k right parenthesis",
+		},
+		{
+			name:       "generic stack",
+			source:     `a\atop b`,
+			dialect:    TeX,
+			wantText:   "stack(a, b)",
+			wantSpeech: "a over b",
+		},
+		{
+			name:       "TeX cases",
+			source:     `\begin{cases}x&x>0\\-x&x\le0\end{cases}`,
+			dialect:    TeX,
+			wantText:   "{cases(x, x>0; −x, x≤0)",
+			wantSpeech: "left brace piecewise definition with 2 rows: row 1: x, x greater than 0; row 2: minus x, x less than or equal to 0",
+		},
+		{
+			name:       "Typst cases",
+			source:     `cases(x & "if" x > 0, -x & "otherwise")`,
+			dialect:    Typst,
+			wantText:   "{cases(x, if x>0; −x, otherwise)",
+			wantSpeech: "left brace piecewise definition with 2 rows: row 1: x, if x greater than 0; row 2: minus x, otherwise",
+		},
+		{
+			name:       "array",
+			source:     `\begin{array}{cc}a&b\\c&d\end{array}`,
+			dialect:    TeX,
+			wantText:   "array(a, b; c, d)",
+			wantSpeech: "array with 2 rows: row 1: a, b; row 2: c, d",
+		},
+		{
+			name:       "Typst vector",
+			source:     `vec(1, 2, 3)`,
+			dialect:    Typst,
+			wantText:   "(vector(1; 2; 3))",
+			wantSpeech: "left parenthesis column vector with 3 entries: row 1: 1; row 2: 2; row 3: 3 right parenthesis",
+		},
+		{
+			name:       "named operator boundary",
+			source:     `\sin x`,
+			dialect:    TeX,
+			wantText:   "sin x",
+			wantSpeech: "sine x",
+		},
+		{
+			name:       "text boundary",
+			source:     `\text{hello} x`,
+			dialect:    TeX,
+			wantText:   "hello x",
+			wantSpeech: "hello x",
+		},
+		{
+			name:       "negated equals",
+			source:     `\not=`,
+			dialect:    TeX,
+			wantText:   "≠",
+			wantSpeech: "not equal to",
+		},
+		{
+			name:       "negated membership",
+			source:     `\not\in`,
+			dialect:    TeX,
+			wantText:   "∉",
+			wantSpeech: "not an element of",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			alt := Parse(tc.source, tc.dialect, Display, ParseOptions{}).Alt()
+			if tc.wantText != "" && alt.Text != tc.wantText {
+				t.Fatalf("Text = %q, want %q", alt.Text, tc.wantText)
+			}
+			if tc.wantSpeech != "" && alt.Speech != tc.wantSpeech && !strings.HasPrefix(alt.Speech, tc.wantSpeech) {
+				t.Fatalf("Speech = %q, want %q", alt.Speech, tc.wantSpeech)
+			}
+			if strings.Contains(strings.ToLower(alt.Text+" "+alt.Speech), "matrix") {
+				t.Fatalf("semantic output incorrectly says matrix: %#v", alt)
+			}
+			if strings.Contains(alt.Speech, "sub 0 to the power 1") {
+				t.Fatalf("integral rendered as scripts: %q", alt.Speech)
+			}
+			if err := alt.Validate(); err != nil {
+				t.Fatalf("Alt.Validate() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestExprAltContextLimitContract(t *testing.T) {
+	t.Parallel()
+
+	expr := ParseTeX(`(x)`, Inline, ParseOptions{Limits: Limits{
+		MaxSourceBytes: 3,
+		MaxTextBytes:   5,
+	}})
+	alt, err := expr.AltContext(context.Background())
+	if !errors.Is(err, ErrAltLimitExceeded) {
+		t.Fatalf("AltContext() error = %v, want ErrAltLimitExceeded", err)
+	}
+	if alt.Text == "" || alt.Speech == "" {
+		t.Fatalf("AltContext() fallback = %#v, want visible text", alt)
+	}
+	if len(alt.Text) > 5 || len(alt.Speech) > 5 {
+		t.Fatalf("AltContext() fallback exceeds limit: text=%d speech=%d", len(alt.Text), len(alt.Speech))
+	}
+	if err := alt.Validate(); err != nil {
+		t.Fatalf("fallback Validate() error = %v", err)
+	}
+	again, againErr := expr.AltContext(context.Background())
+	if again != alt || !errors.Is(againErr, ErrAltLimitExceeded) {
+		t.Fatalf("AltContext() is nondeterministic: %#v/%v != %#v/%v", alt, err, again, againErr)
+	}
+}
+
 func TestTinyTextLimitStillReturnsValidExpression(t *testing.T) {
 	t.Parallel()
 
