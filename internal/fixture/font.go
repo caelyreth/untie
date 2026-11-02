@@ -235,7 +235,7 @@ type ShapedGlyph struct {
 func LoadFontDump(path string) (*FontDump, error) {
 	dump := &FontDump{}
 	glyphIDs := make(map[uint16]int)
-	err := readJSONLines(path, false, func(line int, data []byte) error {
+	err := readJSONLines(path, func(line int, data []byte) error {
 		var envelope struct {
 			Kind string `json:"kind"`
 		}

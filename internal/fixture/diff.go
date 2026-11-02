@@ -119,10 +119,10 @@ func compareGlyph(id string, index int, got, want Frame, tolerance float64) *Fra
 	if w.Text != "" {
 		path += fmt.Sprintf(" (%q)", w.Text)
 	}
-	if w.Font >= len(want.Fonts) {
+	if w.Font < 0 || w.Font >= len(want.Fonts) {
 		return valueDiff(id, path+".font", "<valid font index>", strconv.Itoa(w.Font))
 	}
-	if g.Font >= len(got.Fonts) {
+	if g.Font < 0 || g.Font >= len(got.Fonts) {
 		return valueDiff(id, path+".font", want.Fonts[w.Font], fmt.Sprintf("invalid index %d", g.Font))
 	}
 	if got.Fonts[g.Font] != want.Fonts[w.Font] {

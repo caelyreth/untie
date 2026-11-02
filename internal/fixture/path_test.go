@@ -42,3 +42,27 @@ func TestInspectPathRejectsInvalidInput(t *testing.T) {
 		}
 	}
 }
+
+func TestInspectPathRejectsFloat32BoundsOverflow(t *testing.T) {
+	t.Parallel()
+
+	path := geometry.Path{
+		{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: -math.MaxFloat32, Y: 0}}},
+		{Op: geometry.SegLineTo, Points: [3]geometry.Point{{X: math.MaxFloat32, Y: 0}}},
+	}
+	if _, err := InspectPath(path); err == nil {
+		t.Fatal("expected a bounds overflow error")
+	}
+
+	path = geometry.Path{
+		{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: math.MaxFloat32, Y: math.MaxFloat32}}},
+		{Op: geometry.SegLineTo, Points: [3]geometry.Point{{X: math.MaxFloat32, Y: math.MaxFloat32}}},
+	}
+	info, err := InspectPath(path)
+	if err != nil {
+		t.Fatalf("point-sized MaxFloat32 bounds rejected: %v", err)
+	}
+	if info.Bounds.Width != 0 || info.Bounds.Height != 0 {
+		t.Fatalf("bounds = %#v", info.Bounds)
+	}
+}

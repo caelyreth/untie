@@ -13,12 +13,14 @@ import (
 
 const maxFixtureLine = 64 << 20
 
-func readJSONLines(path string, strict bool, visit func(line int, data []byte) error) error {
+func readJSONLines(path string, visit func(line int, data []byte) error) (err error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		err = errors.Join(err, file.Close())
+	}()
 
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 64<<10), maxFixtureLine)

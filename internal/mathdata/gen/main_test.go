@@ -5,6 +5,82 @@ import (
 	"testing"
 )
 
+func TestParseKaTeXMacroFallbacks(t *testing.T) {
+	t.Parallel()
+
+	src := `
+defineMacro("\\gvertneqq", "\\html@mathml{\\@gvertneqq}{\u2269}");
+defineMacro("\\imath", "\\html@mathml{\\@imath}{\u0131}");
+defineMacro("\\sin", "\\operatorname{sin}");
+`
+	got, err := parseKaTeXMacroFallbacks(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		`\@gvertneqq`: "≩",
+		`\@imath`:     "ı",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("fallbacks = %#v, want %#v", got, want)
+	}
+}
+
+func TestParseTeXSymbolsSeparatesPrivateUseText(t *testing.T) {
+	t.Parallel()
+
+	src := `
+defineSymbol(math, ams, rel, "\ue00d", "\\@gvertneqq");
+defineSymbol(math, main, mathord, "\ue131", "\\@imath");
+defineSymbol(math, main, rel, "\ue020", "\\@not");
+defineSymbol(math, main, inner, "\u22ef", "\\@cdots", true);
+defineSymbol(math, main, mathord, "\u03b1", "\\alpha", true);
+`
+	fallbacks := map[string]string{
+		`\@gvertneqq`: "≩",
+		`\@imath`:     "ı",
+	}
+	got, err := parseTeXSymbols(src, fallbacks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 5 {
+		t.Fatalf("symbols = %d, want 5", len(got))
+	}
+	tests := []struct {
+		command     string
+		text        string
+		kind        string
+		sourceGlyph rune
+	}{
+		{command: `\@cdots`, text: "⋯", kind: "Internal"},
+		{command: `\@gvertneqq`, text: "≩", kind: "Internal", sourceGlyph: 0xe00d},
+		{command: `\@imath`, text: "ı", kind: "Internal", sourceGlyph: 0xe131},
+		{command: `\@not`, text: "", kind: "Internal", sourceGlyph: 0xe020},
+		{command: `\alpha`, text: "α", kind: "Public"},
+	}
+	for i, test := range tests {
+		symbol := got[i]
+		if symbol.command != test.command || symbol.text != test.text ||
+			symbol.kind != test.kind || symbol.sourceGlyph != test.sourceGlyph {
+			t.Errorf("%s = %#v, want %#v", test.command, symbol, test)
+		}
+	}
+}
+
+func TestParseTeXSymbolsIgnoresFallbackForUnicodeInternal(t *testing.T) {
+	t.Parallel()
+
+	src := `defineSymbol(math, main, inner, "\u22ef", "\\@cdots");`
+	got, err := parseTeXSymbols(src, map[string]string{`\@cdots`: "wrong"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].text != "⋯" {
+		t.Fatalf("symbols = %#v", got)
+	}
+}
+
 func TestArrayAfterMarkerSkipsTypeBrackets(t *testing.T) {
 	t.Parallel()
 

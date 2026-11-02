@@ -32,9 +32,16 @@ selector. A failed variant transform is non-destructive: it returns the original
 rune and `ok == false`.
 
 The TeX symbol table records the original KaTeX `group`, normalized `Class`,
-source font class, and the `acceptUnicodeChar` metadata. The Typst table preserves
-deprecation messages as metadata; deprecated paths still resolve so a frontend
-can emit the diagnostic while rendering them.
+source font class, and the `acceptUnicodeChar` metadata. `Kind` marks KaTeX's
+private `\@...` implementation commands as internal. `Text` contains only
+portable Unicode; a source-only KaTeX private-use code point is retained in
+`SourceGlyph` for provenance and must not be rendered directly. Where KaTeX's
+`macros.ts` supplies a MathML alternative for a private-use glyph, `Text`
+contains that portable scalar. Commands with no standalone portable scalar,
+such as `\@not`, have empty `Text`.
+
+The Typst table preserves deprecation messages as metadata; deprecated paths
+still resolve so a frontend can emit the diagnostic while rendering them.
 
 ## Non-Goals
 
@@ -42,6 +49,8 @@ can emit the diagnostic while rendering them.
   macro expansion, arity, diagnostics, and layout.
 - The TeX table contains no-argument literal symbol commands, not macro
   expansions or higher-level command implementations.
+- Internal TeX commands remain visible as metadata because macro lowering may
+  need them. They are not part of the public TeX command surface.
 - Typst symbols and shorthands are resolution metadata, not a Typst evaluator.
 - Unicode variant lookup does not invent a glyph when Unicode has no direct
   mapping. The caller owns the documented fallback.

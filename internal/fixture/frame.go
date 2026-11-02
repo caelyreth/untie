@@ -102,6 +102,9 @@ func (g *FrameGlyph) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	if id < 0 || id > math.MaxUint16 {
+		return fmt.Errorf("glyph ID %d is outside uint16", id)
+	}
 	x, err := parseNumber(values[2], "x")
 	if err != nil {
 		return err

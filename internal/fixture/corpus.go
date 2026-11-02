@@ -14,15 +14,17 @@ import (
 // Case is one loaded corpus record. Index is one-based and follows source
 // order. A case without a frame fixture is still runnable; it is never omitted.
 type Case struct {
-	Index    int
-	ID       string
-	Source   string
-	Display  bool
-	Preamble string
-	TeX      string
-	Category string
-	Fixture  *Fixture
-	Meta     json.RawMessage
+	Index       int
+	ID          string
+	Source      string
+	Display     bool
+	Preamble    string
+	TeX         string
+	Category    string
+	Fixture     *Fixture
+	CST         *SourceCSTNode
+	Diagnostics []ResolvedDiagnostic
+	Meta        json.RawMessage
 }
 
 // Corpus is a manifest-backed, ordered set of cases.
@@ -179,11 +181,17 @@ func loadTypletCases(root, corpusPath string, spec CorpusSpec) ([]Case, error) {
 
 	cases := make([]Case, len(formulas))
 	for i, formula := range formulas {
+		fixture := fixtureByID[formula.ID]
+		resolved, err := ResolveFixture(formula.Source, formula.Preamble, fixture)
+		if err != nil {
+			return nil, fmt.Errorf("%s: resolve formula %q: %w", spec.Name, formula.ID, err)
+		}
 		cases[i] = Case{
 			Index: i + 1, ID: formula.ID, Source: formula.Source,
 			Display: formula.Display, Preamble: formula.Preamble,
 			TeX: formula.TeX, Category: formula.Category,
-			Fixture: fixtureByID[formula.ID], Meta: formula.Meta,
+			Fixture: fixture, CST: resolved.CST,
+			Diagnostics: resolved.Diagnostics, Meta: formula.Meta,
 		}
 	}
 	return cases, nil
@@ -269,18 +277,32 @@ func (r Report) Validate() error {
 	if r.Total != len(r.Results) {
 		return fmt.Errorf("report total %d does not match %d results", r.Total, len(r.Results))
 	}
-	if sum := r.Pass + r.DiagnosticExpected + r.UnsupportedByScope + r.KnownDifference + r.Bug; sum != r.Total {
-		return fmt.Errorf("classification counts sum to %d, want %d", sum, r.Total)
-	}
+	counts := make(map[Classification]int, 5)
 	seen := make(map[string]struct{}, len(r.Results))
 	for _, result := range r.Results {
 		if !result.Classification.valid() {
 			return fmt.Errorf("result %q has invalid classification %q", result.ID, result.Classification)
 		}
+		counts[result.Classification]++
 		if _, ok := seen[result.ID]; ok {
 			return fmt.Errorf("duplicate result ID %q", result.ID)
 		}
 		seen[result.ID] = struct{}{}
+	}
+	for _, field := range []struct {
+		name  string
+		class Classification
+		got   int
+	}{
+		{"Pass", Pass, r.Pass},
+		{"DiagnosticExpected", DiagnosticExpected, r.DiagnosticExpected},
+		{"UnsupportedByScope", UnsupportedByScope, r.UnsupportedByScope},
+		{"KnownDifference", KnownDifference, r.KnownDifference},
+		{"Bug", Bug, r.Bug},
+	} {
+		if field.got != counts[field.class] {
+			return fmt.Errorf("report %s count is %d, but results contain %d", field.name, field.got, counts[field.class])
+		}
 	}
 	return nil
 }

@@ -21,12 +21,14 @@ type ManifestEntry struct {
 }
 
 // SHA256File returns the lowercase hexadecimal SHA-256 of a file.
-func SHA256File(filePath string) (string, error) {
+func SHA256File(filePath string) (checksum string, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() {
+		err = errors.Join(err, file.Close())
+	}()
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return "", err
@@ -35,14 +37,16 @@ func SHA256File(filePath string) (string, error) {
 }
 
 // LoadSHA256Manifest decodes a strict "hash  relative/path" manifest.
-func LoadSHA256Manifest(filePath string) ([]ManifestEntry, error) {
+func LoadSHA256Manifest(filePath string) (entries []ManifestEntry, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		err = errors.Join(err, file.Close())
+	}()
 
-	var entries []ManifestEntry
+	var parsed []ManifestEntry
 	seen := make(map[string]struct{})
 	scanner := bufio.NewScanner(file)
 	line := 0
@@ -70,15 +74,15 @@ func LoadSHA256Manifest(filePath string) ([]ManifestEntry, error) {
 			return nil, fmt.Errorf("%s:%d: duplicate path %q", filePath, line, rel)
 		}
 		seen[rel] = struct{}{}
-		entries = append(entries, ManifestEntry{Hash: strings.ToLower(fields[0]), Path: rel})
+		parsed = append(parsed, ManifestEntry{Hash: strings.ToLower(fields[0]), Path: rel})
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	if len(entries) == 0 {
+	if len(parsed) == 0 {
 		return nil, errors.New("empty SHA-256 manifest")
 	}
-	return entries, nil
+	return parsed, nil
 }
 
 // VerifySHA256Manifest verifies every listed file and rejects unlisted files.
@@ -333,7 +337,7 @@ type KaTeXCase struct {
 // LoadKaTeXCases decodes the normalized KaTeX case list.
 func LoadKaTeXCases(filePath string, expected int) ([]KaTeXCase, error) {
 	var cases []KaTeXCase
-	err := readJSONLines(filePath, true, func(_ int, data []byte) error {
+	err := readJSONLines(filePath, func(_ int, data []byte) error {
 		var record KaTeXCase
 		if err := decodeJSONObject(data, &record, true); err != nil {
 			return err

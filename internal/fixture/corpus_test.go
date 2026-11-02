@@ -143,6 +143,34 @@ func TestReportValidateConservesCounts(t *testing.T) {
 	}
 }
 
+func TestReportValidateRecomputesEveryCounter(t *testing.T) {
+	t.Parallel()
+
+	base := Report{
+		Corpus: "x",
+		Total:  2,
+		Pass:   1,
+		Bug:    1,
+		Results: []Result{
+			{ID: "a", Classification: Pass},
+			{ID: "b", Classification: Bug},
+		},
+	}
+	if err := base.Validate(); err != nil {
+		t.Fatalf("valid report rejected: %v", err)
+	}
+	base.Pass = 2
+	if err := base.Validate(); err == nil || !strings.Contains(err.Error(), "Pass count") {
+		t.Fatalf("inconsistent pass count error = %v", err)
+	}
+	base.Pass = 1
+	base.Bug = 0
+	base.DiagnosticExpected = 1
+	if err := base.Validate(); err == nil || !strings.Contains(err.Error(), "DiagnosticExpected count") {
+		t.Fatalf("inconsistent diagnostic count error = %v", err)
+	}
+}
+
 func testCorpus(prefix string) *Corpus {
 	base := testFrame()
 	base.Glyphs[0].X = 0

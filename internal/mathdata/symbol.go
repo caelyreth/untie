@@ -71,14 +71,44 @@ func (g TeXGroup) String() string {
 	}
 }
 
+// TeXSymbolKind distinguishes public syntax from KaTeX implementation details.
+type TeXSymbolKind uint8
+
+const (
+	// TeXSymbolPublic is a command that may appear in user TeX.
+	TeXSymbolPublic TeXSymbolKind = iota
+	// TeXSymbolInternal is a KaTeX implementation command, conventionally
+	// prefixed with \@. It must not be offered as user-facing syntax.
+	TeXSymbolInternal
+)
+
+// String returns a stable name for the symbol kind.
+func (k TeXSymbolKind) String() string {
+	switch k {
+	case TeXSymbolPublic:
+		return "public"
+	case TeXSymbolInternal:
+		return "internal"
+	default:
+		return "invalid"
+	}
+}
+
 // TeXSymbol is metadata for a no-argument TeX symbol command.
 type TeXSymbol struct {
-	Command       string
+	Command string
+	// Text is portable Unicode text. It is never a KaTeX private-use code point.
+	// It is empty for commands with no standalone portable scalar, such as
+	// internal composition primitives and zero-width spacing controls.
 	Text          string
 	Class         Class
 	Group         TeXGroup
 	Font          TeXFont
 	AcceptUnicode bool
+	Kind          TeXSymbolKind
+	// SourceGlyph is the original KaTeX private-use code point for traceability.
+	// It is source metadata, not renderable text; zero means no private-use code.
+	SourceGlyph rune
 }
 
 // TypstSymbol is one addressable variant of a Typst sym-module symbol.
