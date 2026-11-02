@@ -34,6 +34,11 @@ var matrixEnvironments = map[string]struct {
 	"drcases":      {close: "}", size: ir.SizeDisplay, casesLike: true},
 }
 
+var (
+	defaultMatrixRowGap    = ir.RawLength(ir.LengthEm, 200_000)
+	defaultMatrixColumnGap = ir.RawLength(ir.LengthEm, 500_000)
+)
+
 func (p *parser) parseEnvironment(command token) astNode {
 	name, nameSpan := p.consumeEnvironmentName(command)
 	if name == "" {
@@ -70,6 +75,7 @@ func (p *parser) parseEnvironment(command token) astNode {
 			close:    close,
 			body:     []astNode{table},
 			balanced: true,
+			size:     env.size,
 		}
 	}
 
@@ -113,17 +119,11 @@ func (p *parser) parseEnvironment(command token) astNode {
 					Message:  "number of alignment columns must be a positive integer",
 				})
 			}
-			table := p.parseMultilineEnvironment(name, command, nameSpan)
-			table.size = ir.SizeDisplay
-			return table
+			return p.parseMultilineEnvironment(name, command, nameSpan)
 		}
-		table := p.parseMultilineEnvironment(name, command, nameSpan)
-		table.size = ir.SizeDisplay
-		return table
+		return p.parseMultilineEnvironment(name, command, nameSpan)
 	case "equation", "equation*":
-		table := p.parseMultilineEnvironment(name, command, nameSpan)
-		table.size = ir.SizeDisplay
-		return table
+		return p.parseMultilineEnvironment(name, command, nameSpan)
 	case "CD":
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(nameSpan),
@@ -207,7 +207,7 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 		if t := p.exp.peek(); t.isControl() && (t.text == "\\hline" || t.text == "\\hdashline") {
 			p.exp.next()
 			span = source.Merge(span, t.span)
-			horizontal = append(horizontal, ir.TableLine{
+			horizontal = appendTableStroke(horizontal, ir.TableLine{
 				Position: len(rows),
 				Count:    1,
 				Dashed:   t.text == "\\hdashline",
@@ -275,8 +275,13 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 	}
 
 	table := &astTableNode{
-		astBase: newASTBaseAt(astTable, span, tokenOrigin(command)),
-		rows:    rows,
+		astBase:   newASTBaseAt(astTable, span, tokenOrigin(command)),
+		rows:      rows,
+		rowGap:    defaultMatrixRowGap,
+		columnGap: defaultMatrixColumnGap,
+	}
+	if name == "cases" || name == "rcases" {
+		table.columnGap = ir.Length{}
 	}
 	if name == "smallmatrix" {
 		table.size = ir.SizeScript
@@ -285,34 +290,43 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 		table.columns = []ir.ColumnAlign{ir.AlignLeft, ir.AlignLeft}
 	}
 	if spec != nil {
-		table.columns = spec.columns
+		if len(spec.columns) != 0 {
+			table.columns = append([]ir.ColumnAlign(nil), spec.columns...)
+		}
 		table.vertical = spec.vertical
 	}
-	if table.size == ir.SizeInherit && spec != nil && spec.align != nil {
-		table.size = ir.SizeInherit
-	}
-	if len(table.columns) == 0 && spec != nil && spec.align != nil {
-		maxColumns := 0
-		for _, row := range rows {
-			maxColumns = max(maxColumns, len(row.cells))
-		}
-		table.columns = make([]ir.ColumnAlign, maxColumns)
-		for i := range table.columns {
-			table.columns[i] = *spec.align
-		}
-	}
-	maxColumns := len(table.columns)
+	maxColumns := 0
 	for _, row := range rows {
 		maxColumns = max(maxColumns, len(row.cells))
 	}
-	for i := range horizontal {
-		horizontal[i].Count = max(maxColumns, 1)
+	if len(table.columns) < maxColumns {
+		align := ir.AlignCenter
+		if spec != nil && spec.align != nil {
+			align = *spec.align
+		}
+		for len(table.columns) < maxColumns {
+			table.columns = append(table.columns, align)
+		}
 	}
 	table.horizontal = horizontal
 	return table
 }
 
-func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan source.Range) *astTableNode {
+func appendTableStroke(lines []ir.TableLine, line ir.TableLine) []ir.TableLine {
+	if len(lines) != 0 {
+		last := &lines[len(lines)-1]
+		if last.Position == line.Position && last.Dashed == line.Dashed && last.Thickness == line.Thickness {
+			last.Count += line.Count
+			return lines
+		}
+	}
+	if line.Count <= 0 {
+		line.Count = 1
+	}
+	return append(lines, line)
+}
+
+func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan source.Range) *astMultilineNode {
 	var logicalRows [][]astNode
 	var row []astNode
 	span := source.Merge(command.span, nameSpan)
@@ -379,53 +393,11 @@ func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan 
 		finalize()
 	}
 
-	rows := make([]astTableRow, 0, len(logicalRows))
-	maxColumns := 1
-	for _, logical := range logicalRows {
-		cells := splitAlignedRow(logical, span)
-		maxColumns = max(maxColumns, len(cells))
-		rows = append(rows, astTableRow{cells: cells})
+	return &astMultilineNode{
+		astBase:  newASTBaseAt(astMultiline, span, tokenOrigin(command)),
+		rows:     logicalRows,
+		centered: true,
 	}
-	centered := name == "gathered" || name == "gather" || name == "gather*" || name == "equation" || name == "equation*"
-	columns := make([]ir.ColumnAlign, maxColumns)
-	if !centered {
-		for i := range columns {
-			if i%2 == 0 {
-				columns[i] = ir.AlignRight
-			} else {
-				columns[i] = ir.AlignLeft
-			}
-		}
-	}
-	return &astTableNode{
-		astBase: newASTBaseAt(astTable, span, tokenOrigin(command)),
-		rows:    rows,
-		columns: columns,
-	}
-}
-
-func splitAlignedRow(items []astNode, fallbackSpan source.Range) []astNode {
-	var cells []astNode
-	var current []astNode
-	flush := func() {
-		if len(current) == 0 {
-			current = append(current, emptyASTRow(fallbackSpan))
-		}
-		cells = append(cells, &astRowNode{
-			astBase: newASTBase(astRow, astSpan(current...)),
-			items:   current,
-		})
-		current = nil
-	}
-	for _, item := range items {
-		if _, ok := item.(*astAlignNode); ok {
-			flush()
-			continue
-		}
-		current = append(current, item)
-	}
-	flush()
-	return cells
 }
 
 func (p *parser) consumeEnvironmentName(command token) (string, source.Range) {

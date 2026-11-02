@@ -16,7 +16,7 @@ func TestImplementedLayoutConstructsAreAccepted(t *testing.T) {
 	}{
 		{source: `\hat{x}`, kind: ir.KindAccent},
 		{source: `\cancel{x}`, kind: ir.KindCancel},
-		{source: `\begin{aligned}x&=1\end{aligned}`, kind: ir.KindTable},
+		{source: `\begin{aligned}x&=1\end{aligned}`, kind: ir.KindMultiline},
 		{source: `\begin{array}{|l|}x\end{array}`, kind: ir.KindTable},
 		{source: `\boxed{x}`, kind: ir.KindBox},
 		{source: `\phantom{x}`, kind: ir.KindPhantom},

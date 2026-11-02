@@ -44,7 +44,9 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		size = base.Size
 	}
 	cramped := inherited.cramped || base.Cramped
-	childMode := semanticMode{size: size, cramped: cramped}
+	childMode := inherited
+	childMode.size = size
+	childMode.cramped = cramped
 	baseValue := normalizedBase(n, size, cramped)
 
 	switch node := n.(type) {
@@ -130,7 +132,8 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 			{"sup-left", node.TopLeft},
 			{"sub-left", node.BottomLeft},
 		}
-		if usesLimits(node, size) {
+		aboveBelow := usesLimits(node, size)
+		if aboveBelow {
 			values = append(values,
 				childSpec{"limit-top", node.Top},
 				childSpec{"limit-bottom", node.Bottom},
@@ -199,6 +202,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		accent = canonicalAccent(accent)
 		baseValue["kind"] = "accent"
 		baseValue["body"] = body
 		baseValue["accent"] = accent
@@ -255,15 +259,15 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["vertical"] = normalizedTableLines(node.Vertical)
 		return baseValue, nil
 	case *ir.Multiline:
-		var err error
 		rows := make([]any, len(node.Rows))
 		for i, row := range node.Rows {
 			items := make([]any, len(row))
 			for j, child := range row {
-				items[j], err = normalizeNode(child, childMode)
+				value, err := normalizeNode(child, childMode)
 				if err != nil {
 					return nil, err
 				}
+				items[j] = value
 			}
 			rows[i] = items
 		}
@@ -277,6 +281,9 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		}
 		if node.SetCramped {
 			childMode.cramped = node.Cramped
+		}
+		if isTransparentSizeStyle(node) {
+			return normalizeNode(node.Body, childMode)
 		}
 		body, err := normalizeNode(node.Body, childMode)
 		if err != nil {
@@ -356,6 +363,46 @@ func nullDelimiter(value any) any {
 	return value
 }
 
+func canonicalAccent(value any) any {
+	item, ok := value.(map[string]any)
+	if !ok || item["kind"] != "atom" {
+		return value
+	}
+	text, ok := item["text"].(string)
+	if !ok {
+		return value
+	}
+	if canonical, ok := accentCanonicalForms[text]; ok {
+		item["text"] = canonical
+	}
+	return item
+}
+
+var accentCanonicalForms = map[string]string{
+	"^": "\u0302", "ˆ": "\u0302", "̂": "\u0302",
+	"~": "\u0303", "˜": "\u0303", "∼": "\u0303", "̃": "\u0303",
+	"¯": "\u0304", "‾": "\u0304", "̄": "\u0304",
+	"˘": "\u0306", "̆": "\u0306",
+	".": "\u0307", "˙": "\u0307", "⋅": "\u0307", "̇": "\u0307",
+	"¨": "\u0308", "̈": "\u0308",
+	"˚": "\u030a", "∘": "\u030a", "○": "\u030a", "̊": "\u030a",
+	"`": "\u0300", "̀": "\u0300",
+	"´": "\u0301", "́": "\u0301",
+	"ˇ": "\u030c", "̌": "\u030c",
+	"→": "\u20d7", "←": "\u20d6", "↔": "\u20e1",
+}
+
+func isTransparentSizeStyle(node *ir.Style) bool {
+	base := node.NodeBase()
+	return node.SetSize && !node.SetCramped &&
+		base.Class == ir.ClassNormal &&
+		base.Variant == ir.VariantAuto &&
+		base.Paint.Role == ir.PaintInk && !base.Paint.HasExplicit &&
+		base.Limits == ir.LimitsAuto &&
+		base.LeftSpacing.IsZero() && base.RightSpacing.IsZero() &&
+		!base.IgnoreAsSpace
+}
+
 func normalizedBase(n ir.Node, size ir.MathSize, cramped bool) map[string]any {
 	base := n.NodeBase()
 	return map[string]any{
@@ -425,7 +472,7 @@ func firstNode(nodes ...ir.Node) ir.Node {
 }
 
 func isNeutralRow(base *ir.Base) bool {
-	return (base.Class == ir.ClassNormal || base.Class == ir.ClassInner) &&
+	return base.Class == ir.ClassNormal &&
 		base.Variant == ir.VariantAuto &&
 		base.Paint.Role == ir.PaintInk && !base.Paint.HasExplicit &&
 		base.Limits == ir.LimitsAuto &&
