@@ -1,7 +1,12 @@
 // Package display defines the immutable output contract for UI hosts.
 package display
 
-import "github.com/caelyreth/untie/geometry"
+import (
+	"slices"
+
+	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/source"
+)
 
 // Align is horizontal display alignment.
 type Align uint8
@@ -79,7 +84,9 @@ type Box struct {
 	AxisHeight float32
 	Overflow   float32
 
-	Items []Item
+	Items  []Item
+	Hits   []Hit
+	Breaks []Break
 }
 
 // Clone returns an independent copy of the box.
@@ -95,5 +102,160 @@ func (b *Box) Clone() *Box {
 			out.Items[i].Path = append([]geometry.Segment(nil), item.Path...)
 		}
 	}
+	out.Hits = append([]Hit(nil), b.Hits...)
+	out.Breaks = append([]Break(nil), b.Breaks...)
 	return &out
+}
+
+// HitKind identifies the source semantic represented by a hit area.
+type HitKind uint8
+
+const (
+	HitAtom HitKind = iota
+	HitGroup
+	HitScript
+	HitFractionNumerator
+	HitFractionDenominator
+	HitRadical
+	HitFence
+	HitTableCell
+	HitRow
+	HitOther
+)
+
+// Hit maps a source range to one placed area.
+type Hit struct {
+	Source source.Range
+	Area   geometry.Rect
+	Depth  int
+	Kind   HitKind
+}
+
+// BreakKind describes why an inline break point is legal.
+type BreakKind uint8
+
+const (
+	BreakRelation BreakKind = iota
+	BreakBinary
+	BreakExplicit
+)
+
+// Break is an inline wrapping opportunity relative to the box baseline origin.
+type Break struct {
+	X       float32
+	Penalty int
+	Kind    BreakKind
+}
+
+// At returns the innermost hit containing p.
+func (b *Box) At(p geometry.Point) (Hit, bool) {
+	if b == nil {
+		return Hit{}, false
+	}
+	var best Hit
+	found := false
+	for _, hit := range b.Hits {
+		if !contains(hit.Area, p) {
+			continue
+		}
+		if !found || betterHit(hit, best) {
+			best = hit
+			found = true
+		}
+	}
+	return best, found
+}
+
+// Covering returns the placed areas intersecting source range r. Areas on the
+// same line that overlap or touch are merged deterministically.
+func (b *Box) Covering(r source.Range) []geometry.Rect {
+	if b == nil || r.IsDetached() || !r.IsValid() {
+		return nil
+	}
+	areas := make([]geometry.Rect, 0)
+	for _, hit := range b.Hits {
+		if hit.Source.IsDetached() || !hit.Source.IsValid() {
+			continue
+		}
+		if hit.Source.End <= r.Start || hit.Source.Start >= r.End {
+			continue
+		}
+		areas = append(areas, hit.Area)
+	}
+	slices.SortFunc(areas, func(a, b geometry.Rect) int {
+		if a.Y != b.Y {
+			if a.Y < b.Y {
+				return -1
+			}
+			return 1
+		}
+		if a.X != b.X {
+			if a.X < b.X {
+				return -1
+			}
+			return 1
+		}
+		if a.Width != b.Width {
+			if a.Width < b.Width {
+				return -1
+			}
+			return 1
+		}
+		if a.Height < b.Height {
+			return -1
+		}
+		if a.Height > b.Height {
+			return 1
+		}
+		return 0
+	})
+	out := areas[:0]
+	for _, area := range areas {
+		if len(out) == 0 {
+			out = append(out, area)
+			continue
+		}
+		last := &out[len(out)-1]
+		if last.Y == area.Y && last.Height == area.Height &&
+			(area.X <= last.X+last.Width || absFloat(area.X-last.X-last.Width) < 1e-5) {
+			right := maxFloat(last.X+last.Width, area.X+area.Width)
+			last.Width = right - last.X
+			continue
+		}
+		out = append(out, area)
+	}
+	return out
+}
+
+func contains(r geometry.Rect, p geometry.Point) bool {
+	return p.X >= r.X && p.X <= r.X+r.Width && p.Y >= r.Y && p.Y <= r.Y+r.Height
+}
+
+func betterHit(candidate, current Hit) bool {
+	if candidate.Depth != current.Depth {
+		return candidate.Depth > current.Depth
+	}
+	candidateArea := candidate.Area.Width * candidate.Area.Height
+	currentArea := current.Area.Width * current.Area.Height
+	if candidateArea != currentArea {
+		return candidateArea < currentArea
+	}
+	if candidate.Source.Start != current.Source.Start {
+		return candidate.Source.Start < current.Source.Start
+	}
+	return candidate.Source.End < current.Source.End
+}
+
+func absFloat(v float32) float32 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func maxFloat(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -2,9 +2,12 @@ package display
 
 import (
 	"encoding/json"
+	"math"
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/source"
 )
 
 func TestCloneIndependent(t *testing.T) {
@@ -16,11 +19,24 @@ func TestCloneIndependent(t *testing.T) {
 			Kind: ItemGlyphPath,
 			Path: geometry.Path{{Op: geometry.SegMoveTo}},
 		}},
+		Hits: []Hit{{
+			Source: source.NewRange(0, 1),
+			Area:   geometry.Rect{Width: 1, Height: 1},
+		}},
+		Breaks: []Break{{X: 1, Kind: BreakRelation}},
 	}
 	got := box.Clone()
 	got.Items[0].Path[0].Op = geometry.SegClose
+	got.Hits[0].Area.Width = 2
+	got.Breaks[0].X = 2
 	if box.Items[0].Path[0].Op != geometry.SegMoveTo {
 		t.Fatal("Clone shared path storage")
+	}
+	if box.Hits[0].Area.Width != 1 {
+		t.Fatal("Clone shared hit storage")
+	}
+	if box.Breaks[0].X != 1 {
+		t.Fatal("Clone shared break storage")
 	}
 }
 
@@ -35,6 +51,13 @@ func TestMarshalCanonical(t *testing.T) {
 			Paint: Paint{Role: RoleInk},
 			Rect:  geometry.Rect{Width: 1, Height: 0.1},
 		}},
+		Hits: []Hit{{
+			Source: source.NewRange(0, 1),
+			Area:   geometry.Rect{Width: 1, Height: 1},
+			Depth:  1,
+			Kind:   HitAtom,
+		}},
+		Breaks: []Break{{X: 0.5, Penalty: 10, Kind: BreakRelation}},
 	}
 	first, err := box.MarshalCanonical()
 	if err != nil {
@@ -49,6 +72,9 @@ func TestMarshalCanonical(t *testing.T) {
 	}
 	if !json.Valid(first) {
 		t.Fatalf("invalid JSON: %s", first)
+	}
+	if !strings.Contains(string(first), `"hits"`) || !strings.Contains(string(first), `"breaks"`) {
+		t.Fatalf("canonical output omitted hits or breaks: %s", first)
 	}
 	if _, err := (*Box)(nil).MarshalCanonical(); err == nil {
 		t.Fatal("nil box MarshalCanonical() error = nil")
@@ -72,5 +98,101 @@ func TestValidateBox(t *testing.T) {
 	box.Items[0].Path[0].Op = geometry.SegOp(99)
 	if err := box.Validate(); err == nil {
 		t.Fatal("Validate() error = nil for invalid path")
+	}
+}
+
+func TestBoxAtPrefersInnermostThenSmallest(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{
+		Hits: []Hit{
+			{Source: source.NewRange(0, 3), Area: geometry.Rect{Width: 10, Height: 10}, Depth: 1, Kind: HitGroup},
+			{Source: source.NewRange(1, 2), Area: geometry.Rect{X: 4, Width: 2, Height: 2}, Depth: 2, Kind: HitAtom},
+			{Source: source.NewRange(2, 3), Area: geometry.Rect{X: 3, Width: 4, Height: 4}, Depth: 2, Kind: HitGroup},
+		},
+	}
+	got, ok := box.At(geometry.Point{X: 4.5, Y: 1})
+	if !ok {
+		t.Fatal("At() found no hit")
+	}
+	if got.Kind != HitAtom || got.Source != source.NewRange(1, 2) {
+		t.Fatalf("At() = %#v, want inner atom", got)
+	}
+	if _, ok := box.At(geometry.Point{X: 11, Y: 1}); ok {
+		t.Fatal("At() found a hit outside its bounds")
+	}
+	if _, ok := (*Box)(nil).At(geometry.Point{}); ok {
+		t.Fatal("nil At() found a hit")
+	}
+}
+
+func TestBoxCoveringSortsAndMerges(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{
+		Hits: []Hit{
+			{Source: source.NewRange(3, 5), Area: geometry.Rect{X: 1, Y: 20, Width: 1, Height: 5}},
+			{Source: source.NewRange(2, 4), Area: geometry.Rect{X: 2, Y: 0, Width: 2, Height: 10}},
+			{Source: source.Detached(), Area: geometry.Rect{X: 8, Y: 30, Width: 1, Height: 1}},
+			{Source: source.NewRange(0, 2), Area: geometry.Rect{X: 0, Y: 0, Width: 2, Height: 10}},
+		},
+	}
+	got := box.Covering(source.NewRange(1, 4))
+	want := []geometry.Rect{
+		{X: 0, Y: 0, Width: 4, Height: 10},
+		{X: 1, Y: 20, Width: 1, Height: 5},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("Covering() = %#v, want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("Covering()[%d] = %#v, want %#v", i, got[i], want[i])
+		}
+	}
+	if got := box.Covering(source.Detached()); got != nil {
+		t.Fatalf("detached Covering() = %#v, want nil", got)
+	}
+}
+
+func TestValidateBoxRejectsInvalidHitsAndBreaks(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		box  *Box
+	}{
+		{
+			name: "hit source",
+			box:  &Box{Hits: []Hit{{Source: source.Range{Start: 2, End: 1}, Area: geometry.Rect{}}}},
+		},
+		{
+			name: "hit area",
+			box:  &Box{Hits: []Hit{{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: -1}}}},
+		},
+		{
+			name: "hit depth",
+			box:  &Box{Hits: []Hit{{Source: source.NewRange(0, 1), Depth: -1}}},
+		},
+		{
+			name: "hit kind",
+			box:  &Box{Hits: []Hit{{Source: source.NewRange(0, 1), Kind: HitOther + 1}}},
+		},
+		{
+			name: "break x",
+			box:  &Box{Breaks: []Break{{X: float32(math.Inf(1))}}},
+		},
+		{
+			name: "break kind",
+			box:  &Box{Breaks: []Break{{Kind: BreakExplicit + 1}}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if err := tc.box.Validate(); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+		})
 	}
 }

@@ -46,6 +46,7 @@ var allowedProjectImports = map[string][]string{
 	},
 	modulePath + "/display": {
 		modulePath + "/geometry",
+		modulePath + "/source",
 	},
 	modulePath + "/font": {
 		"github.com/go-opentype/opentype",

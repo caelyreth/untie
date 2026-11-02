@@ -26,8 +26,8 @@ tests and migration notes.
 - Fixed-point em and DIP arithmetic in `geometry`.
 - Sealed neutral IR nodes, constructors, walking, canonical test encoding, and
   structural validation in `ir`.
-- Immutable display-list types, validation, cloning, paint variants, and
-  canonical test encoding in `display`.
+- Immutable display-list types, validation, cloning, paint variants, source
+  hit and break contracts, and canonical test encoding in `display`.
 - Parsing facade with dialect selection, TeX macro options, Typst preamble
   options, diagnostics, stable parse keys, cancellation checks, and a panic
   containment boundary.
@@ -156,9 +156,10 @@ The following are genuine gaps, not hidden behavior:
   tolerances; comparison against every static Typlet frame is not yet green.
 - Public renderer instances are currently constructed per layout call; a
   renderer cache keyed by FontSet and limits remains a performance follow-up.
-- Break placement, display wrapping, inline source hits, accessibility output,
-  equation numbering, tags, links, MathML, rasterization, and SVG export are not
-  product features. SVG support is test-only.
+- The hit and break output types exist, but layout does not yet populate source
+  hits or legal break metadata. Display wrapping, split pieces, accessibility
+  output, equation numbering, tags, links, MathML, rasterization, and SVG export
+  are not product features. SVG support is test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary
