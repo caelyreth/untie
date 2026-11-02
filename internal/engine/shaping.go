@@ -34,16 +34,16 @@ func (a *adapter) shapeRun(
 	if len(text) > a.limits.MaxTextBytes {
 		return layout.TextRun{}, fmt.Errorf("%w: text byte count %d", layout.ErrLimit, len(text))
 	}
-	requestFeatures, err := textFeatures(features)
-	if err != nil {
-		return layout.TextRun{}, err
-	}
+	var requestFeatures []font.Feature
+	var err error
 	if operator {
 		variant = ir.VariantNormal
 		requestFeatures, err = mathFeatures(features, style)
-		if err != nil {
-			return layout.TextRun{}, err
-		}
+	} else {
+		requestFeatures, err = textFeatures(features)
+	}
+	if err != nil {
+		return layout.TextRun{}, err
 	}
 	faces := a.faceOrder(role)
 	runes := []rune(text)

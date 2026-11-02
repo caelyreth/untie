@@ -12,6 +12,11 @@ import (
 	"github.com/caelyreth/untie/ir"
 )
 
+var (
+	scriptFeatures       = []font.Feature{{Tag: "ssty", Value: 1}}
+	scriptScriptFeatures = []font.Feature{{Tag: "ssty", Value: 2}}
+)
+
 func styledText(text string, variant ir.Variant, autoMath bool) (string, bool) {
 	var out strings.Builder
 	runes := []rune(text)
@@ -113,6 +118,16 @@ func textFeatures(features []string) ([]font.Feature, error) {
 }
 
 func mathFeatures(features []string, style layout.Style) ([]font.Feature, error) {
+	if len(features) == 0 {
+		switch style.Size {
+		case layout.Script:
+			return scriptFeatures, nil
+		case layout.ScriptScript:
+			return scriptScriptFeatures, nil
+		default:
+			return nil, nil
+		}
+	}
 	requested, err := textFeatures(features)
 	if err != nil {
 		return nil, err
