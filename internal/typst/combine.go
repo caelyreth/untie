@@ -40,18 +40,31 @@ func (l *lowerer) lowerCombinedIdentifier(n *astNode) ir.Node {
 		i++
 		if unicode.IsMark(base.r) {
 			items = append(items, l.glyph(source.NewRange(base.start, base.end), string(base.r)))
+			if l.exhausted {
+				return nil
+			}
 			continue
 		}
 		var current ir.Node = l.glyph(source.NewRange(base.start, base.end), string(base.r))
+		if l.exhausted {
+			return nil
+		}
 		for i < len(runes) && unicode.IsMark(runes[i].r) {
 			mark := runes[i]
 			markGlyph := l.glyph(source.NewRange(mark.start, mark.end), string(mark.r))
+			if l.exhausted {
+				return nil
+			}
 			markGlyph.Class = ir.ClassDiacritic
 			position := ir.PositionAbove
 			if accentIsBelow(string(mark.r)) {
 				position = ir.PositionBelow
 			}
-			current = ir.NewAccent(source.NewRange(base.start, mark.end), current, markGlyph, position)
+			accent := l.newAccent(source.NewRange(base.start, mark.end), current, markGlyph, position)
+			if accent == nil {
+				return nil
+			}
+			current = accent
 			i++
 		}
 		items = append(items, current)
@@ -59,7 +72,10 @@ func (l *lowerer) lowerCombinedIdentifier(n *astNode) ir.Node {
 	if len(items) == 1 {
 		return items[0]
 	}
-	row := ir.NewRow(n.span, items...)
+	row := l.newRow(n.span, items...)
+	if row == nil {
+		return nil
+	}
 	row.Class = ir.ClassAlphabetic
 	return row
 }

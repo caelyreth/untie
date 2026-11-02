@@ -24,26 +24,23 @@ func FuzzParseNeverPanics(f *testing.F) {
 		if len(src) > 64*1024 {
 			t.Skip()
 		}
+		limits := source.Limits{
+			MaxSourceBytes:    64 * 1024,
+			MaxTokens:         10_000,
+			MaxNesting:        64,
+			MaxNodes:          10_000,
+			MaxCallDepth:      16,
+			MaxTableCells:     256,
+			MaxTextBytes:      16 * 1024,
+			MaxExpandedTokens: 64 * 1024,
+		}
 		result := Parse(src, ir.Inline, Options{
-			Limits: source.Limits{
-				MaxSourceBytes:    64 * 1024,
-				MaxTokens:         10_000,
-				MaxNesting:        64,
-				MaxNodes:          10_000,
-				MaxCallDepth:      16,
-				MaxTableCells:     256,
-				MaxTextBytes:      16 * 1024,
-				MaxExpandedTokens: 64 * 1024,
-			},
+			Limits: limits,
 		})
 		if result.Root == nil {
 			t.Fatal("nil root")
 		}
-		if err := ir.Validate(&ir.Formula{Root: result.Root}, source.Limits{
-			MaxNodes:     20_000,
-			MaxNesting:   128,
-			MaxTextBytes: 32 * 1024,
-		}); err != nil {
+		if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
 			t.Fatalf("invalid IR: %v", err)
 		}
 		for _, diagnostic := range result.Diagnostics {

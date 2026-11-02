@@ -9,7 +9,13 @@ import (
 
 func (l *lowerer) lowerStyle(call *astNode, name string) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
-	style := ir.NewStyle(call.span, body)
+	if l.exhausted {
+		return nil
+	}
+	style := l.newStyle(call.span, body)
+	if style == nil {
+		return nil
+	}
 	switch name {
 	case "display":
 		style.SetSize = true
@@ -154,7 +160,13 @@ func applyClass(n ir.Node, class ir.MathClass) {
 
 func (l *lowerer) lowerOperator(call *astNode) ir.Node {
 	text := l.contentArg(call, "text", 0, true)
-	operator := ir.NewOperator(call.span, sanitizeFrontendText(nodeText(text)))
+	if l.exhausted {
+		return nil
+	}
+	operator := l.newOperator(call.span, sanitizeFrontendText(nodeText(text)))
+	if operator == nil {
+		return nil
+	}
 	operator.Variant = ir.VariantNormal
 	operator.Class = ir.ClassLarge
 	if arg := namedArgument(call, "limits"); arg != nil {
@@ -230,15 +242,18 @@ func (l *lowerer) lowerPrimes(call *astNode) ir.Node {
 
 func (l *lowerer) primeRow(span source.Range, count int) ir.Node {
 	if count == 0 {
-		return ir.NewRow(span)
+		return l.newRow(span)
 	}
 	if count <= 4 {
 		primes := [...]string{"′", "″", "‴", "⁗"}
 		return l.glyph(span, primes[count-1])
 	}
-	items := make([]ir.Node, 0, count)
+	items := make([]ir.Node, 0, min(count, l.limits.MaxNodes))
 	for range count {
 		items = append(items, l.glyph(span, "′"))
+		if l.exhausted {
+			return nil
+		}
 	}
-	return ir.NewRow(span, items...)
+	return l.newRow(span, items...)
 }

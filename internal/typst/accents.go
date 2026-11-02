@@ -28,13 +28,22 @@ func (l *lowerer) lowerAccentCall(call *astNode) ir.Node {
 		mark = "̂"
 	}
 	body := l.contentArg(call, "base", 0, true)
+	if l.exhausted {
+		return nil
+	}
 	accent := l.glyph(accentNodeSpan(accentNode, call.span), normalizeAccent(mark))
+	if accent == nil {
+		return nil
+	}
 	accent.Class = ir.ClassDiacritic
 	position := ir.PositionAbove
 	if accentIsBelow(normalizeAccent(mark)) {
 		position = ir.PositionBelow
 	}
-	out := ir.NewAccent(call.span, body, accent, position)
+	out := l.newAccent(call.span, body, accent, position)
+	if out == nil {
+		return nil
+	}
 	out.Stretchy = false
 	out.NaturalFit = true
 	if arg := namedArgument(call, "dotless"); arg != nil {
@@ -54,13 +63,22 @@ func accentNodeSpan(n *astNode, fallback source.Range) source.Range {
 
 func (l *lowerer) lowerAccentWithMark(call *astNode, mark string) ir.Node {
 	body := l.contentArg(call, "base", 0, true)
+	if l.exhausted {
+		return nil
+	}
 	accent := l.glyph(call.span, mark)
+	if accent == nil {
+		return nil
+	}
 	accent.Class = ir.ClassDiacritic
 	position := ir.PositionAbove
 	if accentIsBelow(mark) {
 		position = ir.PositionBelow
 	}
-	out := ir.NewAccent(call.span, body, accent, position)
+	out := l.newAccent(call.span, body, accent, position)
+	if out == nil {
+		return nil
+	}
 	out.Stretchy = false
 	out.NaturalFit = true
 	if arg := namedArgument(call, "dotless"); arg != nil {
@@ -133,9 +151,18 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 		position = ir.PositionBelow
 	}
 	body := l.contentArg(call, "body", 0, true)
+	if l.exhausted {
+		return nil
+	}
 	accent := l.glyph(call.span, marks[name])
+	if accent == nil {
+		return nil
+	}
 	accent.Class = ir.ClassDiacritic
-	decor := ir.NewAccent(call.span, body, accent, position)
+	decor := l.newAccent(call.span, body, accent, position)
+	if decor == nil {
+		return nil
+	}
 	decor.Stretchy = true
 	decor.NaturalFit = true
 	decor.Class = ir.ClassInner
@@ -152,7 +179,13 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 	if annotation == nil {
 		return decor
 	}
-	scripts := ir.NewScripts(call.span, decor)
+	if l.exhausted {
+		return nil
+	}
+	scripts := l.newScripts(call.span, decor)
+	if scripts == nil {
+		return nil
+	}
 	if position == ir.PositionAbove {
 		scripts.Top = annotation
 	} else {

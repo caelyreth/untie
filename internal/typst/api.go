@@ -33,7 +33,7 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 				text = "internal Typst frontend failure"
 			}
 			result = Result{
-				Root: ir.NewRow(span, ir.NewError(span, text, source.CodeInternal)),
+				Root: boundedFallback(span, text, source.CodeInternal, limits.MaxNodes),
 				Diagnostics: []source.Diagnostic{{
 					Range:    span,
 					Severity: source.SeverityError,
@@ -49,7 +49,12 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	result = lowered
 	result.Diagnostics = source.NormalizeDiagnostics(append(diagnostics, result.Diagnostics...))
 	if result.Root == nil {
-		result.Root = ir.NewRow(source.NewRange(0, len(src)))
+		result.Root = boundedFallback(
+			source.NewRange(0, len(src)),
+			"internal Typst frontend failure: missing root",
+			source.CodeInternal,
+			limits.MaxNodes,
+		)
 	}
 	return result
 }

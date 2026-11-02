@@ -226,7 +226,7 @@ func (l *lowerer) valueString(n *astNode) (string, bool) {
 	case valueSymbol:
 		return v.symbol, true
 	case valueContent:
-		if text := nodeText(l.lower(v.content)); text != "" {
+		if text := l.inspectText(v.content); text != "" {
 			return text, true
 		}
 	}

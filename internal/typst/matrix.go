@@ -28,6 +28,9 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		for _, arg := range positional {
 			for _, segment := range splitAlign(arg.node) {
 				current = append(current, l.lowerCell(segment, false))
+				if l.exhausted {
+					return nil
+				}
 			}
 			if arg.semicolonAfter {
 				grid = append(grid, current)
@@ -42,6 +45,9 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 			chunks := splitLinebreaks(arg.node)
 			for _, chunk := range chunks {
 				grid = append(grid, []ir.Node{l.lowerCell(chunk, false)})
+				if l.exhausted {
+					return nil
+				}
 			}
 		}
 	case "cases":
@@ -51,6 +57,9 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 				cells := make([]ir.Node, 0, 2)
 				for _, segment := range splitAlign(chunk) {
 					cells = append(cells, l.lowerCell(segment, false))
+					if l.exhausted {
+						return nil
+					}
 				}
 				grid = append(grid, cells)
 			}
@@ -62,6 +71,9 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		maxColumns = max(maxColumns, len(row))
 	}
 	l.boundAndPadMatrix(call.span, grid, maxColumns)
+	if l.exhausted {
+		return nil
+	}
 	align := ir.AlignCenter
 	if arg := namedArgument(call, "align"); arg != nil {
 		if text, ok := l.valueString(arg.node); ok {
@@ -86,7 +98,10 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 	for i, cells := range grid {
 		rows[i].Cells = cells
 	}
-	table := ir.NewTable(call.span, rows...)
+	table := l.newTable(call.span, rows...)
+	if table == nil {
+		return nil
+	}
 	switch kind {
 	case "vec":
 		table.Role = ir.TableRoleVector
@@ -155,7 +170,10 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		if openText == "" && closeText == "" {
 			return table
 		}
-		fenced := ir.NewFenced(call.span, table)
+		fenced := l.newFenced(call.span, table)
+		if fenced == nil {
+			return nil
+		}
 		reverse := false
 		if arg := namedArgument(call, "reverse"); arg != nil {
 			if value, ok := l.valueBool(arg.node); ok {
@@ -165,28 +183,49 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		if reverse {
 			if closeText != "" {
 				closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), closeText)
+				if closeGlyph == nil {
+					return nil
+				}
 				closeGlyph.Class = ir.ClassClosing
 				fenced.Close = closeGlyph
 			}
-			fenced.Open = ir.NewRow(source.NewRange(call.span.Start, call.span.Start))
+			fenced.Open = l.newRow(source.NewRange(call.span.Start, call.span.Start))
+			if fenced.Open == nil {
+				return nil
+			}
 		} else if openText != "" {
 			open := l.glyph(source.NewRange(call.span.Start, call.span.Start), openText)
+			if open == nil {
+				return nil
+			}
 			open.Class = ir.ClassOpening
 			fenced.Open = open
-			fenced.Close = ir.NewRow(source.NewRange(call.span.End, call.span.End))
+			fenced.Close = l.newRow(source.NewRange(call.span.End, call.span.End))
+			if fenced.Close == nil {
+				return nil
+			}
 		}
 		fenced.Balanced = false
 		fenced.Class = ir.ClassInner
 		body = fenced
 	} else if openText != "" || closeText != "" {
-		fenced := ir.NewFenced(call.span, table)
+		fenced := l.newFenced(call.span, table)
+		if fenced == nil {
+			return nil
+		}
 		if openText != "" {
 			open := l.glyph(source.NewRange(call.span.Start, call.span.Start), openText)
+			if open == nil {
+				return nil
+			}
 			open.Class = ir.ClassOpening
 			fenced.Open = open
 		}
 		if closeText != "" {
 			closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), closeText)
+			if closeGlyph == nil {
+				return nil
+			}
 			closeGlyph.Class = ir.ClassClosing
 			fenced.Close = closeGlyph
 		}
@@ -224,6 +263,9 @@ func (l *lowerer) lowerArrayMatrixRows(call *astNode, positional []astArg) [][]i
 			}
 			cellCount++
 			row = append(row, l.lowerValueContent(arg.span, cellValue))
+			if l.exhausted {
+				return nil
+			}
 		}
 		grid = append(grid, row)
 		if cellCount >= l.limits.MaxTableCells {
@@ -256,7 +298,11 @@ func (l *lowerer) boundAndPadMatrix(span source.Range, grid [][]ir.Node, columns
 	}
 	for i := range grid {
 		for len(grid[i]) < columns && cells < l.limits.MaxTableCells {
-			grid[i] = append(grid[i], ir.NewRow(source.NewRange(span.End, span.End)))
+			padding := l.newRow(source.NewRange(span.End, span.End))
+			if padding == nil {
+				return
+			}
+			grid[i] = append(grid[i], padding)
 			cells++
 		}
 		if len(grid[i]) < columns {
@@ -268,7 +314,7 @@ func (l *lowerer) boundAndPadMatrix(span source.Range, grid [][]ir.Node, columns
 
 func (l *lowerer) lowerCell(n *astNode, warnLinebreak bool) ir.Node {
 	if n == nil {
-		return ir.NewRow(source.Detached())
+		return l.newRow(source.Detached())
 	}
 	if warnLinebreak && containsLinebreak(n) {
 		l.warningAt(n.span, source.CodeUnsupported, "linebreaks are ignored in matrix cells")
@@ -422,7 +468,7 @@ func (l *lowerer) valueDelimiters(n *astNode) (string, string, bool) {
 		close, okClose := delimiterValue(v.array[1])
 		return open, close, okOpen && okClose
 	case valueContent:
-		text := nodeText(l.lower(v.content))
+		text := l.inspectText(v.content)
 		if utf8.RuneCountInString(text) != 1 {
 			return "", "", false
 		}

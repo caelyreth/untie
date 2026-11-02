@@ -7,7 +7,10 @@ import (
 
 func (l *lowerer) lowerSqrt(call *astNode) ir.Node {
 	body := l.contentArg(call, "radicand", 0, true)
-	return ir.NewRadical(call.span, body, nil)
+	if l.exhausted {
+		return nil
+	}
+	return l.newRadical(call.span, body, nil)
 }
 
 func (l *lowerer) lowerRootCall(call *astNode) ir.Node {
@@ -25,13 +28,22 @@ func (l *lowerer) lowerRootCall(call *astNode) ir.Node {
 		l.errorAt(call.span, source.CodeMissingArgument, "missing argument: radicand")
 		radicand = l.placeholder(call.span, "missing radicand")
 	}
-	return ir.NewRadical(call.span, radicand, index)
+	if l.exhausted {
+		return nil
+	}
+	return l.newRadical(call.span, radicand, index)
 }
 
 func (l *lowerer) lowerFracCall(call *astNode) ir.Node {
 	num := l.contentArg(call, "num", 0, true)
 	denom := l.contentArg(call, "denom", 1, true)
-	fr := ir.NewFraction(call.span, num, denom)
+	if l.exhausted {
+		return nil
+	}
+	fr := l.newFraction(call.span, num, denom)
+	if fr == nil {
+		return nil
+	}
 	fr.Padding = builtinEmLength(0.1)
 	if styleArg := namedArgument(call, "style"); styleArg != nil {
 		style, ok := l.valueString(styleArg.node)
@@ -72,14 +84,29 @@ func (l *lowerer) lowerBinom(call *astNode) ir.Node {
 		l.errorAt(call.span, source.CodeMissingArgument, "missing argument: lower")
 		lower = l.placeholder(call.span, "missing lower")
 	}
-	fr := ir.NewFraction(call.span, upper, lower)
+	if l.exhausted {
+		return nil
+	}
+	fr := l.newFraction(call.span, upper, lower)
+	if fr == nil {
+		return nil
+	}
 	fr.Bar = false
 	fr.Style = ir.FractionNoBar
 	fr.Role = ir.FractionRoleBinomial
 	fr.Padding = builtinEmLength(0.1)
-	fenced := ir.NewFenced(call.span, fr)
+	fenced := l.newFenced(call.span, fr)
+	if fenced == nil {
+		return nil
+	}
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), "(")
+	if open == nil {
+		return nil
+	}
 	closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), ")")
+	if closeGlyph == nil {
+		return nil
+	}
 	open.Class = ir.ClassOpening
 	closeGlyph.Class = ir.ClassClosing
 	fenced.Open = open
@@ -90,13 +117,22 @@ func (l *lowerer) lowerBinom(call *astNode) ir.Node {
 
 func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 	base := l.contentArg(call, "base", 0, true)
-	scripts := ir.NewScripts(call.span, base)
+	if l.exhausted {
+		return nil
+	}
+	scripts := l.newScripts(call.span, base)
+	if scripts == nil {
+		return nil
+	}
 	scripts.Top = l.contentNamed(call, "t")
 	scripts.Bottom = l.contentNamed(call, "b")
 	scripts.TopLeft = l.contentNamed(call, "tl")
 	scripts.BottomLeft = l.contentNamed(call, "bl")
 	scripts.TopRight = l.contentNamed(call, "tr")
 	scripts.BottomRight = l.contentNamed(call, "br")
+	if l.exhausted {
+		return nil
+	}
 	if base, ok := scripts.BaseItem.(*ir.Scripts); ok && base.Role != ir.ScriptRoleOrdinary {
 		scripts.Role = base.Role
 	}
@@ -120,7 +156,13 @@ func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 
 func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
-	scripts := ir.NewScripts(call.span, body)
+	if l.exhausted {
+		return nil
+	}
+	scripts := l.newScripts(call.span, body)
+	if scripts == nil {
+		return nil
+	}
 	if name == "scripts" {
 		scripts.Limits = ir.LimitsNever
 		scripts.Role = baseScriptRole(body)
@@ -186,6 +228,9 @@ func nodeUsesLimits(node ir.Node) bool {
 
 func (l *lowerer) lowerLR(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
+	if l.exhausted {
+		return nil
+	}
 	sizing := l.delimiterSizing(call, "lr")
 	if fenced, ok := body.(*ir.Fenced); ok {
 		fenced.Class = ir.ClassInner
@@ -196,17 +241,22 @@ func (l *lowerer) lowerLR(call *astNode) ir.Node {
 		if fenced, ok := row.Items[0].(*ir.Fenced); ok {
 			fenced.Class = ir.ClassInner
 			fenced.Sizing = sizing
+			l.releaseNode()
 			return fenced
 		}
 	}
-	if node, ok := standaloneSizedDelimiter(body, sizing); ok {
+	if node, ok := l.standaloneSizedDelimiter(body, sizing); ok {
 		return node
 	}
 	if row, ok := body.(*ir.Row); ok && len(row.Items) >= 2 {
 		first, firstOK := delimiterNode(row.Items[0])
 		last, lastOK := delimiterNode(row.Items[len(row.Items)-1])
 		if firstOK && lastOK {
-			fenced := ir.NewFenced(call.span, row.Items[1:len(row.Items)-1]...)
+			l.releaseNode()
+			fenced := l.newFenced(call.span, row.Items[1:len(row.Items)-1]...)
+			if fenced == nil {
+				return nil
+			}
 			if glyph, ok := first.(*ir.Glyph); ok {
 				glyph.Class = ir.ClassOpening
 			}
@@ -226,15 +276,23 @@ func (l *lowerer) lowerLR(call *astNode) ir.Node {
 	return body
 }
 
-func standaloneSizedDelimiter(node ir.Node, sizing ir.DelimiterSizing) (ir.Node, bool) {
+func (l *lowerer) standaloneSizedDelimiter(node ir.Node, sizing ir.DelimiterSizing) (ir.Node, bool) {
+	released := 0
 	if row, ok := node.(*ir.Row); ok && len(row.Items) == 1 {
 		node = row.Items[0]
+		released++
 	}
 	glyph, ok := node.(*ir.Glyph)
 	if !ok || !isFenceGlyph(glyph) || sizing.Kind == ir.DelimiterSizingContent {
 		return nil, false
 	}
-	out := ir.NewSizedDelimiter(glyph.Span, glyph.Text, sizing)
+	for range released + 1 {
+		l.releaseNode()
+	}
+	out := l.newSizedDelimiter(glyph.Span, glyph.Text, sizing)
+	if out == nil {
+		return nil, true
+	}
 	out.Origin = glyph.Origin
 	out.Variant = glyph.Variant
 	out.Paint = glyph.Paint
@@ -278,9 +336,24 @@ func (l *lowerer) lowerFenceFunction(call *astNode, name string) ir.Node {
 	}
 	pair := pairs[name]
 	body := l.contentArg(call, "body", 0, true)
-	fenced := ir.NewFenced(call.span, l.flattenFenceBody(body)...)
+	if l.exhausted {
+		return nil
+	}
+	if _, ok := body.(*ir.Row); ok {
+		l.releaseNode()
+	}
+	fenced := l.newFenced(call.span, l.flattenFenceBody(body)...)
+	if fenced == nil {
+		return nil
+	}
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), pair[0])
+	if open == nil {
+		return nil
+	}
 	closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), pair[1])
+	if closeGlyph == nil {
+		return nil
+	}
 	open.Class = ir.ClassOpening
 	closeGlyph.Class = ir.ClassClosing
 	if name == "abs" || name == "norm" {
@@ -296,13 +369,25 @@ func (l *lowerer) lowerFenceFunction(call *astNode, name string) ir.Node {
 }
 
 func (l *lowerer) lowerDelimiterFunction(call *astNode, def symbolDef) ir.Node {
-	body := l.contentArg(call, "body", 0, true)
-	if named := l.contentNamed(call, "body"); named != nil {
-		body = named
+	body := l.contentNamed(call, "body")
+	if body == nil {
+		body = l.contentArg(call, "body", 0, true)
+	}
+	if l.exhausted {
+		return nil
+	}
+	if _, ok := body.(*ir.Row); ok {
+		l.releaseNode()
 	}
 	closeText := matchingDelimiter(def.text)
-	fenced := ir.NewFenced(call.span, l.flattenFenceBody(body)...)
+	fenced := l.newFenced(call.span, l.flattenFenceBody(body)...)
+	if fenced == nil {
+		return nil
+	}
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), def.text)
+	if open == nil {
+		return nil
+	}
 	closeClass := ir.ClassClosing
 	if def.class == ir.ClassFence {
 		open.Class = ir.ClassFence
@@ -313,6 +398,9 @@ func (l *lowerer) lowerDelimiterFunction(call *astNode, def symbolDef) ir.Node {
 	fenced.Open = open
 	if closeText != "" {
 		closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), closeText)
+		if closeGlyph == nil {
+			return nil
+		}
 		closeGlyph.Class = closeClass
 		fenced.Close = closeGlyph
 	}
@@ -343,14 +431,26 @@ func (l *lowerer) lowerLine(call *astNode, name string) ir.Node {
 	if name == "underline" {
 		position = ir.PositionBelow
 	}
-	line := ir.NewLine(call.span, body, position)
+	if l.exhausted {
+		return nil
+	}
+	line := l.newLine(call.span, body, position)
+	if line == nil {
+		return nil
+	}
 	line.Thickness = builtinEmLength(0.05)
 	return line
 }
 
 func (l *lowerer) lowerCancel(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
-	cancel := ir.NewCancel(call.span, body)
+	if l.exhausted {
+		return nil
+	}
+	cancel := l.newCancel(call.span, body)
+	if cancel == nil {
+		return nil
+	}
 	cancel.Thickness = builtinEmLength(0.05)
 	if arg := namedArgument(call, "cross"); arg != nil {
 		if cross, ok := l.valueBool(arg.node); ok {

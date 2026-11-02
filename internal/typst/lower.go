@@ -11,20 +11,28 @@ import (
 )
 
 type lowerer struct {
-	src        string
-	limits     source.Limits
-	diags      []source.Diagnostic
-	nodes      int
-	depth      int
-	callDepth  int
-	tableLimit bool
+	src               string
+	limits            source.Limits
+	diags             []source.Diagnostic
+	nodes             int
+	exhausted         bool
+	nodeLimitReported bool
+	depth             int
+	callDepth         int
+	tableLimit        bool
 }
 
 func lower(root *astNode, src string, limits source.Limits) Result {
 	l := lowerer{src: src, limits: limits.WithDefaults()}
 	node := l.lower(root)
+	if l.exhausted {
+		node = l.fallbackWithinBudget(rootSpan(root, len(src)))
+	}
 	if node == nil {
-		node = ir.NewRow(source.NewRange(0, len(src)))
+		node = l.newRow(source.NewRange(0, len(src)))
+	}
+	if l.exhausted {
+		node = l.fallbackWithinBudget(rootSpan(root, len(src)))
 	}
 	return Result{
 		Root:        node,
@@ -32,7 +40,17 @@ func lower(root *astNode, src string, limits source.Limits) Result {
 	}
 }
 
+func rootSpan(root *astNode, sourceLen int) source.Range {
+	if root != nil && root.span.IsValid() {
+		return root.span
+	}
+	return source.NewRange(0, sourceLen)
+}
+
 func (l *lowerer) lower(n *astNode) ir.Node {
+	if l.exhausted {
+		return nil
+	}
 	if n == nil {
 		return l.placeholder(source.Detached(), "missing expression")
 	}
@@ -43,13 +61,6 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 		return l.errNode(n.span, "nesting limit exceeded", source.CodeLimitExceeded)
 	}
 	defer l.leave()
-	l.nodes++
-	if l.nodes > l.limits.MaxNodes {
-		if l.nodes == l.limits.MaxNodes+1 {
-			l.errorAt(n.span, source.CodeLimitExceeded, "node limit exceeded")
-		}
-		return l.errNode(n.span, "node limit exceeded", source.CodeLimitExceeded)
-	}
 
 	switch n.kind {
 	case astRow:
@@ -95,14 +106,17 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 		}
 		return l.lowerValueContent(n.span, v)
 	case astAlign:
-		marker := ir.NewAlignMarker(n.span)
+		marker := l.newAlignMarker(n.span)
+		if marker == nil {
+			return nil
+		}
 		marker.Class = ir.ClassSpecial
 		return marker
 	case astLinebreak:
-		return ir.NewBreak(n.span, ir.BreakExplicit)
+		return l.newBreak(n.span, ir.BreakExplicit)
 	case astEquation:
 		if len(n.items) == 0 {
-			return ir.NewRow(n.span)
+			return l.newRow(n.span)
 		}
 		return l.lower(n.items[0])
 	case astError:
@@ -181,11 +195,11 @@ func (l *lowerer) errNode(span source.Range, text string, code source.Code) *ir.
 	if text == "" {
 		text = "?"
 	}
-	return ir.NewError(span, text, code)
+	return l.newError(span, text, code)
 }
 
 func (l *lowerer) placeholder(span source.Range, reason string) *ir.Placeholder {
-	return ir.NewPlaceholder(span, sanitizeFrontendText(reason))
+	return l.newPlaceholder(span, sanitizeFrontendText(reason))
 }
 
 func sanitizeFrontendText(text string) string {
@@ -197,7 +211,10 @@ func sanitizeFrontendText(text string) string {
 
 func (l *lowerer) glyph(span source.Range, text string) *ir.Glyph {
 	text = sanitizeFrontendText(text)
-	g := ir.NewGlyph(span, text)
+	g := l.newGlyph(span, text)
+	if g == nil {
+		return nil
+	}
 	g.Class = classForText(text)
 	return g
 }
@@ -210,19 +227,18 @@ func (l *lowerer) lowerNumber(n *astNode) ir.Node {
 	if len(runes) == 1 {
 		return l.glyph(n.span, n.text)
 	}
-	row := ir.NewRow(n.span)
+	row := l.newRow(n.span)
+	if row == nil {
+		return nil
+	}
 	offset := n.span.Start
 	for _, r := range runes {
 		size := utf8.RuneLen(r)
 		span := source.NewRange(offset, offset+size)
-		l.nodes++
-		if l.nodes > l.limits.MaxNodes {
-			if l.nodes == l.limits.MaxNodes+1 {
-				l.errorAt(span, source.CodeLimitExceeded, "node limit exceeded")
-			}
-			return l.errNode(n.span, "node limit exceeded", source.CodeLimitExceeded)
-		}
 		g := l.glyph(span, string(r))
+		if g == nil {
+			return nil
+		}
 		g.Class = ir.ClassNormal
 		row.Items = append(row.Items, g)
 		offset += size
@@ -245,7 +261,7 @@ func (l *lowerer) text(span source.Range, text string) ir.Node {
 			return l.placeholder(span, "text too long")
 		}
 	}
-	return ir.NewText(span, text)
+	return l.newText(span, text)
 }
 
 func (l *lowerer) lowerRow(n *astNode) ir.Node {
@@ -260,8 +276,14 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 		}
 	}
 	if !hasLinebreak && !hasAlign {
-		row := ir.NewRow(n.span)
+		row := l.newRow(n.span)
+		if row == nil {
+			return nil
+		}
 		row.Items = l.lowerItems(n.items)
+		if l.exhausted {
+			return nil
+		}
 		return row
 	}
 
@@ -283,17 +305,25 @@ func (l *lowerer) lowerRow(n *astNode) ir.Node {
 		flush()
 	}
 	if len(rows) == 0 {
-		return ir.NewRow(n.span)
+		return l.newRow(n.span)
 	}
 	if len(rows) == 1 && !hasAlign {
 		if len(rows[0]) == 1 {
+			l.releaseNode()
 			return rows[0][0]
 		}
-		row := ir.NewRow(n.span)
+		l.releaseNode()
+		row := l.newRow(n.span)
+		if row == nil {
+			return nil
+		}
 		row.Items = rows[0]
 		return row
 	}
-	multiline := ir.NewMultiline(n.span, rows...)
+	multiline := l.newMultiline(n.span, rows...)
+	if multiline == nil {
+		return nil
+	}
 	multiline.Centered = true
 	return multiline
 }
@@ -307,7 +337,10 @@ func (l *lowerer) lowerMultilineRow(items []*astNode, fallback source.Range) []i
 			start = segment[0].span.Start
 			end = segment[len(segment)-1].span.End
 		}
-		row := ir.NewRow(source.NewRange(start, end))
+		row := l.newRow(source.NewRange(start, end))
+		if row == nil {
+			return
+		}
 		row.Items = l.lowerItems(segment)
 		parts = append(parts, row)
 		segment = make([]*astNode, 0, len(items))
@@ -330,7 +363,11 @@ func (l *lowerer) lowerItems(items []*astNode) []ir.Node {
 		if item == nil || item.kind == astLinebreak {
 			continue
 		}
-		out = append(out, l.lower(item))
+		node := l.lower(item)
+		if l.exhausted {
+			return nil
+		}
+		out = append(out, node)
 	}
 	return out
 }
@@ -342,7 +379,7 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 	}
 	name := resolved.name
 	if name == "zws" {
-		return ir.NewRow(n.span)
+		return l.newRow(n.span)
 	}
 	if name == "dif" || name == "Dif" {
 		return l.lowerDifferential(n.span, strings.ToUpper(name[:1]))
@@ -351,7 +388,10 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 		return l.lowerCombinedIdentifier(n)
 	}
 	if amount, ok := spacingSymbols[name]; ok {
-		space := ir.NewSpace(n.span, ir.SpaceExplicit, amount)
+		space := l.newSpace(n.span, ir.SpaceExplicit, amount)
+		if space == nil {
+			return nil
+		}
 		space.Class = ir.ClassSpace
 		return space
 	}
@@ -364,7 +404,10 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 		return g
 	}
 	if textOperators[name] {
-		op := ir.NewOperator(n.span, name)
+		op := l.newOperator(n.span, name)
+		if op == nil {
+			return nil
+		}
 		op.Class = ir.ClassLarge
 		op.Variant = ir.VariantNormal
 		op.Limits = ir.LimitsAuto
@@ -393,13 +436,19 @@ func (l *lowerer) lowerIdentifier(n *astNode) ir.Node {
 }
 
 func (l *lowerer) lowerDifferential(span source.Range, letter string) ir.Node {
-	space := ir.NewSpace(span, ir.SpaceExplicit, builtinMuLength(3))
+	space := l.newSpace(span, ir.SpaceExplicit, builtinMuLength(3))
+	if space == nil {
+		return nil
+	}
 	space.Class = ir.ClassSpace
 	space.Weak = true
 	d := l.glyph(span, letter)
+	if d == nil {
+		return nil
+	}
 	d.Class = ir.ClassUnary
 	d.Variant = ir.VariantNormal
-	return ir.NewRow(span, space, d)
+	return l.newRow(span, space, d)
 }
 
 func (l *lowerer) unknownVariable(span source.Range, name string) *ir.ErrorNode {
@@ -452,9 +501,20 @@ func codeKeywordValue(name string) (value, bool) {
 
 func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	baseNode := l.lower(n.base)
-	scripts := ir.NewScripts(n.span, baseNode)
-	if base, ok := baseNode.(*ir.Scripts); ok && base.Top == nil && base.Bottom == nil &&
-		base.TopLeft == nil && base.BottomLeft == nil && base.TopRight == nil && base.BottomRight == nil {
+	if l.exhausted {
+		return nil
+	}
+	base, replaceBase := baseNode.(*ir.Scripts)
+	replaceBase = replaceBase && base.Top == nil && base.Bottom == nil &&
+		base.TopLeft == nil && base.BottomLeft == nil && base.TopRight == nil && base.BottomRight == nil
+	if replaceBase {
+		l.releaseNode()
+	}
+	scripts := l.newScripts(n.span, baseNode)
+	if scripts == nil {
+		return nil
+	}
+	if replaceBase {
 		scripts.BaseItem = base.BaseItem
 		scripts.Limits = base.Limits
 		scripts.Role = base.Role
@@ -465,6 +525,9 @@ func (l *lowerer) lowerAttach(n *astNode) ir.Node {
 	scripts.BottomLeft = l.lowerOptional(n.bottomLeft)
 	scripts.TopRight = l.lowerOptional(n.topRight)
 	scripts.BottomRight = l.lowerOptional(n.bottomRight)
+	if l.exhausted {
+		return nil
+	}
 	if scripts.Role == ir.ScriptRoleOrdinary {
 		scripts.Role = attachmentScriptRole(scripts.BaseItem, scripts.Top != nil || scripts.Bottom != nil)
 	}
@@ -553,7 +616,15 @@ func (l *lowerer) lowerFraction(n *astNode) ir.Node {
 	if len(n.items) != 2 {
 		return l.errNode(n.span, l.sourceText(n.span), source.CodeInternal)
 	}
-	fr := ir.NewFraction(n.span, l.lower(n.items[0]), l.lower(n.items[1]))
+	numerator := l.lower(n.items[0])
+	denominator := l.lower(n.items[1])
+	if l.exhausted {
+		return nil
+	}
+	fr := l.newFraction(n.span, numerator, denominator)
+	if fr == nil {
+		return nil
+	}
 	fr.Padding = builtinEmLength(0.1)
 	return fr
 }
@@ -566,36 +637,51 @@ func (l *lowerer) lowerRoot(n *astNode) ir.Node {
 	if len(n.items) > 1 {
 		index = l.lower(n.items[1])
 	}
-	return ir.NewRadical(n.span, l.lower(n.items[0]), index)
+	radicand := l.lower(n.items[0])
+	if l.exhausted {
+		return nil
+	}
+	return l.newRadical(n.span, radicand, index)
 }
 
 func (l *lowerer) lowerDelimited(n *astNode) ir.Node {
 	if len(n.items) == 0 {
-		return ir.NewRow(n.span)
+		return l.newRow(n.span)
 	}
 	if n.open == "" && n.close == "" && n.raw == "content" {
 		return l.lowerTextBody(n.items[0])
 	}
 	body := l.lower(n.items[0])
+	if l.exhausted {
+		return nil
+	}
 	if n.open == "" && n.close == "" {
 		return body
 	}
 	if n.open == "{" && n.close == "}" {
 		return body
 	}
+	if _, ok := body.(*ir.Row); ok {
+		l.releaseNode()
+	}
 	items := make([]ir.Node, 0, len(l.flattenFenceBody(body))+2)
 	open := l.glyph(source.NewRange(n.span.Start, n.span.Start+len(n.open)), n.open)
+	if open == nil {
+		return nil
+	}
 	open.Class = ir.ClassOpening
 	items = append(items, open)
 	items = append(items, l.flattenFenceBody(body)...)
 	if n.close != "" {
 		end := n.span.End
 		closeGlyph := l.glyph(source.NewRange(max(0, end-len(n.close)), end), n.close)
+		if closeGlyph == nil {
+			return nil
+		}
 		closeGlyph.Class = ir.ClassClosing
 		items = append(items, closeGlyph)
 	}
-	row := ir.NewRow(n.span, items...)
-	return row
+	return l.newRow(n.span, items...)
 }
 
 func (l *lowerer) flattenFenceBody(body ir.Node) []ir.Node {
@@ -727,6 +813,9 @@ func (l *lowerer) lowerCall(call *astNode) ir.Node {
 // displays the callee followed by its parenthesized argument list.
 func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 	base := l.lower(call.base)
+	if l.exhausted {
+		return nil
+	}
 	body := make([]ir.Node, 0, len(call.args)*3)
 	for i, arg := range call.args {
 		if i > 0 {
@@ -762,18 +851,29 @@ func (l *lowerer) lowerContentCall(call *astNode) ir.Node {
 				body = append(body, l.lowerArgument(arg.node))
 			}
 		}
+		if l.exhausted {
+			return nil
+		}
 	}
-	fenced := ir.NewFenced(call.span, body...)
+	fenced := l.newFenced(call.span, body...)
+	if fenced == nil {
+		return nil
+	}
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), "(")
+	if open == nil {
+		return nil
+	}
 	closeGlyph := l.glyph(source.NewRange(call.span.End, call.span.End), ")")
+	if closeGlyph == nil {
+		return nil
+	}
 	open.Class = ir.ClassOpening
 	closeGlyph.Class = ir.ClassClosing
 	fenced.Open = open
 	fenced.Close = closeGlyph
 	fenced.Balanced = true
 	fenced.Class = ir.ClassInner
-	row := ir.NewRow(call.span, base, fenced)
-	return row
+	return l.newRow(call.span, base, fenced)
 }
 
 func callName(n *astNode) string {

@@ -28,6 +28,9 @@ func (l *lowerer) lowerText(call *astNode) ir.Node {
 		return l.placeholder(call.span, "missing text body")
 	}
 	body := l.lowerTextBody(bodyArg.node)
+	if l.exhausted {
+		return nil
+	}
 	if arg := namedArgument(call, "tracking"); arg != nil {
 		if tracking, ok := l.valueLength(arg.node); ok {
 			applyTextTracking(body, tracking)
@@ -46,14 +49,14 @@ func (l *lowerer) lowerText(call *astNode) ir.Node {
 	}
 	if arg := namedArgument(call, "fill"); arg != nil {
 		if paint, ok := l.valuePaint(arg.node); ok {
-			return ir.NewColor(call.span, body, paint)
+			return l.newColor(call.span, body, paint)
 		}
 		l.errorAt(arg.span, source.CodeInvalidValue, "expected color, found %s", l.valueType(arg.node))
 	} else if len(positional) >= 2 {
 		// Typst math also accepts the fill as the first positional argument:
 		// text(#red, x).
 		if paint, ok := l.valuePaint(positional[0].node); ok {
-			return ir.NewColor(call.span, body, paint)
+			return l.newColor(call.span, body, paint)
 		}
 	}
 	if arg := namedArgument(call, "size"); arg != nil {
@@ -222,7 +225,10 @@ func (l *lowerer) lowerTextBody(n *astNode) ir.Node {
 		if n.kind == astDelimited && len(items) == 1 {
 			return l.lowerTextBody(items[0])
 		}
-		row := ir.NewRow(n.span)
+		row := l.newRow(n.span)
+		if row == nil {
+			return nil
+		}
 		previousEnd := -1
 		for _, item := range items {
 			if item.kind == astLinebreak || item.kind == astAlign {
@@ -230,8 +236,14 @@ func (l *lowerer) lowerTextBody(n *astNode) ir.Node {
 			}
 			if previousEnd >= 0 && item.span.Start > previousEnd && hasWhitespace(l.sourceText(source.NewRange(previousEnd, item.span.Start))) {
 				row.Items = append(row.Items, l.text(source.NewRange(previousEnd, item.span.Start), " "))
+				if l.exhausted {
+					return nil
+				}
 			}
 			row.Items = append(row.Items, l.lowerTextBody(item))
+			if l.exhausted {
+				return nil
+			}
 			previousEnd = item.span.End
 		}
 		return row
@@ -286,7 +298,13 @@ func applyTextTracking(n ir.Node, tracking ir.Length) {
 
 func (l *lowerer) lowerBox(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
-	box := ir.NewBox(call.span, body)
+	if l.exhausted {
+		return nil
+	}
+	box := l.newBox(call.span, body)
+	if box == nil {
+		return nil
+	}
 	if arg := namedArgument(call, "inset"); arg != nil {
 		if padding, ok := l.valueSides(arg.node); ok {
 			box.Padding = padding
@@ -436,7 +454,10 @@ func (l *lowerer) lowerHSpace(call *astNode) ir.Node {
 		l.errorAt(arg.span, source.CodeInvalidValue, "expected length, found %s", l.valueType(arg.node))
 		return l.placeholder(arg.span, "invalid horizontal space amount")
 	}
-	space := ir.NewSpace(call.span, ir.SpaceExplicit, amount)
+	space := l.newSpace(call.span, ir.SpaceExplicit, amount)
+	if space == nil {
+		return nil
+	}
 	if weak := namedArgument(call, "weak"); weak != nil {
 		if value, ok := l.valueBool(weak.node); ok {
 			space.Weak = value
@@ -447,7 +468,10 @@ func (l *lowerer) lowerHSpace(call *astNode) ir.Node {
 
 func (l *lowerer) lowerHide(call *astNode) ir.Node {
 	body := l.contentArg(call, "body", 0, true)
-	return ir.NewPhantom(call.span, body)
+	if l.exhausted {
+		return nil
+	}
+	return l.newPhantom(call.span, body)
 }
 
 func (l *lowerer) lowerNamedOrPositional(call *astNode, name string, fallback int) ir.Node {
