@@ -37,8 +37,9 @@ func (f *parsedFace) readGlyphMetrics() error {
 	for i := 0; i < glyphCount; i++ {
 		gid := tsfont.GID(i)
 		advance := face.HorizontalAdvance(gid)
-		if math.IsNaN(float64(advance)) || math.IsInf(float64(advance), 0) {
-			return fmt.Errorf("face %d (%q): glyph %d has non-finite advance", f.data.Index, f.data.ID, i)
+		advanceUnits, err := designCoordinate(advance)
+		if err != nil {
+			return fmt.Errorf("face %d (%q): glyph %d advance: %w", f.data.Index, f.data.ID, i, err)
 		}
 		outline, ok := face.GlyphDataOutline(gid)
 		if !ok {
@@ -56,7 +57,7 @@ func (f *parsedFace) readGlyphMetrics() error {
 			return fmt.Errorf("face %d (%q): glyph %d outline: %w", f.data.Index, f.data.ID, i, err)
 		}
 		f.metrics[i] = GlyphMetrics{
-			Advance:    int32(advance),
+			Advance:    advanceUnits,
 			Bounds:     bounds,
 			HasOutline: len(outline.Segments) != 0,
 		}

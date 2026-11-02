@@ -51,7 +51,7 @@ func TestDesignCoordinateRejectsNonFiniteAndOversized(t *testing.T) {
 	}
 }
 
-func TestFractionalOutlineGeometryRounds(t *testing.T) {
+func TestFractionalOutlineGeometryQuantizes(t *testing.T) {
 	t.Parallel()
 	segments := []tsot.Segment{
 		{Op: tsot.SegmentOpMoveTo, Args: [3]tsot.SegmentPoint{{X: 10.49, Y: -3.5}}},
