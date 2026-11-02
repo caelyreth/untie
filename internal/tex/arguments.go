@@ -573,38 +573,6 @@ func (p *parser) parseChar(command token) astNode {
 	return newGlyphAST(span, string(rune(value)), symbolForChar(string(rune(value))).class)
 }
 
-func (p *parser) parseHref(command token) astNode {
-	_, _, _ = p.consumeRawGroupTextChecked(command)
-	body := p.parseRequiredArgument(command)
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(command.span),
-		Severity: source.SeverityWarning,
-		Code:     source.CodeUnsupported,
-		Message:  "hyperlinks are outside the formula IR; link target was discarded",
-	})
-	return body
-}
-
-func (p *parser) parseURL(command token) astNode {
-	text, span, _, ok := p.consumeRawGroupTextRange()
-	if !ok {
-		p.report(source.Diagnostic{
-			Range:    normalizeRange(command.span),
-			Severity: source.SeverityError,
-			Code:     source.CodeMissingArgument,
-			Message:  "\\url requires a braced URL",
-		})
-		return newPlaceholderAST(command.span, "missing URL")
-	}
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(command.span),
-		Severity: source.SeverityWarning,
-		Code:     source.CodeUnsupported,
-		Message:  "hyperlinks are outside the formula IR; link destination was discarded",
-	})
-	return astLiteralText(token{span: span, origin: tokenOrigin(command)}, text)
-}
-
 func (p *parser) parseHTMLMetadataWrapper(command token) astNode {
 	_, _, _ = p.consumeRawGroupTextChecked(command)
 	body := p.parseRequiredArgument(command)

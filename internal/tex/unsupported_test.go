@@ -84,7 +84,7 @@ func TestHrefRendersBodyAsTextOnly(t *testing.T) {
 	foundWarning := false
 	for _, diagnostic := range result.Diagnostics {
 		if diagnostic.Code == source.CodeUnsupported &&
-			diagnostic.Message == "hyperlinks are outside the formula IR; link target was discarded" {
+			diagnostic.Message == "hyperlinks are outside the formula IR; link destination was discarded" {
 			foundWarning = true
 			break
 		}
