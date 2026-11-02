@@ -42,7 +42,7 @@ func TestGenerateScripts(t *testing.T) {
 	}
 }
 
-func TestGenerateLimitsDependOnSemanticMode(t *testing.T) {
+func TestGenerateLimitRolesArePlacementIndependent(t *testing.T) {
 	t.Parallel()
 
 	sum := ir.NewOperator(testSpan, "∑")
@@ -52,9 +52,10 @@ func TestGenerateLimitsDependOnSemanticMode(t *testing.T) {
 	scripts.Bottom = glyph("i")
 	scripts.Top = glyph("n")
 	scripts.Limits = ir.LimitsAuto
+	scripts.Role = ir.ScriptRoleLimits
 
 	inline := Generate(scripts, ir.Inline, source.Limits{})
-	if inline.Speech != "sum sub i to the power n" {
+	if inline.Speech != "sum from i to n" {
 		t.Fatalf("inline Speech = %q", inline.Speech)
 	}
 	display := Generate(scripts, ir.Display, source.Limits{})

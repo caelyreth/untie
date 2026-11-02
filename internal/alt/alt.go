@@ -316,11 +316,6 @@ func (r *renderer) scripts(n *ir.Scripts, env renderEnv, depth int) (piece, erro
 		return piece{}, err
 	}
 	role := n.Role
-	if role == ir.ScriptRoleOrdinary && r.usesLimits(n, env) && (n.Top != nil || n.Bottom != nil) {
-		// Preserve legacy manually constructed limit nodes whose frontend did not
-		// yet attach a semantic role.
-		role = ir.ScriptRoleLimits
-	}
 
 	top := piece{}
 	if n.Top != nil {
@@ -886,28 +881,6 @@ func (r *renderer) note(err error) {
 	if r.firstErr == nil {
 		r.firstErr = err
 	}
-}
-
-func (r *renderer) usesLimits(node *ir.Scripts, env renderEnv) bool {
-	placement := node.Limits
-	if placement == ir.LimitsAuto && node.BaseItem != nil {
-		if base := node.BaseItem.NodeBase(); base != nil {
-			placement = base.Limits
-		}
-	}
-	switch placement {
-	case ir.LimitsAlways:
-		return true
-	case ir.LimitsNever:
-		return false
-	}
-	class := node.Class
-	if node.BaseItem != nil {
-		if base := node.BaseItem.NodeBase(); base != nil && base.Class != ir.ClassNormal {
-			class = base.Class
-		}
-	}
-	return env.display && class == ir.ClassLarge
 }
 
 func scriptEnv(base ir.Base, env renderEnv) renderEnv {
