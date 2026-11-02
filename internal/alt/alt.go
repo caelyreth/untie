@@ -1052,6 +1052,12 @@ func explicitSpace(length ir.Length) (string, string) {
 		return "\u205f", "medium space"
 	case length.Unit == ir.LengthMu && length.Value == 5*scale:
 		return "\u2005", "thick space"
+	case length.Unit == ir.LengthMu && length.Value == 9*scale:
+		return "\u2002", "en space"
+	case length.Unit == ir.LengthMu && length.Value == 18*scale:
+		return "\u2003", "quad space"
+	case length.Unit == ir.LengthMu && length.Value == 36*scale:
+		return "\u2003\u2003", "double quad space"
 	case length.Unit == ir.LengthMu && length.Value == -3*scale:
 		return "space(-3mu)", "negative thin space"
 	case length.Unit == ir.LengthMu && length.Value == -4*scale:

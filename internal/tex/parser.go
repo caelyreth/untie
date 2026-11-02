@@ -66,6 +66,8 @@ func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.
 func (p *parser) parse() ir.Node {
 	root := p.parseSequence(stopEOF)
 	lower := newLowerer(p.limits, p.report)
+	// Parsing and lowering share one resource-limit diagnostic per parse.
+	lower.limitHit = p.limitHit
 	node := lower.lower(root, lowerContext{})
 	if node == nil {
 		node = ir.NewRow(source.NewRange(0, len(p.src)))

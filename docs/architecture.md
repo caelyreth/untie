@@ -217,6 +217,9 @@ the top-level placed fragment groups at those neutral boundaries and emits
 baseline-offset `LineBox` values; it does not slice flattened items or rescan
 source. Public orchestration derives alternative text from the neutral IR after
 geometry succeeds, so an accessibility failure never changes formula layout.
+Alternative output honors the per-field stricter intersection of Engine and
+expression resource limits; `Box.Alt` may therefore be a bounded fallback that
+differs from `Expr.Alt` when the Engine contract is tighter.
 The greedy pass chooses the furthest cut that fits. Penalty is consulted only
 when distinct cuts project to the same width; this is not TeX badness
 optimization. If exact source topology cannot be proven, display wrapping

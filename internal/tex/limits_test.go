@@ -60,6 +60,61 @@ func TestLoweringNestingBudgetStaysValid(t *testing.T) {
 	}
 }
 
+func TestLoweringDepthGuardChargesNodeBudget(t *testing.T) {
+	t.Parallel()
+
+	limits := source.DefaultLimits()
+	limits.MaxNesting = 1
+	limits.MaxNodes = 4
+	result := Parse("abcdefghij", ir.Inline, Options{Limits: limits})
+
+	if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
+		t.Fatalf("invalid depth-limit recovery IR: %v", err)
+	}
+	if count := countIRNodes(result.Root); count > limits.MaxNodes {
+		t.Fatalf("node count = %d, limit = %d", count, limits.MaxNodes)
+	}
+	limitDiagnostics := 0
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Code == source.CodeLimitExceeded {
+			limitDiagnostics++
+		}
+	}
+	if limitDiagnostics != 1 {
+		t.Fatalf("limit diagnostics = %d (%v), want exactly one", limitDiagnostics, diagnosticCodes(result.Diagnostics))
+	}
+}
+
+func TestLoweringLimitBoundariesStayValid(t *testing.T) {
+	t.Parallel()
+
+	for maxNesting := 1; maxNesting <= 4; maxNesting++ {
+		for maxNodes := 1; maxNodes <= 12; maxNodes++ {
+			limits := source.DefaultLimits()
+			limits.MaxNesting = maxNesting
+			limits.MaxNodes = maxNodes
+			t.Run("n"+strconv.Itoa(maxNesting)+"/nodes"+strconv.Itoa(maxNodes), func(t *testing.T) {
+				result := Parse("abcdefghij", ir.Inline, Options{Limits: limits})
+				if err := ir.Validate(&ir.Formula{Root: result.Root}, limits); err != nil {
+					t.Fatalf("invalid recovery IR: %v", err)
+				}
+				if count := countIRNodes(result.Root); count > maxNodes {
+					t.Fatalf("node count = %d exceeds limit %d", count, maxNodes)
+				}
+				limitDiagnostics := 0
+				for _, diagnostic := range result.Diagnostics {
+					if diagnostic.Code == source.CodeLimitExceeded {
+						limitDiagnostics++
+					}
+				}
+				if limitDiagnostics > 1 {
+					t.Fatalf("duplicate limit diagnostics: %v", diagnosticCodes(result.Diagnostics))
+				}
+			})
+		}
+	}
+}
+
 func TestTableCellLimitTruncatesBeforeLowering(t *testing.T) {
 	t.Parallel()
 
