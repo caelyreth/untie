@@ -74,3 +74,11 @@ CGO_ENABLED=0 go test ./internal/quality \
 
 Each sub-benchmark reports its exact case and source-byte counts plus reviewed
 diagnostic totals so parser work is not confused with an all-clean workload.
+
+Constrained display has a dedicated storage benchmark because the public
+contract exposes parent, line, and tag coordinate levels:
+
+```sh
+CGO_ENABLED=0 go test ./internal/quality \
+  -run '^$' -bench '^BenchmarkEndToEndConstrainedDailyCorpus$' -benchmem
+```

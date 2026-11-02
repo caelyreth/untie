@@ -53,6 +53,28 @@ The benchmark compares:
 Use `caller-engine` for normal application performance. The package-cache rows
 measure the convenience API, and `no-cache` is a worst-case comparison.
 
+## Constrained Display Storage
+
+```sh
+CGO_ENABLED=0 go test ./internal/quality \
+  -run '^$' -bench '^BenchmarkEndToEndConstrainedDailyCorpus$' -benchmem
+```
+
+This focused benchmark selects the daily corpus's constrained display cases
+and counts storage at every exposed coordinate level:
+
+- `parent-*`: the translated aggregate on `Box`;
+- `line-*`: line-local storage inside `Box.Lines`;
+- `tag-*`: independently drawable equation-tag storage;
+- `physical-*`: the sum of all three exposed copies;
+- `item-storage-x` and `path-storage-x`: physical storage divided by the
+  parent aggregate.
+
+The ratio metrics make duplication visible. A host draws one coordinate level,
+but the current public contract can expose the same geometry at more than one
+level. Use this benchmark when reviewing constrained-layout or tag changes;
+timing alone will not reveal duplicate retained memory.
+
 ## Tracked Parser Corpora
 
 ```sh
