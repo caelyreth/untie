@@ -17,6 +17,13 @@ type stretchSpec struct {
 	bestEffort bool
 }
 
+type scaledPathKey struct {
+	fontID  string
+	glyphID uint16
+	scale   geometry.Em
+	originY geometry.Em
+}
+
 func (s *layoutState) automaticDisplayStretch(class ir.MathClass, env environment) *stretchSpec {
 	if env.Style.Size != Display || class != ir.ClassLarge {
 		return nil
@@ -234,21 +241,38 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 	if err := s.reservePathSegments(len(glyph.Outline)); err != nil {
 		return nil, err
 	}
-	scaled.Outline = make(Path, len(glyph.Outline))
-	for i, segment := range glyph.Outline {
-		if i%64 == 0 {
-			if err := s.ctx.Err(); err != nil {
-				return nil, err
-			}
+	if len(glyph.Outline) > 0 {
+		key := scaledPathKey{
+			fontID:  glyph.FontID,
+			glyphID: glyph.ID,
+			scale:   factor,
+			originY: glyph.OriginY,
 		}
-		scaled.Outline[i].Op = segment.Op
-		for j, point := range segment.Points {
-			if scaled.Outline[i].Points[j].X, err = scale(point.X, factor); err != nil {
-				return nil, err
+		if s.scaledPaths != nil {
+			scaled.Outline = s.scaledPaths[key]
+		}
+		if scaled.Outline == nil {
+			scaled.Outline = make(Path, len(glyph.Outline))
+			for i, segment := range glyph.Outline {
+				if i%64 == 0 {
+					if err := s.ctx.Err(); err != nil {
+						return nil, err
+					}
+				}
+				scaled.Outline[i].Op = segment.Op
+				for j, point := range segment.Points {
+					if scaled.Outline[i].Points[j].X, err = scale(point.X, factor); err != nil {
+						return nil, err
+					}
+					if scaled.Outline[i].Points[j].Y, err = scale(point.Y, factor); err != nil {
+						return nil, err
+					}
+				}
 			}
-			if scaled.Outline[i].Points[j].Y, err = scale(point.Y, factor); err != nil {
-				return nil, err
+			if s.scaledPaths == nil {
+				s.scaledPaths = make(map[scaledPathKey]Path)
 			}
+			s.scaledPaths[key] = scaled.Outline
 		}
 	}
 	return &GlyphFragment{Glyph: scaled, Scale: factor, Paint: paint}, nil
