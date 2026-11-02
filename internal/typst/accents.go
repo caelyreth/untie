@@ -154,5 +154,6 @@ func (l *lowerer) lowerStructuralAccent(call *astNode, name string) ir.Node {
 		scripts.Bottom = annotation
 	}
 	scripts.Limits = ir.LimitsAlways
+	scripts.Role = ir.ScriptRoleBraceLabel
 	return scripts
 }

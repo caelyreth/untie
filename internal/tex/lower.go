@@ -120,6 +120,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out := ir.NewFraction(n.span, numerator, denominator)
 		out.Bar = n.bar
 		out.Style = n.style
+		out.Role = n.role
 		if !out.Bar && out.Style == ir.FractionVertical {
 			out.Style = ir.FractionNoBar
 		}
@@ -196,6 +197,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			}
 		}
 		out.Limits = n.limits
+		out.Role = n.role
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		out.Class = base.NodeBase().Class
 		base.NodeBase().Limits = n.limits
@@ -297,6 +299,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out := ir.NewCancel(n.span, body)
 		out.Cross = n.cross
 		out.Inverted = n.inverted
+		out.Role = n.role
 		out.Thickness = defaultStrokeThickness
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
@@ -405,6 +408,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			rows = append(rows, ir.TableRow{Cells: rowCells})
 		}
 		out := ir.NewTable(n.span, rows...)
+		out.Role = n.role
 		out.Columns = append([]ir.ColumnAlign(nil), n.columns...)
 		out.RowGap = n.rowGap
 		out.ColumnGap = n.columnGap

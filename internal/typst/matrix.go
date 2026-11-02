@@ -87,6 +87,14 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 		rows[i].Cells = cells
 	}
 	table := ir.NewTable(call.span, rows...)
+	switch kind {
+	case "vec":
+		table.Role = ir.TableRoleVector
+	case "cases":
+		table.Role = ir.TableRoleCases
+	default:
+		table.Role = ir.TableRoleMatrix
+	}
 	for range maxColumns {
 		table.Columns = append(table.Columns, align)
 	}
@@ -125,6 +133,9 @@ func (l *lowerer) lowerMatrix(call *astNode, kind string) ir.Node {
 	}
 	if kind == "mat" {
 		l.applyAugment(call, table, maxColumns, len(grid))
+		if len(table.Horizontal) != 0 || len(table.Vertical) != 0 {
+			table.Role = ir.TableRoleArray
+		}
 	}
 
 	openText, closeText := "(", ")"

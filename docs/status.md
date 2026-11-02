@@ -28,6 +28,10 @@ tests and migration notes.
   structural validation in `ir`.
 - Immutable display-list types, validation, cloning, paint variants, source
   hit and break contracts, and canonical test encoding in `display`.
+- Expression-level alternative text through `Expr.Alt` and `Expr.AltContext`,
+  with deterministic plain text, speech, bounded validated fallbacks, and a
+  public error contract. Public layout populates `display.Box.Alt` after
+  geometry succeeds; MathML remains unimplemented.
 - Layout emits source-linked hit regions for atoms, groups, scripts, fraction
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
@@ -167,9 +171,10 @@ The following are genuine gaps, not hidden behavior:
   tolerances; comparison against every static Typlet frame is not yet green.
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
-- Inline break metadata is implemented, but display wrapping, split pieces,
-  accessibility output, equation numbering, tags, links, MathML, rasterization,
-  and SVG export are not product features. SVG support is test-only.
+- Inline break metadata and alternative text are implemented, but display
+  wrapping, split pieces, equation numbering, tags, links, MathML,
+  rasterization, and SVG export are not product features. SVG support is
+  test-only.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary

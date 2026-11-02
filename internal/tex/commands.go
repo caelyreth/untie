@@ -12,10 +12,11 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	if spec, ok := symbolCommands[t.text]; ok {
 		if spec.class == ir.ClassLarge {
 			return &astOperatorNode{
-				astBase: newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
-				text:    spec.text,
-				variant: spec.variant,
-				limits:  spec.limits,
+				astBase:        newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
+				text:           spec.text,
+				variant:        spec.variant,
+				limits:         spec.limits,
+				semanticLimits: spec.limits != ir.LimitsNever,
 			}
 		}
 		return astGlyphSpec(t.span, t.origin, spec)
@@ -164,6 +165,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		cancel := &astCancelNode{
 			astBase: newASTBaseAt(astCancel, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:    body,
+			role:    ir.CancelRoleNegation,
 		}
 		return &astClassNode{
 			astBase:   newASTBaseAt(astClass, cancel.span, tokenOrigin(t)),
@@ -481,10 +483,11 @@ func (p *parser) parseSharedTeXCommand(t token) astNode {
 				limits = ir.LimitsAuto
 			}
 			return &astOperatorNode{
-				astBase: newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
-				text:    operator.Text,
-				variant: ir.VariantNormal,
-				limits:  limits,
+				astBase:        newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
+				text:           operator.Text,
+				variant:        ir.VariantNormal,
+				limits:         limits,
+				semanticLimits: operator.Limits,
 			}
 		}
 		if symbol, ok := mathdata.LookupTeXSymbol(t.text); ok &&
@@ -494,10 +497,11 @@ func (p *parser) parseSharedTeXCommand(t token) astNode {
 				limits = ir.LimitsAuto
 			}
 			return &astOperatorNode{
-				astBase: newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
-				text:    symbol.Text,
-				variant: ir.VariantNormal,
-				limits:  limits,
+				astBase:        newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
+				text:           symbol.Text,
+				variant:        ir.VariantNormal,
+				limits:         limits,
+				semanticLimits: operator.Limits,
 			}
 		}
 	}
@@ -508,10 +512,11 @@ func (p *parser) parseSharedTeXCommand(t token) astNode {
 	class := irClassForMathdataClass(symbol.Class)
 	if class == ir.ClassLarge {
 		return &astOperatorNode{
-			astBase: newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
-			text:    symbol.Text,
-			variant: ir.VariantNormal,
-			limits:  ir.LimitsAuto,
+			astBase:        newASTBaseAt(astOperator, t.span, tokenOrigin(t)),
+			text:           symbol.Text,
+			variant:        ir.VariantNormal,
+			limits:         ir.LimitsAuto,
+			semanticLimits: true,
 		}
 	}
 	return astGlyphSpec(t.span, t.origin, symbolSpec{
@@ -586,6 +591,7 @@ func (p *parser) parseBinomial(command token) astNode {
 	fraction := p.parseFraction(command)
 	f := fraction.(*astFractionNode)
 	f.bar = false
+	f.role = ir.FractionRoleBinomial
 	switch command.text {
 	case "\\dbinom":
 		f.size = ir.SizeDisplay

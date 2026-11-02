@@ -75,6 +75,7 @@ func (l *lowerer) lowerBinom(call *astNode) ir.Node {
 	fr := ir.NewFraction(call.span, upper, lower)
 	fr.Bar = false
 	fr.Style = ir.FractionNoBar
+	fr.Role = ir.FractionRoleBinomial
 	fr.Padding = builtinEmLength(0.1)
 	fenced := ir.NewFenced(call.span, fr)
 	open := l.glyph(source.NewRange(call.span.Start, call.span.Start), "(")
@@ -96,6 +97,12 @@ func (l *lowerer) lowerAttachCall(call *astNode) ir.Node {
 	scripts.BottomLeft = l.contentNamed(call, "bl")
 	scripts.TopRight = l.contentNamed(call, "tr")
 	scripts.BottomRight = l.contentNamed(call, "br")
+	if base, ok := scripts.BaseItem.(*ir.Scripts); ok && base.Role != ir.ScriptRoleOrdinary {
+		scripts.Role = base.Role
+	}
+	if scripts.Role == ir.ScriptRoleOrdinary {
+		scripts.Role = attachmentScriptRole(scripts.BaseItem, scripts.Top != nil || scripts.Bottom != nil)
+	}
 	inheritScriptMetadata(scripts)
 	return scripts
 }
@@ -105,8 +112,10 @@ func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 	scripts := ir.NewScripts(call.span, body)
 	if name == "scripts" {
 		scripts.Limits = ir.LimitsNever
+		scripts.Role = baseScriptRole(body, false)
 	} else {
 		scripts.Limits = ir.LimitsAlways
+		scripts.Role = baseScriptRole(body, true)
 		if inlineArg := namedArgument(call, "inline"); inlineArg != nil {
 			if inline, ok := l.valueBool(inlineArg.node); ok && !inline {
 				scripts.Limits = ir.LimitsAuto
@@ -115,6 +124,43 @@ func (l *lowerer) lowerLimitsCall(call *astNode, name string) ir.Node {
 	}
 	inheritScriptMetadata(scripts)
 	return scripts
+}
+
+func baseScriptRole(node ir.Node, limits bool) ir.ScriptRole {
+	if hasLimitSemantics(node) {
+		return ir.ScriptRoleLimits
+	}
+	// limits() and scripts() only choose visual placement. A non-operator
+	// forced above/below is an overlay; forced side scripts remain ordinary.
+	if limits {
+		return ir.ScriptRoleOverlay
+	}
+	return ir.ScriptRoleOrdinary
+}
+
+func attachmentScriptRole(node ir.Node, smart bool) ir.ScriptRole {
+	if hasLimitSemantics(node) {
+		return ir.ScriptRoleLimits
+	}
+	// Typst's t/b attachments are smart-positioned. They are overlays only when
+	// the base's relation/limit semantics place them above or below; otherwise
+	// they are ordinary right scripts. Explicit corner attachments do not alter
+	// the role.
+	if smart && nodeUsesLimits(node) {
+		return ir.ScriptRoleOverlay
+	}
+	return ir.ScriptRoleOrdinary
+}
+
+func nodeUsesLimits(node ir.Node) bool {
+	if node == nil || node.NodeBase() == nil {
+		return false
+	}
+	base := node.NodeBase()
+	if base.Limits == ir.LimitsAlways {
+		return true
+	}
+	return base.Class == ir.ClassRelation && base.Limits != ir.LimitsNever
 }
 
 func (l *lowerer) lowerLR(call *astNode) ir.Node {

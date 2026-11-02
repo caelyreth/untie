@@ -52,9 +52,10 @@ func (p *parser) parseNamedOperator(command token) astNode {
 		limits = ir.LimitsAuto
 	}
 	return &astOperatorNode{
-		astBase: newASTBaseAt(astOperator, command.span, tokenOrigin(command)),
-		text:    op,
-		limits:  limits,
+		astBase:        newASTBaseAt(astOperator, command.span, tokenOrigin(command)),
+		text:           op,
+		limits:         limits,
+		semanticLimits: limitOperators[command.text],
 	}
 }
 

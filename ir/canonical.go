@@ -80,7 +80,7 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"base": base, "numerator": numerator, "denominator": denominator, "bar": n.Bar, "style": n.Style, "padding": snapshotLength(n.Padding)}, nil
+		return map[string]any{"base": base, "numerator": numerator, "denominator": denominator, "bar": n.Bar, "style": n.Style, "role": n.Role, "padding": snapshotLength(n.Padding)}, nil
 	case *Radical:
 		radicand, err := s.node(n.Radicand, depth+1)
 		if err != nil {
@@ -105,6 +105,7 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 			children[name] = snapshot
 		}
 		children["base"] = base
+		children["role"] = n.Role
 		return children, nil
 	case *Fenced:
 		open, err := s.node(n.Open, depth+1)
@@ -141,7 +142,7 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"base": base, "body": body, "cross": n.Cross, "inverted": n.Inverted, "thickness": snapshotLength(n.Thickness)}, nil
+		return map[string]any{"base": base, "body": body, "cross": n.Cross, "inverted": n.Inverted, "role": n.Role, "thickness": snapshotLength(n.Thickness)}, nil
 	case *Table:
 		rows := make([]any, len(n.Rows))
 		for i, row := range n.Rows {
@@ -155,7 +156,7 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 			}
 			rows[i] = map[string]any{"cells": cells, "tag": tag}
 		}
-		return map[string]any{"base": base, "rows": rows, "columns": n.Columns, "row-gap": snapshotLength(n.RowGap), "column-gap": snapshotLength(n.ColumnGap), "horizontal": n.Horizontal, "vertical": n.Vertical}, nil
+		return map[string]any{"base": base, "rows": rows, "role": n.Role, "columns": n.Columns, "row-gap": snapshotLength(n.RowGap), "column-gap": snapshotLength(n.ColumnGap), "horizontal": n.Horizontal, "vertical": n.Vertical}, nil
 	case *Multiline:
 		rows := make([]any, len(n.Rows))
 		for i, row := range n.Rows {

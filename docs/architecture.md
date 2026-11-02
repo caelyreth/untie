@@ -11,8 +11,8 @@ list. The intended pipeline is:
 
 ```text
 TeX source   -> internal/tex   --\
-                                  +-> ir.Formula -> internal/layout -> display.Box
-Typst source -> internal/typst --/
+                                 +-> ir.Formula --+-> internal/layout -> display.Box
+Typst source -> internal/typst --/                \-> internal/alt -> display.Alt
 ```
 
 The layers have different responsibilities:
@@ -25,6 +25,9 @@ The layers have different responsibilities:
    flattening. It must not import a dialect frontend or branch on dialect.
 4. `display` owns the immutable public output contract. It contains positioned
    glyph paths and rules in host units, not source semantics.
+5. `internal/alt` derives deterministic alternative text from the neutral IR.
+   It does not inspect source text, frontend ASTs, fonts, layout fragments, or
+   rendered display paths.
 
 Source spans are UTF-8 byte offsets with an exclusive end. Macro-expanded and
 generated nodes retain an origin span where the frontend can identify one.
@@ -38,7 +41,8 @@ generated nodes retain an origin span where the frontend can identify one.
 | `geometry` | Fixed-point em/DIP values and public path primitives | Yes |
 | `ir` | Sealed neutral math node interface, constructors, validation, canonical test encoding | Yes |
 | `font` | Host font inputs, immutable font-set ownership, OpenType MATH/GSUB/cmap/outline parsing | Yes |
-| `display` | Flattened box, items, paint, paths, source hits, break metadata, validation, canonical test encoding | Yes |
+| `display` | Flattened box, items, paint, paths, source hits, break metadata, alternative text, validation, canonical test encoding | Yes |
+| `internal/alt` | Deterministic neutral-IR-to-text/speech projection with bounded fallback behavior | No |
 | `internal/tex` | Bounded TeX lexer, macro expansion, parser, and AST-to-IR lowering | No |
 | `internal/typst` | Bounded Typst lexer/parser/evaluator and AST-to-IR lowering | No |
 | `internal/layout` | Fixed-point math layout and flattening behind narrow font ports | No |
@@ -56,10 +60,13 @@ The current import graph follows these rules:
 
 ```text
 untie
-  -> display, font, internal/engine, internal/tex, internal/typst, ir, source
+  -> display, font, internal/alt, internal/engine, internal/tex, internal/typst, ir, source
 
 internal/tex, internal/typst
   -> ir, source
+
+internal/alt
+  -> display, ir, source
 
 internal/layout
   -> display, geometry, ir, source
@@ -92,6 +99,8 @@ The forbidden edges are more important than the diagram:
 - `ir` must not import a frontend, `font`, `layout`, or `display`.
 - `font` must not import `ir`, `layout`, `display`, or a frontend.
 - A frontend must not import `font`, `layout`, or `display`.
+- `internal/alt` must not import a frontend, `font`, `layout`, `engine`, or
+  rendered display-list construction code.
 - `internal/layout` must not import `internal/tex` or `internal/typst`.
 - `display` may import `geometry` and the low-level immutable `source` range
   types. It must not import `font`, a frontend, or an internal package.
@@ -192,12 +201,14 @@ ordered list of positioned items:
 - `ItemGlyphRef`: a host glyph-cache reference with font ID, glyph ID, scale,
   and position.
 
-It also owns the public source-hit and inline-break types. A hit maps a UTF-8
-byte range to one placed rectangle and carries depth/kind for deterministic
-lookup. The layout engine emits hits from the placed fragment tree rather than
-reconstructing geometry from a flattened item list. Inline layout emits
-top-level relation, binary, and explicit break metadata; it does not yet emit
-split pieces or width-constrained display lines.
+It also owns the public source-hit, inline-break, and alternative-text types. A
+hit maps a UTF-8 byte range to one placed rectangle and carries depth/kind for
+deterministic lookup. The layout engine emits hits from the placed fragment tree
+rather than reconstructing geometry from a flattened item list. Inline layout
+emits top-level relation, binary, and explicit break metadata; it does not yet
+emit split pieces or width-constrained display lines. Public orchestration
+derives alternative text from the neutral IR after geometry succeeds, so an
+accessibility failure never changes formula layout.
 
 Paint is either a semantic role (`ink`, `error`, `placeholder`) or an explicit
 RGBA source color. The host resolves roles through its theme.

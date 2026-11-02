@@ -7,6 +7,15 @@ import (
 	"github.com/caelyreth/untie/geometry"
 )
 
+// MarshalCanonical returns deterministic JSON for alternative-text tests.
+// It is not a stable cross-language protocol.
+func (a Alt) MarshalCanonical() ([]byte, error) {
+	if err := a.Validate(); err != nil {
+		return nil, err
+	}
+	return json.Marshal(canonicalAlt(a))
+}
+
 // MarshalCanonical returns deterministic JSON for golden tests and diagnostics.
 // It is not a stable cross-language protocol.
 func (b *Box) MarshalCanonical() ([]byte, error) {
@@ -37,6 +46,12 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		Items      []canonicalItem  `json:"items"`
 		Hits       []canonicalHit   `json:"hits,omitempty"`
 		Breaks     []canonicalBreak `json:"breaks,omitempty"`
+		Alt        *canonicalAlt    `json:"alt,omitempty"`
+	}
+	var alt *canonicalAlt
+	if b.Alt != (Alt{}) {
+		snapshot := canonicalAlt(b.Alt)
+		alt = &snapshot
 	}
 	return json.Marshal(boxSnapshot{
 		Width:      b.Width,
@@ -48,7 +63,14 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 		Items:      items,
 		Hits:       canonicalHits(b.Hits),
 		Breaks:     canonicalBreaks(b.Breaks),
+		Alt:        alt,
 	})
+}
+
+type canonicalAlt struct {
+	Speech string `json:"speech"`
+	Text   string `json:"text"`
+	MathML string `json:"mathml"`
 }
 
 type canonicalHit struct {
