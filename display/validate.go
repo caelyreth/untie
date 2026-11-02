@@ -222,6 +222,9 @@ func sameTagMetadata(left, right TagBox) bool {
 	if left.Box == nil || right.Box == nil {
 		return left.Box == right.Box
 	}
+	if left.Box == right.Box {
+		return true
+	}
 	return left.Source == right.Source &&
 		left.Manual == right.Manual &&
 		left.Starred == right.Starred &&
