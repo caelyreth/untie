@@ -126,7 +126,87 @@ func validateLines(box *Box) error {
 		itemOffset += len(line.Box.Items)
 		hitOffset += len(line.Box.Hits)
 	}
+	if err := validateWrappedOverflow(box); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateWrappedOverflow(box *Box) error {
+	for i, line := range box.Lines {
+		local := inkExtentForItems(line.Box.Items)
+		ink := local.overflow(line.Box.Width, line.Box.Ascent, line.Box.Descent)
+		logical := maxFloat(0, line.Box.Width-box.Width)
+		required := maxFloat(ink, logical)
+		if !overflowAtLeast(line.Box.Overflow, required) {
+			return fmt.Errorf("line %d overflow %v is below required %v", i, line.Box.Overflow, required)
+		}
+	}
+
+	frame := inkExtentForItems(box.Items)
+	required := frame.overflow(box.Width, box.Ascent, box.Descent)
+	for _, line := range box.Lines {
+		required = maxFloat(required, maxFloat(0, line.Box.Width-box.Width))
+	}
+	if !overflowAtLeast(box.Overflow, required) {
+		return fmt.Errorf("parent overflow %v is below required %v", box.Overflow, required)
+	}
+	return nil
+}
+
+type inkExtent struct {
+	minX float32
+	minY float32
+	maxX float32
+	maxY float32
+	have bool
+}
+
+func inkExtentForItems(items []Item) inkExtent {
+	var extent inkExtent
+	for _, item := range items {
+		extent.addRect(item.Bound)
+		for _, segment := range item.Path {
+			points, _ := segmentPointCount(segment.Op)
+			for i := 0; i < points; i++ {
+				extent.addPoint(segment.Points[i])
+			}
+		}
+	}
+	return extent
+}
+
+func (e *inkExtent) addRect(rect geometry.Rect) {
+	e.addPoint(geometry.Point{X: rect.X, Y: rect.Y})
+	e.addPoint(geometry.Point{X: rect.X + rect.Width, Y: rect.Y + rect.Height})
+}
+
+func (e *inkExtent) addPoint(point geometry.Point) {
+	if !e.have {
+		e.minX, e.maxX = point.X, point.X
+		e.minY, e.maxY = point.Y, point.Y
+		e.have = true
+		return
+	}
+	e.minX = minFloat(e.minX, point.X)
+	e.minY = minFloat(e.minY, point.Y)
+	e.maxX = maxFloat(e.maxX, point.X)
+	e.maxY = maxFloat(e.maxY, point.Y)
+}
+
+func (e inkExtent) overflow(width, ascent, descent float32) float32 {
+	if !e.have {
+		return 0
+	}
+	left := maxFloat(0, -e.minX)
+	right := maxFloat(0, e.maxX-width)
+	top := maxFloat(0, -e.minY-ascent)
+	bottom := maxFloat(0, e.maxY-descent)
+	return maxFloat(maxFloat(left, right), maxFloat(top, bottom))
+}
+
+func overflowAtLeast(actual, required float32) bool {
+	return actual+lineTolerance(required) >= required
 }
 
 func validateTranslatedItem(got, local Item, dx, dy float32) error {
@@ -252,17 +332,9 @@ func validateItem(item Item) error {
 			return errors.New("empty glyph path")
 		}
 		for i, seg := range item.Path {
-			if seg.Op > geometry.SegClose {
+			points, ok := segmentPointCount(seg.Op)
+			if !ok {
 				return fmt.Errorf("segment %d has unknown op %d", i, seg.Op)
-			}
-			points := 1
-			switch seg.Op {
-			case geometry.SegQuadTo:
-				points = 2
-			case geometry.SegCubeTo:
-				points = 3
-			case geometry.SegClose:
-				points = 0
 			}
 			for j := 0; j < points; j++ {
 				if !finite(seg.Points[j].X) || !finite(seg.Points[j].Y) {
@@ -281,6 +353,21 @@ func validateItem(item Item) error {
 		}
 	}
 	return nil
+}
+
+func segmentPointCount(op geometry.SegOp) (int, bool) {
+	switch op {
+	case geometry.SegMoveTo, geometry.SegLineTo:
+		return 1, true
+	case geometry.SegQuadTo:
+		return 2, true
+	case geometry.SegCubeTo:
+		return 3, true
+	case geometry.SegClose:
+		return 0, true
+	default:
+		return 0, false
+	}
 }
 
 func validatePaint(paint Paint) error {
