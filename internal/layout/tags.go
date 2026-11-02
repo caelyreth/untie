@@ -7,8 +7,16 @@ import (
 	"github.com/caelyreth/untie/ir"
 )
 
+func hasManualTag(tags []ir.EquationTag) bool {
+	for _, tag := range tags {
+		if !tag.Suppressed && tag.Manual {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *layoutState) attachSingleLineTag(
-	root ir.Node,
 	base *display.Box,
 	tags []ir.EquationTag,
 	env environment,
@@ -33,11 +41,8 @@ func (s *layoutState) attachSingleLineTag(
 	if manual.Line != 0 && manual.Line != -1 {
 		return nil, fmt.Errorf("%w: equation tag line %d is deferred", ErrUnsupported, manual.Line)
 	}
-	if containsMultilineIR(root) {
-		return nil, fmt.Errorf("%w: multiline equation tags are deferred", ErrUnsupported)
-	}
 	if len(base.Lines) > 1 {
-		return nil, fmt.Errorf("%w: multiline equation tags are deferred", ErrUnsupported)
+		return nil, fmt.Errorf("%w: tagged layout produced multiple lines", ErrInvalidInput)
 	}
 
 	tagBody := manual.Body
@@ -143,64 +148,13 @@ func (s *layoutState) attachSingleLineTag(
 	}
 	base.Ascent = maxFloat(base.Ascent, -tag.Y+tag.Box.Ascent)
 	base.Descent = maxFloat(base.Descent, tag.Y+tag.Box.Descent)
+	base.Italic = tag.Box.Italic
 	overflow, err := s.displayItemsOverflow(base.Items, base.Width, base.Ascent, base.Descent)
 	if err != nil {
 		return nil, err
 	}
+	tagLogicalOverflow := maxFloat(0, tag.X+tag.Box.Width-base.Width)
+	overflow = maxFloat(overflow, tagLogicalOverflow)
 	base.Overflow = maxFloat(base.Overflow, overflow)
 	return base, nil
-}
-
-func containsMultilineIR(node ir.Node) bool {
-	switch n := node.(type) {
-	case *ir.Multiline:
-		return true
-	case *ir.Row:
-		for _, item := range n.Items {
-			if containsMultilineIR(item) {
-				return true
-			}
-		}
-	case *ir.Fraction:
-		return containsMultilineIR(n.Numerator) || containsMultilineIR(n.Denominator)
-	case *ir.Radical:
-		return containsMultilineIR(n.Radicand) || containsMultilineIR(n.Index)
-	case *ir.Scripts:
-		return containsMultilineIR(n.BaseItem) || containsMultilineIR(n.Top) ||
-			containsMultilineIR(n.Bottom) || containsMultilineIR(n.TopLeft) ||
-			containsMultilineIR(n.BottomLeft) || containsMultilineIR(n.TopRight) ||
-			containsMultilineIR(n.BottomRight)
-	case *ir.Fenced:
-		if containsMultilineIR(n.Open) || containsMultilineIR(n.Close) {
-			return true
-		}
-		for _, child := range n.Body {
-			if containsMultilineIR(child) {
-				return true
-			}
-		}
-	case *ir.Accent:
-		return containsMultilineIR(n.Body) || containsMultilineIR(n.Accent)
-	case *ir.Line:
-		return containsMultilineIR(n.Body)
-	case *ir.Cancel:
-		return containsMultilineIR(n.Body)
-	case *ir.Table:
-		for _, row := range n.Rows {
-			for _, cell := range row.Cells {
-				if containsMultilineIR(cell) {
-					return true
-				}
-			}
-		}
-	case *ir.Style:
-		return containsMultilineIR(n.Body)
-	case *ir.Color:
-		return containsMultilineIR(n.Body)
-	case *ir.Box:
-		return containsMultilineIR(n.Body)
-	case *ir.Phantom:
-		return containsMultilineIR(n.Body)
-	}
-	return false
 }

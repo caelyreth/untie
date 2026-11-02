@@ -164,13 +164,116 @@ func TestTagFailurePaths(t *testing.T) {
 	t.Run("tag around multiline root", func(t *testing.T) {
 		t.Parallel()
 		result := parseTest(t, `\begin{aligned}x&=1\end{aligned}\tag{2}`, Options{})
-		if len(result.Tags) != 0 {
-			t.Fatalf("multiline tags = %+v, want none", result.Tags)
+		if len(result.Tags) != 1 || !result.Tags[0].Manual {
+			t.Fatalf("tags = %+v, want a top-level tag on the multiline value", result.Tags)
 		}
-		if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-			t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Severity == source.SeverityError {
+				t.Fatalf("unexpected diagnostic: %+v", diagnostic)
+			}
 		}
 	})
+}
+
+func TestTagsCannotBePromotedFromSyntacticArguments(t *testing.T) {
+	t.Parallel()
+
+	parsedSources := []string{
+		`x^\tag{1}`,
+		`x^\nonumber`,
+		`\sqrt\tag{1}`,
+		`\frac\tag{1}{2}`,
+		`\overset\tag{1}{x}`,
+		`\sqrt[\tag{1}]{x}`,
+	}
+	for _, src := range parsedSources {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			result := parseTest(t, src, Options{})
+			if len(result.Tags) != 0 {
+				t.Fatalf("tags = %+v, want no promoted tag", result.Tags)
+			}
+			if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+				t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+			}
+		})
+	}
+
+	rawSources := []string{
+		`\href{\tag{1}}{x}`,
+		`\textcolor{\tag{1}}{x}`,
+		`\big\tag{1}`,
+	}
+	for _, src := range rawSources {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			result := parseTest(t, src, Options{})
+			if len(result.Tags) != 0 {
+				t.Fatalf("tags = %+v, want no promoted tag", result.Tags)
+			}
+		})
+	}
+}
+
+func TestTagsCannotBePromotedThroughMacroExpandedArguments(t *testing.T) {
+	t.Parallel()
+
+	sources := []string{
+		`\def\mytag{\tag{1}}x^\mytag`,
+		`\def\mytag{\tag{1}}\sqrt\mytag`,
+		`\def\mytag{\tag{1}}\sqrt[\mytag]{x}`,
+		`\def\mytag{\tag{1}}\frac\mytag{2}`,
+		`\def\mytag{\nonumber}x^\mytag`,
+	}
+	for _, src := range sources {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			result := parseTest(t, src, Options{})
+			if len(result.Tags) != 0 {
+				t.Fatalf("tags = %+v, want no promoted tag", result.Tags)
+			}
+			if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+				t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+			}
+		})
+	}
+}
+
+func TestNestedMultilineValuesDoNotInvalidateTopLevelTags(t *testing.T) {
+	t.Parallel()
+
+	sources := []string{
+		`\sum_{\substack{i=1\\j=2}} a_{ij}\tag{1}`,
+		`x+\substack{a\\b}\tag{1}`,
+	}
+	for _, src := range sources {
+		src := src
+		t.Run(src, func(t *testing.T) {
+			t.Parallel()
+			result := parseTest(t, src, Options{})
+			if len(result.Tags) != 1 || !result.Tags[0].Manual {
+				t.Fatalf("tags = %+v, want one top-level tag", result.Tags)
+			}
+		})
+	}
+}
+
+func TestCommandValuedEmptyTagIsDiagnosed(t *testing.T) {
+	t.Parallel()
+
+	result := parseTest(t, `\tag\relax`, Options{})
+	if len(result.Tags) != 1 {
+		t.Fatalf("tags = %+v, want visible invalid tag", result.Tags)
+	}
+	if _, ok := result.Tags[0].Body.(*ir.Placeholder); !ok {
+		t.Fatalf("tag body = %T, want placeholder", result.Tags[0].Body)
+	}
+	if !hasDiagnostic(result.Diagnostics, source.CodeMissingArgument) {
+		t.Fatalf("diagnostics = %v, want missing-argument", diagnosticCodes(result.Diagnostics))
+	}
 }
 
 func TestTagLoweringSharesFormulaNodeBudget(t *testing.T) {

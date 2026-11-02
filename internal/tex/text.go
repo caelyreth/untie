@@ -71,6 +71,8 @@ func (p *parser) parseOperatorName(command token) astNode {
 }
 
 func (p *parser) parseTextArgument(owner token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.isControl() && (t.text == "\\right" || t.text == "\\end") {

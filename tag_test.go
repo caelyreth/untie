@@ -160,7 +160,7 @@ func TestEquationTagSuppressionDoesNotRender(t *testing.T) {
 	}
 }
 
-func TestEquationTagLayoutRejectsInlineAndMultiline(t *testing.T) {
+func TestEquationTagLayoutRejectsInlineButAllowsNestedMultilineValues(t *testing.T) {
 	t.Parallel()
 
 	fonts := loadTestFonts(t)
@@ -180,9 +180,16 @@ func TestEquationTagLayoutRejectsInlineAndMultiline(t *testing.T) {
 		t.Fatalf("inline tag layout error = %v, want display-mode rejection", err)
 	}
 
-	multiline := ParseTeX(`\begin{aligned}x&=1\end{aligned}\tag{2}`, Display, ParseOptions{})
-	if tags := multiline.Tags(); len(tags) != 0 {
-		t.Fatalf("multiline parser tags = %+v, want deferred/discarded", tags)
+	nested := ParseTeX(`x+\substack{a\\b}\tag{2}`, Display, ParseOptions{})
+	if tags := nested.Tags(); len(tags) != 1 {
+		t.Fatalf("nested multiline tags = %+v, want top-level tag retained", tags)
+	}
+	box, err := engine.Layout(nested, Style{Size: 16, MaxWidth: 1, Align: AlignCenter})
+	if err != nil {
+		t.Fatalf("nested multiline tag layout error = %v", err)
+	}
+	if box.Tag == nil || len(box.Lines) != 1 || box.Overflow <= 0 {
+		t.Fatalf("nested multiline constrained fallback = tag:%+v lines:%d overflow:%v", box.Tag, len(box.Lines), box.Overflow)
 	}
 }
 

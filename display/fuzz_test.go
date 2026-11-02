@@ -68,6 +68,9 @@ func randomBox(data []byte) *Box {
 	number := func() float32 {
 		return float32(int8(next())) / 4
 	}
+	if next()%5 == 0 {
+		return fuzzTaggedConstrainedBox()
+	}
 	box := &Box{
 		Width: fuzzAbsFloat(number()), Ascent: fuzzAbsFloat(number()), Descent: fuzzAbsFloat(number()),
 		Italic: number(), AxisHeight: fuzzAbsFloat(number()), Overflow: fuzzAbsFloat(number()),
@@ -166,11 +169,70 @@ func randomBox(data []byte) *Box {
 			box.Hits = append(box.Hits, translated)
 		}
 		box.Tag = tag
+		box.Italic = tag.Box.Italic
 		box.Width = maxFloat(box.Width, tag.X+tag.Box.Width)
 		box.Ascent = maxFloat(box.Ascent, tag.Box.Ascent)
 		box.Overflow = math.MaxFloat32 / 4
 	}
 	return box
+}
+
+func fuzzTaggedConstrainedBox() *Box {
+	lineItem := Item{
+		Kind:  ItemRule,
+		Paint: Paint{Role: RoleInk},
+		Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
+		Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
+	}
+	line := &Box{
+		Width:  1,
+		Ascent: 1,
+		Items:  []Item{lineItem},
+		Hits: []Hit{{
+			Source: source.NewRange(0, 1),
+			Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
+			Kind:   HitAtom,
+		}},
+	}
+	tagItem := lineItem
+	tagItem.Bound.X = 2
+	tagItem.Rect.X = 2
+	tagItem.At.X = 2
+	tag := &TagBox{
+		Box: &Box{
+			Width:  1,
+			Ascent: 1,
+			Items:  []Item{lineItem},
+			Hits: []Hit{{
+				Source: source.NewRange(0, 1),
+				Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
+				Kind:   HitAtom,
+			}},
+		},
+		Source: source.NewRange(0, 1),
+		Manual: true,
+		Line:   0,
+		X:      2,
+	}
+	return &Box{
+		Width:  3,
+		Ascent: 1,
+		Lines:  []LineBox{{Box: line, Tag: tag}},
+		Items:  []Item{lineItem, tagItem},
+		Hits: []Hit{
+			{
+				Source: source.NewRange(0, 1),
+				Area:   geometry.Rect{Y: -1, Width: 1, Height: 1},
+				Kind:   HitAtom,
+			},
+			{
+				Source: source.NewRange(0, 1),
+				Area:   geometry.Rect{X: 2, Y: -1, Width: 1, Height: 1},
+				Kind:   HitAtom,
+			},
+		},
+		Tag: tag,
+	}
 }
 
 func rect(number func() float32) geometry.Rect {

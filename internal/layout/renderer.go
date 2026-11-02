@@ -111,11 +111,21 @@ func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula
 	if err != nil {
 		return nil, err
 	}
-	box, err := state.flatten(rootFragment)
+	var box *display.Box
+	if hasManualTag(formula.Tags) {
+		// Tagged display output is single-line phase-1 metadata. Avoid a
+		// multi-line wrap that cannot own one unambiguous tag.
+		box, err = state.flattenFragment(rootFragment)
+		if err == nil && mode == ir.Display && style.MaxWidth > 0 {
+			box, err = state.constrainedFallback(box)
+		}
+	} else {
+		box, err = state.flatten(rootFragment)
+	}
 	if err != nil {
 		return nil, err
 	}
-	box, err = state.attachSingleLineTag(root, box, formula.Tags, env)
+	box, err = state.attachSingleLineTag(box, formula.Tags, env)
 	if err != nil {
 		return nil, err
 	}

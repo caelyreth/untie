@@ -81,6 +81,19 @@ func TestTagBoxValidationRejectsMalformedContracts(t *testing.T) {
 				box.Tag.X = -1
 			},
 		},
+		{
+			name: "starred non-manual",
+			mutate: func(box *Box) {
+				box.Tag.Manual = false
+				box.Tag.Starred = true
+			},
+		},
+		{
+			name: "italic does not match tag",
+			mutate: func(box *Box) {
+				box.Italic = 1
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -98,6 +111,70 @@ func TestTagBoxValidationRejectsMalformedContracts(t *testing.T) {
 				t.Fatal("Validate() error = nil")
 			}
 		})
+	}
+}
+
+func TestTagLogicalWidthRequiresParentOverflow(t *testing.T) {
+	t.Parallel()
+
+	tag := validDisplayTagBox(2, 0)
+	parent := &Box{
+		Width:  3,
+		Ascent: 1,
+		Items:  translatedBoxItems(tag),
+		Hits:   translatedTagHits(tag),
+		Tag:    tag,
+	}
+	if err := parent.Validate(); err != nil {
+		t.Fatalf("base Validate() error = %v", err)
+	}
+	parent.Tag.Box.Width = 5
+	if err := parent.Validate(); err == nil {
+		t.Fatal("Validate() ignored logical tag-width overflow")
+	}
+	parent.Overflow = 4
+	if err := parent.Validate(); err != nil {
+		t.Fatalf("Validate() with logical overflow error = %v", err)
+	}
+}
+
+func TestConstrainedTagRequiresTargetedLineTag(t *testing.T) {
+	t.Parallel()
+
+	tag := validDisplayTagBox(9, 0)
+	line := &Box{
+		Width:  1,
+		Ascent: 1,
+		Items: []Item{{
+			Kind:  ItemRule,
+			Paint: Paint{Role: RoleInk},
+			Bound: geometry.Rect{Y: -1, Width: 1, Height: 0.1},
+			Rect:  geometry.Rect{Y: -1, Width: 1, Height: 0.1},
+		}},
+	}
+	parent := &Box{
+		Width:  10,
+		Ascent: 1,
+		Lines:  []LineBox{{Box: line, Tag: tag}},
+		Items:  append(cloneItems(line.Items), translatedBoxItems(tag)...),
+		Hits:   translatedTagHits(tag),
+		Tag:    tag,
+	}
+	if err := parent.Validate(); err != nil {
+		t.Fatalf("base Validate() error = %v", err)
+	}
+
+	withoutLineTag := parent.Clone()
+	withoutLineTag.Lines[0].Tag = nil
+	if err := withoutLineTag.Validate(); err == nil {
+		t.Fatal("Validate() accepted a constrained parent tag without its targeted line tag")
+	}
+
+	wrongLine := parent.Clone()
+	wrongLine.Tag.Line = 1
+	wrongLine.Lines[0].Tag.Line = 1
+	if err := wrongLine.Validate(); err == nil {
+		t.Fatal("Validate() accepted an out-of-range tag line association")
 	}
 }
 

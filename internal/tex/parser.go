@@ -81,75 +81,7 @@ func (p *parser) parse() (ir.Node, []ir.EquationTag) {
 	} else {
 		node.NodeBase().Size = ir.SizeText
 	}
-	parsedTags := p.tags
-	if len(parsedTags) > 0 && containsMultilineNode(parsedRoot) {
-		for _, tag := range parsedTags {
-			p.report(source.Diagnostic{
-				Range:    normalizeRange(tag.span),
-				Severity: source.SeverityError,
-				Code:     source.CodeUnsupported,
-				Message:  "multiline equation tags are deferred; tag metadata was discarded",
-			})
-		}
-		parsedTags = nil
-	}
-	return node, lower.lowerTags(parsedTags)
-}
-
-func containsMultilineNode(node astNode) bool {
-	switch n := node.(type) {
-	case *astMultilineNode:
-		return true
-	case *astRowNode:
-		for _, item := range n.items {
-			if containsMultilineNode(item) {
-				return true
-			}
-		}
-	case *astFractionNode:
-		return containsMultilineNode(n.numerator) || containsMultilineNode(n.denominator)
-	case *astRadicalNode:
-		return containsMultilineNode(n.radicand) || containsMultilineNode(n.index)
-	case *astScriptsNode:
-		return containsMultilineNode(n.main) || containsMultilineNode(n.top) ||
-			containsMultilineNode(n.bottom) || containsMultilineNode(n.topLeft) ||
-			containsMultilineNode(n.bottomLeft) || containsMultilineNode(n.topRight) ||
-			containsMultilineNode(n.bottomRight)
-	case *astFencedNode:
-		if containsMultilineNode(n.open) || containsMultilineNode(n.close) {
-			return true
-		}
-		for _, child := range n.body {
-			if containsMultilineNode(child) {
-				return true
-			}
-		}
-	case *astTableNode:
-		for _, row := range n.rows {
-			for _, cell := range row.cells {
-				if containsMultilineNode(cell) {
-					return true
-				}
-			}
-		}
-	case *astStyleNode:
-		return containsMultilineNode(n.body)
-	case *astVariantNode:
-		return containsMultilineNode(n.body)
-	case *astClassNode:
-		return containsMultilineNode(n.body)
-	case *astColorNode:
-		return containsMultilineNode(n.body)
-	case *astBoxNode:
-		return containsMultilineNode(n.body)
-	case *astAccentNode:
-		return containsMultilineNode(n.body)
-	case *astLineNode:
-		return containsMultilineNode(n.body)
-	case *astCancelNode:
-		return containsMultilineNode(n.body)
-	}
-	return false
+	return node, lower.lowerTags(p.tags)
 }
 
 func (p *parser) parseSequence(stop stopMode) astNode {
@@ -713,6 +645,8 @@ func (p *parser) parseGroup(open token) astNode {
 }
 
 func (p *parser) parseScriptArgument(name string, marker token) (astNode, source.Range) {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.isControl() && (t.text == "\\right" || t.text == "\\middle" || t.text == "\\end") {
@@ -736,6 +670,12 @@ func (p *parser) parseScriptArgument(name string, marker token) (astNode, source
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
 		span := normalizeRange(marker.span)
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "argument after '" + name + "' produced no math value",
+		})
 		return newPlaceholderAST(span, "missing "+name), span
 	}
 	return node, source.Merge(marker.span, node.base().span)
@@ -752,6 +692,8 @@ func commandTakesRequiredArgument(command string) bool {
 }
 
 func (p *parser) parseRequiredArgument(owner token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.is(tokAlignment) || t.isControl() && (t.text == "\\right" || t.text == "\\middle" || t.text == "\\end") {
@@ -770,6 +712,12 @@ func (p *parser) parseRequiredArgument(owner token) astNode {
 	}
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "argument to '" + owner.text + "' produced no math value",
+		})
 		return newPlaceholderAST(normalizeRange(owner.span), "missing argument to "+owner.text)
 	}
 	return node

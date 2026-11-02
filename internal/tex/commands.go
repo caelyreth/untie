@@ -907,7 +907,9 @@ func (p *parser) parseSizedDelimiter(command token) astNode {
 			// KaTeX parses a primitive argument as a complete group. Consume a
 			// command and its own arguments before rejecting it so malformed
 			// delimiters cannot leak function arguments into the outer scope.
+			p.metadataDepth++
 			_ = p.parseNucleus(stopEOF)
+			p.metadataDepth--
 		} else {
 			t = p.exp.next()
 		}

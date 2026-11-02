@@ -76,8 +76,80 @@ func TestEquationTagLayoutRejectsUnsupportedShapes(t *testing.T) {
 		),
 		Tags: taggedTestFormula(glyph("x", ir.ClassNormal), tagGlyph("1")).Tags,
 	}
-	if _, err := renderer.LayoutFormulaContext(context.Background(), multiline, ir.Display, testStyle(16)); !errors.Is(err, ErrUnsupported) {
-		t.Fatalf("multiline tag error = %v, want ErrUnsupported", err)
+	box, err := renderer.LayoutFormulaContext(context.Background(), multiline, ir.Display, testStyle(16))
+	if err != nil {
+		t.Fatalf("nested multiline tag error = %v", err)
+	}
+	if box.Tag == nil || len(box.Lines) != 0 {
+		t.Fatalf("nested multiline tag = %+v lines=%d", box.Tag, len(box.Lines))
+	}
+}
+
+func TestTaggedConstrainedLayoutAlwaysUsesOneCompleteLine(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	root := ir.NewRow(source.NewRange(0, 7),
+		glyph("a", ir.ClassNormal),
+		glyph("+", ir.ClassBinary),
+		glyph("b", ir.ClassNormal),
+		glyph("+", ir.ClassBinary),
+		glyph("c", ir.ClassNormal),
+		glyph("+", ir.ClassBinary),
+		glyph("d", ir.ClassNormal),
+	)
+	formula := taggedTestFormula(root, tagGlyph("1"))
+	unconstrained, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, testStyle(16))
+	if err != nil {
+		t.Fatalf("unconstrained layout error = %v", err)
+	}
+	wrappingWidth := unconstrained.Tag.X / 3
+	untaggedStyle := testStyle(16)
+	untaggedStyle.MaxWidth = wrappingWidth
+	untagged, err := renderer.Layout(root, ir.Display, untaggedStyle)
+	if err != nil {
+		t.Fatalf("untagged wrapping layout error = %v", err)
+	}
+	if len(untagged.Lines) < 2 {
+		t.Fatalf("fixture does not wrap untagged: lines=%d width=%v", len(untagged.Lines), wrappingWidth)
+	}
+	for _, maxWidth := range []float32{1, wrappingWidth, unconstrained.Width / 2, unconstrained.Width - 1, unconstrained.Width + 20} {
+		style := testStyle(16)
+		style.MaxWidth = maxWidth
+		style.Align = display.AlignCenter
+		box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+		if err != nil {
+			t.Fatalf("MaxWidth %v layout error = %v", maxWidth, err)
+		}
+		if len(box.Lines) != 1 || box.Tag == nil || box.Width != maxWidth {
+			t.Fatalf("MaxWidth %v = lines:%d tag:%+v width:%v", maxWidth, len(box.Lines), box.Tag, box.Width)
+		}
+		logicalTagOverflow := maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width)
+		if box.Overflow+1.0/1024 < logicalTagOverflow {
+			t.Fatalf("MaxWidth %v overflow = %v, want at least tag logical overflow %v", maxWidth, box.Overflow, logicalTagOverflow)
+		}
+	}
+}
+
+func TestTagBecomesRightmostItalicRun(t *testing.T) {
+	t.Parallel()
+
+	renderer, glyphs, _ := newTestRenderer(t)
+	rightParen, err := glyphs.Glyph(GlyphRequest{Text: ")"})
+	if err != nil {
+		t.Fatalf("Glyph()) error = %v", err)
+	}
+	rightParen.Italic = -em(1, 10)
+	glyphs.glyphs[")"] = rightParen
+
+	box, err := renderer.LayoutFormulaContext(context.Background(),
+		taggedTestFormula(glyph("x", ir.ClassNormal), tagGlyph("1")),
+		ir.Display, testStyle(16))
+	if err != nil {
+		t.Fatalf("LayoutFormulaContext() error = %v", err)
+	}
+	if !closeHost(box.Italic, -1.6) {
+		t.Fatalf("parent Italic = %v, want rightmost tag run -1.6", box.Italic)
 	}
 }
 

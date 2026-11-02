@@ -59,6 +59,9 @@ func (b *Box) validate(allowLines bool) error {
 		if err := validateTagBox(b.Tag, "tag"); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
 		}
+		if !closeCoordinate(b.Italic, b.Tag.Box.Italic) {
+			return fmt.Errorf("%w: parent italic %v, want rightmost tag run %v", ErrInvalidBox, b.Italic, b.Tag.Box.Italic)
+		}
 	}
 	if len(b.Lines) > 0 {
 		if !allowLines {
@@ -80,6 +83,16 @@ func validateLines(box *Box) error {
 	itemCount := 0
 	hitCount := 0
 	lineTagCount := 0
+	targetTagLine := -1
+	if box.Tag != nil {
+		targetTagLine = box.Tag.Line
+		if targetTagLine < 0 {
+			targetTagLine = 0
+		}
+		if targetTagLine >= len(box.Lines) {
+			return fmt.Errorf("parent tag targets line %d with only %d lines", box.Tag.Line, len(box.Lines))
+		}
+	}
 	for i, line := range box.Lines {
 		if !finite(line.Baseline) || line.Baseline < 0 {
 			return fmt.Errorf("line %d baseline is %v", i, line.Baseline)
@@ -105,8 +118,8 @@ func validateLines(box *Box) error {
 			if box.Tag == nil {
 				return fmt.Errorf("line %d has a tag but parent tag is nil", i)
 			}
-			if line.Tag.Line >= 0 && line.Tag.Line != i {
-				return fmt.Errorf("line %d tag targets line %d", i, line.Tag.Line)
+			if i != targetTagLine {
+				return fmt.Errorf("line %d has a tag but parent targets line %d", i, targetTagLine)
 			}
 			if !sameTagMetadata(*line.Tag, *box.Tag) {
 				return fmt.Errorf("line %d tag metadata differs from parent tag", i)
@@ -131,8 +144,8 @@ func validateLines(box *Box) error {
 	if lineTagCount > 1 {
 		return fmt.Errorf("line tag count %d exceeds single-line phase-1 contract", lineTagCount)
 	}
-	if box.Tag != nil && box.Tag.Line >= len(box.Lines) {
-		return fmt.Errorf("parent tag targets line %d with only %d lines", box.Tag.Line, len(box.Lines))
+	if box.Tag != nil && box.Lines[targetTagLine].Tag == nil {
+		return fmt.Errorf("parent tag targets line %d without matching line tag", targetTagLine)
 	}
 	if box.Tag != nil {
 		itemCount += len(box.Tag.Box.Items)
@@ -188,6 +201,9 @@ func validateTagBox(tag *TagBox, path string) error {
 	if tag.Line < -1 {
 		return fmt.Errorf("%s line is %d", path, tag.Line)
 	}
+	if tag.Starred && !tag.Manual {
+		return fmt.Errorf("%s is starred but not manual", path)
+	}
 	if !finite(tag.X) || tag.X < 0 {
 		return fmt.Errorf("%s x is %v", path, tag.X)
 	}
@@ -240,6 +256,7 @@ func validateUnwrappedTagAggregate(box *Box) error {
 		translated[i] = translateItemForValidation(item, box.Tag.X, box.Tag.Y)
 	}
 	required := inkExtentForItems(translated).overflow(box.Width, box.Ascent, box.Descent)
+	required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width))
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below tag requirement %v", box.Overflow, required)
 	}
@@ -280,6 +297,9 @@ func validateWrappedOverflow(box *Box) error {
 	required := frame.overflow(box.Width, box.Ascent, box.Descent)
 	for _, line := range box.Lines {
 		required = maxFloat(required, maxFloat(0, line.Box.Width-box.Width))
+	}
+	if box.Tag != nil && box.Tag.Box != nil {
+		required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width))
 	}
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below required %v", box.Overflow, required)

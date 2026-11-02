@@ -138,6 +138,8 @@ func (p *parser) parseSideSet(command token, stop stopMode) astNode {
 }
 
 func (p *parser) parseScriptGroup(owner token, side string) (top, bottom astNode, span source.Range, ok bool) {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	open := p.exp.peek()
 	if !open.is(tokBeginGroup) {

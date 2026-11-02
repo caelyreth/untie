@@ -90,6 +90,14 @@ func (s *layoutState) layoutFenced(node *ir.Fenced, env environment, depth int) 
 			return nil, err
 		}
 	}
+	switch {
+	case close != nil:
+		fragment.Italic = close.Italic
+	case body != nil:
+		fragment.Italic = body.Italic
+	case open != nil:
+		fragment.Italic = open.Italic
+	}
 	return withClass(fragment, node.Class), nil
 }
 
