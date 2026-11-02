@@ -28,7 +28,28 @@ func normalizeFormula(formula *ir.Formula, mode ir.Mode) (any, error) {
 	if mode == ir.Display {
 		initial.size = ir.SizeDisplay
 	}
-	return normalizeNode(formula.Root, initial)
+	root, err := normalizeNode(formula.Root, initial)
+	if err != nil {
+		return nil, err
+	}
+	if len(formula.Tags) == 0 {
+		return root, nil
+	}
+	tags := make([]any, len(formula.Tags))
+	for i, tag := range formula.Tags {
+		body, err := normalizeNode(tag.Body, initial)
+		if err != nil {
+			return nil, fmt.Errorf("tag %d: %w", i, err)
+		}
+		tags[i] = map[string]any{
+			"body":       body,
+			"manual":     tag.Manual,
+			"suppressed": tag.Suppressed,
+			"starred":    tag.Starred,
+			"line":       tag.Line,
+		}
+	}
+	return map[string]any{"root": root, "tags": tags}, nil
 }
 
 // normalizeNode deliberately removes only source locations and the documented
@@ -254,11 +275,7 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 					return nil, err
 				}
 			}
-			tag, err := normalizeNode(row.Tag, childMode)
-			if err != nil {
-				return nil, err
-			}
-			rows[i] = map[string]any{"cells": cells, "tag": tag}
+			rows[i] = map[string]any{"cells": cells}
 		}
 		baseValue["kind"] = "table"
 		baseValue["rows"] = rows

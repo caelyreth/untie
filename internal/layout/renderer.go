@@ -51,6 +51,12 @@ func (r *Renderer) Layout(root ir.Node, mode ir.Mode, style display.Style) (*dis
 // LayoutContext lays out root with cancellation and deterministic resource
 // limits.
 func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode, style display.Style) (*display.Box, error) {
+	return r.LayoutFormulaContext(ctx, &ir.Formula{Root: root}, mode, style)
+}
+
+// LayoutFormulaContext lays out a complete formula with cancellation and
+// deterministic resource limits.
+func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
 	if r == nil {
 		return nil, fmt.Errorf("%w: nil renderer", ErrInvalidInput)
 	}
@@ -60,13 +66,14 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if root == nil {
-		return nil, fmt.Errorf("%w: nil root", ErrInvalidInput)
+	if formula == nil || formula.Root == nil {
+		return nil, fmt.Errorf("%w: nil formula", ErrInvalidInput)
 	}
-	if err := validateConfiguredLimits(ctx, root, r.limits); err != nil {
+	root := formula.Root
+	if err := validateConfiguredLimits(ctx, formula, r.limits); err != nil {
 		return nil, err
 	}
-	if err := ir.Validate(&ir.Formula{Root: root}, structuralValidationLimits()); err != nil {
+	if err := ir.Validate(formula, structuralValidationLimits()); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 	hostSize, err := hostSizeFromDisplay(style.Size)
@@ -104,7 +111,21 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 	if err != nil {
 		return nil, err
 	}
-	box, err := state.flatten(rootFragment)
+	var box *display.Box
+	if hasManualTag(formula.Tags) {
+		// Tagged display output is single-line phase-1 metadata. Avoid a
+		// multi-line wrap that cannot own one unambiguous tag.
+		box, err = state.flattenFragment(rootFragment)
+		if err == nil && mode == ir.Display && style.MaxWidth > 0 {
+			box, err = state.constrainedFallback(box)
+		}
+	} else {
+		box, err = state.flatten(rootFragment)
+	}
+	if err != nil {
+		return nil, err
+	}
+	box, err = state.attachSingleLineTag(box, formula.Tags, env)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +215,7 @@ func (s *layoutState) reservePathSegments(count int) error {
 	return nil
 }
 
-func validateConfiguredLimits(ctx context.Context, root ir.Node, limits source.Limits) error {
+func validateConfiguredLimits(ctx context.Context, formula *ir.Formula, limits source.Limits) error {
 	limits = limits.WithDefaults()
 	nodes := 0
 	var visit func(ir.Node, int) error
@@ -231,7 +252,22 @@ func validateConfiguredLimits(ctx context.Context, root ir.Node, limits source.L
 		}
 		return nil
 	}
-	return visit(root, 0)
+	if err := visit(formula.Root, 0); err != nil {
+		return err
+	}
+	for i, tag := range formula.Tags {
+		nodes++
+		if nodes > limits.MaxNodes {
+			return fmt.Errorf("%w: tag %d metadata count %d", ErrLimit, i, nodes)
+		}
+		if tag.Body == nil {
+			continue
+		}
+		if err := visit(tag.Body, 0); err != nil {
+			return fmt.Errorf("tag %d: %w", i, err)
+		}
+	}
+	return nil
 }
 
 func checkConfiguredNodeLimits(node ir.Node, limits source.Limits) error {

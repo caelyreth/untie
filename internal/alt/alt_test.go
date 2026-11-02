@@ -478,6 +478,68 @@ func TestGenerateRejectsInvalidUTF8WithoutReturningIt(t *testing.T) {
 	}
 }
 
+func TestGenerateFormulaIncludesVisibleEquationTags(t *testing.T) {
+	t.Parallel()
+
+	formula := &ir.Formula{
+		Root: glyph("x"),
+		Tags: []ir.EquationTag{
+			{
+				Body:   glyph("1"),
+				Span:   source.NewRange(1, 2),
+				Origin: source.NewRange(1, 2),
+				Manual: true,
+				Line:   0,
+			},
+			{
+				Span:       source.NewRange(0, 2),
+				Origin:     source.NewRange(0, 2),
+				Suppressed: true,
+				Line:       0,
+			},
+		},
+	}
+	got := GenerateFormula(formula, ir.Display, source.Limits{})
+	if got.Text != "x equation (1)" {
+		t.Fatalf("Text = %q, want %q", got.Text, "x equation (1)")
+	}
+	if got.Speech != "x equation 1" {
+		t.Fatalf("Speech = %q, want %q", got.Speech, "x equation 1")
+	}
+	if err := got.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestGenerateFormulaTagOutputObeysTextLimit(t *testing.T) {
+	t.Parallel()
+
+	formula := &ir.Formula{
+		Root: glyph("x"),
+		Tags: []ir.EquationTag{{
+			Body:   glyph("12345"),
+			Span:   source.NewRange(1, 2),
+			Origin: source.NewRange(1, 2),
+			Manual: true,
+			Line:   0,
+		}},
+	}
+	out, err := GenerateFormulaContext(context.Background(), formula, ir.Display, source.Limits{MaxTextBytes: 4})
+	if !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("GenerateFormulaContext() error = %v, want ErrLimitExceeded", err)
+	}
+	if out.Text == "" || out.Speech == "" {
+		t.Fatalf("bounded fallback = %+v", out)
+	}
+	out, err = GenerateFormulaContext(context.Background(), formula, ir.Display, source.Limits{MaxNodes: 1})
+	if !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("GenerateFormulaContext(metadata limit) error = %v, want ErrLimitExceeded", err)
+	}
+	if out.Text == "" || out.Speech == "" {
+		t.Fatalf("metadata-limit fallback = %+v", out)
+	}
+}
+
 type unknownNode struct {
 	ir.Node
 }

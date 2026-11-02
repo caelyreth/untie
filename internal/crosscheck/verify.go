@@ -143,7 +143,7 @@ func verifyCase(ctx context.Context, harness *layoutHarness, testCase fixture.Ca
 		result.Kind, result.Detail = failure.kind, failure.detail
 		return result
 	}
-	typstBox, typstLayoutErr := harness.layout(ctx, typstSide.root.Root, mode, size)
+	typstBox, typstLayoutErr := harness.layoutFormula(ctx, typstSide.root, mode, size)
 
 	hasTeX := strings.TrimSpace(testCase.TeX) != ""
 	if !hasTeX {
@@ -167,7 +167,7 @@ func verifyCase(ctx context.Context, harness *layoutHarness, testCase fixture.Ca
 		result.Kind, result.Detail = failure.kind, failure.detail
 		return result
 	}
-	texBox, texLayoutErr := harness.layout(ctx, texSide.root.Root, mode, size)
+	texBox, texLayoutErr := harness.layoutFormula(ctx, texSide.root, mode, size)
 
 	typstSemantic, err := normalizeFormula(typstSide.root, mode)
 	if err != nil {

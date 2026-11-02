@@ -11,7 +11,7 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
-func TestTableRequestPreservesStyleLinesTagsAndCellStyle(t *testing.T) {
+func TestTableRequestPreservesStyleLinesAndCellStyle(t *testing.T) {
 	t.Parallel()
 
 	glyphs := &fakeGlyphSource{glyphs: map[string]Glyph{}}
@@ -22,7 +22,6 @@ func TestTableRequestPreservesStyleLinesTagsAndCellStyle(t *testing.T) {
 	}
 	table := ir.NewTable(source.NewRange(0, 3), ir.TableRow{
 		Cells: []ir.Node{glyph("x", ir.ClassNormal)},
-		Tag:   glyph("1", ir.ClassNormal),
 	})
 	table.Horizontal = []ir.TableLine{{Position: 0, Count: 1, Dashed: true, Thickness: irEm(0.02)}}
 	table.Vertical = []ir.TableLine{{Position: 1, Count: 2, Thickness: irEm(0.03)}}
@@ -56,13 +55,6 @@ func TestTableRequestPreservesStyleLinesTagsAndCellStyle(t *testing.T) {
 	cell := tables.req.Rows[0].Cells[0]
 	if cell.ownHit < 0 || cell.hits[cell.ownHit].kind != display.HitTableCell {
 		t.Fatalf("cell own hit = %+v, want table-cell kind", cell.hits)
-	}
-	if tables.req.Rows[0].Tag == nil || tables.req.Rows[0].Tag.Size != Script {
-		t.Fatalf("tag = %+v, want measured tag in inherited style", tables.req.Rows[0].Tag)
-	}
-	tag := tables.req.Rows[0].Tag
-	if tag.ownHit < 0 || tag.hits[tag.ownHit].kind != display.HitTableCell {
-		t.Fatalf("tag own hit = %+v, want table-cell kind", tag.hits)
 	}
 	if len(tables.req.Horizontal) != 1 || !tables.req.Horizontal[0].Dashed || tables.req.Horizontal[0].Thickness <= 0 {
 		t.Fatalf("horizontal lines = %+v", tables.req.Horizontal)

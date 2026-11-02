@@ -25,6 +25,43 @@ func newLowerer(limits source.Limits, diagnostic func(source.Diagnostic)) *lower
 	return &lowerer{limits: limits, diagnostic: diagnostic}
 }
 
+func (l *lowerer) lowerTags(tags []astEquationTag) []ir.EquationTag {
+	if len(tags) == 0 {
+		return nil
+	}
+	out := make([]ir.EquationTag, 0, len(tags))
+	for _, tag := range tags {
+		if l.exhausted {
+			break
+		}
+		if !l.reserve(tag.span) {
+			break
+		}
+		lowered := ir.EquationTag{
+			Span:       normalizeRange(tag.span),
+			Origin:     normalizeRange(tag.origin),
+			Manual:     tag.manual,
+			Suppressed: tag.suppressed,
+			Starred:    tag.starred,
+			Line:       tag.line,
+		}
+		if tag.body != nil {
+			lowered.Body = l.lower(tag.body, lowerContext{})
+			if l.exhausted && lowered.Body == nil {
+				break
+			}
+		}
+		if tag.manual && lowered.Body == nil {
+			if !l.reserve(tag.span) {
+				break
+			}
+			lowered.Body = ir.NewPlaceholder(normalizeRange(tag.span), "missing equation tag body")
+		}
+		out = append(out, lowered)
+	}
+	return out
+}
+
 func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	if node == nil {
 		return nil

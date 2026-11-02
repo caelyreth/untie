@@ -283,11 +283,10 @@ func TestDisplayLinesHandleTablesAndMultilineAsOverfull(t *testing.T) {
 			),
 		},
 		{
-			name: "tagged table",
+			name: "table without breaks",
 			root: ir.NewTable(source.NewRange(0, 8),
 				ir.TableRow{
 					Cells: []ir.Node{glyph("a", ir.ClassNormal), glyph("b", ir.ClassNormal)},
-					Tag:   glyph("tag", ir.ClassNormal),
 				},
 			),
 		},
@@ -333,10 +332,9 @@ func TestDisplayLinesFallbackWhenSourceTopologyIsUnproven(t *testing.T) {
 		glyph("+", ir.ClassBinary),
 		glyph("c", ir.ClassNormal),
 	)
-	tagged := ir.NewTable(source.NewRange(0, 8),
+	table := ir.NewTable(source.NewRange(0, 8),
 		ir.TableRow{
 			Cells: []ir.Node{glyph("a", ir.ClassNormal), glyph("b", ir.ClassNormal)},
-			Tag:   glyph("tag", ir.ClassNormal),
 		},
 	)
 	tests := []struct {
@@ -346,7 +344,7 @@ func TestDisplayLinesFallbackWhenSourceTopologyIsUnproven(t *testing.T) {
 	}{
 		{name: "fraction", root: fraction},
 		{name: "negative overlap", root: negative, hasBreaks: true},
-		{name: "tagged table", root: tagged},
+		{name: "table", root: table},
 		{name: "unbreakable overflow", root: ir.NewRow(source.NewRange(0, 2),
 			glyph("x", ir.ClassNormal), glyph("y", ir.ClassNormal))},
 	}

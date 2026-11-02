@@ -29,6 +29,29 @@ func MarshalCanonical(f *Formula, limits ...source.Limits) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(f.Tags) > 0 {
+		tags := make([]any, len(f.Tags))
+		for i, tag := range f.Tags {
+			state.count++
+			if state.count > state.limits.MaxNodes {
+				return nil, fmt.Errorf("%w: %w: tag %d metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, i)
+			}
+			body, err := state.node(tag.Body, 0)
+			if err != nil {
+				return nil, fmt.Errorf("tag %d: %w", i, err)
+			}
+			tags[i] = map[string]any{
+				"body":       body,
+				"span":       []int{tag.Span.Start, tag.Span.End},
+				"origin":     []int{tag.Origin.Start, tag.Origin.End},
+				"manual":     tag.Manual,
+				"suppressed": tag.Suppressed,
+				"starred":    tag.Starred,
+				"line":       tag.Line,
+			}
+		}
+		snapshot = map[string]any{"root": snapshot, "tags": tags}
+	}
 	return json.Marshal(snapshot)
 }
 
@@ -161,11 +184,7 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			tag, err := s.node(row.Tag, depth+1)
-			if err != nil {
-				return nil, err
-			}
-			rows[i] = map[string]any{"cells": cells, "tag": tag}
+			rows[i] = map[string]any{"cells": cells}
 		}
 		return map[string]any{"base": base, "rows": rows, "role": n.Role, "columns": n.Columns, "row-gap": snapshotLength(n.RowGap), "column-gap": snapshotLength(n.ColumnGap), "horizontal": n.Horizontal, "vertical": n.Vertical}, nil
 	case *Multiline:

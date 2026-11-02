@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"unicode/utf8"
 
@@ -54,11 +55,24 @@ func (b *Box) validate(allowLines bool) error {
 	if err := b.Alt.Validate(); err != nil {
 		return fmt.Errorf("%w: alt: %v", ErrInvalidBox, err)
 	}
+	if b.Tag != nil {
+		if err := validateTagBox(b.Tag, "tag"); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
+		}
+		if !closeCoordinate(b.Italic, b.Tag.Box.Italic) {
+			return fmt.Errorf("%w: parent italic %v, want rightmost tag run %v", ErrInvalidBox, b.Italic, b.Tag.Box.Italic)
+		}
+	}
 	if len(b.Lines) > 0 {
 		if !allowLines {
 			return fmt.Errorf("%w: nested lines", ErrInvalidBox)
 		}
 		if err := validateLines(b); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
+		}
+	}
+	if b.Tag != nil && len(b.Lines) == 0 {
+		if err := validateUnwrappedTagAggregate(b); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
 		}
 	}
@@ -68,6 +82,17 @@ func (b *Box) validate(allowLines bool) error {
 func validateLines(box *Box) error {
 	itemCount := 0
 	hitCount := 0
+	lineTagCount := 0
+	targetTagLine := -1
+	if box.Tag != nil {
+		targetTagLine = box.Tag.Line
+		if targetTagLine < 0 {
+			targetTagLine = 0
+		}
+		if targetTagLine >= len(box.Lines) {
+			return fmt.Errorf("parent tag targets line %d with only %d lines", box.Tag.Line, len(box.Lines))
+		}
+	}
 	for i, line := range box.Lines {
 		if !finite(line.Baseline) || line.Baseline < 0 {
 			return fmt.Errorf("line %d baseline is %v", i, line.Baseline)
@@ -88,6 +113,18 @@ func validateLines(box *Box) error {
 		if err := line.Box.validate(false); err != nil {
 			return fmt.Errorf("line %d: %v", i, err)
 		}
+		if line.Tag != nil {
+			lineTagCount++
+			if box.Tag == nil {
+				return fmt.Errorf("line %d has a tag but parent tag is nil", i)
+			}
+			if i != targetTagLine {
+				return fmt.Errorf("line %d has a tag but parent targets line %d", i, targetTagLine)
+			}
+			if !sameTagMetadata(*line.Tag, *box.Tag) {
+				return fmt.Errorf("line %d tag metadata differs from parent tag", i)
+			}
+		}
 		if line.Box.Width > box.Width+lineTolerance(box.Width) {
 			if line.OffsetX != 0 || line.Box.Overflow <= 0 {
 				return fmt.Errorf("line %d overflows parent frame without a zero offset and overflow", i)
@@ -103,6 +140,16 @@ func validateLines(box *Box) error {
 		}
 		itemCount += len(line.Box.Items)
 		hitCount += len(line.Box.Hits)
+	}
+	if lineTagCount > 1 {
+		return fmt.Errorf("line tag count %d exceeds single-line phase-1 contract", lineTagCount)
+	}
+	if box.Tag != nil && box.Lines[targetTagLine].Tag == nil {
+		return fmt.Errorf("parent tag targets line %d without matching line tag", targetTagLine)
+	}
+	if box.Tag != nil {
+		itemCount += len(box.Tag.Box.Items)
+		hitCount += len(box.Tag.Box.Hits)
 	}
 	if len(box.Items) != itemCount {
 		return fmt.Errorf("parent item count %d, want line aggregate %d", len(box.Items), itemCount)
@@ -126,10 +173,113 @@ func validateLines(box *Box) error {
 		itemOffset += len(line.Box.Items)
 		hitOffset += len(line.Box.Hits)
 	}
+	if box.Tag != nil {
+		for j, item := range box.Tag.Box.Items {
+			if err := validateTranslatedItem(box.Items[itemOffset+j], item, box.Tag.X, box.Tag.Y); err != nil {
+				return fmt.Errorf("tag item %d aggregate: %v", j, err)
+			}
+		}
+		for j, hit := range box.Tag.Box.Hits {
+			if err := validateTranslatedHit(box.Hits[hitOffset+j], hit, box.Tag.X, box.Tag.Y); err != nil {
+				return fmt.Errorf("tag hit %d aggregate: %v", j, err)
+			}
+		}
+	}
 	if err := validateWrappedOverflow(box); err != nil {
 		return err
 	}
 	return nil
+}
+
+func validateTagBox(tag *TagBox, path string) error {
+	if tag.Box == nil {
+		return fmt.Errorf("%s has nil box", path)
+	}
+	if !tag.Source.IsValid() || tag.Source.IsDetached() {
+		return fmt.Errorf("%s source range is invalid", path)
+	}
+	if tag.Line < -1 {
+		return fmt.Errorf("%s line is %d", path, tag.Line)
+	}
+	if tag.Starred && !tag.Manual {
+		return fmt.Errorf("%s is starred but not manual", path)
+	}
+	if !finite(tag.X) || tag.X < 0 {
+		return fmt.Errorf("%s x is %v", path, tag.X)
+	}
+	if !finite(tag.Y) {
+		return fmt.Errorf("%s y is %v", path, tag.Y)
+	}
+	if tag.Box.Tag != nil {
+		return fmt.Errorf("%s contains a nested tag", path)
+	}
+	if err := tag.Box.validate(false); err != nil {
+		return fmt.Errorf("%s box: %v", path, err)
+	}
+	return nil
+}
+
+func sameTagMetadata(left, right TagBox) bool {
+	if left.Box == nil || right.Box == nil {
+		return left.Box == right.Box
+	}
+	return left.Source == right.Source &&
+		left.Manual == right.Manual &&
+		left.Starred == right.Starred &&
+		left.Line == right.Line &&
+		left.X == right.X &&
+		left.Y == right.Y &&
+		reflect.DeepEqual(canonicalBoxValue(left.Box, false), canonicalBoxValue(right.Box, false))
+}
+
+func validateUnwrappedTagAggregate(box *Box) error {
+	if box.Tag == nil || box.Tag.Box == nil {
+		return nil
+	}
+	itemStart := len(box.Items) - len(box.Tag.Box.Items)
+	hitStart := len(box.Hits) - len(box.Tag.Box.Hits)
+	if itemStart < 0 || hitStart < 0 {
+		return errors.New("tag aggregate exceeds parent output")
+	}
+	for i, item := range box.Tag.Box.Items {
+		if err := validateTranslatedItem(box.Items[itemStart+i], item, box.Tag.X, box.Tag.Y); err != nil {
+			return fmt.Errorf("tag item %d aggregate: %v", i, err)
+		}
+	}
+	for i, hit := range box.Tag.Box.Hits {
+		if err := validateTranslatedHit(box.Hits[hitStart+i], hit, box.Tag.X, box.Tag.Y); err != nil {
+			return fmt.Errorf("tag hit %d aggregate: %v", i, err)
+		}
+	}
+	translated := make([]Item, len(box.Tag.Box.Items))
+	for i, item := range box.Tag.Box.Items {
+		translated[i] = translateItemForValidation(item, box.Tag.X, box.Tag.Y)
+	}
+	required := inkExtentForItems(translated).overflow(box.Width, box.Ascent, box.Descent)
+	required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width))
+	if !overflowAtLeast(box.Overflow, required) {
+		return fmt.Errorf("parent overflow %v is below tag requirement %v", box.Overflow, required)
+	}
+	return nil
+}
+
+func translateItemForValidation(item Item, dx, dy float32) Item {
+	if len(item.Path) > 0 {
+		item.Path = append([]geometry.Segment(nil), item.Path...)
+	}
+	item.Bound.X += dx
+	item.Bound.Y += dy
+	item.Rect.X += dx
+	item.Rect.Y += dy
+	item.At.X += dx
+	item.At.Y += dy
+	for i := range item.Path {
+		for j := range item.Path[i].Points {
+			item.Path[i].Points[j].X += dx
+			item.Path[i].Points[j].Y += dy
+		}
+	}
+	return item
 }
 
 func validateWrappedOverflow(box *Box) error {
@@ -147,6 +297,9 @@ func validateWrappedOverflow(box *Box) error {
 	required := frame.overflow(box.Width, box.Ascent, box.Descent)
 	for _, line := range box.Lines {
 		required = maxFloat(required, maxFloat(0, line.Box.Width-box.Width))
+	}
+	if box.Tag != nil && box.Tag.Box != nil {
+		required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Box.Width-box.Width))
 	}
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below required %v", box.Overflow, required)
@@ -233,7 +386,8 @@ func validateTranslatedItem(got, local Item, dx, dy float32) error {
 		for j, point := range local.Path[i].Points {
 			if !closeCoordinate(got.Path[i].Points[j].X, point.X+dx) ||
 				!closeCoordinate(got.Path[i].Points[j].Y, point.Y+dy) {
-				return fmt.Errorf("path segment %d point %d differs from line-local item", i, j)
+				return fmt.Errorf("path segment %d point %d differs from line-local item: got (%v,%v), want (%v,%v)",
+					i, j, got.Path[i].Points[j].X, got.Path[i].Points[j].Y, point.X+dx, point.Y+dy)
 			}
 		}
 	}

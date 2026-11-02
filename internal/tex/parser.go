@@ -11,15 +11,17 @@ import (
 )
 
 type parser struct {
-	src         string
-	mode        ir.Mode
-	exp         *expander
-	limits      source.Limits
-	diagnostics []source.Diagnostic
-	depth       int
-	iterations  int
-	limitHit    bool
-	leftDepth   int
+	src           string
+	mode          ir.Mode
+	exp           *expander
+	limits        source.Limits
+	diagnostics   []source.Diagnostic
+	depth         int
+	iterations    int
+	limitHit      bool
+	leftDepth     int
+	tags          []astEquationTag
+	metadataDepth int
 }
 
 type stopMode uint8
@@ -63,12 +65,12 @@ func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.
 	return p
 }
 
-func (p *parser) parse() ir.Node {
-	root := p.parseSequence(stopEOF)
+func (p *parser) parse() (ir.Node, []ir.EquationTag) {
+	parsedRoot := p.parseSequence(stopEOF)
 	lower := newLowerer(p.limits, p.report)
 	// Parsing and lowering share one resource-limit diagnostic per parse.
 	lower.limitHit = p.limitHit
-	node := lower.lower(root, lowerContext{})
+	node := lower.lower(parsedRoot, lowerContext{})
 	if node == nil {
 		node = ir.NewRow(source.NewRange(0, len(p.src)))
 	}
@@ -79,7 +81,7 @@ func (p *parser) parse() ir.Node {
 	} else {
 		node.NodeBase().Size = ir.SizeText
 	}
-	return node
+	return node, lower.lowerTags(p.tags)
 }
 
 func (p *parser) parseSequence(stop stopMode) astNode {
@@ -617,6 +619,8 @@ func (p *parser) parseDollarMath(open token) astNode {
 }
 
 func (p *parser) parseGroup(open token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.beginScope()
 	defer p.exp.endScope()
 
@@ -641,6 +645,8 @@ func (p *parser) parseGroup(open token) astNode {
 }
 
 func (p *parser) parseScriptArgument(name string, marker token) (astNode, source.Range) {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.isControl() && (t.text == "\\right" || t.text == "\\middle" || t.text == "\\end") {
@@ -664,6 +670,12 @@ func (p *parser) parseScriptArgument(name string, marker token) (astNode, source
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
 		span := normalizeRange(marker.span)
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "argument after '" + name + "' produced no math value",
+		})
 		return newPlaceholderAST(span, "missing "+name), span
 	}
 	return node, source.Merge(marker.span, node.base().span)
@@ -680,6 +692,8 @@ func commandTakesRequiredArgument(command string) bool {
 }
 
 func (p *parser) parseRequiredArgument(owner token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if t.isEOF() || t.is(tokEndGroup) || t.is(tokAlignment) || t.isControl() && (t.text == "\\right" || t.text == "\\middle" || t.text == "\\end") {
@@ -698,12 +712,20 @@ func (p *parser) parseRequiredArgument(owner token) astNode {
 	}
 	node := p.parseNucleus(stopEOF)
 	if node == nil {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(t.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeMissingArgument,
+			Message:  "argument to '" + owner.text + "' produced no math value",
+		})
 		return newPlaceholderAST(normalizeRange(owner.span), "missing argument to "+owner.text)
 	}
 	return node
 }
 
 func (p *parser) parseOptionalArgument(owner token) astNode {
+	p.metadataDepth++
+	defer func() { p.metadataDepth-- }()
 	p.exp.consumeSpaces()
 	t := p.exp.peek()
 	if !t.is(tokChar) || t.text != "[" {

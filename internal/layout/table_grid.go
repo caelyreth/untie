@@ -7,8 +7,6 @@ import (
 	"github.com/caelyreth/untie/ir"
 )
 
-const tableTagGap = geometry.Em(geometry.EmScale)
-
 func (s *layoutState) layoutTableGrid(
 	node *ir.Table,
 	env environment,
@@ -25,23 +23,7 @@ func (s *layoutState) layoutTableGrid(
 		return nil, err
 	}
 
-	maxTagWidth := geometry.Em(0)
-	for _, row := range rows {
-		if row.tag != nil {
-			maxTagWidth = max(maxTagWidth, row.tag.Width)
-		}
-	}
 	totalWidth := gridWidth
-	if maxTagWidth > 0 {
-		tagGap, err := s.metricAt(tableTagGap, env.Style)
-		if err != nil {
-			return nil, err
-		}
-		totalWidth, err = sum(gridWidth, tagGap, maxTagWidth)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	topPad := geometry.Em(0)
 	if hasTableBoundary(horizontal, 0) {
@@ -126,18 +108,6 @@ func (s *layoutState) layoutTableGrid(
 			}
 		}
 	}
-	for rowIndex, row := range rows {
-		if row.tag != nil {
-			tagX, err := sub(totalWidth, row.tag.Width)
-			if err != nil {
-				return nil, err
-			}
-			if err := fragment.AddGroup(tagX, rowBaselines[rowIndex], row.tag); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	for _, line := range horizontal {
 		y, err := horizontalLineCenter(line, rowTops, rows, rowGap, topPad, bottomPad, totalHeight)
 		if err != nil {

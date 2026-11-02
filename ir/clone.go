@@ -26,7 +26,25 @@ func CloneFormula(f *Formula, limits ...source.Limits) (*Formula, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Formula{Root: root}, nil
+	out := &Formula{
+		Root: root,
+		Tags: make([]EquationTag, len(f.Tags)),
+	}
+	for i, tag := range f.Tags {
+		state.count++
+		if state.count > state.limits.MaxNodes {
+			return nil, fmt.Errorf("%w: %w: tag %d metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, i)
+		}
+		out.Tags[i] = tag
+		if tag.Body == nil {
+			continue
+		}
+		out.Tags[i].Body, err = state.clone(tag.Body, 0)
+		if err != nil {
+			return nil, fmt.Errorf("tag %d: %w", i, err)
+		}
+	}
+	return out, nil
 }
 
 // CloneNode returns an independent copy of n without wrapping it in a Formula.
@@ -201,11 +219,6 @@ func (s *cloneState) cloneNode(n Node, depth int) (Node, error) {
 				}
 				out.Rows[i].Cells[j] = cloned
 			}
-			tag, err := s.clone(row.Tag, depth+1)
-			if err != nil {
-				return nil, err
-			}
-			out.Rows[i].Tag = tag
 		}
 		out.Columns = append([]ColumnAlign(nil), n.Columns...)
 		out.Horizontal = append([]TableLine(nil), n.Horizontal...)

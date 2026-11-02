@@ -42,6 +42,7 @@ type Input struct {
 // FrontendResult is the observation returned by a parser adapter.
 type FrontendResult struct {
 	Root        ir.Node
+	Tags        []ir.EquationTag
 	Diagnostics []source.Diagnostic
 	Observation *IRSummary
 }
@@ -247,13 +248,14 @@ func summarizeIR(result FrontendResult, src string, limits source.Limits) ([]byt
 		}
 		return result.Observation.CanonicalJSON, ""
 	}
-	if err := ir.ValidateSource(&ir.Formula{Root: result.Root}, src, limits); err != nil {
+	formula := &ir.Formula{Root: result.Root, Tags: result.Tags}
+	if err := ir.ValidateSource(formula, src, limits); err != nil {
 		return nil, err.Error()
 	}
-	if problem := validateIRBoundaries(result.Root, src); problem != "" {
+	if problem := validateFormulaBoundaries(formula, src); problem != "" {
 		return nil, problem
 	}
-	canonical, err := ir.MarshalCanonical(&ir.Formula{Root: result.Root})
+	canonical, err := ir.MarshalCanonical(formula)
 	if err != nil {
 		return nil, "canonicalize IR: " + err.Error()
 	}
@@ -315,6 +317,64 @@ func validateIRBoundaries(root ir.Node, src string) string {
 		return true
 	})
 	return problem
+}
+
+func validateFormulaBoundaries(formula *ir.Formula, src string) string {
+	if formula == nil {
+		return "nil IR formula"
+	}
+	if problem := validateIRBoundaries(formula.Root, src); problem != "" {
+		return problem
+	}
+	for i, tag := range formula.Tags {
+		for _, field := range []struct {
+			name string
+			r    source.Range
+		}{
+			{"span", tag.Span},
+			{"origin", tag.Origin},
+		} {
+			if problem := validateRangeBoundary(field.r, field.name, src); problem != "" {
+				return fmt.Sprintf("tag %d: %s", i, problem)
+			}
+		}
+	}
+	var problem string
+	if err := ir.WalkFormula(formula, source.DefaultLimits(), func(node ir.Node) bool {
+		if problem != "" {
+			return false
+		}
+		base := node.NodeBase()
+		if base == nil {
+			problem = "IR node has no base"
+			return false
+		}
+		if issue := validateRangeBoundary(base.Span, "span", src); issue != "" {
+			problem = issue
+			return false
+		}
+		if issue := validateRangeBoundary(base.Origin, "origin", src); issue != "" {
+			problem = issue
+			return false
+		}
+		return true
+	}); err != nil {
+		return "walk formula boundaries: " + err.Error()
+	}
+	return problem
+}
+
+func validateRangeBoundary(r source.Range, name, src string) string {
+	if r.IsDetached() {
+		return ""
+	}
+	if !r.IsValidFor(len(src)) {
+		return fmt.Sprintf("%s range %d:%d exceeds source length %d", name, r.Start, r.End, len(src))
+	}
+	if !isRangeOnUTF8Boundaries(r, src) {
+		return fmt.Sprintf("%s range %d:%d splits a UTF-8 code point", name, r.Start, r.End)
+	}
+	return ""
 }
 
 func isRangeOnUTF8Boundaries(r source.Range, src string) bool {

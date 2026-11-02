@@ -290,19 +290,6 @@ func TestBuiltInTableRulesTagsAndDashes(t *testing.T) {
 		t.Fatalf("horizontal rules = %d, want 3", horizontalIndex)
 	}
 
-	tagged := ir.NewTable(source.NewRange(0, 3), ir.TableRow{
-		Cells: []ir.Node{glyph("x", ir.ClassNormal)},
-		Tag:   glyph("tag", ir.ClassNormal),
-	})
-	taggedBox, err := renderer.Layout(tagged, ir.Display, style)
-	if err != nil {
-		t.Fatal(err)
-	}
-	taggedRefs := glyphItems(taggedBox)
-	if len(taggedRefs) != 2 || !closeHost(taggedRefs[1].At.X, 24) || !closeHost(taggedRefs[1].At.Y, 0) {
-		t.Fatalf("tag positions = %+v", taggedRefs)
-	}
-
 	dashed := ir.NewTable(source.NewRange(0, 3), ir.TableRow{Cells: []ir.Node{glyph("x", ir.ClassNormal)}})
 	dashed.Horizontal = []ir.TableLine{{Position: 0, Count: 1, Dashed: true, Thickness: thickness}}
 	dashedBox, err := renderer.Layout(dashed, ir.Display, style)

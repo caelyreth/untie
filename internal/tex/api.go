@@ -26,6 +26,7 @@ type Options struct {
 // Result is a recoverable parse result.
 type Result struct {
 	Root        ir.Node
+	Tags        []ir.EquationTag
 	Diagnostics []source.Diagnostic
 }
 
@@ -59,9 +60,10 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	}
 
 	p := newParser(src, mode, opts.Macros, limits)
-	root := p.parse()
+	root, tags := p.parse()
 	return Result{
 		Root:        root,
+		Tags:        tags,
 		Diagnostics: source.NormalizeDiagnostics(p.diagnostics),
 	}
 }

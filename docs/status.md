@@ -7,8 +7,9 @@ is not a compatibility claim.
 ## Snapshot
 
 - Repository state: post engine hardening, generated/fixture import, neutral
-  delimiter sizing, synthetic moustache assembly, and break/link API-boundary
-  cleanup
+  delimiter sizing, synthetic moustache assembly, TeX single-line equation-tag
+  metadata/layout, break/link API-boundary cleanup, and TeX/Typst conformance
+  baselines
 - Documentation date: 2026-11-02
 - Go toolchain: 1.27.3, as pinned by `flake.nix`
 - Required build mode: `CGO_ENABLED=0`
@@ -40,7 +41,16 @@ tests and migration notes.
   parts, fences, and table cells from their actual placed fragment extents.
 - Inline layout emits deterministic top-level relation, binary, and explicit
   break opportunities with post-operator glue folded into the preceding piece.
-  Break metadata carries position and kind, not an invented relative cost.
+- Formula-scoped equation tags are a neutral sidecar rather than root children.
+  `ir.Formula.Tags` validates and preserves manual/suppression metadata, body
+  IR, source evidence, line association, and the TeX `\tag*` star distinction.
+- Single-line display output exposes a bounded `display.TagBox` sub-box and
+  parent/line metadata. Parent output includes translated tag items and hits;
+  tag logical width contributes to parent overflow and the parent italic
+  correction follows the rightmost tag run. Tag source semantics do not enter
+  formula root breaks. Alternative text appends a deterministic equation-tag
+  phrase.
+- Break metadata carries position and kind, not an invented relative cost.
 - Link syntax is text-only across both frontends: visible body content and source
   spans survive parsing/layout, destinations are intentionally discarded, and
   an unsupported warning is emitted only after argument validation. TeX braced
@@ -82,6 +92,10 @@ The bounded TeX frontend currently includes:
   ordinary command variants, lowered as standalone neutral sized-delimiter
   leaves with KaTeX-validated delimiter arguments and absolute target policies
   encoded from TeX's 1.2em/1.8em/2.4em/3.0em tiers;
+- top-level display `\tag`/`\tag*` metadata with normal TeX math bodies,
+  `\nonumber`/`\notag` suppression events, explicit malformed/inline/nested
+  diagnostics, independent metadata scope at every argument boundary, and
+  reviewed display geometry from the pinned Typst tag fixture;
 - matrix, array, cases, aligned, gathered, split, alignedat, and alignat parsing
   into table or multiline IR;
 - recovery diagnostics for malformed groups, missing arguments, invalid UTF-8,
@@ -152,6 +166,11 @@ tables.
 - deterministic greedy display wrapping at top-level neutral break boundaries,
   with independently flattened `LineBox` results aligned inside a
   `MaxWidth`-wide frame.
+- single-line TeX equation-tag sub-box layout with source-grounded no-gap
+  placement, generated parentheses for non-starred tags, constrained right-edge
+  placement when it does not overlap formula content, one-complete-line fallback
+  under `MaxWidth`, honest logical/ink overflow, rightmost-run italic
+  correction, and translated parent aggregate items/hits.
 
 `internal/engine` adapts `font.FontSet` to layout, performs rune/class-aware
 variant selection, multi-glyph operator shaping, text tracking and fallback,
@@ -188,8 +207,8 @@ The bounded Typst math frontend includes:
   current split is 156 pass, 3 expected diagnostic, 4 unsupported, and 8
   reviewed gaps.
 - All 81 paired Typst/TeX formulas are classified with zero unexplained cases.
-- The committed paired baseline records 22 full passes, 54 semantic gaps, 0
-  layout gaps, 3 static-frame gaps, and 2 documented pair differences, with
+- The committed paired baseline records 22 full passes, 55 semantic gaps, 0
+  layout gaps, 2 static-frame gaps, and 2 documented pair differences, with
   zero unexplained cases.
 
 ## Not Yet Implemented
@@ -208,9 +227,10 @@ The following are genuine gaps, not hidden behavior:
   tolerances; comparison against every static Typlet frame is not yet green.
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
-- Inline break metadata, alternative text, and width-constrained display line
-  boxes with start/center/end alignment are implemented. Re-layout split
-  pieces, equation numbering, tags, link destinations, Typst label/reference
+- Inline break metadata, alternative text, width-constrained display line boxes
+  with start/center/end alignment, and TeX single-line manual tags are
+  implemented. Re-layout split pieces, host/Typst document numbering,
+  multiline/row equation tags, link destinations, Typst label/reference
   destinations, full `hyperref` behavior, MathML output, rasterization, and SVG
   export are not product features. `\nobreak` and cost-based line breaking are
   explicitly unsupported. TeX URL catcodes apply to a literal braced group in

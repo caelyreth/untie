@@ -45,7 +45,52 @@ func validate(f *Formula, sourceLen int, limits source.Limits) error {
 		sourceLen: sourceLen,
 		active:    make(map[Node]bool),
 	}
-	return state.visit(f.Root, "root", 0)
+	if err := state.visit(f.Root, "root", 0); err != nil {
+		return err
+	}
+	manualLines := make(map[int]bool)
+	for i, tag := range f.Tags {
+		path := fmt.Sprintf("tags[%d]", i)
+		state.count++
+		if state.count > state.limits.MaxNodes {
+			return fmt.Errorf("%w: %w: %s: metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, path)
+		}
+		if err := state.validateRange(tag.Span, path+".span"); err != nil {
+			return err
+		}
+		if err := state.validateRange(tag.Origin, path+".origin"); err != nil {
+			return err
+		}
+		if tag.Line < -1 {
+			return fmt.Errorf("%w: %s: invalid line %d", ErrInvalidIR, path, tag.Line)
+		}
+		if tag.Starred && !tag.Manual {
+			return fmt.Errorf("%w: %s: starred tag must be manual", ErrInvalidIR, path)
+		}
+		if tag.Suppressed {
+			if tag.Manual {
+				return fmt.Errorf("%w: %s: tag cannot be both manual and suppressed", ErrInvalidIR, path)
+			}
+			if tag.Body != nil {
+				return fmt.Errorf("%w: %s: suppression event has a body", ErrInvalidIR, path)
+			}
+			continue
+		}
+		if !tag.Manual {
+			return fmt.Errorf("%w: %s: tag needs a manual body or suppression", ErrInvalidIR, path)
+		}
+		if tag.Body == nil {
+			return fmt.Errorf("%w: %s: manual tag has no body", ErrInvalidIR, path)
+		}
+		if manualLines[tag.Line] {
+			return fmt.Errorf("%w: %s: multiple manual tags for line %d", ErrInvalidIR, path, tag.Line)
+		}
+		manualLines[tag.Line] = true
+		if err := state.visit(tag.Body, path+".body", 0); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type validationState struct {
