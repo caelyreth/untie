@@ -210,13 +210,6 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 }
 
 func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan source.Range) astNode {
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(nameSpan),
-		Severity: source.SeverityError,
-		Code:     source.CodeUnsupported,
-		Message:  "multiline math layout is not implemented; construct is preserved in the IR",
-	})
-
 	var rows [][]astNode
 	var row []astNode
 	span := source.Merge(command.span, nameSpan)
@@ -334,7 +327,6 @@ func (p *parser) consumeEnvironmentName(command token) (string, source.Range) {
 func (p *parser) parseArraySpec(span source.Range, spec string) ([]ir.ColumnAlign, []ir.TableLine) {
 	var columns []ir.ColumnAlign
 	var vertical []ir.TableLine
-	reportedVertical := false
 	for _, r := range spec {
 		switch r {
 		case 'l':
@@ -345,15 +337,6 @@ func (p *parser) parseArraySpec(span source.Range, spec string) ([]ir.ColumnAlig
 			columns = append(columns, ir.AlignRight)
 		case '|', ':':
 			vertical = append(vertical, ir.TableLine{Position: len(columns), Count: 1})
-			if !reportedVertical {
-				reportedVertical = true
-				p.report(source.Diagnostic{
-					Range:    normalizeRange(span),
-					Severity: source.SeverityError,
-					Code:     source.CodeUnsupported,
-					Message:  "array vertical rules are not implemented by the current layout backend",
-				})
-			}
 		case ' ', '\t', '\r', '\n':
 		default:
 			p.report(source.Diagnostic{
