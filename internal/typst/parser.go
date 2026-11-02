@@ -641,15 +641,19 @@ func (p *parser) parseDelimited() *astNode {
 	}
 	body := p.parseRow(stops)
 	end := p.current().span.End
+	closed := false
 	if p.current().kind == closeKind {
 		p.advance()
+		closed = true
 	} else {
 		p.errorAt(open.span, source.CodeUnclosedGroup, "unclosed delimiter")
 		end = p.current().span.Start
 	}
 	delim := p.node(source.NewRange(open.span.Start, end), astDelimited)
 	delim.open = openText
-	delim.close = closeText
+	if closed {
+		delim.close = closeText
+	}
 	delim.items = []*astNode{body}
 	return delim
 }

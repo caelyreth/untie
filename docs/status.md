@@ -50,6 +50,12 @@ tests and migration notes.
   cache keyed by complete font identity, effective limits, version, and cache
   schema. `ClearLayoutEngineCache` releases convenience-path retention without
   affecting caller-owned engines.
+- A product-priority daily-STEM acceptance corpus with 87 tracked cases across
+  12 categories, evaluated through the public parse, root, Alt, and layout
+  contracts with tracked NewCM font bytes. It contains 47 TeX and 40 Typst
+  cases, 35 inline and 52 display cases, 34 coverage groups, and 19 explicitly
+  source-specific cases. Coverage groups declare reviewed differences; they do
+  not claim semantic equivalence.
 
 ### TeX Frontend
 
@@ -194,9 +200,16 @@ The following are genuine gaps, not hidden behavior:
 - Package-level convenience layout uses a bounded process-wide engine cache;
   callers that need explicit lifetime control should use `NewEngine`.
 - Inline break metadata, alternative text, and width-constrained display line
-  boxes with start/center/end alignment are implemented. Re-layout split
-  pieces, equation numbering, tags, links, MathML output, rasterization, and SVG
-  export are not product features. SVG support is test-only.
+  boxes with start/center/end alignment are implemented. Re-layout split pieces,
+  equation numbering, tags, links, MathML output, rasterization, and SVG export
+  are not product features. SVG support is test-only.
+- The daily corpus prioritizes ordinary STEM notation over reference-project
+  completeness. Its content digest and exact expectations pass with no tracked
+  issue entries, including four explicit missing-glyph boundaries. Chinese text
+  with only NewCM supplied fails deterministically with an actionable
+  missing-glyph error; it is not replaced by silent tofu. Matched tracked
+  issues fail closed by default and require `-allow-known-issues` diagnostic
+  mode for a zero exit.
 - There is no project-wide license. See `THIRD_PARTY_NOTICES.md`.
 
 ## Scope Boundary

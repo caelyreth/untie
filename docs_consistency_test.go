@@ -51,6 +51,62 @@ func TestDocumentedConformanceCounts(t *testing.T) {
 	}
 }
 
+func TestDocumentedDailyCorpusCounts(t *testing.T) {
+	t.Parallel()
+
+	manifest := readJSON[dailyManifest](t, "testdata/daily-stem/manifest.json")
+	if manifest.Count != 87 || len(manifest.Categories) != 12 {
+		t.Fatalf("daily manifest has %d cases and %d categories", manifest.Count, len(manifest.Categories))
+	}
+	if len(manifest.ContentSHA256) != 64 {
+		t.Fatalf("daily manifest content digest = %q", manifest.ContentSHA256)
+	}
+	if len(manifest.ExpectedIssues) != 0 {
+		t.Fatalf("daily manifest has known issues: %v", manifest.ExpectedIssues)
+	}
+	statements := []string{
+		fmt.Sprintf("daily-STEM acceptance corpus with %d tracked cases across %d categories",
+			manifest.Count, len(manifest.Categories)),
+		fmt.Sprintf("%d TeX and %d Typst cases, %d inline and %d display cases, %d coverage groups, and %d explicitly source-specific cases",
+			manifest.Dialects["tex"], manifest.Dialects["typst"], manifest.Modes["inline"],
+			manifest.Modes["display"], manifest.CoverageGroups, manifest.SourceSpecific),
+	}
+	status := normalizeWhitespace(readText(t, "docs/status.md"))
+	for _, statement := range statements {
+		if !strings.Contains(status, normalizeWhitespace(statement)) {
+			t.Errorf("docs/status.md is stale; missing %q", statement)
+		}
+	}
+	readme := normalizeWhitespace(readText(t, "testdata/daily-stem/README.md"))
+	readmeStatements := []string{
+		fmt.Sprintf("%d cases across %d categories", manifest.Count, len(manifest.Categories)),
+		fmt.Sprintf("%d TeX and %d Typst cases, with %d inline and %d display cases",
+			manifest.Dialects["tex"], manifest.Dialects["typst"], manifest.Modes["inline"], manifest.Modes["display"]),
+		fmt.Sprintf("%d coverage groups and %d explicitly source-specific cases",
+			manifest.CoverageGroups, manifest.SourceSpecific),
+	}
+	for _, statement := range readmeStatements {
+		if !strings.Contains(readme, normalizeWhitespace(statement)) {
+			t.Errorf("testdata/daily-stem/README.md is stale; missing %q", statement)
+		}
+	}
+	for category, count := range manifest.Categories {
+		row := normalizeWhitespace(fmt.Sprintf("| %s | %d |", category, count))
+		if !strings.Contains(readme, row) {
+			t.Errorf("testdata/daily-stem/README.md is stale; missing category row %q", row)
+		}
+	}
+	for _, required := range []string{
+		"go run ./cmd/dailyreport -update-manifest",
+		"go run ./cmd/dailyreport -allow-known-issues",
+		"does not assert semantic equivalence",
+	} {
+		if !strings.Contains(readme, normalizeWhitespace(required)) {
+			t.Errorf("testdata/daily-stem/README.md is missing %q", required)
+		}
+	}
+}
+
 func TestTrackedDependencyLicenses(t *testing.T) {
 	t.Parallel()
 
@@ -94,6 +150,17 @@ type crosscheckSummary struct {
 	FixtureMismatch          int `json:"fixtureMismatch"`
 	DocumentedPairDifference int `json:"documentedPairDifference"`
 	Unexplained              int `json:"unexplained"`
+}
+
+type dailyManifest struct {
+	ContentSHA256  string            `json:"contentSHA256"`
+	Count          int               `json:"count"`
+	Categories     map[string]int    `json:"categories"`
+	Dialects       map[string]int    `json:"dialects"`
+	Modes          map[string]int    `json:"modes"`
+	CoverageGroups int               `json:"coverageGroups"`
+	SourceSpecific int               `json:"sourceSpecific"`
+	ExpectedIssues map[string]string `json:"expectedIssues"`
 }
 
 func readJSON[T any](t testing.TB, path string) T {
