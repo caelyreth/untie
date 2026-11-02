@@ -64,7 +64,7 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 	case astString:
 		return l.text(n.span, n.text)
 	case astNumber:
-		return l.glyph(n.span, n.text)
+		return l.lowerNumber(n)
 	case astShorthand:
 		return l.glyph(n.span, n.text)
 	case astAttach:
@@ -200,6 +200,34 @@ func (l *lowerer) glyph(span source.Range, text string) *ir.Glyph {
 	g := ir.NewGlyph(span, text)
 	g.Class = classForText(text)
 	return g
+}
+
+func (l *lowerer) lowerNumber(n *astNode) ir.Node {
+	if n == nil || n.text == "" {
+		return l.glyph(n.span, n.text)
+	}
+	runes := []rune(n.text)
+	if len(runes) == 1 {
+		return l.glyph(n.span, n.text)
+	}
+	row := ir.NewRow(n.span)
+	offset := n.span.Start
+	for _, r := range runes {
+		size := utf8.RuneLen(r)
+		span := source.NewRange(offset, offset+size)
+		l.nodes++
+		if l.nodes > l.limits.MaxNodes {
+			if l.nodes == l.limits.MaxNodes+1 {
+				l.errorAt(span, source.CodeLimitExceeded, "node limit exceeded")
+			}
+			return l.errNode(n.span, "node limit exceeded", source.CodeLimitExceeded)
+		}
+		g := l.glyph(span, string(r))
+		g.Class = ir.ClassNormal
+		row.Items = append(row.Items, g)
+		offset += size
+	}
+	return row
 }
 
 func (l *lowerer) text(span source.Range, text string) ir.Node {
