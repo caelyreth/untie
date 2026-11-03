@@ -37,7 +37,13 @@ func TestCloneIndependent(t *testing.T) {
 		},
 		Breaks: []Break{{X: 1, Kind: BreakRelation}},
 		Alt:    Alt{Text: "x", Speech: "x"},
-		Tag:    tag,
+		Diagnostics: []source.Diagnostic{{
+			Range:   source.NewRange(0, 1),
+			Code:    source.CodeMissingGlyph,
+			Message: "missing",
+			Args:    []string{"x"},
+		}},
+		Tag: tag,
 		Lines: []LineBox{{
 			Baseline: 1,
 			OffsetX:  2.5,
@@ -52,6 +58,7 @@ func TestCloneIndependent(t *testing.T) {
 	got.Paths[0].Segments[0].Op = geometry.SegClose
 	got.Hits[0].Area.Width = 2
 	got.Breaks[0].X = 2
+	got.Diagnostics[0].Args[0] = "changed"
 	got.Lines[0].Items.Count = 0
 	got.Lines[0].Tag.Width = 3
 	if box.Paths[0].Segments[0].Op != geometry.SegMoveTo {
@@ -62,6 +69,9 @@ func TestCloneIndependent(t *testing.T) {
 	}
 	if box.Breaks[0].X != 1 {
 		t.Fatal("Clone shared break storage")
+	}
+	if box.Diagnostics[0].Args[0] != "x" {
+		t.Fatal("Clone shared diagnostic storage")
 	}
 	if box.Lines[0].Items.Count != 1 {
 		t.Fatal("Clone shared line metadata storage")

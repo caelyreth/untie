@@ -296,6 +296,10 @@ func (s *layoutState) layoutSpace(space *ir.Space, env environment) (*Fragment, 
 }
 
 func (s *layoutState) layoutPlaceholder(node *ir.Placeholder, env environment) (*Fragment, error) {
+	return s.layoutMissingFragment(env, ir.Paint{Role: ir.PaintPlaceholder})
+}
+
+func (s *layoutState) layoutMissingFragment(env environment, paint ir.Paint) (*Fragment, error) {
 	width, err := s.metricAt(geometry.Em(geometry.EmScale/2), env.Style)
 	if err != nil {
 		return nil, err
@@ -317,7 +321,6 @@ func (s *layoutState) layoutPlaceholder(node *ir.Placeholder, env environment) (
 		return nil, err
 	}
 	fragment.reserveDraws(4)
-	paint := ir.Paint{Role: ir.PaintPlaceholder}
 	// Four thin rules form a deterministic missing-content box.
 	rules := []struct {
 		x, y geometry.Em

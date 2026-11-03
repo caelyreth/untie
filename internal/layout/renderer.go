@@ -2,6 +2,7 @@ package layout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -19,6 +20,11 @@ const transientReserveLimit = 4096
 // Options configures a Renderer. Zero limits use source.DefaultLimits.
 type Options struct {
 	Limits source.Limits
+}
+
+// LayoutOptions controls recoverable behavior for one layout call.
+type LayoutOptions struct {
+	RecoverMissingGlyph bool
 }
 
 // Renderer is an immutable layout engine. It is safe for concurrent use if its
@@ -52,20 +58,51 @@ func (r *Renderer) Layout(root ir.Node, mode ir.Mode, style display.Style) (*dis
 // LayoutContext lays out root with cancellation and deterministic resource
 // limits.
 func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return r.LayoutFormulaContext(ctx, &ir.Formula{Root: root}, mode, style)
+	return r.LayoutFormulaContextOptions(ctx, &ir.Formula{Root: root}, mode, style, LayoutOptions{
+		RecoverMissingGlyph: true,
+	})
 }
 
 // LayoutFormulaContext lays out a complete formula with cancellation and
 // deterministic resource limits.
 func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return r.layoutFormulaContext(ctx, formula, mode, style, true, nil)
+	return r.LayoutFormulaContextOptions(ctx, formula, mode, style, LayoutOptions{
+		RecoverMissingGlyph: true,
+	})
+}
+
+// LayoutFormulaContextOptions lays out a formula with per-call recovery
+// behavior.
+func (r *Renderer) LayoutFormulaContextOptions(
+	ctx context.Context,
+	formula *ir.Formula,
+	mode ir.Mode,
+	style display.Style,
+	options LayoutOptions,
+) (*display.Box, error) {
+	return r.layoutFormulaContext(ctx, formula, mode, style, true, nil, options)
 }
 
 // LayoutParsedFormulaContext lays out a formula that was structurally
 // validated and frozen by the parser boundary. Engine-configured limits and
 // final output invariants are still enforced.
 func (r *Renderer) LayoutParsedFormulaContext(ctx context.Context, formula *ir.Formula, stats ir.Stats, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return r.layoutFormulaContext(ctx, formula, mode, style, false, &stats)
+	return r.LayoutParsedFormulaContextOptions(ctx, formula, stats, mode, style, LayoutOptions{
+		RecoverMissingGlyph: true,
+	})
+}
+
+// LayoutParsedFormulaContextOptions lays out parser-validated formula IR with
+// per-call recovery behavior.
+func (r *Renderer) LayoutParsedFormulaContextOptions(
+	ctx context.Context,
+	formula *ir.Formula,
+	stats ir.Stats,
+	mode ir.Mode,
+	style display.Style,
+	options LayoutOptions,
+) (*display.Box, error) {
+	return r.layoutFormulaContext(ctx, formula, mode, style, false, &stats, options)
 }
 
 func (r *Renderer) layoutFormulaContext(
@@ -75,6 +112,7 @@ func (r *Renderer) layoutFormulaContext(
 	style display.Style,
 	validateStructure bool,
 	preparedStats *ir.Stats,
+	options LayoutOptions,
 ) (*display.Box, error) {
 	if r == nil {
 		return nil, fmt.Errorf("%w: nil renderer", ErrInvalidInput)
@@ -114,19 +152,21 @@ func (r *Renderer) layoutFormulaContext(
 	metrics := r.fonts.Metrics.MathMetrics(rootStyle, ir.VariantAuto).normalized()
 	scratch := r.scratchPool.acquire()
 	state := &layoutState{
-		ctx:         ctx,
-		renderer:    r,
-		request:     style,
-		mode:        mode,
-		rootStyle:   rootStyle,
-		metrics:     metrics,
-		hostSize:    hostSize,
-		limits:      r.limits,
-		scratchPool: r.scratchPool,
-		scratch:     scratch,
-		fragments:   scratch.fragments,
-		glyphs:      scratch.glyphs,
-		pathCache:   scratch.pathCache,
+		ctx:                 ctx,
+		renderer:            r,
+		request:             style,
+		mode:                mode,
+		rootStyle:           rootStyle,
+		metrics:             metrics,
+		hostSize:            hostSize,
+		limits:              r.limits,
+		scratchPool:         r.scratchPool,
+		scratch:             scratch,
+		fragments:           scratch.fragments,
+		glyphs:              scratch.glyphs,
+		pathCache:           scratch.pathCache,
+		recoverMissingGlyph: options.RecoverMissingGlyph,
+		missingGlyphSpans:   make(map[source.Range]struct{}),
 	}
 	defer state.releaseScratch()
 	if preparedStats != nil {
@@ -180,26 +220,30 @@ func (r *Renderer) layoutFormulaContext(
 	if err := box.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
+	box.Diagnostics = source.NormalizeDiagnostics(state.diagnostics)
 	return box, nil
 }
 
 type layoutState struct {
-	ctx           context.Context
-	renderer      *Renderer
-	request       display.Style
-	mode          ir.Mode
-	rootStyle     Style
-	metrics       MathMetrics
-	hostSize      int64
-	limits        source.Limits
-	nodes         int
-	pathSegments  int
-	plannedOutput int
-	fragments     fragmentArena
-	glyphs        glyphArena
-	pathCache     flattenPathCache
-	scratchPool   *layoutScratchPool
-	scratch       *layoutScratch
+	ctx                 context.Context
+	renderer            *Renderer
+	request             display.Style
+	mode                ir.Mode
+	rootStyle           Style
+	metrics             MathMetrics
+	hostSize            int64
+	limits              source.Limits
+	nodes               int
+	pathSegments        int
+	plannedOutput       int
+	fragments           fragmentArena
+	glyphs              glyphArena
+	pathCache           flattenPathCache
+	scratchPool         *layoutScratchPool
+	scratch             *layoutScratch
+	recoverMissingGlyph bool
+	diagnostics         []source.Diagnostic
+	missingGlyphSpans   map[source.Range]struct{}
 }
 
 func (s *layoutState) releaseScratch() {
@@ -507,6 +551,14 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 		return nil, err
 	}
 	defer func() {
+		if err != nil && s.recoverMissingGlyph && errors.Is(err, ErrMissingGlyph) {
+			s.recordMissingGlyph(n, err)
+			replacement, recoveryErr := s.layoutMissingGlyph(n, env)
+			if recoveryErr == nil {
+				fragment = replacement
+				err = nil
+			}
+		}
 		if err == nil && fragment != nil {
 			if hitErr := s.attachNodeHit(fragment, n, depth); hitErr != nil {
 				fragment = nil
@@ -596,7 +648,59 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 	}
 }
 
+func (s *layoutState) recordMissingGlyph(node ir.Node, cause error) {
+	base := node.NodeBase()
+	if base == nil {
+		return
+	}
+	if _, exists := s.missingGlyphSpans[base.Span]; exists {
+		return
+	}
+	s.missingGlyphSpans[base.Span] = struct{}{}
+	text := nodeText(node)
+	message := "configured fonts cannot supply the required glyph"
+	args := []string(nil)
+	if text != "" {
+		message = fmt.Sprintf("configured fonts cannot supply glyphs for %q", text)
+		args = []string{text}
+	}
+	if cause != nil {
+		message += ": " + cause.Error()
+	}
+	s.diagnostics = append(s.diagnostics, source.Diagnostic{
+		Range:    base.Span,
+		Severity: source.SeverityError,
+		Code:     source.CodeMissingGlyph,
+		Message:  message,
+		Args:     args,
+		Hints: []string{
+			"Add a fallback font that covers this text or symbol.",
+			"The missing item is drawn as an error-colored box.",
+		},
+	})
+}
+
+func (s *layoutState) layoutMissingGlyph(node ir.Node, env environment) (*Fragment, error) {
+	fragment, err := s.layoutMissingFragment(env, ir.Paint{Role: ir.PaintError})
+	if err != nil {
+		return nil, err
+	}
+	base := node.NodeBase()
+	if base != nil {
+		fragment = withClass(fragment, base.Class)
+	}
+	return fragment, nil
+}
+
 func (s *layoutState) checkTextLimit(node ir.Node) error {
+	text := nodeText(node)
+	if len(text) > s.limits.MaxTextBytes {
+		return fmt.Errorf("%w: text byte count %d", ErrLimit, len(text))
+	}
+	return nil
+}
+
+func nodeText(node ir.Node) string {
 	var text string
 	switch node := node.(type) {
 	case *ir.Glyph:
@@ -612,10 +716,7 @@ func (s *layoutState) checkTextLimit(node ir.Node) error {
 	case *ir.Placeholder:
 		text = node.Reason
 	default:
-		return nil
+		return ""
 	}
-	if len(text) > s.limits.MaxTextBytes {
-		return fmt.Errorf("%w: text byte count %d", ErrLimit, len(text))
-	}
-	return nil
+	return text
 }

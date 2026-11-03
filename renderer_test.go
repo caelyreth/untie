@@ -28,6 +28,11 @@ func TestNewRendererValidationAndDefaults(t *testing.T) {
 	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) || !errors.Is(err, ErrInvalidStyle) {
 		t.Fatalf("NewRenderer(invalid style) = %v, %v", renderer, err)
 	}
+	if renderer, err := NewRenderer(fonts, RendererOptions{
+		Recovery: RecoveryMode(255),
+	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) {
+		t.Fatalf("NewRenderer(invalid recovery) = %v, %v", renderer, err)
+	}
 
 	renderer, err := NewRenderer(fonts, RendererOptions{CacheEntries: -1})
 	if err != nil {
@@ -200,7 +205,7 @@ func TestRenderIntersectsRendererAndRequestParseLimits(t *testing.T) {
 	}
 }
 
-func TestRenderReturnsDiagnosticsWithLayoutError(t *testing.T) {
+func TestRenderRecoversMissingGlyphWithDiagnostic(t *testing.T) {
 	t.Parallel()
 
 	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
@@ -209,24 +214,64 @@ func TestRenderReturnsDiagnosticsWithLayoutError(t *testing.T) {
 	}
 	result, err := renderer.Render(
 		context.Background(),
-		`中\bad`,
+		`x+\text{中}+y`,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v, want visible recovery", err)
+	}
+	if result == nil {
+		t.Fatal("Render(recovered) result = nil")
+	}
+	if result.Box == nil {
+		t.Fatal("Render(recovered) returned no box")
+	}
+	if len(result.Box.Items) == 0 {
+		t.Fatal("Render(recovered) box has no drawable items")
+	}
+	if !hasCode(result.Diagnostics, source.CodeMissingGlyph) {
+		t.Fatalf("Render() diagnostics = %+v, want missing-glyph", result.Diagnostics)
+	}
+	if !hasCode(result.Box.Diagnostics, source.CodeMissingGlyph) {
+		t.Fatalf("Box.Diagnostics = %+v, want missing-glyph", result.Box.Diagnostics)
+	}
+	for _, item := range result.Box.Items {
+		if item.Paint.Role == display.RoleError {
+			return
+		}
+	}
+	t.Fatal("recovered box has no error-colored missing-glyph placeholder")
+}
+
+func TestRenderStrictMissingGlyphReturnsLayoutError(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{
+		Recovery: RecoveryStrict,
+	})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		`中`,
 		RenderRequest{Style: display.Style{Size: 16}},
 	)
 	if !errors.Is(err, ErrMissingGlyph) {
 		t.Fatalf("Render() error = %v, want ErrMissingGlyph", err)
 	}
-	if result == nil {
-		t.Fatal("Render(layout error) result = nil")
+	if result == nil || result.Box != nil {
+		t.Fatalf("Render(strict) result = %+v, want diagnostics and no box", result)
 	}
-	if result.Box != nil {
-		t.Fatal("Render(layout error) returned a box")
+}
+
+func hasCode(diagnostics []source.Diagnostic, code source.Code) bool {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == code {
+			return true
+		}
 	}
-	if result.Alt != (display.Alt{}) {
-		t.Fatalf("Render(layout error) Alt = %#v, want zero", result.Alt)
-	}
-	if len(result.Diagnostics) == 0 {
-		t.Fatal("Render(layout error) lost parse diagnostics")
-	}
+	return false
 }
 
 func TestRenderAlternativeTextIsOptional(t *testing.T) {

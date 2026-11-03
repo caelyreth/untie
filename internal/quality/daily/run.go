@@ -382,20 +382,48 @@ func (e engineEvaluator) Evaluate(ctx context.Context, testCase Case) CaseResult
 			result.Outcome = outcomeRecovered
 		}
 		result.Matched = true
-	case layoutMissingGlyph, layoutError:
+	case layoutMissingGlyph:
+		if layoutErr != nil {
+			return fail("layout error: " + layoutErr.Error())
+		}
+		if box == nil {
+			return fail("layout returned a nil box for a recoverable missing glyph")
+		}
+		if err := box.Validate(); err != nil {
+			return fail("box validation: " + err.Error())
+		}
+		var missing []untie.Diagnostic
+		for _, diagnostic := range box.Diagnostics {
+			if diagnostic.Code == untie.CodeMissingGlyph {
+				missing = append(missing, diagnostic)
+			}
+		}
+		if len(missing) == 0 {
+			return fail("layout box has no missing-glyph diagnostic")
+		}
+		var messages []string
+		for _, diagnostic := range missing {
+			messages = append(messages, diagnostic.Message)
+		}
+		if problem := containsAll(strings.Join(messages, "\n"), testCase.Expect.LayoutErrorContains); problem != "" {
+			return fail("layout diagnostic mismatch: " + problem)
+		}
+		if len(box.Items) == 0 {
+			return fail("recovered box has no items")
+		}
+		result.Items = len(box.Items)
+		result.Hits = len(box.Hits)
+		result.Lines = len(box.Lines)
+		result.Outcome = outcomeMissingGlyph
+		result.Matched = true
+	case layoutError:
 		if layoutErr == nil || box != nil {
 			return fail("layout succeeded, expected an error")
-		}
-		if testCase.Expect.Layout == layoutMissingGlyph && !strings.Contains(layoutErr.Error(), "missing glyph") {
-			return fail("layout error is not a missing-glyph error: " + layoutErr.Error())
 		}
 		if problem := containsAll(layoutErr.Error(), testCase.Expect.LayoutErrorContains); problem != "" {
 			return fail("layout error mismatch: " + problem)
 		}
 		result.Outcome = outcomeLayoutError
-		if testCase.Expect.Layout == layoutMissingGlyph {
-			result.Outcome = outcomeMissingGlyph
-		}
 		result.Matched = true
 	default:
 		return fail("invalid layout expectation")

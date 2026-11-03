@@ -30,6 +30,7 @@ type RendererOptions struct {
 	DefaultDialect Dialect
 	DefaultStyle   display.Style
 	CacheEntries   int
+	Recovery       RecoveryMode
 }
 
 // RenderRequest selects one source-to-display-list operation.
@@ -48,10 +49,11 @@ type RenderRequest struct {
 
 // RenderResult is one render attempt.
 //
-// Box is non-nil only when layout succeeds. Diagnostics contain an independent
-// snapshot of recoverable parse diagnostics and are returned with layout errors
-// when parsing completed. Alt is populated only when the effective style
-// requests alternative-text generation.
+// Box is non-nil when layout succeeds or recoverable problems were rendered
+// visibly. Diagnostics contain an independent snapshot of parse and layout
+// problems and are returned with fatal layout errors when parsing completed.
+// Alt is populated only when the effective style requests alternative-text
+// generation.
 type RenderResult struct {
 	Box         *display.Box
 	Diagnostics []source.Diagnostic
@@ -70,6 +72,7 @@ type Renderer struct {
 	defaultDialect Dialect
 	defaultStyle   display.Style
 	cache          *renderExprCache
+	recovery       RecoveryMode
 }
 
 // NewRenderer prepares a reusable renderer and its Engine.
@@ -88,6 +91,9 @@ func NewRenderer(fonts *FontSet, opts RendererOptions) (*Renderer, error) {
 	if dialect != TeX && dialect != Typst {
 		return nil, fmt.Errorf("%w: unknown default dialect %d", ErrInvalidRenderer, dialect)
 	}
+	if err := opts.Recovery.validate(); err != nil {
+		return nil, err
+	}
 	style := opts.DefaultStyle
 	if style.Size == 0 {
 		style.Size = defaultRendererSize
@@ -105,6 +111,7 @@ func NewRenderer(fonts *FontSet, opts RendererOptions) (*Renderer, error) {
 		limits:         limits,
 		defaultDialect: dialect,
 		defaultStyle:   style,
+		recovery:       opts.Recovery,
 	}
 	if opts.CacheEntries > 0 {
 		renderer.cache = newRenderExprCache(opts.CacheEntries)
@@ -151,12 +158,18 @@ func (r *Renderer) Render(
 		return nil, err
 	}
 	result := &RenderResult{Diagnostics: expr.Diagnostics()}
-	box, err := r.engine.LayoutContext(ctx, expr, style)
+	box, err := r.engine.LayoutContextWithOptions(ctx, expr, style, LayoutOptions{
+		Recovery: r.recovery,
+	})
 	if err != nil {
 		return result, err
 	}
 	result.Box = box
 	result.Alt = box.Alt.Clone()
+	result.Diagnostics = source.NormalizeDiagnosticsFor(
+		append(result.Diagnostics, box.Diagnostics...),
+		len(src),
+	)
 	return result, nil
 }
 

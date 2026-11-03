@@ -678,7 +678,12 @@ func TestPublicLayoutErrorClassification(t *testing.T) {
 		t.Fatalf("NewEngine() error = %v", err)
 	}
 	missing := ParseTeX("中", Inline, ParseOptions{})
-	if _, err := engine.Layout(missing, Style{Size: 16}); !errors.Is(err, ErrMissingGlyph) {
+	if _, err := engine.LayoutContextWithOptions(
+		context.Background(),
+		missing,
+		Style{Size: 16},
+		LayoutOptions{Recovery: RecoveryStrict},
+	); !errors.Is(err, ErrMissingGlyph) {
 		t.Fatalf("missing-glyph layout error = %v", err)
 	}
 
@@ -701,7 +706,12 @@ func TestPublicLayoutErrorsCarryKindAndSourceRange(t *testing.T) {
 		t.Fatalf("NewEngine() error = %v", err)
 	}
 	missing := ParseTeX("a中b", Inline, ParseOptions{})
-	_, err = engine.Layout(missing, Style{Size: 16})
+	_, err = engine.LayoutContextWithOptions(
+		context.Background(),
+		missing,
+		Style{Size: 16},
+		LayoutOptions{Recovery: RecoveryStrict},
+	)
 	requireLayoutError(t, err, ErrMissingGlyph, LayoutErrorMissingGlyph, source.NewRange(1, 4))
 	wrapped := fmt.Errorf("host layout: %w", err)
 	var layoutErr *LayoutError
@@ -767,13 +777,45 @@ func TestPublicLayoutErrorRangeFallsBackToSpan(t *testing.T) {
 	span := source.NewRange(0, 3)
 	glyph := ir.NewGlyph(span, "中")
 	glyph.NodeBase().Origin = source.Detached()
-	_, err = engine.LayoutFormulaContext(
+	_, err = engine.LayoutFormulaContextWithOptions(
 		context.Background(),
 		&ir.Formula{Root: glyph},
 		Inline,
 		Style{Size: 16},
+		LayoutOptions{Recovery: RecoveryStrict},
 	)
 	requireLayoutError(t, err, ErrMissingGlyph, LayoutErrorMissingGlyph, span)
+}
+
+func TestPublicVisibleMissingGlyphRecovery(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(loadTestFonts(t), Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	box, err := engine.Layout(ParseTeX("a中b", Inline, ParseOptions{}), Style{Size: 16})
+	if err != nil {
+		t.Fatalf("Layout() error = %v, want visible recovery", err)
+	}
+	if box == nil || len(box.Items) == 0 {
+		t.Fatal("Layout() returned no visible output")
+	}
+	if len(box.Diagnostics) != 1 ||
+		box.Diagnostics[0].Code != source.CodeMissingGlyph ||
+		box.Diagnostics[0].Range != source.NewRange(1, 4) {
+		t.Fatalf("Box.Diagnostics = %+v, want one missing-glyph at [1,4)", box.Diagnostics)
+	}
+	foundErrorPaint := false
+	for _, item := range box.Items {
+		if item.Paint.Role == display.RoleError {
+			foundErrorPaint = true
+			break
+		}
+	}
+	if !foundErrorPaint {
+		t.Fatal("visible recovery did not paint a placeholder with RoleError")
+	}
 }
 
 func TestPublicCancellationIsNotALayoutError(t *testing.T) {
