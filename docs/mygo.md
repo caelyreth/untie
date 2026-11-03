@@ -44,9 +44,11 @@ wants formulas to grow into larger spaces.
 participates in normal MyGo box layout; use `InlineMath` when baseline
 placement inside text is required.
 
-If parsing or layout fails, `Element` returns selectable text in the theme's
+Missing glyphs recover visibly by default: the element draws an error-colored
+placeholder while preserving the rest of the formula. If parsing or
+non-recoverable layout fails, `Element` returns selectable text in the theme's
 danger color. Call `Renderer.Render` directly when the application also needs
-the structured error and diagnostics.
+the structured diagnostics.
 
 ## Markdown
 

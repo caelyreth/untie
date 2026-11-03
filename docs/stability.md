@@ -22,7 +22,7 @@ Primary surface:
 - `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`, `NewEngine`,
   `Engine.Layout`, `Engine.LayoutContext`;
 - `NewRenderer`, `RendererOptions`, `RenderRequest`, `RenderResult`,
-  `Renderer.Render`;
+  `Renderer.Render`, `RecoveryMode`, `LayoutOptions`;
 - `render.Walk`, `render.Command`, `render.ResolvePath`, `render.Fit`,
   `render.FitOptions`, and `render.Transform`;
 - `(*untiemygo.Renderer).Element`, `BindMarkdown`, `InlineMath`, `DisplayMath`,

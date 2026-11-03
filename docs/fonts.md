@@ -75,9 +75,11 @@ Fallback selection is per shaped unit, not a global font switch. A CJK text
 run can use a fallback face while surrounding math uses the primary math face.
 The host can add a CJK face to `Fallbacks` without changing math symbols.
 
-If no face maps the required rune or variation sequence, layout returns an
-error wrapping `ErrMissingGlyph`. There is no automatic visible placeholder
-during layout.
+If no face maps the required rune or variation sequence, the default
+`RecoveryVisible` layout keeps the rest of the formula drawable. It substitutes
+an error-painted placeholder box, records a `missing-glyph` diagnostic on both
+the box and high-level render result, and continues with the surrounding row.
+Use `RecoveryStrict` when a complete font match is required.
 
 ## Unicode and Variation Selectors
 
@@ -157,17 +159,20 @@ available tags directly.
 
 ## Missing Glyphs
 
-A missing glyph is a layout error, not a parse diagnostic:
+A missing glyph is a recoverable layout problem by default:
 
-- `errors.Is(err, untie.ErrMissingGlyph)` identifies it;
-- `errors.As(err, &layoutErr)` exposes the attributed source range when the
-  error is a `*untie.LayoutError`;
-- the host can retry with an additional fallback face;
-- the parse tree and its `Expr.Alt()` remain available even when layout fails.
+- `RendererOptions.Recovery == RecoveryVisible` returns a non-nil box with an
+  error-painted placeholder for the missing item;
+- `RenderResult.Diagnostics` and `Box.Diagnostics` contain
+  `untie.CodeMissingGlyph` with the attributed source range;
+- surrounding symbols, fractions, scripts, and rows remain in the display list;
+- hosts that require a complete font match can use `RecoveryStrict`, in which
+  case `errors.Is(err, untie.ErrMissingGlyph)` and the structured
+  `*untie.LayoutError` remain available.
 
-The reference font set intentionally produces `ErrMissingGlyph` for text-only
-CJK cases. This documents the fallback boundary rather than implying that one
-font covers every script.
+The reference font set intentionally triggers visible CJK recovery because it
+does not contain a CJK face. Install a fallback face to render the characters
+instead of the placeholder.
 
 ## Recommended Setup
 

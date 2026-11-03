@@ -44,6 +44,7 @@ type Box struct {
 	Hits   []Hit
 	Breaks []Break
 	Alt    Alt
+	Diagnostics []source.Diagnostic
 	Tag    *TagBox
 	Lines  []LineBox
 }
@@ -51,6 +52,11 @@ type Box struct {
 
 The slices are owned by the returned box. A new successful layout creates new
 box storage.
+
+`Box.Diagnostics` contains recoverable layout problems, including missing
+glyphs rendered as visible placeholders. Parse diagnostics remain on
+`RenderResult.Diagnostics`; the high-level renderer returns a normalized union
+of both.
 
 ## Streaming Drawing Protocol
 
