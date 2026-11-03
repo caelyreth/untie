@@ -144,6 +144,10 @@ func translateItemForTest(item *display.Item, dx, dy float32) {
 	item.At.Y += dy
 }
 
+func pathSegmentsForTest(box *display.Box, item display.Item) []geometry.Segment {
+	return box.Paths[item.PathIndex].Segments
+}
+
 type fakeGlyphSource struct {
 	glyphs map[string]Glyph
 	strict bool

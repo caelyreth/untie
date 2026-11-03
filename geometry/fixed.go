@@ -4,6 +4,7 @@ package geometry
 import (
 	"errors"
 	"math"
+	"math/bits"
 )
 
 const (
@@ -166,10 +167,27 @@ func mulDiv(a, b, c int64) (int64, error) {
 	ub := abs64(b)
 	uc := abs64(c)
 	hi, lo := bitsMul(ua, ub)
-	if hi >= uc {
-		return 0, ErrOverflow
+	var q, r uint64
+	if uc&(uc-1) == 0 {
+		shift := bits.TrailingZeros64(uc)
+		if shift == 0 {
+			if hi != 0 {
+				return 0, ErrOverflow
+			}
+			q = lo
+		} else {
+			if hi >= uint64(1)<<shift {
+				return 0, ErrOverflow
+			}
+			q = lo>>shift | hi<<(64-shift)
+		}
+		r = lo & (uc - 1)
+	} else {
+		if hi >= uc {
+			return 0, ErrOverflow
+		}
+		q, r = bitsDiv(hi, lo, uc)
 	}
-	q, r := bitsDiv(hi, lo, uc)
 	if r >= uc/2+uc%2 {
 		if q == math.MaxInt64 {
 			return 0, ErrOverflow

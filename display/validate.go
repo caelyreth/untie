@@ -477,6 +477,12 @@ func validatePath(path PathTemplate) error {
 	if err := validateRect(path.Bound); err != nil {
 		return fmt.Errorf("bound: %v", err)
 	}
+	leftTolerance := lineTolerance(path.Bound.X)
+	topTolerance := lineTolerance(path.Bound.Y)
+	right := path.Bound.X + path.Bound.Width
+	bottom := path.Bound.Y + path.Bound.Height
+	rightTolerance := lineTolerance(right)
+	bottomTolerance := lineTolerance(bottom)
 	for i, seg := range path.Segments {
 		points, ok := segmentPointCount(seg.Op)
 		if !ok {
@@ -486,7 +492,11 @@ func validatePath(path PathTemplate) error {
 			if !finite(seg.Points[j].X) || !finite(seg.Points[j].Y) {
 				return fmt.Errorf("segment %d has non-finite point", i)
 			}
-			if !pointInRect(seg.Points[j], path.Bound) {
+			point := seg.Points[j]
+			if point.X < path.Bound.X-leftTolerance ||
+				point.Y < path.Bound.Y-topTolerance ||
+				point.X > right+rightTolerance ||
+				point.Y > bottom+bottomTolerance {
 				return fmt.Errorf("segment %d point %d exceeds bound", i, j)
 			}
 		}
@@ -501,26 +511,11 @@ func rectContains(outer, inner geometry.Rect) bool {
 		inner.Y+inner.Height <= outer.Y+outer.Height+lineTolerance(inner.Y+inner.Height)
 }
 
-func pointInRect(point geometry.Point, rect geometry.Rect) bool {
-	return point.X >= rect.X-lineTolerance(point.X) &&
-		point.Y >= rect.Y-lineTolerance(point.Y) &&
-		point.X <= rect.X+rect.Width+lineTolerance(point.X) &&
-		point.Y <= rect.Y+rect.Height+lineTolerance(point.Y)
-}
-
 func segmentPointCount(op geometry.SegOp) (int, bool) {
-	switch op {
-	case geometry.SegMoveTo, geometry.SegLineTo:
-		return 1, true
-	case geometry.SegQuadTo:
-		return 2, true
-	case geometry.SegCubeTo:
-		return 3, true
-	case geometry.SegClose:
-		return 0, true
-	default:
+	if op > geometry.SegClose {
 		return 0, false
 	}
+	return [...]int{1, 1, 2, 3, 0}[op], true
 }
 
 func validatePaint(paint Paint) error {

@@ -73,6 +73,7 @@ func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 		Italic:     italic,
 		AxisHeight: axisHeight,
 		Items:      make([]display.Item, 0, s.outputItemCapacity(root.flatItems)),
+		Paths:      make([]display.PathTemplate, 0, s.outputItemCapacity(root.flatItems)),
 		Hits:       make([]display.Hit, 0, s.outputHitCapacity(root.flatHits)),
 	}
 	state := newFlattenState(s, box, 0, 0)
@@ -130,10 +131,21 @@ func reserveDisplayHits(hits []display.Hit, additional, limit int) []display.Hit
 	return grown
 }
 
+func reserveDisplayPaths(paths []display.PathTemplate, additional, limit int) []display.PathTemplate {
+	want := saturatedAdd(len(paths), additional)
+	capacity := boundedCapacity(want, limit)
+	if capacity <= cap(paths) {
+		return paths
+	}
+	grown := make([]display.PathTemplate, len(paths), capacity)
+	copy(grown, paths)
+	return grown
+}
+
 type flattenState struct {
 	layout     *layoutState
 	box        *display.Box
-	stack      map[*Fragment]struct{}
+	stack      []*Fragment
 	pathCache  map[pathTemplateKey]int
 	offsetX    float32
 	offsetY    float32
@@ -142,14 +154,16 @@ type flattenState struct {
 }
 
 type pathTemplateKey struct {
+	first   *Segment
+	length  int
 	fontID  string
 	glyphID uint16
+	exact   bool
 }
 
 func newFlattenState(layout *layoutState, box *display.Box, offsetX, offsetY float32) flattenState {
 	return flattenState{
 		layout:  layout,
-		stack:   make(map[*Fragment]struct{}),
 		box:     box,
 		offsetX: offsetX,
 		offsetY: offsetY,
@@ -230,14 +244,18 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	if f.visits > f.layout.limits.MaxNodes {
 		return fmt.Errorf("%w: fragment visit count %d", ErrLimit, f.visits)
 	}
-	if _, exists := f.stack[fragment]; exists {
-		return fmt.Errorf("%w: cyclic fragment graph", ErrInvalidInput)
+	for _, ancestor := range f.stack {
+		if ancestor == fragment {
+			return fmt.Errorf("%w: cyclic fragment graph", ErrInvalidInput)
+		}
 	}
 	if len(f.stack) >= f.layout.limits.MaxNesting {
 		return fmt.Errorf("%w: fragment nesting depth", ErrLimit)
 	}
-	f.stack[fragment] = struct{}{}
-	defer delete(f.stack, fragment)
+	f.stack = append(f.stack, fragment)
+	defer func() {
+		f.stack = f.stack[:len(f.stack)-1]
+	}()
 	if err := f.layout.appendFragmentHits(f, fragment, x, y); err != nil {
 		return err
 	}
@@ -279,11 +297,7 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 				if err != nil {
 					return err
 				}
-				partGlyph := &GlyphFragment{
-					Glyph: part.Glyph,
-					Scale: glyph.Scale,
-					Paint: glyph.Paint,
-				}
+				partGlyph := f.layout.newGlyphFragment(part.Glyph, glyph.Scale, glyph.Paint)
 				if err := f.appendGlyphItem(partX, partY, partGlyph, false); err != nil {
 					return err
 				}
@@ -397,10 +411,7 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		return item, nil
 	}
 
-	var key *pathTemplateKey
-	if glyph.Glyph.FontID != "" && glyph.Glyph.ID != 0 {
-		key = &pathTemplateKey{fontID: glyph.Glyph.FontID, glyphID: glyph.Glyph.ID}
-	}
+	key := glyphPathTemplateKey(glyph.Glyph)
 	pathIndex, err := f.pathTemplate(key, glyph.Glyph.Outline)
 	if err != nil {
 		return display.Item{}, err
@@ -433,7 +444,7 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	if err != nil {
 		return display.Item{}, err
 	}
-	pathIndex, err := f.pathTemplate(nil, path.path)
+	pathIndex, err := f.pathTemplate(pathTemplateKeyFor(path.path), path.path)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -456,6 +467,24 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	}, nil
 }
 
+func pathTemplateKeyFor(path Path) *pathTemplateKey {
+	if len(path) == 0 {
+		return nil
+	}
+	return &pathTemplateKey{first: &path[0], length: len(path)}
+}
+
+func glyphPathTemplateKey(glyph Glyph) *pathTemplateKey {
+	if glyph.ExactGlyphRef && glyph.FontID != "" && glyph.ID != 0 {
+		return &pathTemplateKey{
+			fontID:  glyph.FontID,
+			glyphID: glyph.ID,
+			exact:   true,
+		}
+	}
+	return pathTemplateKeyFor(glyph.Outline)
+}
+
 func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error) {
 	if key != nil && f.pathCache != nil {
 		if index, ok := f.pathCache[*key]; ok {
@@ -475,12 +504,13 @@ func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error
 		if !ok {
 			return 0, fmt.Errorf("%w: invalid path operation %d", ErrInvalidInput, segment.Op)
 		}
-		template.Segments[i].Op = segment.Op
+		out := &template.Segments[i]
+		out.Op = segment.Op
 		for j := 0; j < pointCount; j++ {
 			point := segment.Points[j]
 			x := float32(point.X.Float())
 			y := float32(point.Y.Float())
-			template.Segments[i].Points[j] = geometry.Point{X: x, Y: y}
+			out.Points[j] = geometry.Point{X: x, Y: y}
 			if !havePoint {
 				minX, maxX, minY, maxY = x, x, y, y
 				havePoint = true
@@ -538,18 +568,10 @@ func (f *flattenState) tick() error {
 }
 
 func segmentPointCount(op geometry.SegOp) (int, bool) {
-	switch op {
-	case geometry.SegMoveTo, geometry.SegLineTo:
-		return 1, true
-	case geometry.SegQuadTo:
-		return 2, true
-	case geometry.SegCubeTo:
-		return 3, true
-	case geometry.SegClose:
-		return 0, true
-	default:
+	if op > geometry.SegClose {
 		return 0, false
 	}
+	return [...]int{1, 1, 2, 3, 0}[op], true
 }
 
 func (f *flattenState) ruleItem(x, y geometry.Em, rule *ruleDraw) (display.Item, error) {

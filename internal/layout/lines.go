@@ -79,6 +79,7 @@ func (s *layoutState) flattenSingleDisplayLine(root *Fragment, offsetX float32) 
 		Items:    display.ItemRange{Start: 0},
 		Hits:     display.HitRange{Start: 0},
 	}
+	parent.Paths = reserveDisplayPaths(parent.Paths, root.flatItems, s.limits.MaxOutputItems)
 	flatten := newFlattenState(s, parent, offsetX, 0)
 	if err := flatten.visit(root, 0, 0); err != nil {
 		return nil, err
@@ -153,6 +154,7 @@ func (s *layoutState) flattenPlannedDisplayLines(
 			Items:    display.ItemRange{Start: len(parent.Items)},
 			Hits:     display.HitRange{Start: len(parent.Hits)},
 		}
+		parent.Paths = reserveDisplayPaths(parent.Paths, segment.flatItems, s.limits.MaxOutputItems)
 		flatten := newFlattenState(s, parent, offsetX, baseline)
 		if err := flatten.visit(segment, 0, 0); err != nil {
 			return nil, err
@@ -203,6 +205,7 @@ func (s *layoutState) newConstrainedDisplayBox() (*display.Box, error) {
 	return &display.Box{
 		Width:      s.request.MaxWidth,
 		AxisHeight: axisHeight,
+		Paths:      make([]display.PathTemplate, 0, s.outputItemCapacity(s.nodes)),
 	}, nil
 }
 

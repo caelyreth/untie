@@ -18,14 +18,16 @@ type corpusBenchCase struct {
 }
 
 type corpusBenchStats struct {
-	corpora      int64
-	cases        int64
-	sourceBytes  int64
-	successes    int64
-	items        int64
-	hits         int64
-	pathSegments int64
-	layoutErrors int64
+	corpora          int64
+	cases            int64
+	sourceBytes      int64
+	successes        int64
+	items            int64
+	hits             int64
+	pathSegments     int64
+	pathTemplates    int64
+	templateSegments int64
+	layoutErrors     int64
 }
 
 var (
@@ -148,6 +150,10 @@ func runCorpusBenchmark(
 			benchmarkCorpusBox = box
 			observed.items += int64(len(box.Items))
 			observed.hits += int64(len(box.Hits))
+			observed.pathTemplates += int64(len(box.Paths))
+			for _, template := range box.Paths {
+				observed.templateSegments += int64(len(template.Segments))
+			}
 			for _, item := range box.Items {
 				observed.pathSegments += int64(itemPathSegmentCount(box, item))
 			}
@@ -177,10 +183,15 @@ func reportCorpusBenchmarkMetrics(b *testing.B, stats corpusBenchStats, uniqueCo
 	b.ReportMetric(perCase(stats.items), "items/case")
 	b.ReportMetric(perCase(stats.hits), "hits/case")
 	b.ReportMetric(perCase(stats.pathSegments), "path-seg/case")
+	b.ReportMetric(perCase(stats.pathTemplates), "path-template/case")
+	b.ReportMetric(perCase(stats.templateSegments), "template-path-seg/case")
 	if stats.successes > 0 {
 		b.ReportMetric(perSuccess(stats.items), "items/success")
 		b.ReportMetric(perSuccess(stats.hits), "hits/success")
 		b.ReportMetric(perSuccess(stats.pathSegments), "path-seg/success")
+	}
+	if stats.pathSegments > 0 {
+		b.ReportMetric(float64(stats.templateSegments)/float64(stats.pathSegments), "path-storage-x")
 	}
 	b.ReportMetric(perCase(stats.successes), "successes/case")
 	b.ReportMetric(perCase(stats.layoutErrors), "layout-errors/case")

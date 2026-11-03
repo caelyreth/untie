@@ -129,6 +129,32 @@ type fragmentArena struct {
 	used   int
 }
 
+const (
+	firstGlyphChunk = 8
+	maxGlyphChunk   = 32
+)
+
+type glyphArena struct {
+	chunks [][]GlyphFragment
+	used   int
+}
+
+func (a *glyphArena) allocate() *GlyphFragment {
+	last := len(a.chunks) - 1
+	if last < 0 || a.used == len(a.chunks[last]) {
+		size := firstGlyphChunk
+		if last >= 0 {
+			size = min(len(a.chunks[last])*2, maxGlyphChunk)
+		}
+		a.chunks = append(a.chunks, make([]GlyphFragment, size))
+		last++
+		a.used = 0
+	}
+	glyph := &a.chunks[last][a.used]
+	a.used++
+	return glyph
+}
+
 func (a *fragmentArena) allocate() *Fragment {
 	last := len(a.chunks) - 1
 	if last < 0 || a.used == len(a.chunks[last]) {
@@ -194,6 +220,12 @@ func (s *layoutState) newFragment(metrics Metrics, class ir.MathClass, size Math
 func (s *layoutState) emptyFragment(size MathSize, scale geometry.Em) *Fragment {
 	fragment := s.fragments.allocate()
 	*fragment = Fragment{Size: size, Scale: scale, ownHit: -1}
+	return fragment
+}
+
+func (s *layoutState) newGlyphFragment(glyph Glyph, scale geometry.Em, paint ir.Paint) *GlyphFragment {
+	fragment := s.glyphs.allocate()
+	*fragment = GlyphFragment{Glyph: glyph, Scale: scale, Paint: paint}
 	return fragment
 }
 

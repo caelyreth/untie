@@ -159,7 +159,7 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 		t.Fatalf("items = %d, want body and cancel stroke", len(box.Items))
 	}
 	if box.Items[1].Kind != display.ItemGlyphPath || box.Items[1].FontID != "" ||
-		len(box.Paths[box.Items[1].PathIndex].Segments) != 5 {
+		len(pathSegmentsForTest(box, box.Items[1])) != 5 {
 		t.Fatalf("cancel stroke = %+v", box.Items[1])
 	}
 	if !closeHost(box.Width, 8) || !closeHost(box.Ascent, 10.9279785) || !closeHost(box.Descent, 0) {
@@ -173,8 +173,8 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 		t.Fatalf("Layout(inverted cancel) error = %v", err)
 	}
 	if reflect.DeepEqual(
-		box.Paths[box.Items[1].PathIndex].Segments,
-		invertedBox.Paths[invertedBox.Items[1].PathIndex].Segments,
+		pathSegmentsForTest(box, box.Items[1]),
+		pathSegmentsForTest(invertedBox, invertedBox.Items[1]),
 	) {
 		t.Fatal("inverted cancel did not reverse the stroke")
 	}
@@ -225,7 +225,7 @@ func TestBoxPaddingFillBorderRadiusAndLimits(t *testing.T) {
 		t.Fatalf("border item = %+v", box.Items[1])
 	}
 	closes := 0
-	for _, segment := range box.Paths[box.Items[1].PathIndex].Segments {
+	for _, segment := range pathSegmentsForTest(box, box.Items[1]) {
 		if segment.Op == geometry.SegClose {
 			closes++
 		}
@@ -354,7 +354,7 @@ func TestEndToEndPathOperationsAndLimit(t *testing.T) {
 	if len(box.Items) != 1 {
 		t.Fatalf("path items = %+v", box.Items)
 	}
-	segments := box.Paths[box.Items[0].PathIndex].Segments
+	segments := pathSegmentsForTest(box, box.Items[0])
 	if len(segments) != 5 || segments[4].Op != geometry.SegClose {
 		t.Fatalf("path = %+v", box.Items)
 	}

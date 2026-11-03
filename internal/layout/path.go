@@ -130,7 +130,7 @@ func lineQuad(start, end Point, thickness geometry.Em) (Path, error) {
 }
 
 func pathInkBottom(path Path, factor geometry.Em) (geometry.Em, bool) {
-	var bottom geometry.Em
+	var localBottom geometry.Em
 	havePoint := false
 	for _, segment := range path {
 		pointCount, ok := segmentPointCount(segment.Op)
@@ -138,17 +138,21 @@ func pathInkBottom(path Path, factor geometry.Em) (geometry.Em, bool) {
 			continue
 		}
 		for i := 0; i < pointCount; i++ {
-			y, err := scale(segment.Points[i].Y, factor)
-			if err != nil {
-				return 0, false
-			}
-			if !havePoint || y > bottom {
-				bottom = y
+			y := segment.Points[i].Y
+			if !havePoint || y > localBottom {
+				localBottom = y
 				havePoint = true
 			}
 		}
 	}
-	return bottom, havePoint
+	if !havePoint {
+		return 0, false
+	}
+	bottom, err := scale(localBottom, factor)
+	if err != nil {
+		return 0, false
+	}
+	return bottom, true
 }
 
 func minEm(a, b geometry.Em) geometry.Em {

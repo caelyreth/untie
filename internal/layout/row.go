@@ -19,8 +19,15 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		leftClass  ir.MathClass
 		rightClass ir.MathClass
 	}
-	atoms := make([]atom, 0, len(nodes))
-	rawClasses := make([]ir.MathClass, 0, len(nodes))
+	const inlineRowAtoms = 8
+	var atomBuffer [inlineRowAtoms]atom
+	var classBuffer [inlineRowAtoms]ir.MathClass
+	atoms := atomBuffer[:0]
+	rawClasses := classBuffer[:0]
+	if len(nodes) > inlineRowAtoms {
+		atoms = make([]atom, 0, len(nodes))
+		rawClasses = make([]ir.MathClass, 0, len(nodes))
+	}
 	for _, node := range nodes {
 		switch node.(type) {
 		case *ir.Space, *ir.Break, *ir.AlignMarker:

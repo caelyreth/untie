@@ -180,6 +180,7 @@ type layoutState struct {
 	pathSegments  int
 	plannedOutput int
 	fragments     fragmentArena
+	glyphs        glyphArena
 }
 
 type environment struct {

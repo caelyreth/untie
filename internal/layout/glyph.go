@@ -236,7 +236,7 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 		return nil, err
 	}
 	scaled.Outline = glyph.Outline
-	return &GlyphFragment{Glyph: scaled, Scale: factor, Paint: paint}, nil
+	return s.newGlyphFragment(scaled, factor, paint), nil
 }
 
 func scaleKernInfo(info MathKernInfo, factor geometry.Em) (MathKernInfo, error) {

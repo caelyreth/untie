@@ -264,9 +264,7 @@ func cloneItems(items []Item) []Item {
 		return nil
 	}
 	out := make([]Item, len(items))
-	for i, item := range items {
-		out[i] = item
-	}
+	copy(out, items)
 	return out
 }
 

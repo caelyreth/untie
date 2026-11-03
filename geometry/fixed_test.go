@@ -50,6 +50,35 @@ func TestEmErrors(t *testing.T) {
 	}
 }
 
+func TestEmMulDivPowerOfTwoRoundingAndOverflow(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		value Em
+		num   int64
+		den   int64
+		want  Em
+	}{
+		{value: 3, num: 1, den: 2, want: 2},
+		{value: -3, num: 1, den: 2, want: -2},
+		{value: 5, num: 1, den: 4, want: 1},
+		{value: 6, num: 1, den: 4, want: 2},
+		{value: Em(math.MaxInt64), num: 2, den: 2, want: Em(math.MaxInt64)},
+	}
+	for _, test := range tests {
+		got, err := test.value.MulDiv(test.num, test.den)
+		if err != nil {
+			t.Fatalf("%d*%d/%d error = %v", test.value, test.num, test.den, err)
+		}
+		if got != test.want {
+			t.Fatalf("%d*%d/%d = %d, want %d", test.value, test.num, test.den, got, test.want)
+		}
+	}
+	if _, err := Em(math.MaxInt64).MulDiv(3, 2); err != ErrOverflow {
+		t.Fatalf("power-of-two overflow error = %v, want %v", err, ErrOverflow)
+	}
+}
+
 func TestEmFloat(t *testing.T) {
 	t.Parallel()
 
