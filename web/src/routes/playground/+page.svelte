@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Play, RotateCcw } from 'lucide-svelte'
+  import { Play, RotateCcw } from '@lucide/svelte'
   import { onMount } from 'svelte'
 
   import { loadUntie } from '#lib/wasm/untie'
@@ -261,8 +261,9 @@
     min-height: 30px;
     padding: 0 10px;
     color: var(--muted);
-    font-family: var(--font-code);
-    font-size: 9px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
@@ -323,8 +324,9 @@
     padding: 0 14px;
     color: var(--page);
     background: var(--ink);
-    font-family: var(--font-code);
-    font-size: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
     text-transform: uppercase;
   }
 

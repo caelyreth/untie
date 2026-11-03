@@ -192,7 +192,11 @@ pre {
   z-index: 3;
 }
 
-:root::view-transition-old(floating-nav),
+:root::view-transition-old(floating-nav) {
+  animation: none;
+  opacity: 0;
+}
+
 :root::view-transition-new(floating-nav) {
   animation: none;
   mix-blend-mode: normal;

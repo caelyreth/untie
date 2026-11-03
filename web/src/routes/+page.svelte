@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowUpRight } from 'lucide-svelte'
+  import { ArrowUpRight } from '@lucide/svelte'
 
   import Wordmark from '#lib/components/wordmark.svelte'
   import MathFlow from '#lib/home/math-flow.svelte'
@@ -142,8 +142,9 @@
     min-height: 46px;
     border-bottom: 1px solid var(--line);
     color: var(--ink);
-    font-family: var(--font-code);
-    font-size: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
     letter-spacing: 0.05em;
     text-decoration: none;
     text-transform: uppercase;

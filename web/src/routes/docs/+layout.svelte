@@ -63,6 +63,7 @@
       color-mix(in srgb, var(--line) 62%, transparent);
     color: var(--secondary);
     font-size: 13px;
+    font-weight: 600;
     line-height: 1.45;
     text-decoration: none;
   }

@@ -1,8 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
-  <g transform="rotate(-12 20 20)">
-    <path fill="#BD9976" d="M7 8h3.5v24H7z" />
-    <path fill="#DC8789" d="M14 14l10.5 10.5-2.5 2.5L11.5 16.5z" />
-    <path fill="#A19EC2" d="M25.5 14L15 24.5l2.5 2.5L28 16.5z" />
-    <path fill="#7DAD96" d="M29.5 8H33v24h-3.5z" />
+  <g
+    transform="rotate(-12 20 20)"
+    fill="none"
+    stroke-width="3.4"
+    stroke-linecap="square"
+  >
+    <line x1="14" y1="7" x2="11" y2="33" stroke="#A19EC2" />
+    <line x1="28" y1="7" x2="25" y2="33" stroke="#7DAD96" />
+    <line x1="6" y1="15" x2="34" y2="12" stroke="#DC8789" />
+    <line x1="7" y1="27" x2="35" y2="24" stroke="#BD9976" />
   </g>
 </svg>
