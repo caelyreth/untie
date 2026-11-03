@@ -141,7 +141,7 @@ jobs:
             bunx vercel@65.10.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
             mkdir -p .vercel/output/static
             cp -a build/. .vercel/output/static/
-            printf '{"version":3}\n' > .vercel/output/config.json
+            echo '{"version":3}' > .vercel/output/config.json
             bunx vercel@65.10.0 deploy \
               --prebuilt \
               --prod \
