@@ -262,9 +262,11 @@ func checkArchitectureModule(t *testing.T, dir string, module architectureModule
 
 	cmd := exec.Command("go", "list", "-test", "-json", "./...")
 	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("go list -test in %s: %v\n%s", dir, err, out)
+		t.Fatalf("go list -test in %s: %v\nstdout:\n%s\nstderr:\n%s", dir, err, out, stderr.Bytes())
 	}
 	dec := json.NewDecoder(bytes.NewReader(out))
 	seen := make(map[string]bool)
