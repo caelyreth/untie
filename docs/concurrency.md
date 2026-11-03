@@ -165,8 +165,8 @@ returns a new `Box`.
 ### Font Cache
 
 The package-level engine cache uses the full `FontSet.KeySHA256()`. Identical
-font bytes with a different host face ID are different entries. Replacing a
-fallback or text face changes the key.
+font bytes with a different host face ID or variation position are different
+entries. Replacing a fallback or text face changes the key.
 
 ### Expression Key
 
@@ -186,7 +186,7 @@ stronger identity.
 
 ### Version
 
-`untie.Version()` currently returns `0.4.0+layout.6`. The layout revision is
+`untie.Version()` currently returns `0.4.0+layout.7`. The layout revision is
 part of the engine-cache contract. Do not use a cached engine across an
 incompatible version without consulting `Version()`.
 

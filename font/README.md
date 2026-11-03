@@ -37,6 +37,25 @@ shaped, err := set.ShapeText(font.TextShapeRequest{
 the internal cache is immutable. `KeySHA256` is the collision-resistant font
 set identity. `Key` is the first 64 bits for host maps.
 
+`FontFace.Variations` accepts arbitrary OpenType `fvar` axes in design-space
+units. Values are validated against the selected face; they are never clamped
+or interpolated by Untie. Omitted axes use `fvar` defaults and
+`VariationCoordinates` returns the complete effective position.
+
+```go
+text := font.FontFace{
+    Bytes: variableTextBytes,
+    Variations: []font.Variation{{Tag: "wght", Value: 650}},
+}
+```
+
+The substrate applies coordinates to TrueType/CFF2 outlines, HVAR/VVAR advances,
+MVAR metrics, GPOS deltas, and GSUB FeatureVariations. OpenType MATH constants,
+construction recipes, italic corrections, top accents, and cut-in kerns are
+static table data; constructions that reference glyphs still use varied glyph
+metrics and outlines. `head` font bounds remain static. These limits are part of
+the API contract rather than approximation rules.
+
 Coordinates and advances are whole font design units. CFF 16.16 operands are
 quantized once to this integer grid by truncating toward zero. They are never
 rounded through a host or canvas pixel size. Sub-design-unit outline coordinates
@@ -47,6 +66,9 @@ design units.
 
 - The host supplies bytes and optional IDs. There is no system font lookup,
   family matching, or environment-dependent fallback.
+- Variable configuration is per face. Unknown axes, out-of-range values,
+  duplicate axes, non-finite values, and coordinates on static faces are
+  rejected at load.
 - Empty IDs are derived from role, metadata, selected index, and bytes. Explicit
   IDs must be nonblank and unique across the math, text, and fallback faces.
 - The primary math face must contain OpenType MATH constants.

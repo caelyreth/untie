@@ -2,8 +2,9 @@
 
 Untie 0.4 adds core output policy, shaped-text provenance, the complete MyGo
 editor integration surface, editor geometry, structured accessibility
-descriptions, and high-value TeX layout constructs. The runtime version is
-`0.4.0+layout.6`, and the process-wide Engine cache schema is `6`.
+descriptions, high-value TeX layout constructs, and variable-font coordinates.
+The runtime version is `0.4.0+layout.7`, and the process-wide Engine cache schema
+is `7`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -229,6 +230,34 @@ while keeping the multiline formula block as one unbreakable line.
 Nested environments, tags in ordinary groups or syntactic arguments, inline
 tags, and automatic document counters remain outside the contract.
 
+## Variable Fonts
+
+`FontFace` now accepts OpenType design-variation coordinates:
+
+```go
+text := untie.FontFace{
+	Bytes: textBytes,
+	Variations: []untie.Variation{
+		{Tag: "wght", Value: 650},
+	},
+}
+```
+
+Values are design-space units, not normalized CSS units. Every `fvar` axis is
+accepted, omitted axes use their defaults, and invalid, duplicate, unknown, or
+out-of-range coordinates fail loading instead of being clamped. Static faces
+reject non-empty variation lists.
+
+`FaceInfo.Variable`, `FontSet.VariationAxes`, and
+`FontSet.VariationCoordinates` expose validated axis and resolved-position
+metadata. `fontsource.Face` can supply the same settings to `LoadSet`.
+
+Variation coordinates participate in derived face IDs and `FontSet.KeySHA256`.
+The substrate applies them to outlines, advances, MVAR metrics, GPOS deltas,
+GSUB FeatureVariations, and text shaping. MATH constants and construction
+recipes remain static OpenType data; construction glyph references use varied
+outlines and metrics.
+
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
@@ -242,7 +271,7 @@ tags, and automatic document counters remain outside the contract.
 - canonical box JSON may include `fontUsage`, `snap`, `carets`, `tags`, and
   node IDs;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.6`;
-- the Engine cache schema is now `6`.
+- `untie.Version()` is now `0.4.0+layout.7`;
+- the Engine cache schema is now `7`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.
