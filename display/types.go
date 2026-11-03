@@ -35,6 +35,9 @@ type Style struct {
 	// GenerateAlt requests Box.Alt generation through the public Engine
 	// facade. Expr.Alt remains available independently for parsed expressions.
 	GenerateAlt bool
+	// ColorPolicy controls explicit-color resolution in the serializable
+	// display list. The zero value preserves authored colors.
+	ColorPolicy ColorPolicy
 }
 
 // ItemRange identifies a contiguous range in Box.Items.

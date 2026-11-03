@@ -629,6 +629,43 @@ func TestCacheSeparatesWidthAwareLayouts(t *testing.T) {
 	}
 }
 
+func TestCacheSeparatesColorPolicies(t *testing.T) {
+	renderer := newTestRenderer(t, Options{CacheEntries: 4})
+	ctx := context.Background()
+	source := `\textcolor{red}{x}`
+	preserved, err := renderer.Render(ctx, source, untie.Inline, untie.Style{Size: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mapped, err := renderer.Render(ctx, source, untie.Inline, untie.Style{
+		Size: 24,
+		ColorPolicy: untie.ColorPolicy{
+			Mode: untie.ColorMapToRoles,
+			Palette: untie.ColorRolePalette{
+				Ink:         untie.RGBA{A: 0xff},
+				Error:       untie.RGBA{R: 0xff, A: 0xff},
+				Placeholder: untie.RGBA{G: 0xff, A: 0xff},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preserved.Box == mapped.Box {
+		t.Fatal("different color policies shared one cached box")
+	}
+	again, err := renderer.Render(ctx, source, untie.Inline, untie.Style{Size: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Box != preserved.Box {
+		t.Fatal("preserve policy was not reused from cache")
+	}
+	if stats := renderer.CacheStats(); stats.Hits != 1 || stats.Misses != 2 || stats.Entries != 2 {
+		t.Fatalf("cache stats = %+v, want 2 misses, 1 hit, 2 entries", stats)
+	}
+}
+
 func TestPaintColorRoles(t *testing.T) {
 	theme := ui.DarkTheme()
 	for paint, want := range map[untie.Paint]ui.Color{

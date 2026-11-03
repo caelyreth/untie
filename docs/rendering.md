@@ -211,6 +211,11 @@ Error and placeholder roles are intentional visible fallback states. Do not
 silently paint them as normal ink unless the host has a better accessibility
 policy.
 
+`Style.ColorPolicy` can resolve authored explicit colors during layout. The
+zero-value preserve policy is the default. Map-to-role and contrast-adjusted
+policies still produce only serializable `Paint` values; they never add a host
+callback or UI color type to `Box`.
+
 ## Inline Layout
 
 `Inline` layout returns a box with:

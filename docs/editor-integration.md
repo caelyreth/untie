@@ -119,6 +119,21 @@ A host may supply a draw-time paint resolver. This is the intended place for
 dark-mode adaptation, contrast checks, or application palettes. Untie does not
 silently invert authored colors because color can carry mathematical meaning.
 
+`Style.ColorPolicy` is the core, serializable alternative when the resolved
+policy should participate in layout output and cache identity:
+
+- `ColorPreserve` is the zero value and leaves explicit colors unchanged;
+- `ColorMapToRoles` maps each explicit color to the perceptually nearest
+  `Ink`, `Error`, or `Placeholder` in a host-supplied `ColorRolePalette`;
+- `ColorAdjustContrast` minimally adjusts only explicit RGB colors until they
+  meet `MinContrast` against an opaque `Background`, preserving alpha when the
+  threshold is achievable.
+
+Semantic role paints are never rewritten by a color policy. The output remains
+ordinary `display.Paint` data, so it serializes, caches, and flows through the
+existing MyGo `PaintResolver` without callbacks or UI types in the display
+list.
+
 The MyGo adapter exposes `PaintResolver` and `DrawBox`; the core display list
 stays unchanged across light and dark themes.
 
