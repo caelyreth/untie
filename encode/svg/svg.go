@@ -12,7 +12,6 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
-	"github.com/caelyreth/untie/render"
 )
 
 var (
@@ -120,8 +119,17 @@ func marshal(box *display.Box, options *Options) ([]byte, error) {
 		return nil, fmt.Errorf("%w: output translation is not finite", ErrInvalidOptions)
 	}
 
+	usedPaths := make([]bool, len(box.Paths))
+	for _, item := range box.Items {
+		if item.Kind == display.ItemGlyphPath {
+			usedPaths[item.PathIndex] = true
+		}
+	}
 	capacity := 256 + len(box.Items)*64
-	for _, path := range box.Paths {
+	for i, path := range box.Paths {
+		if !usedPaths[i] {
+			continue
+		}
 		capacity += len(path.Segments) * 24
 	}
 	encoder := svgEncoder{
@@ -132,7 +140,7 @@ func marshal(box *display.Box, options *Options) ([]byte, error) {
 		height:    height,
 		pathFirst: true,
 	}
-	encoder.encode(box)
+	encoder.encode(box, usedPaths)
 	return encoder.dst, encoder.err
 }
 
@@ -147,7 +155,7 @@ type svgEncoder struct {
 	pathFirst bool
 }
 
-func (e *svgEncoder) encode(box *display.Box) {
+func (e *svgEncoder) encode(box *display.Box, usedPaths []bool) {
 	e.writeString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
 	e.writeString("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"")
 	e.writeNumber(e.width)
@@ -169,10 +177,46 @@ func (e *svgEncoder) encode(box *display.Box) {
 		e.writeColor(*e.options.Background)
 		e.writeString("\"/>\n")
 	}
-	if err := render.Walk(box, e.writeCommand); err != nil && e.err == nil {
-		e.err = err
+	e.writeDefinitions(box, usedPaths)
+	for _, item := range box.Items {
+		switch item.Kind {
+		case display.ItemGlyphPath:
+			e.writePathUse(item)
+		case display.ItemRule:
+			e.writeRule(item)
+		case display.ItemGlyphRef:
+		default:
+			if e.err == nil {
+				e.err = fmt.Errorf("%w: unknown item kind %d", ErrInvalidBox, item.Kind)
+				return
+			}
+		}
 	}
 	e.writeString("</svg>\n")
+}
+
+func (e *svgEncoder) writeDefinitions(box *display.Box, used []bool) {
+	wrote := false
+	for i, path := range box.Paths {
+		if !used[i] {
+			continue
+		}
+		if !wrote {
+			e.writeString("<defs>\n")
+			wrote = true
+		}
+		e.writeString("<path id=\"p")
+		e.writeUint(uint64(i))
+		e.writeString("\" d=\"")
+		e.pathFirst = true
+		for _, segment := range path.Segments {
+			e.writeTemplateSegment(segment)
+		}
+		e.writeString("\"/>\n")
+	}
+	if wrote {
+		e.writeString("</defs>\n")
+	}
 }
 
 func (e *svgEncoder) writeMetadata(element, text string) {
@@ -188,40 +232,36 @@ func (e *svgEncoder) writeMetadata(element, text string) {
 	e.writeString(">\n")
 }
 
-func (e *svgEncoder) writeCommand(command render.Command) error {
-	if e.err != nil {
-		return e.err
-	}
-	switch command.Kind {
-	case render.CommandPath:
-		e.writeString("<path d=\"")
-		e.pathFirst = true
-		for _, segment := range command.Path.Segments {
-			e.writeSegment(command, segment)
-		}
-		e.writeString("\" fill=\"")
-		e.writePaint(command.Paint)
-		e.writeString("\" fill-rule=\"nonzero\"/>\n")
-	case render.CommandRule:
-		rect := translateRect(command.Rect, e.offset)
-		e.writeString("<rect x=\"")
-		e.writeNumber(rect.X)
-		e.writeString("\" y=\"")
-		e.writeNumber(rect.Y)
-		e.writeString("\" width=\"")
-		e.writeNumber(rect.Width)
-		e.writeString("\" height=\"")
-		e.writeNumber(rect.Height)
-		e.writeString("\" fill=\"")
-		e.writePaint(command.Paint)
-		e.writeString("\"/>\n")
-	default:
-		return fmt.Errorf("%w: unknown render command %d", ErrInvalidBox, command.Kind)
-	}
-	return e.err
+func (e *svgEncoder) writePathUse(item display.Item) {
+	e.writeString("<use href=\"#p")
+	e.writeUint(uint64(item.PathIndex))
+	e.writeString("\" transform=\"translate(")
+	e.writeNumber(item.At.X + e.offset.X)
+	e.writeByte(' ')
+	e.writeNumber(item.At.Y + e.offset.Y)
+	e.writeString(") scale(")
+	e.writeNumber(item.Em)
+	e.writeString(")\" fill=\"")
+	e.writePaint(item.Paint)
+	e.writeString("\" fill-rule=\"nonzero\"/>\n")
 }
 
-func (e *svgEncoder) writeSegment(command render.Command, segment geometry.Segment) {
+func (e *svgEncoder) writeRule(item display.Item) {
+	rect := translateRect(item.Rect, e.offset)
+	e.writeString("<rect x=\"")
+	e.writeNumber(rect.X)
+	e.writeString("\" y=\"")
+	e.writeNumber(rect.Y)
+	e.writeString("\" width=\"")
+	e.writeNumber(rect.Width)
+	e.writeString("\" height=\"")
+	e.writeNumber(rect.Height)
+	e.writeString("\" fill=\"")
+	e.writePaint(item.Paint)
+	e.writeString("\"/>\n")
+}
+
+func (e *svgEncoder) writeTemplateSegment(segment geometry.Segment) {
 	var op byte
 	var count int
 	switch segment.Op {
@@ -256,15 +296,10 @@ func (e *svgEncoder) writeSegment(command render.Command, segment geometry.Segme
 	}
 	e.writeByte(op)
 	for i := 0; i < count; i++ {
-		point := command.At
-		point.X += segment.Points[i].X * command.Em
-		point.Y += segment.Points[i].Y * command.Em
-		point.X += e.offset.X
-		point.Y += e.offset.Y
 		e.writeByte(' ')
-		e.writeNumber(point.X)
+		e.writeNumber(segment.Points[i].X)
 		e.writeByte(' ')
-		e.writeNumber(point.Y)
+		e.writeNumber(segment.Points[i].Y)
 	}
 	e.pathFirst = false
 }

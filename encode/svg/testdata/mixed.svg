@@ -3,8 +3,13 @@
 <title>&lt;Formula &amp; &#34;quoted&#34;&gt;</title>
 <desc>A &lt; B &amp; C</desc>
 <rect x="0" y="0" width="16" height="12" fill="#f8fafc"/>
-<path d="M 4.5 9.25 L 5.5 9.25 Q 4.5 10.5 5.5 10.5 C 4.25 9.5 5.75 9.5 5 10.25Z" fill="#000000" fill-rule="nonzero"/>
+<defs>
+<path id="p0" d="M 0.25 0.125 L 0.75 0.125 Q 0.25 0.75 0.75 0.75 C 0.125 0.25 0.875 0.25 0.5 0.625Z"/>
+<path id="p1" d="M 0.25 0.125 L 0.75 0.125 Q 0.25 0.75 0.75 0.75 C 0.125 0.25 0.875 0.25 0.5 0.625Z"/>
+<path id="p2" d="M 0.25 0.125 L 0.75 0.125 Q 0.25 0.75 0.75 0.75 C 0.125 0.25 0.875 0.25 0.5 0.625Z"/>
+</defs>
+<use href="#p0" transform="translate(4 9) scale(2)" fill="#000000" fill-rule="nonzero"/>
 <rect x="7" y="4" width="5" height="0.5" fill="#b42318"/>
-<path d="M 6.25 7.125 L 6.75 7.125 Q 6.25 7.75 6.75 7.75 C 6.125 7.25 6.875 7.25 6.5 7.625Z" fill="#667085" fill-rule="nonzero"/>
-<path d="M 8.25 8.125 L 8.75 8.125 Q 8.25 8.75 8.75 8.75 C 8.125 8.25 8.875 8.25 8.5 8.625Z" fill="rgba(17,34,51,0.502)" fill-rule="nonzero"/>
+<use href="#p1" transform="translate(6 7) scale(1)" fill="#667085" fill-rule="nonzero"/>
+<use href="#p2" transform="translate(8 8) scale(1)" fill="rgba(17,34,51,0.502)" fill-rule="nonzero"/>
 </svg>
