@@ -2,9 +2,12 @@ import { basename, posix } from 'node:path'
 
 import { createMarkdownParser, type MarkdownDocument } from 'comark'
 import headings from 'comark/plugins/headings'
+import rangi from 'comark/plugins/rangi'
 import security from 'comark/plugins/security'
 
 import type { DocLink, DocPage } from '#lib/docs/types'
+
+import { untieRangiTheme } from './rangi-theme'
 
 const repository = 'https://github.com/caelyreth/untie/blob/main/'
 const markdownFiles = import.meta.glob('../../../../docs/*.md', {
@@ -13,7 +16,11 @@ const markdownFiles = import.meta.glob('../../../../docs/*.md', {
   query: '?raw',
 }) as Record<string, string>
 const markdownParser = createMarkdownParser({
-  plugins: [headings({ remove: true }), security()],
+  plugins: [
+    headings({ remove: true }),
+    security(),
+    rangi({ preStyles: true, theme: untieRangiTheme }),
+  ],
   headingIds: true,
 })
 const navigation = [

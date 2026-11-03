@@ -80,7 +80,9 @@
   }
 
   .prose {
-    padding: clamp(28px, 5vw, 54px) clamp(24px, 6vw, 68px)
+    --prose-gap: 14px;
+
+    padding: clamp(20px, 3vw, 34px) clamp(24px, 6vw, 68px)
       clamp(34px, 6vw, 64px);
     color: var(--moonveil);
     font-size: 16px;
@@ -91,6 +93,10 @@
   .prose :global(.comark-content),
   .prose :global(.comark-content > *) {
     min-width: 0;
+  }
+
+  .prose :global(.comark-content > :first-child) {
+    margin-top: 0;
   }
 
   .prose :global(h1),
@@ -111,22 +117,20 @@
   }
 
   .prose :global(h2) {
-    margin-top: 52px;
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
+    margin-top: 40px;
     font-size: 29px;
     letter-spacing: -0.035em;
     line-height: 1.15;
   }
 
   .prose :global(h3) {
-    margin-top: 34px;
+    margin-top: 28px;
     font-size: 21px;
     line-height: 1.25;
   }
 
   .prose :global(h4) {
-    margin-top: 26px;
+    margin-top: 22px;
     font-family: var(--font-body);
     font-size: 16px;
     letter-spacing: 0;
@@ -154,7 +158,7 @@
   .prose :global(blockquote),
   .prose :global(pre),
   .prose :global(table) {
-    margin-top: 16px;
+    margin-top: var(--prose-gap);
   }
 
   .prose :global(p) {

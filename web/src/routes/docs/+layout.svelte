@@ -62,7 +62,7 @@
     grid-template-columns: minmax(190px, 230px) minmax(0, 860px);
     justify-content: center;
     align-items: start;
-    gap: clamp(24px, 4vw, 54px);
+    gap: clamp(16px, 2.2vw, 28px);
     min-height: 100dvh;
     padding: 42px var(--page-inset) calc(var(--nav-clearance) + 26px);
   }

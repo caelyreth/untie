@@ -3,13 +3,10 @@
   import favicon from '#lib/assets/favicon.svg'
   import FloatingNav from '#lib/components/floating-nav.svelte'
   import FloatingScrollbar from '#lib/components/floating-scrollbar.svelte'
-  import { registerRouteTransitions } from '#lib/navigation/transitions'
 
   import type { LayoutProps } from './$types'
 
   let { children }: LayoutProps = $props()
-
-  registerRouteTransitions()
 </script>
 
 <svelte:head>

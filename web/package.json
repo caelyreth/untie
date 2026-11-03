@@ -18,7 +18,8 @@
   "dependencies": {
     "@comark/svelte": "^0.6.2",
     "@lucide/svelte": "^1.67.0",
-    "comark": "^0.6.2"
+    "comark": "^0.6.2",
+    "rangi": "^2.2.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^4.0.1",

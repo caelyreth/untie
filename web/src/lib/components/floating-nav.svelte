@@ -73,7 +73,6 @@
     background: var(--panel);
     transform: translateX(-50%);
     user-select: none;
-    view-transition-name: floating-nav;
   }
 
   a {
@@ -129,10 +128,6 @@
   .github-mark {
     width: 15px;
     height: 15px;
-  }
-
-  :global(:root[data-route-transition]) .floating-nav a {
-    transition: none;
   }
 
   @media (max-width: 520px) {
