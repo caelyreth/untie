@@ -181,6 +181,7 @@ type layoutState struct {
 	plannedOutput int
 	fragments     fragmentArena
 	glyphs        glyphArena
+	pathCache     flattenPathCache
 }
 
 type environment struct {

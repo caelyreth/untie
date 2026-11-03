@@ -205,7 +205,6 @@ func (s *layoutState) newConstrainedDisplayBox() (*display.Box, error) {
 	return &display.Box{
 		Width:      s.request.MaxWidth,
 		AxisHeight: axisHeight,
-		Paths:      make([]display.PathTemplate, 0, s.outputItemCapacity(s.nodes)),
 	}, nil
 }
 
