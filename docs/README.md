@@ -19,6 +19,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Rendering the display list](rendering.md) defines coordinates, items,
   lines, tags, hits, overflow, bounds, drawing helpers, and optional SVG/PNG
   output.
+- [MathML interchange](mathml.md) defines total Presentation MathML export and
+  the strict bounded import subset.
 - [Editor integration](editor-integration.md) defines recovery, source
   mapping, host shaping, color policy, and MyGo font ownership for live
   editors.
@@ -35,6 +37,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   errors, parse-time recovery, and configurable limits.
 - [Canonical IR and `Engine.LayoutFormulaContext`](canonical-ir.md) is for
   hosts that inspect or cache the language-neutral formula tree.
+- [MathML interchange](mathml.md) converts validated canonical IR without
+  coupling the renderer core to XML.
 - [Concurrency, lifecycle, and caching](concurrency.md) describes safe reuse,
   cancellation, package-level caching, and ownership under concurrency.
 - [Accessibility text](accessibility.md) explains `Alt.Text`, `Alt.Speech`,

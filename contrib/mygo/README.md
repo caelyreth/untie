@@ -127,8 +127,9 @@ Inline math in MyGo Markdown already copies as its source through
 `markdown.InlineObject`. Standalone formula elements do not expose a text
 selection model; enable `Clipboard` for explicit copy menu actions.
 
-Untie has no MathML serializer, so the adapter does not advertise or fabricate
-MathML clipboard data.
+Presentation MathML conversion is available through the standalone `mathml`
+package. The MyGo adapter still does not advertise or fabricate MathML clipboard
+data.
 
 ## Inline Baseline
 
