@@ -12,6 +12,10 @@ glyph paths, rules, source hits, and accessibility text.
 - no browser, DOM, GPU, platform text, or system-font dependency;
 - deterministic layout and output;
 - recoverable parsing with source diagnostics;
+- core color policies for authored-color preservation, semantic mapping, and
+  contrast correction;
+- structured text-face and missing-fallback reporting;
+- optional conservative pixel-grid snapping for thin rules and stems;
 - source-mapped hit regions;
 - OpenType MATH metrics, glyph outlines, variants, and assemblies;
 - reusable rendering with bounded caches;
@@ -135,17 +139,18 @@ Markdown binding, and existing-box drawing.
 - [Supported Typst](docs/typst-support.md)
 - [API Stability](docs/stability.md)
 - [Migrating to 0.3](docs/migration-v0.3.md)
+- [Migrating to 0.4](docs/migration-v0.4.md)
 - [Release Process](docs/releasing.md)
 - [Security Policy](SECURITY.md)
 - [Full Documentation Index](docs/README.md)
 
 ### Release
 
-The current tagged release is `v0.3.0`. Untie remains pre-1.0 while its API
-stability tiers are validated in real integrations. Release notes are generated
-from Conventional Commits; see [GitHub Releases](https://github.com/caelyreth/untie/releases)
-for published changes and [Release Process](docs/releasing.md) for the
-maintainer workflow.
+The latest published tag is `v0.3.0`; `v0.4.0` is the next release target.
+Untie remains pre-1.0 while its API stability tiers are validated in real
+integrations. Release notes are generated from Conventional Commits; see
+[GitHub Releases](https://github.com/caelyreth/untie/releases) for published
+changes and [Release Process](docs/releasing.md) for the maintainer workflow.
 
 ### License
 

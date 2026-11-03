@@ -69,6 +69,9 @@ func (u FontUsage) Clone() FontUsage {
 
 // Validate checks the structured face report.
 func (u FontUsage) Validate() error {
+	if len(u.Faces) == 0 && len(u.Missing) == 0 {
+		return nil
+	}
 	seenFaces := make(map[string]struct{}, len(u.Faces))
 	for i, face := range u.Faces {
 		if !face.Source.IsValid() || face.Source.IsDetached() || face.Source.Len() == 0 {

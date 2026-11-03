@@ -112,6 +112,11 @@ or adjust them against a host background, or map all semantic roles into a
 non-MyGo theme. Resolvers should only inspect the painter and paint; draw
 commands still belong to the adapter.
 
+Hosts that want color policy to participate in layout cache identity can set
+`untie.Style.ColorPolicy` before rendering. Preserve is the zero-value default;
+map-to-role and contrast-adjusted results remain ordinary `untie.Paint` values,
+so `ThemePaintResolver` and custom resolvers continue to consume them.
+
 ## Fonts
 
 Untie and MyGo intentionally own different font inputs:
@@ -129,10 +134,11 @@ would duplicate ownership without enabling MATH layout.
 ## Cache And Ownership
 
 The adapter caches laid-out boxes by source, dialect, mode, and complete layout
-style, including `MaxWidth`. Compact and width-aware layouts therefore have
-distinct cache entries. `CacheEntries: 0` uses 128 entries, a negative value
-disables caching, and the maximum is 4096. `CacheStats` reports size, capacity,
-hits, misses, and evictions.
+style, including `MaxWidth`, `ColorPolicy`, and `PixelGrid`. Compact,
+width-aware, and differently styled layouts therefore have distinct cache
+entries. `CacheEntries: 0` uses 128 entries, a negative value disables caching,
+and the maximum is 4096. `CacheStats` reports size, capacity, hits, misses, and
+evictions. Cached boxes retain their immutable `FontUsage` report.
 
 Cached and returned boxes are immutable. Callers may read them but must not
 modify their items, paths, hits, lines, or alternative text while they may be

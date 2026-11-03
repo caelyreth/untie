@@ -42,6 +42,8 @@ type Command struct {
 	Em   float32
 
 	Rect geometry.Rect
+	// Snap is non-none only for conservative thin-rule snapping candidates.
+	// Its presence does not imply Style.PixelGrid changed the geometry.
 	Snap display.SnapAxis
 }
 

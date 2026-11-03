@@ -55,7 +55,7 @@ func (p ColorPolicy) Validate() error {
 		return nil
 	case ColorMapToRoles:
 		if p.Palette.Ink.A == 0 || p.Palette.Error.A == 0 || p.Palette.Placeholder.A == 0 {
-			return fmt.Errorf("map-to-roles requires an opaque-defined ink, error, and placeholder palette")
+			return fmt.Errorf("map-to-roles requires ink, error, and placeholder palette entries with nonzero alpha")
 		}
 		return nil
 	case ColorAdjustContrast:

@@ -73,6 +73,12 @@ func TestRenderAppliesDialectModeSizeAndStyleDefaults(t *testing.T) {
 			Align:       display.AlignCenter,
 			Features:    features,
 			GenerateAlt: true,
+			ColorPolicy: display.ColorPolicy{
+				Mode:        display.ColorAdjustContrast,
+				Background:  display.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff},
+				MinContrast: display.DefaultMinContrast,
+			},
+			PixelGrid: display.PixelGrid{Scale: 2, PixelRatio: 2},
 		},
 	})
 	if err != nil {
@@ -99,7 +105,9 @@ func TestRenderAppliesDialectModeSizeAndStyleDefaults(t *testing.T) {
 	}
 	if style.Size != 24 || style.MaxWidth != 320 || style.Align != display.AlignCenter ||
 		style.ScriptLevel != 0 || len(style.Features) != 1 || style.Features[0] != "dtls=1" ||
-		!style.GenerateAlt {
+		!style.GenerateAlt ||
+		style.ColorPolicy.Mode != display.ColorAdjustContrast ||
+		style.PixelGrid != (display.PixelGrid{Scale: 2, PixelRatio: 2}) {
 		t.Fatalf("effective default style = %+v", style)
 	}
 
