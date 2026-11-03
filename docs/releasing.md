@@ -13,12 +13,12 @@ the public `contrib/mygo` module are versioned together.
 5. Review the changelog output locally:
 
    ```sh
-   npx --yes changelogithub@15.0.5 --dry
+   npx --yes changelogithub@15.0.5 --to v0.2.0 --dry
    ```
 
 The release notes come from one-line Conventional Commit subjects. The
-[`changelogithub.config.json`](../changelogithub.config.json) file disables
-emoji in generated section headings.
+[`changelogithub.config.mjs`](../changelogithub.config.mjs) file disables emoji
+and excludes nested module tags from root release changelogs.
 
 ## Tag
 

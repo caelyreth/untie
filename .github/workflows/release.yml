@@ -40,4 +40,4 @@ jobs:
       - name: Publish GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx --yes changelogithub@15.0.5
+        run: npx --yes changelogithub@15.0.5 --to "$GITHUB_REF_NAME"
