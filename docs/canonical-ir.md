@@ -159,6 +159,8 @@ err := ir.WalkFormula(formula, limits, func(node ir.Node) bool {
 
 - `ir.Children(node)` returns the direct children in deterministic semantic
   order and clones returned slices.
+- `ir.VisitChildren(node, fn)` exposes the same order without allocating a
+  child slice; the callback must not retain or mutate the tree.
 - `ir.Walk` is the best-effort convenience walker.
 - `ir.WalkWithLimits` returns cycle and traversal errors.
 - `ir.WalkFormula` traverses the root and every tag body under one shared
@@ -169,6 +171,15 @@ Validation catches cycles, typed nils, node/kind mismatch, invalid ranges,
 invalid roles and lengths, oversized text, excessive depth, and resource-limit
 violations. `ValidateSource` additionally proves every attached range lies
 inside the provided source string.
+
+`ir.ValidateWithStats` and `ir.ValidateSourceWithStats` return an immutable
+`ir.Stats` resource envelope alongside the validation result. The envelope
+records node/tag counts, maximum depth and text size, the largest dimension
+value, table-cell count, and a conservative glyph-materialization hint.
+`Stats.WithinLimits` can prove that a formula satisfies a stricter limit set
+without another traversal; `false` means the caller must run the diagnostic
+validation path. Stats describe the validated tree and become stale if the
+formula is mutated.
 
 ## Canonical JSON
 
