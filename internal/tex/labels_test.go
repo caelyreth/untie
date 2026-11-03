@@ -157,3 +157,22 @@ func TestMacroExpandedLabelAndReferenceUseInvocationOrigin(t *testing.T) {
 		t.Fatalf("macro reference = %+v, want invocation %v", text, want)
 	}
 }
+
+func TestLabelEscapesDecodeToHostFacingNames(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		`eq\_a`:   "eq_a",
+		`eq\%a`:   "eq%a",
+		`eq\#a`:   "eq#a",
+		`eq\{a\}`: "eq{a}",
+		`eq\\a`:   `eq\a`,
+		`eq\ a`:   "eq a",
+		`eq\:a`:   `eq\:a`,
+	}
+	for input, want := range tests {
+		if got := unescapeLabelName(input); got != want {
+			t.Errorf("unescapeLabelName(%q) = %q, want %q", input, got, want)
+		}
+	}
+}

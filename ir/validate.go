@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/caelyreth/untie/identity"
@@ -125,8 +126,8 @@ func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 			err := fmt.Errorf("%w: %s: label name is not valid UTF-8", ErrInvalidIR, &state.path)
 			state.path.pop()
 			return Stats{}, err
-		case strings.IndexByte(label.Name, 0) >= 0:
-			err := fmt.Errorf("%w: %s: label name contains NUL", ErrInvalidIR, &state.path)
+		case containsControlRune(label.Name):
+			err := fmt.Errorf("%w: %s: label name contains a control character", ErrInvalidIR, &state.path)
 			state.path.pop()
 			return Stats{}, err
 		case len(label.Name) > state.limits.MaxTextBytes:
@@ -693,6 +694,15 @@ func validateNode(n Node, s *validationState) error {
 		return fmt.Errorf("%w: %s: unsupported node %T", ErrInvalidIR, &s.path, n)
 	}
 	return nil
+}
+
+func containsControlRune(text string) bool {
+	for _, r := range text {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateTextClusterSources(n *Text, s *validationState) error {
