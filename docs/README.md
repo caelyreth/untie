@@ -16,7 +16,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Core concepts and ownership](concepts.md) explains the pipeline, the
   lifetime of each value, and the inline/display boundary.
 - [Rendering the display list](rendering.md) defines coordinates, items,
-  lines, tags, hits, overflow, bounds, and optional PNG output.
+  lines, tags, hits, overflow, bounds, drawing helpers, and optional SVG/PNG
+  output.
 
 ## Integration Guides
 

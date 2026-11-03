@@ -35,6 +35,9 @@ Use this file as the short entry point for code assistants. Read
   and horizontal start/center/end alignment into a viewport.
 - `encode/raster` optionally renders the display list to an antialiased RGBA
   image or PNG using a pure-Go rasterizer.
+- `encode/svg.Marshal` emits deterministic standalone SVG from the same visible
+  command stream. It includes certified overflow, maps roles through a palette,
+  and is not a stable wire protocol.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
 - Draw `Box.Items` once; line/tag ranges select subsets of the same storage.
 - Use `Box.Bounds()` to include certified overflow.
@@ -73,6 +76,8 @@ draw(box.Items)
   [rendering.md](rendering.md)
 - PNG export, padding, device scale, and palette colors:
   [`encode/raster`](../encode/raster/doc.go)
+- SVG export, viewport sizing, roles, and metadata:
+  [`encode/svg`](../encode/svg/doc.go)
 - Font roles, IDs, TTC, fallback, missing glyphs:
   [fonts.md](fonts.md)
 - Diagnostics and recoverable parse output:
@@ -120,6 +125,8 @@ func ResolvePath(command render.Command) (geometry.Path, error)
 func Fit(box *display.Box, viewport geometry.Rect, options render.FitOptions) (render.Transform, error)
 func Encode(box *display.Box, options *raster.Options) (*image.RGBA, error)
 func EncodePNG(w io.Writer, box *display.Box, options *raster.Options) error
+func Marshal(box *display.Box, options *svg.Options) ([]byte, error)
+func Write(writer io.Writer, box *display.Box, options *svg.Options) error
 
 type LayoutErrorKind string
 type LayoutError struct {
@@ -204,6 +211,9 @@ layout or lets a host import internals.
 
 - Public facade and types: [`api.go`](../api.go), [`layout.go`](../layout.go)
 - Display contract: [`display/types.go`](../display/types.go)
+- Drawing protocol: [`render/walk.go`](../render/walk.go),
+  [`render/fit.go`](../render/fit.go)
+- Optional SVG output: [`encode/svg/svg.go`](../encode/svg/svg.go)
 - Canonical IR: [`ir/nodes.go`](../ir/nodes.go)
 - Font substrate: [`font/README.md`](../font/README.md)
 - Frontends: [`internal/tex`](../internal/tex), [`internal/typst`](../internal/typst)

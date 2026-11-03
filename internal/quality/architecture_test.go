@@ -120,6 +120,14 @@ var allowedProjectImports = map[string]packageRules{
 		},
 		Tests: []string{modulePath + "/encode/raster"},
 	},
+	modulePath + "/encode/svg": {
+		Production: []string{
+			modulePath + "/display",
+			modulePath + "/geometry",
+			modulePath + "/render",
+		},
+		Tests: []string{modulePath + "/encode/svg"},
+	},
 	modulePath + "/font": {
 		Production: []string{
 			"github.com/go-opentype/opentype",
