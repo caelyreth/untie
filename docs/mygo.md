@@ -69,6 +69,18 @@ MyGo's baseline-relative `Width`, `Height`, and `Depth`. `DisplayMath` builds a
 full-width display element that scales down when the available width is
 insufficient.
 
+When the host knows the available width, use `DisplayMathWidth` so Untie can
+wrap the display formula before drawing:
+
+```go
+math.DisplayMathWidth(c, source, availableWidth)
+```
+
+The width is the outer MyGo element width. The adapter subtracts configured
+draw padding and passes the remaining frame as `Style.MaxWidth`. The resulting
+`Box.Lines` are drawn at natural scale instead of uniformly shrinking the
+whole formula.
+
 ## Existing Boxes
 
 `Renderer.Render` is the lower-level adapter entry point. It returns an
@@ -85,6 +97,40 @@ math.Draw(painter, result.Box, viewport)
 
 `Draw` fits `Box.Bounds` into the viewport, applies configured padding and
 alignment, and resolves semantic paints through the active theme.
+
+For a framework-neutral MyGo draw path that does not require an adapter
+instance, use:
+
+```go
+err := untiemygo.DrawBox(painter, box, viewport, untiemygo.DrawOptions{
+	Padding: 8,
+	Align:   render.AlignCenter,
+	Scale:   untiemygo.ScaleNatural,
+	Paint: func(_ *ui.Painter, paint untie.Paint) ui.Color {
+		return myColorPolicy(paint)
+	},
+})
+```
+
+`ScaleFit` is the compact preview behavior. `ScaleNatural` preserves wrapping
+and glyph metrics at scale 1. A custom `PaintResolver` receives both semantic
+role and explicit source color, so a host can preserve, reject, or adapt either
+without changing cached geometry.
+
+## Font Ownership
+
+Untie and MyGo intentionally own different font inputs:
+
+- Untie needs the host-supplied bytes for a MATH face, optional text face, and
+  ordered fallback faces;
+- MyGo's `ui.RegisterFont` registry supplies families to its platform text
+  engine, but does not expose the MATH tables or complete font data Untie needs.
+
+Load and share the Untie `*FontSet` directly. Do not register the math font with
+MyGo merely to make the registries look alike. A future host-text port may let
+MyGo shape `\text{}` while Untie continues to own math-font parsing, MATH
+layout, and deterministic outline output; that mode must remain explicit and
+cache-isolated because platform text is not byte-deterministic.
 
 ## Cache And Ownership
 
