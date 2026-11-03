@@ -126,7 +126,10 @@ var mathShorthands = []struct {
 
 func lex(src string, limits source.Limits) ([]token, []source.Diagnostic) {
 	l := lexer{src: src, limits: limits}
-	tokens := make([]token, 0, min(len(src)/2+1, limits.MaxTokens))
+	// A token consumes at least one source byte, so this capacity is an upper
+	// bound apart from EOF. Reserving it once avoids retaining an undersized
+	// backing array while the slice grows on token-dense input.
+	tokens := make([]token, 0, min(len(src)+1, limits.MaxTokens+1))
 	for {
 		tok := l.next()
 		tokens = append(tokens, tok)
