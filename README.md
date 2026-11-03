@@ -20,7 +20,8 @@ glyph paths, rules, source hits, and accessibility text.
 - OpenType MATH metrics, glyph outlines, variants, and assemblies;
 - reusable rendering with bounded caches;
 - inline and display layout, line breaking, equation tags, and overflow bounds;
-- deterministic text and speech alternatives for accessibility;
+- deterministic text, speech, and structured localization alternatives for
+  accessibility;
 - optional SVG and PNG output.
 
 ### Use

@@ -1,8 +1,8 @@
 # Migrating To 0.4
 
 Untie 0.4 adds core output policy, shaped-text provenance, and the complete
-MyGo editor integration surface. The runtime version is `0.4.0+layout.4`, and
-the process-wide Engine cache schema is `4`.
+MyGo editor integration surface. The runtime version is `0.4.0+layout.5`, and
+the process-wide Engine cache schema is `5`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -77,9 +77,15 @@ policy without re-inferring geometry.
 
 Standalone MyGo elements now request semantic alternative text and expose:
 
-- `Alt.Speech` as the label, with `Alt.Text` and source as fallbacks;
+- `Alt.Description` as a versioned localization tree;
+- `Alt.Speech` as the English label, with `Alt.Text` and source as fallbacks;
 - exact TeX or Typst source as the value;
 - a stable non-empty name for empty formulas.
+
+`Options.LocalizeLabel` can turn the structured description into a host-owned
+accessible label. `FormulaSemantics.Description` exposes the same tree to
+applications that manage their own accessibility model. The existing strings
+remain valid compatibility fallbacks.
 
 Set `Options.Accessibility = untiemygo.AccessibilityDisabled` to retain
 source-only labels without the alternative-text traversal. Use
@@ -173,12 +179,14 @@ port carries the same information; external code should use
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
+- `display.Alt` gained the versioned `Description` tree, with stable semantic
+  kinds, roles, parts, flags, tags, and canonical JSON;
 - `display.Item` gained `Snap`;
 - `display.Box` gained `CaretStops`;
 - `display.Item` and `display.Hit` gained `NodeID`;
 - canonical box JSON may include `fontUsage`, `snap`, `carets`, and node IDs;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.4`;
-- the Engine cache schema is now `4`.
+- `untie.Version()` is now `0.4.0+layout.5`;
+- the Engine cache schema is now `5`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.

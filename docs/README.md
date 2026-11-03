@@ -6,7 +6,7 @@ display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
 These docs describe the public API at library version `0.4.0` and layout
-revision `4`. They focus on the behavior a host or code assistant can rely on
+revision `5`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here
@@ -39,6 +39,9 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   cancellation, package-level caching, and ownership under concurrency.
 - [Accessibility text](accessibility.md) explains `Alt.Text`, `Alt.Speech`,
   fallback markers, and how accessibility errors differ from layout errors.
+- [Structured accessibility descriptions](accessibility-description.md)
+  defines the versioned localization tree, semantic node coverage, limits, and
+  MyGo label hook.
 
 ## Compatibility and Verification
 
@@ -83,7 +86,8 @@ For an editor or document application:
 1. [Parsing, diagnostics, and recovery](parsing.md)
 2. [Concurrency, lifecycle, and caching](concurrency.md)
 3. [Accessibility text](accessibility.md)
-4. The supported-syntax page for the active input dialect
+4. [Structured accessibility descriptions](accessibility-description.md)
+5. The supported-syntax page for the active input dialect
 
 For a host that stores or transforms formula trees:
 
