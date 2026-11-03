@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -509,6 +510,9 @@ func TestNodeLimitAffectsParse(t *testing.T) {
 	if !foundLimit {
 		t.Fatalf("diagnostics = %+v, want limit diagnostic", expr.Diagnostics())
 	}
+	if expr.stats.Nodes == 0 || !expr.stats.WithinLimits(expr.limits) {
+		t.Fatalf("fallback stats = %+v, limits = %+v", expr.stats, expr.limits)
+	}
 	if _, err := expr.RootSnapshot(); err != nil {
 		t.Fatalf("fallback RootSnapshot() error = %v", err)
 	}
@@ -603,6 +607,65 @@ func TestParsedLayoutRetainsStricterEngineTraversalLimit(t *testing.T) {
 	expr := ParseTeX(`x+y`, Inline, ParseOptions{})
 	if box, err := engine.Layout(expr, Style{Size: 16}); err == nil || box != nil {
 		t.Fatalf("Layout() = %v, %v, want engine traversal-limit error", box, err)
+	}
+}
+
+func TestParsedLayoutRetainsEveryStricterEngineEnvelopeLimit(t *testing.T) {
+	t.Parallel()
+
+	fonts := loadTestFonts(t)
+	tests := []struct {
+		name   string
+		source string
+		limits Limits
+	}{
+		{name: "nesting", source: `\frac{x}{y}`, limits: Limits{MaxNesting: 1}},
+		{name: "text", source: `\text{hello}`, limits: Limits{MaxTextBytes: 1}},
+		{name: "table cells", source: `\begin{matrix}a&b\end{matrix}`, limits: Limits{MaxTableCells: 1}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			engine, err := NewEngine(fonts, tc.limits)
+			if err != nil {
+				t.Fatalf("NewEngine() error = %v", err)
+			}
+			expr := ParseTeX(tc.source, Display, ParseOptions{})
+			if box, err := engine.Layout(expr, Style{Size: 16}); !errors.Is(err, ErrLimit) || box != nil {
+				t.Fatalf("Layout() = %v, %v; want ErrLimit and nil box", box, err)
+			}
+		})
+	}
+}
+
+func TestExprRetainsArenaStorageAndValidatedStats(t *testing.T) {
+	t.Parallel()
+
+	expr := ParseTeX(strings.Repeat(`x+`, 600)+"y", Inline, ParseOptions{})
+	if expr.arena == nil {
+		t.Fatal("Expr arena = nil, want parser-owned node blocks")
+	}
+	if expr.stats.Nodes == 0 || !expr.stats.WithinLimits(expr.limits) {
+		t.Fatalf("Expr stats = %+v, limits = %+v", expr.stats, expr.limits)
+	}
+
+	runtime.GC()
+	root := expr.rootForLayout()
+	if root == nil || root.Root == nil {
+		t.Fatal("arena-backed root was collected")
+	}
+	count := 0
+	if err := ir.WalkWithLimits(root.Root, expr.limits, func(node ir.Node) bool {
+		count++
+		if glyph, ok := node.(*ir.Glyph); ok && glyph.Text == "" {
+			t.Fatalf("arena-backed glyph %d was corrupted", count)
+		}
+		return true
+	}); err != nil {
+		t.Fatalf("WalkWithLimits() error = %v", err)
+	}
+	if count != expr.stats.Nodes-len(root.Tags) {
+		t.Fatalf("walked %d nodes, stats = %+v", count, expr.stats)
 	}
 }
 

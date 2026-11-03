@@ -7,6 +7,7 @@ import (
 
 	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/engine"
+	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
 
@@ -99,7 +100,7 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if root == nil || root.Root == nil {
 		return nil, ErrInvalidExpr
 	}
-	return e.layoutRootContext(ctx, root, expr.mode, style, intersectLimits(e.limits, expr.limits), true)
+	return e.layoutRootContext(ctx, root, expr.mode, style, intersectLimits(e.limits, expr.limits), true, expr.stats)
 }
 
 // LayoutFormulaContext lays out canonical IR with cancellation and the
@@ -126,7 +127,7 @@ func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mod
 	if err != nil {
 		return nil, err
 	}
-	return e.layoutRootContext(ctx, formula, mode, style, e.limits, false)
+	return e.layoutRootContext(ctx, formula, mode, style, e.limits, false, ir.Stats{})
 }
 
 func (e *Engine) layoutRootContext(
@@ -136,11 +137,12 @@ func (e *Engine) layoutRootContext(
 	style Style,
 	altLimits Limits,
 	parsed bool,
+	stats ir.Stats,
 ) (*Box, error) {
 	var box *Box
 	var err error
 	if parsed {
-		box, err = e.inner.LayoutParsedFormula(ctx, root, mode, style)
+		box, err = e.inner.LayoutParsedFormula(ctx, root, stats, mode, style)
 	} else {
 		box, err = e.inner.LayoutFormula(ctx, root, mode, style)
 	}
