@@ -10,12 +10,13 @@ Primary packages:
 
 - `github.com/caelyreth/untie`
 - the host-facing types in `github.com/caelyreth/untie/display`
-- `github.com/caelyreth/untie/font` for `Fonts`, `FontData`, and `FontSet`
+- `github.com/caelyreth/untie/font` for `FontFace`, `FontSetConfig`, and `FontSet`
+- `github.com/caelyreth/untie/fontsource` for `io/fs` loading helpers
 
 Primary surface:
 
-- `LoadFonts`, `NewEngine`, `NewEngine` results, `Engine.Layout`,
-  `Engine.LayoutContext`;
+- `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`, `NewEngine`,
+  `NewEngine` results, `Engine.Layout`, `Engine.LayoutContext`;
 - `Parse`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`;
@@ -130,11 +131,12 @@ serialization format.
 
 ## Font IDs
 
-Host-supplied face IDs are part of the public cache and glyph-reference
-contract:
+Resolved face IDs are part of the public cache and glyph-reference contract:
 
-- IDs must be nonblank and unique within a `FontSet`;
-- `ItemGlyphRef.FontID` is the exact ID supplied by the host;
+- empty IDs are derived from role, metadata, selected index, and bytes;
+- explicit IDs must be nonblank and unique within a `FontSet`;
+- derived and explicit IDs must not collide;
+- `ItemGlyphRef.FontID` is the resolved ID;
 - changing an ID changes the font-set SHA-256 identity.
 
 Treat a face ID as a persisted cache identifier. Changing it intentionally

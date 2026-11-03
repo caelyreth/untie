@@ -33,9 +33,7 @@ fontBytes, err := os.ReadFile("NewCMMath-Book.otf")
 if err != nil {
 	return err
 }
-fonts, err := untie.LoadFonts(untie.Fonts{
-	Math: untie.FontData{Bytes: fontBytes, ID: "newcm-math"},
-})
+fonts, err := untie.LoadMathFont(fontBytes)
 if err != nil {
 	return err
 }

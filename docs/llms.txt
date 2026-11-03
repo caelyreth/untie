@@ -11,7 +11,8 @@ Use this file as the short entry point for code assistants. Read
 
 - Import the host facade as `github.com/caelyreth/untie`.
 - A primary math face with OpenType MATH data is required.
-- Call `untie.LoadFonts`, then `untie.NewEngine`, once for a font configuration.
+- Call `untie.LoadMathFont` or `untie.LoadFontSet`, then `untie.NewEngine`, once
+  for a font configuration.
 - `Parse` returns diagnostics plus a valid recovery tree; it does not return a
   Go error for malformed source.
 - `Engine.Layout` returns a `display.Box`; layout errors are fatal and should
@@ -31,9 +32,7 @@ Use this file as the short entry point for code assistants. Read
 ## Minimal Pipeline
 
 ```go
-fonts, err := untie.LoadFonts(untie.Fonts{
-	Math: untie.FontData{Bytes: mathFontBytes, ID: "math-v1"},
-})
+fonts, err := untie.LoadMathFont(mathFontBytes)
 if err != nil {
 	return err
 }
@@ -86,7 +85,8 @@ draw(box.Items)
 ## Key API
 
 ```go
-func LoadFonts(fonts Fonts) (*FontSet, error)
+func LoadFontSet(config FontSetConfig) (*FontSet, error)
+func LoadMathFont(data []byte, opts ...FontOption) (*FontSet, error)
 func NewEngine(fonts *FontSet, limits Limits) (*Engine, error)
 
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr
@@ -159,8 +159,9 @@ directly and is never wrapped in `LayoutError`.
 - `Style.MaxWidth` must be finite and nonnegative.
 - `Style.ScriptLevel` must be nonnegative.
 - `Style.Features` is copied per call and capped at 64 entries.
-- Font face IDs must be nonblank and unique.
-- `LoadFonts` copies font bytes.
+- Face IDs are optional; empty IDs are derived from role, metadata, index, and
+  bytes. Explicit and resolved IDs must be unique.
+- `LoadFontSet` and `LoadMathFont` copy font bytes.
 - `Expr` and `FontSet` are immutable; `Engine` is safe for concurrent layouts.
 - `Box` is caller-owned and should be treated as immutable when shared.
 

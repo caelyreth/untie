@@ -12,7 +12,7 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 ## Start Here
 
 - [Getting started](getting-started.md) shows the complete
-  `LoadFonts` -> `NewEngine` -> `Parse` -> `Layout` -> draw flow.
+  `LoadMathFont` -> `NewEngine` -> `Parse` -> `Layout` -> draw flow.
 - [Core concepts and ownership](concepts.md) explains the pipeline, the
   lifetime of each value, and the inline/display boundary.
 - [Rendering the display list](rendering.md) defines coordinates, items,
