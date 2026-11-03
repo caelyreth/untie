@@ -39,6 +39,7 @@ type canonicalBoxSnapshot struct {
 	Paths      []canonicalPath     `json:"paths,omitempty"`
 	Hits       []canonicalHit      `json:"hits,omitempty"`
 	Breaks     []canonicalBreak    `json:"breaks,omitempty"`
+	Carets     []canonicalCaret    `json:"carets,omitempty"`
 	Alt        *canonicalAlt       `json:"alt,omitempty"`
 	FontUsage  *canonicalFontUsage `json:"fontUsage,omitempty"`
 	Tag        *canonicalTagBox    `json:"tag,omitempty"`
@@ -84,6 +85,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 			Kind:      itemKindName(item.Kind),
 			Paint:     canonicalPaint(item.Paint),
 			Bound:     []float32{item.Bound.X, item.Bound.Y, item.Bound.Width, item.Bound.Height},
+			NodeID:    uint64(item.NodeID),
 			PathIndex: canonicalPathIndex(item),
 			Rect:      []float32{item.Rect.X, item.Rect.Y, item.Rect.Width, item.Rect.Height},
 			Snap:      snapAxisName(item.Snap),
@@ -114,6 +116,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 		Paths:      canonicalPaths(b.Paths),
 		Hits:       canonicalHits(b.Hits),
 		Breaks:     canonicalBreaks(b.Breaks),
+		Carets:     canonicalCarets(b.CaretStops),
 		Alt:        alt,
 		FontUsage:  fontUsage,
 	}
@@ -222,11 +225,20 @@ type canonicalHit struct {
 	Area   []float32 `json:"area"`
 	Depth  int       `json:"depth"`
 	Kind   string    `json:"kind"`
+	NodeID uint64    `json:"nodeID,omitempty"`
 }
 
 type canonicalBreak struct {
 	X    float32 `json:"x"`
 	Kind string  `json:"kind"`
+}
+
+type canonicalCaret struct {
+	Source int     `json:"source"`
+	X      float32 `json:"x"`
+	Top    float32 `json:"top"`
+	Bottom float32 `json:"bottom"`
+	NodeID uint64  `json:"nodeID,omitempty"`
 }
 
 func canonicalHits(hits []Hit) []canonicalHit {
@@ -240,6 +252,7 @@ func canonicalHits(hits []Hit) []canonicalHit {
 			Area:   rectValues(hit.Area),
 			Depth:  hit.Depth,
 			Kind:   hitKindName(hit.Kind),
+			NodeID: uint64(hit.NodeID),
 		}
 	}
 	return out
@@ -259,6 +272,23 @@ func canonicalBreaks(breaks []Break) []canonicalBreak {
 	return out
 }
 
+func canonicalCarets(carets []CaretStop) []canonicalCaret {
+	if len(carets) == 0 {
+		return nil
+	}
+	out := make([]canonicalCaret, len(carets))
+	for i, caret := range carets {
+		out[i] = canonicalCaret{
+			Source: caret.Source,
+			X:      caret.X,
+			Top:    caret.Top,
+			Bottom: caret.Bottom,
+			NodeID: uint64(caret.NodeID),
+		}
+	}
+	return out
+}
+
 func rectValues(rect geometry.Rect) []float32 {
 	return []float32{rect.X, rect.Y, rect.Width, rect.Height}
 }
@@ -267,6 +297,7 @@ type canonicalItem struct {
 	Kind      string    `json:"kind"`
 	Paint     []any     `json:"paint"`
 	Bound     []float32 `json:"bound"`
+	NodeID    uint64    `json:"nodeID,omitempty"`
 	PathIndex *int      `json:"pathIndex,omitempty"`
 	Rect      []float32 `json:"rect,omitempty"`
 	Snap      string    `json:"snap,omitempty"`

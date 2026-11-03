@@ -539,6 +539,10 @@ func TestEmptySourceProducesClickablePlaceholder(t *testing.T) {
 			if !ok || hit.Area.Width <= 0 || hit.Area.Height <= 0 {
 				t.Fatalf("empty hit = %+v, %v", hit, ok)
 			}
+			caret, ok := box.CaretAt(0)
+			if !ok || caret.Source != 0 || caret.Bottom < caret.Top {
+				t.Fatalf("empty caret = %+v, %v", caret, ok)
+			}
 		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -94,6 +95,60 @@ func TestFractionHitsIdentifyParts(t *testing.T) {
 	}
 	if !foundNumerator || !foundDenominator {
 		t.Fatalf("fraction hits = %#v, want numerator and denominator", box.Hits)
+	}
+}
+
+func TestNodeIDsPropagateToSemanticHitsAndItems(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	numerator := glyph("1", ir.ClassNormal)
+	numerator.Span = source.NewRange(1, 2)
+	numerator.Origin = numerator.Span
+	numerator.NodeID = identity.NodeID(11)
+	denominator := glyph("2", ir.ClassNormal)
+	denominator.Span = source.NewRange(3, 4)
+	denominator.Origin = denominator.Span
+	denominator.NodeID = identity.NodeID(12)
+	fraction := ir.NewFraction(source.NewRange(0, 5), numerator, denominator)
+	fraction.NodeID = identity.NodeID(13)
+	style := ir.NewStyle(source.NewRange(0, 5), fraction)
+	style.NodeID = identity.NodeID(14)
+	row := ir.NewRow(source.NewRange(0, 5), style)
+	row.NodeID = identity.NodeID(15)
+
+	box, err := renderer.Layout(row, ir.Inline, testStyle(20))
+	if err != nil {
+		t.Fatalf("Layout() error = %v", err)
+	}
+
+	hitIDs := make(map[identity.NodeID]display.HitKind)
+	for _, hit := range box.Hits {
+		hitIDs[hit.NodeID] = hit.Kind
+	}
+	for id, want := range map[identity.NodeID]display.HitKind{
+		11: display.HitFractionNumerator,
+		12: display.HitFractionDenominator,
+		13: display.HitOther,
+		14: display.HitGroup,
+		15: display.HitRow,
+	} {
+		if got := hitIDs[id]; got != want {
+			t.Fatalf("hit NodeID %d kind = %d, want %d; hits=%#v", id, got, want, box.Hits)
+		}
+	}
+
+	itemIDs := make(map[identity.NodeID]int)
+	for _, item := range box.Items {
+		itemIDs[item.NodeID]++
+	}
+	for _, id := range []identity.NodeID{11, 12, 13} {
+		if itemIDs[id] == 0 {
+			t.Fatalf("items for NodeID %d missing: %#v", id, box.Items)
+		}
+	}
+	if itemIDs[14] != 0 {
+		t.Fatalf("wrapper NodeID replaced descendant item identity: %#v", box.Items)
 	}
 }
 

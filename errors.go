@@ -3,6 +3,7 @@ package untie
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/display"
 	internallayout "github.com/caelyreth/untie/internal/layout"
 	"github.com/caelyreth/untie/source"
 )
@@ -76,4 +77,7 @@ var (
 	// ErrLimit reports that a configured parse, layout, or output limit was
 	// exceeded.
 	ErrLimit = internallayout.ErrLimit
+	// ErrCannotSplit reports that an output Box cannot be split into
+	// independent inline geometry.
+	ErrCannotSplit = display.ErrCannotSplit
 )

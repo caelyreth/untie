@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/source"
 )
 
@@ -225,5 +226,69 @@ func TestCloneFormulaCoversAllNodeKinds(t *testing.T) {
 				t.Fatalf("clone differs:\noriginal: %s\nclone: %s", originalJSON, cloneJSON)
 			}
 		})
+	}
+}
+
+func TestNodeIDValidationCloneAndSourceEditContract(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	root := NewRow(span)
+	root.NodeID = 10
+	glyph := NewGlyph(span, "x")
+	glyph.NodeID = 20
+	root.Items = []Node{glyph}
+	formula := &Formula{Root: root}
+
+	if err := Validate(formula, source.Limits{}); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	clone, err := CloneFormula(formula)
+	if err != nil {
+		t.Fatalf("CloneFormula() error = %v", err)
+	}
+	clonedRoot := clone.Root.(*Row)
+	clonedGlyph := clonedRoot.Items[0].(*Glyph)
+	if clonedRoot.NodeID != 10 || clonedGlyph.NodeID != 20 {
+		t.Fatalf("clone IDs = %d/%d, want 10/20", clonedRoot.NodeID, clonedGlyph.NodeID)
+	}
+
+	// A source edit changes byte ranges, not semantic identity. The host owns
+	// that semantic correspondence explicitly.
+	editedSpan := source.NewRange(8, 9)
+	clonedRoot.Span = editedSpan
+	clonedRoot.Origin = editedSpan
+	clonedGlyph.Span = editedSpan
+	clonedGlyph.Origin = editedSpan
+	if err := Validate(clone, source.Limits{}); err != nil {
+		t.Fatalf("Validate(edited clone) error = %v", err)
+	}
+	if clonedRoot.NodeID != 10 || clonedGlyph.NodeID != 20 {
+		t.Fatalf("source edit changed IDs to %d/%d", clonedRoot.NodeID, clonedGlyph.NodeID)
+	}
+}
+
+func TestNodeIDValidationRejectsDuplicateAssignedIDs(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	first := NewGlyph(span, "x")
+	first.NodeID = identity.NodeID(7)
+	second := NewGlyph(span, "y")
+	second.NodeID = identity.NodeID(7)
+	err := Validate(&Formula{Root: NewRow(span, first, second)}, source.Limits{})
+	if !errors.Is(err, ErrInvalidIR) {
+		t.Fatalf("Validate() error = %v, want ErrInvalidIR", err)
+	}
+}
+
+func TestNodeIDValidationAllowsSharedNodeWithSameID(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	glyph := NewGlyph(span, "x")
+	glyph.NodeID = identity.NodeID(7)
+	if err := Validate(&Formula{Root: NewRow(span, glyph, glyph)}, source.Limits{}); err != nil {
+		t.Fatalf("Validate() shared node error = %v", err)
 	}
 }

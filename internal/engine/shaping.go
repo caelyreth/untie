@@ -103,6 +103,7 @@ func (a *adapter) shapeTextRun(
 			FaceID:    info.ID,
 			Fallback:  cluster.Face != faces[0],
 			Missing:   cluster.Missing,
+			RTL:       cluster.RTL,
 		}
 		if cluster.Missing && run.MissingFaces == nil {
 			run.MissingFaces = a.faceIDs(faces)

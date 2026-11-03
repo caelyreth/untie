@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.4.0` with layout revision `3`. This page defines
+Untie is currently version `0.4.0` with layout revision `4`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -33,8 +33,9 @@ Primary surface:
   `CacheStats` in the optional MyGo adapter;
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
-- `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`,
-  `ColorPolicy`, `PixelGrid`, `FontUsage`, and `Box.Diagnostics`;
+- `Style`, `Box`, `Item`, `Paint`, `Hit`, `CaretStop`, `Break`, `NodeID`,
+  `LineBox`, `TagBox`, `Alt`, `ColorPolicy`, `PixelGrid`, `FontUsage`,
+  `Box.Carets`, `Box.CaretAt`, `Box.Split`, and `Box.Diagnostics`;
 - public error sentinels and diagnostic severities/codes.
 
 Tier 1 is the recommended integration surface. Breaking changes are allowed
@@ -46,6 +47,7 @@ compatibility target.
 Packages:
 
 - `github.com/caelyreth/untie/ir`
+- `github.com/caelyreth/untie/identity`
 - `github.com/caelyreth/untie/source`
 - `github.com/caelyreth/untie/geometry`
 - `github.com/caelyreth/untie/encode/raster`
@@ -87,7 +89,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.4.0+layout.3
+0.4.0+layout.4
 ```
 
 The package-level engine cache includes that whole string. A layout behavior

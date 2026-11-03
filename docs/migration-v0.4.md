@@ -1,8 +1,8 @@
 # Migrating To 0.4
 
 Untie 0.4 adds core output policy, shaped-text provenance, and the complete
-MyGo editor integration surface. The runtime version is `0.4.0+layout.3`, and
-the process-wide Engine cache schema is `3`.
+MyGo editor integration surface. The runtime version is `0.4.0+layout.4`, and
+the process-wide Engine cache schema is `4`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -107,13 +107,78 @@ metrics with overflow ink kept drawable through the surrounding text clip.
 TeX/Typst source MIME formats. MathML is not offered until Untie has a real
 MathML serializer.
 
+## Caret Stops
+
+`Box.CaretStops` stores source-ordered caret geometry for semantic leaves and
+shaped text clusters. Use:
+
+```go
+carets := box.Carets()
+caret, ok := box.CaretAt(sourceByteOffset)
+```
+
+`Carets` returns an independent sorted snapshot. `CaretAt` prefers an exact
+proven source boundary and otherwise chooses the nearest boundary.
+
+The stops are in final box coordinates, including constrained display line
+baselines and alignment offsets. Editors should not recover caret positions by
+guessing from `Hit.Area`, because hits represent occupied regions rather than
+positions between atoms.
+
+## Inline Splitting
+
+An untagged inline box can be divided at one of its own breaks:
+
+```go
+left, right, err := box.Split(box.Breaks[index])
+if errors.Is(err, untie.ErrCannotSplit) {
+	// Keep the unsplit inline object.
+}
+```
+
+The split operation validates break ownership, copies and remaps path storage,
+clips hit rectangles, keeps boundary caret stops on both sides, translates the
+right box to a zero origin, and preserves item and hit `NodeID` values. `Alt`
+and `FontUsage` are cleared because neither whole-formula semantic metadata can
+be divided soundly.
+
+Do not split constrained display boxes or tagged boxes. Those contracts retain
+line and tag ownership through `Style.MaxWidth`.
+
+## Stable Node Identity
+
+`ir.Base` now carries `NodeID`, also exposed as `untie.NodeID`. Zero means
+unassigned. Nonzero IDs must be unique within a formula.
+
+Identity is explicit:
+
+- `CloneFormula` preserves assigned IDs;
+- validation rejects duplicate IDs on different nodes;
+- canonical JSON includes assigned IDs;
+- layout copies the source node ID into every emitted `Hit` and `Item`;
+- a host that edits source and rebuilds a tree must preserve IDs on the
+  semantically corresponding nodes.
+
+Untie does not infer IDs from source spans, tree indexes, or pointers. It does
+not provide `Expr.Edit` or incremental parsing in 0.4. Automatic cross-edit
+identity requires a syntax-preserving edit model that does not exist yet.
+
+## Text Cluster Direction
+
+`font.ShapedCluster` now includes an `RTL` flag. It records whether shaping
+produced that cluster in a right-to-left run. The internal layout text-source
+port carries the same information; external code should use
+`FontSet.ShapeText`, which populates it.
+
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
 - `display.Item` gained `Snap`;
-- canonical box JSON may include `fontUsage` and `snap`;
+- `display.Box` gained `CaretStops`;
+- `display.Item` and `display.Hit` gained `NodeID`;
+- canonical box JSON may include `fontUsage`, `snap`, `carets`, and node IDs;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.3`;
-- the Engine cache schema is now `3`.
+- `untie.Version()` is now `0.4.0+layout.4`;
+- the Engine cache schema is now `4`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.

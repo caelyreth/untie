@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -174,6 +175,7 @@ func (s *layoutState) layoutTextRun(
 				right:  right,
 				top:    -ascent,
 				bottom: descent,
+				rtl:    cluster.RTL,
 			}
 		}
 	}
@@ -228,7 +230,7 @@ func (s *layoutState) layoutTextRun(
 		}
 	}
 	if len(clusterExtents) > 0 {
-		if err := appendTextClusterHits(fragment, clusterExtents, depth); err != nil {
+		if err := appendTextClusterHits(fragment, clusterExtents, depth, textNode.NodeID); err != nil {
 			return nil, err
 		}
 	}
@@ -240,6 +242,7 @@ type textClusterExtent struct {
 	used        bool
 	left, right geometry.Em
 	top, bottom geometry.Em
+	rtl         bool
 }
 
 func addTextClusterExtent(
@@ -278,7 +281,12 @@ func addTextClusterExtent(
 	return nil
 }
 
-func appendTextClusterHits(fragment *Fragment, extents []textClusterExtent, depth int) error {
+func appendTextClusterHits(
+	fragment *Fragment,
+	extents []textClusterExtent,
+	depth int,
+	nodeID identity.NodeID,
+) error {
 	if depth < 0 || uint64(depth) > uint64(^uint32(0)) {
 		return fmt.Errorf("%w: text cluster hit depth %d", ErrInvalidInput, depth)
 	}
@@ -294,6 +302,11 @@ func appendTextClusterHits(fragment *Fragment, extents []textClusterExtent, dept
 			group.right = max(group.right, extent.right)
 			group.top = min(group.top, extent.top)
 			group.bottom = max(group.bottom, extent.bottom)
+			if group.rtl != extent.rtl {
+				// Multiple visual clusters mapped to one source range must not
+				// invent a directional affinity.
+				group.rtl = false
+			}
 			continue
 		}
 		indexes[extent.source] = len(groups)
@@ -316,7 +329,18 @@ func appendTextClusterHits(fragment *Fragment, extents []textClusterExtent, dept
 			height: height,
 			depth:  uint32(depth),
 			kind:   display.HitAtom,
+			nodeID: nodeID,
 		})
+		fragment.appendCaretBoundaries(
+			group.source.Start,
+			group.source.End,
+			group.left,
+			group.right,
+			group.top,
+			group.bottom,
+			group.rtl,
+			nodeID,
+		)
 	}
 	return nil
 }

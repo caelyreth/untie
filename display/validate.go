@@ -47,6 +47,14 @@ func (b *Box) Validate() error {
 			return fmt.Errorf("%w: hit %d: %v", ErrInvalidBox, i, err)
 		}
 	}
+	for i, caret := range b.CaretStops {
+		if err := validateCaretStop(caret); err != nil {
+			return fmt.Errorf("%w: caret %d: %v", ErrInvalidBox, i, err)
+		}
+		if i > 0 && b.CaretStops[i-1].Source > caret.Source {
+			return fmt.Errorf("%w: carets are not source ordered at %d", ErrInvalidBox, i)
+		}
+	}
 	for i, breakPoint := range b.Breaks {
 		if err := validateBreak(breakPoint); err != nil {
 			return fmt.Errorf("%w: break %d: %v", ErrInvalidBox, i, err)
@@ -409,6 +417,21 @@ func validateHit(hit Hit) error {
 	}
 	if hit.Kind > HitOther {
 		return fmt.Errorf("unknown kind %d", hit.Kind)
+	}
+	return nil
+}
+
+func validateCaretStop(caret CaretStop) error {
+	if caret.Source < 0 {
+		return errors.New("negative source offset")
+	}
+	for _, value := range []float32{caret.X, caret.Top, caret.Bottom} {
+		if !finite(value) {
+			return errors.New("non-finite geometry")
+		}
+	}
+	if caret.Bottom < caret.Top {
+		return errors.New("bottom precedes top")
 	}
 	return nil
 }

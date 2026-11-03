@@ -40,10 +40,11 @@ type Box struct {
 	AxisHeight float32
 	Overflow   float32
 
-	Items  []Item
-	Hits   []Hit
-	Breaks []Break
-	Alt    Alt
+	Items      []Item
+	Hits       []Hit
+	Breaks     []Break
+	CaretStops []CaretStop
+	Alt        Alt
 	Diagnostics []source.Diagnostic
 	FontUsage   FontUsage
 	Tag    *TagBox
@@ -52,7 +53,8 @@ type Box struct {
 ```
 
 The slices are owned by the returned box. A new successful layout creates new
-box storage.
+box storage. `Carets()` returns an independent source-ordered copy of
+`CaretStops`.
 
 `Box.Diagnostics` contains recoverable layout problems, including missing
 glyphs rendered as visible placeholders. Parse diagnostics remain on
@@ -158,6 +160,10 @@ output should carry an application-owned format version.
 
 `Item` is already positioned. Draw it at the host's chosen box origin; do not
 re-run TeX spacing, font shaping, or script placement in the host.
+
+`Item.NodeID` is the optional opaque identity of the canonical semantic node
+that caused the item. Several items may share one ID, and constructed helper
+geometry may have no ID.
 
 ### `ItemGlyphPath`
 
@@ -348,6 +354,7 @@ type Hit struct {
 	Area   geometry.Rect
 	Depth  int
 	Kind   HitKind
+	NodeID NodeID
 }
 ```
 
@@ -387,6 +394,57 @@ the hits belonging to that line without changing their coordinates.
 on the same line that overlap or touch are sorted and merged deterministically.
 Use it for editor selection highlighting or source-linked overlays.
 
+## Caret Geometry
+
+Layout emits source-ordered caret boundaries for semantic atoms, fences,
+radicals, missing-glyph placeholders, and shaped text clusters:
+
+```go
+type CaretStop struct {
+	Source int
+	X      float32
+	Top    float32
+	Bottom float32
+	NodeID NodeID
+}
+
+carets := box.Carets()          // independent, source-ordered snapshot
+caret, ok := box.CaretAt(offset) // exact offset or nearest proven boundary
+```
+
+`Source` is an absolute UTF-8 byte offset. `X`, `Top`, and `Bottom` are in the
+same parent-frame coordinates as items and hits. Constrained display lines
+therefore produce distinct vertical caret bands without requiring a second
+coordinate translation.
+
+Text clusters may contain a ligature, grapheme, or other indivisible shaping
+cluster. Untie reports proven cluster boundaries, not fictional per-byte
+positions inside one cluster. RTL clusters map their source start to the right
+edge and source end to the left edge. Multiple visual positions can legitimately
+share one source offset; `CaretAt` applies the deterministic preference order
+documented on the method.
+
+## Splitting an Inline Box
+
+`box.Split(breakPoint)` divides an untagged inline box at one of its own
+`Box.Breaks`:
+
+```go
+left, right, err := box.Split(box.Breaks[0])
+```
+
+The result is independent geometry suitable for placing a logical inline
+formula across two host line fragments. Left uses parent coordinates and has
+width equal to the break X. Right is translated to a zero origin. Item IDs,
+hit source ranges and IDs, caret IDs, and subsequent break opportunities are
+preserved. Hit rectangles are clipped to each side.
+
+`Alt` is cleared because splitting semantic alternative text is not sound.
+Constrained display boxes (`Lines` nonempty), tagged boxes, unknown breaks,
+and endpoint breaks return `ErrCannotSplit`. Do not call `Split` on the same
+box repeatedly to recreate already constrained display wrapping; use
+`Style.MaxWidth` for that purpose.
+
 ## Overflow and Bounds
 
 `Box.Width`, `Ascent`, and `Descent` describe the nominal layout box. Ink can
@@ -424,4 +482,5 @@ For constrained display:
   shape.
 - Use `Bounds()` for fitting.
 - Use source hits in the same parent-frame coordinate space.
+- Use `NodeID` only as an opaque host identity; it is never a source offset.
 - Do not mutate a shared `Box`.

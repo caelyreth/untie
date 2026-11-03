@@ -109,7 +109,12 @@ func (s *layoutState) attachPreparedSingleLineTag(
 	flatten := newFlattenState(s, base, x, 0)
 	base.Items = reserveDisplayItems(base.Items, prepared.fragment.flatItems, s.limits.MaxOutputItems)
 	base.Hits = reserveDisplayHits(base.Hits, prepared.fragment.flatHits, s.limits.MaxNodes)
-	if err := flatten.visit(prepared.fragment, 0, 0); err != nil {
+	if extra := prepared.fragment.flatCarets; extra > 0 && extra <= s.limits.MaxOutputItems-len(base.CaretStops) {
+		carets := make([]display.CaretStop, len(base.CaretStops), len(base.CaretStops)+extra)
+		copy(carets, base.CaretStops)
+		base.CaretStops = carets
+	}
+	if err := flatten.visit(prepared.fragment, 0, 0, 0); err != nil {
 		return nil, err
 	}
 	tag := &display.TagBox{

@@ -191,6 +191,9 @@ type TextCluster struct {
 	FaceID    string
 	Fallback  bool
 	Missing   bool
+	// RTL reports that this cluster was shaped in a right-to-left run. X still
+	// describes its left edge in visual order.
+	RTL bool
 	// X and Advance are the cluster's horizontal extent in local ems relative
 	// to the run origin. They are independent of per-glyph positioning offsets.
 	X       geometry.Em

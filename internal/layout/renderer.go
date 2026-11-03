@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -229,6 +230,7 @@ func (r *Renderer) layoutFormulaContext(
 		}
 	}
 	box.FontUsage = finalizeFontUsage(state.fontUsage)
+	box.CaretStops = box.Carets()
 	if err := box.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
@@ -603,6 +605,9 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 			}
 		}
 		if err == nil && fragment != nil {
+			if base := n.NodeBase(); base != nil {
+				fragment.assignNodeID(base.NodeID)
+			}
 			if hitErr := s.attachNodeHit(fragment, n, depth); hitErr != nil {
 				fragment = nil
 				err = hitErr
@@ -778,6 +783,23 @@ func (s *layoutState) layoutEmptyRoot(node ir.Node, env environment) (*Fragment,
 	if err := s.attachNodeHit(fragment, node, 0); err != nil {
 		return nil, err
 	}
+	height, err := add(fragment.Ascent, fragment.Descent)
+	if err != nil {
+		return nil, err
+	}
+	var nodeID identity.NodeID
+	sourceOffset := 0
+	if base := node.NodeBase(); base != nil {
+		nodeID = base.NodeID
+		sourceOffset = base.Span.Start
+	}
+	fragment.appendCaret(sourceCaret{
+		source: sourceOffset,
+		x:      0,
+		y:      -fragment.Ascent,
+		height: height,
+		nodeID: nodeID,
+	})
 	return fragment, nil
 }
 

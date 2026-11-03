@@ -16,7 +16,7 @@ glyph paths, rules, source hits, and accessibility text.
   contrast correction;
 - structured text-face and missing-fallback reporting;
 - optional conservative pixel-grid snapping for thin rules and stems;
-- source-mapped hit regions;
+- source-mapped hit regions, caret stops, and explicit stable node IDs;
 - OpenType MATH metrics, glyph outlines, variants, and assemblies;
 - reusable rendering with bounded caches;
 - inline and display layout, line breaking, equation tags, and overflow bounds;

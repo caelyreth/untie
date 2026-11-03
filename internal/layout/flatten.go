@@ -6,6 +6,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -75,9 +76,10 @@ func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 		Items:      make([]display.Item, 0, s.outputItemCapacity(root.flatItems)),
 		Paths:      make([]display.PathTemplate, 0, s.outputItemCapacity(root.flatItems)),
 		Hits:       make([]display.Hit, 0, s.outputHitCapacity(root.flatHits)),
+		CaretStops: make([]display.CaretStop, 0, s.outputItemCapacity(root.flatCarets)),
 	}
 	state := newFlattenState(s, box, 0, 0)
-	if err := state.visit(root, 0, 0); err != nil {
+	if err := state.visit(root, 0, 0, 0); err != nil {
 		return nil, err
 	}
 	if s.mode == ir.Inline {
@@ -274,7 +276,11 @@ func (s *layoutState) offsetItem(item display.Item, dx, dy float32) (display.Ite
 	return item, nil
 }
 
-func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
+func (f *flattenState) visit(
+	fragment *Fragment,
+	x, y geometry.Em,
+	inheritedID identity.NodeID,
+) error {
 	if fragment == nil {
 		return fmt.Errorf("%w: nil fragment in flatten", ErrInvalidInput)
 	}
@@ -294,7 +300,14 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	defer func() {
 		f.stack = f.stack[:len(f.stack)-1]
 	}()
-	if err := f.layout.appendFragmentHits(f, fragment, x, y); err != nil {
+	nodeID := fragment.nodeID
+	if !nodeID.Assigned() {
+		nodeID = inheritedID
+	}
+	if err := f.layout.appendFragmentHits(f, fragment, x, y, nodeID); err != nil {
+		return err
+	}
+	if err := f.layout.appendFragmentCarets(f, fragment, x, y, nodeID); err != nil {
 		return err
 	}
 	for drawIndex := 0; drawIndex < fragment.drawCount; drawIndex++ {
@@ -312,7 +325,7 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 		}
 		switch draw.kind {
 		case drawGroup:
-			if err := f.visit(draw.group, itemX, itemY); err != nil {
+			if err := f.visit(draw.group, itemX, itemY, nodeID); err != nil {
 				return err
 			}
 		case drawGlyph:
@@ -321,7 +334,13 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 				return fmt.Errorf("%w: nil glyph", ErrInvalidInput)
 			}
 			if len(glyph.Glyph.Parts) == 0 {
-				if err := f.appendGlyphItem(itemX, itemY, glyph, glyph.Glyph.ExactGlyphRef); err != nil {
+				if err := f.appendGlyphItem(
+					itemX,
+					itemY,
+					glyph,
+					glyph.Glyph.ExactGlyphRef,
+					nodeID,
+				); err != nil {
 					return err
 				}
 				continue
@@ -340,12 +359,12 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 					return err
 				}
 				partGlyph := f.layout.newGlyphFragment(part.Glyph, glyph.Scale, glyph.Paint)
-				if err := f.appendGlyphItem(partX, partY, partGlyph, false); err != nil {
+				if err := f.appendGlyphItem(partX, partY, partGlyph, false, nodeID); err != nil {
 					return err
 				}
 			}
 		case drawRule:
-			item, err := f.ruleItem(itemX, itemY, draw.rule)
+			item, err := f.ruleItem(itemX, itemY, draw.rule, nodeID)
 			if err != nil {
 				return err
 			}
@@ -353,7 +372,7 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 				return err
 			}
 		case drawPath:
-			item, err := f.pathItem(itemX, itemY, draw.path)
+			item, err := f.pathItem(itemX, itemY, draw.path, nodeID)
 			if err != nil {
 				return err
 			}
@@ -367,11 +386,17 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	return nil
 }
 
-func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, exactRef bool) error {
+func (f *flattenState) appendGlyphItem(
+	x, y geometry.Em,
+	glyph *GlyphFragment,
+	exactRef bool,
+	nodeID identity.NodeID,
+) error {
 	item, err := f.glyphItem(x, y, glyph)
 	if err != nil {
 		return err
 	}
+	item.NodeID = nodeID
 	if !exactRef && item.Kind == display.ItemGlyphRef {
 		return fmt.Errorf("%w: inexact glyph reference without an outline", ErrInvalidInput)
 	}
@@ -385,6 +410,7 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 			Kind:      display.ItemGlyphRef,
 			Paint:     f.paint(glyph.Paint),
 			Bound:     item.Bound,
+			NodeID:    nodeID,
 			PathIndex: display.NoPath,
 			FontID:    glyph.Glyph.FontID,
 			Glyph:     glyph.Glyph.ID,
@@ -464,7 +490,11 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	return item, nil
 }
 
-func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item, error) {
+func (f *flattenState) pathItem(
+	x, y geometry.Em,
+	path *pathDraw,
+	nodeID identity.NodeID,
+) (display.Item, error) {
 	if path == nil {
 		return display.Item{}, fmt.Errorf("%w: nil path", ErrInvalidInput)
 	}
@@ -500,6 +530,7 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 		Kind:      display.ItemGlyphPath,
 		Paint:     f.paint(path.paint),
 		Bound:     bound,
+		NodeID:    nodeID,
 		PathIndex: pathIndex,
 		At:        at,
 		Em:        em,
@@ -638,7 +669,11 @@ func segmentPointCount(op geometry.SegOp) (int, bool) {
 	return [...]int{1, 1, 2, 3, 0}[op], true
 }
 
-func (f *flattenState) ruleItem(x, y geometry.Em, rule *ruleDraw) (display.Item, error) {
+func (f *flattenState) ruleItem(
+	x, y geometry.Em,
+	rule *ruleDraw,
+	nodeID identity.NodeID,
+) (display.Item, error) {
 	if rule == nil {
 		return display.Item{}, fmt.Errorf("%w: nil rule", ErrInvalidInput)
 	}
@@ -668,6 +703,7 @@ func (f *flattenState) ruleItem(x, y geometry.Em, rule *ruleDraw) (display.Item,
 		Kind:      display.ItemRule,
 		Paint:     f.paint(rule.paint),
 		Bound:     rect,
+		NodeID:    nodeID,
 		PathIndex: display.NoPath,
 		Rect:      rect,
 		Snap:      axis,

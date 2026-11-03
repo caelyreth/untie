@@ -44,6 +44,7 @@ func (requestClusterTextSource) ShapeText(req TextRequest) (TextRun, error) {
 
 type visualClusterTextSource struct {
 	sources []source.Range
+	rtl     []bool
 	missing bool
 }
 
@@ -51,11 +52,13 @@ func (s visualClusterTextSource) ShapeText(req TextRequest) (TextRun, error) {
 	run := TextRun{Ascent: em(7, 10), Descent: em(2, 10)}
 	advance := em(1, 2)
 	for i, sourceRange := range s.sources {
+		rtl := i < len(s.rtl) && s.rtl[i]
 		run.Clusters = append(run.Clusters, TextCluster{
 			RuneStart: i,
 			RuneEnd:   i + 1,
 			Source:    sourceRange,
 			Missing:   s.missing,
+			RTL:       rtl,
 			X:         geometry.Em(int64(i) * int64(advance)),
 			Advance:   advance,
 		})

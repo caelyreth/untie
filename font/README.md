@@ -63,7 +63,8 @@ design units.
 - Ordinary text runs use the pure-Go HarfBuzz shaper from `go-text/typesetting`
   after Unicode bidi and script segmentation. Fallback is resolved once per
   extended grapheme cluster, and shaped clusters retain byte and rune ranges for
-  editor hit testing.
+  editor hit testing. `ShapedCluster.RTL` records the shaping run's direction
+  so caret affinity is not inferred from source order.
 - When one face covers a complete bidi/script run, it is preferred for the
   whole run so joining and reordering stay intact. For non-Latin, non-Greek,
   and non-Cyrillic scripts, a supplied text or fallback face is preferred over

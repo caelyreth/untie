@@ -253,7 +253,7 @@ func (s *canonicalState) nodes(nodes []Node, depth int) ([]any, error) {
 }
 
 func snapshotBase(b *Base) map[string]any {
-	return map[string]any{
+	out := map[string]any{
 		"kind":            KindName(b.kind),
 		"span":            []int{b.Span.Start, b.Span.End},
 		"origin":          []int{b.Origin.Start, b.Origin.End},
@@ -267,6 +267,10 @@ func snapshotBase(b *Base) map[string]any {
 		"right-spacing":   snapshotLength(b.RightSpacing),
 		"ignore-as-space": b.IgnoreAsSpace,
 	}
+	if b.NodeID.Assigned() {
+		out["nodeID"] = uint64(b.NodeID)
+	}
+	return out
 }
 
 func snapshotPaint(p Paint) map[string]any {

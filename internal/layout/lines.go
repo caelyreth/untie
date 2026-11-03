@@ -66,6 +66,7 @@ func (s *layoutState) flattenSingleDisplayLine(root *Fragment, offsetX float32) 
 	}
 	parent.Items = make([]display.Item, 0, s.outputItemCapacity(root.flatItems))
 	parent.Hits = make([]display.Hit, 0, s.outputHitCapacity(root.flatHits))
+	parent.CaretStops = make([]display.CaretStop, 0, s.outputItemCapacity(root.flatCarets))
 	width, ascent, descent, italic, err := s.fragmentHostMetrics(root)
 	if err != nil {
 		return nil, err
@@ -81,7 +82,7 @@ func (s *layoutState) flattenSingleDisplayLine(root *Fragment, offsetX float32) 
 	}
 	parent.Paths = reserveDisplayPaths(parent.Paths, root.flatItems, s.limits.MaxOutputItems)
 	flatten := newFlattenState(s, parent, offsetX, 0)
-	if err := flatten.visit(root, 0, 0); err != nil {
+	if err := flatten.visit(root, 0, 0, 0); err != nil {
 		return nil, err
 	}
 	line.Items.Count = len(parent.Items) - line.Items.Start
@@ -113,6 +114,7 @@ func (s *layoutState) flattenPlannedDisplayLines(
 	hitCapacity := root.flatHits - root.hitCount
 	hitCapacity = saturatedAdd(hitCapacity, root.hitCount*len(plans))
 	parent.Hits = make([]display.Hit, 0, s.outputHitCapacity(hitCapacity))
+	parent.CaretStops = make([]display.CaretStop, 0, s.outputItemCapacity(root.flatCarets))
 	parent.Lines = make([]display.LineBox, 0, len(plans))
 	var baseline float32
 	for i, plan := range plans {
@@ -156,7 +158,7 @@ func (s *layoutState) flattenPlannedDisplayLines(
 		}
 		parent.Paths = reserveDisplayPaths(parent.Paths, segment.flatItems, s.limits.MaxOutputItems)
 		flatten := newFlattenState(s, parent, offsetX, baseline)
-		if err := flatten.visit(segment, 0, 0); err != nil {
+		if err := flatten.visit(segment, 0, 0, 0); err != nil {
 			return nil, err
 		}
 		if err := s.appendLineOwnHit(parent, root, line); err != nil {
@@ -252,8 +254,9 @@ func (s *layoutState) appendLineOwnHit(parent *display.Box, root *Fragment, line
 			Width:  line.Width,
 			Height: height,
 		},
-		Depth: int(hit.depth),
-		Kind:  hit.kind,
+		Depth:  int(hit.depth),
+		Kind:   hit.kind,
+		NodeID: hit.nodeID,
 	})
 	if len(parent.Hits) > s.limits.MaxNodes {
 		return fmt.Errorf("%w: parent source hit count %d", ErrLimit, len(parent.Hits))

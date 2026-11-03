@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -40,6 +41,7 @@ type Fragment struct {
 	TextLike     bool
 	// StretchableHorizontal mirrors the base glyph's MATH construction.
 	StretchableHorizontal bool
+	nodeID                identity.NodeID
 
 	lastAtomClass       ir.MathClass
 	hasAtomClass        bool
@@ -51,13 +53,18 @@ type Fragment struct {
 	// flatItems and flatHits are exact finalized subtree counts. A child must
 	// be complete before it is placed with pushGroup, as required by the
 	// immutable-after-construction fragment contract.
-	flatItems int
-	flatHits  int
+	flatItems  int
+	flatHits   int
+	flatCarets int
 
 	firstHit sourceHit
 	moreHits []sourceHit
 	hitCount int
 	ownHit   int
+
+	firstCaret sourceCaret
+	moreCarets []sourceCaret
+	caretCount int
 
 	breaks []fragmentBreak
 }
@@ -78,6 +85,7 @@ type sourceHit struct {
 	height geometry.Em
 	depth  uint32
 	kind   display.HitKind
+	nodeID identity.NodeID
 }
 
 type drawKind uint8
@@ -277,6 +285,7 @@ func (f *Fragment) appendDraw(draw placedDraw) {
 	f.flatItems = saturatedAdd(f.flatItems, drawFlatItems(draw))
 	if draw.kind == drawGroup && draw.group != nil {
 		f.flatHits = saturatedAdd(f.flatHits, draw.group.flatHits)
+		f.flatCarets = saturatedAdd(f.flatCarets, draw.group.flatCarets)
 	}
 }
 
@@ -387,6 +396,12 @@ func withClass(f *Fragment, class ir.MathClass) *Fragment {
 		f.Class = class
 	}
 	return f
+}
+
+func (f *Fragment) assignNodeID(id identity.NodeID) {
+	if f != nil && f.nodeID == 0 && id != 0 {
+		f.nodeID = id
+	}
 }
 
 func (f *Fragment) kernAtHeight(corner KernCorner, height geometry.Em) (geometry.Em, error) {

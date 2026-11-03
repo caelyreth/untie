@@ -111,7 +111,11 @@ var allowedProjectImports = map[string]packageRules{
 		Tests: []string{modulePath},
 	},
 	modulePath + "/display": {
-		Production: []string{modulePath + "/geometry", modulePath + "/source"},
+		Production: []string{
+			modulePath + "/geometry",
+			modulePath + "/identity",
+			modulePath + "/source",
+		},
 	},
 	modulePath + "/encode/raster": {
 		Production: []string{
@@ -167,6 +171,7 @@ var allowedProjectImports = map[string]packageRules{
 		},
 	},
 	modulePath + "/geometry": {},
+	modulePath + "/identity": {},
 	modulePath + "/internal/engine": {
 		Production: []string{
 			modulePath + "/display",
@@ -230,6 +235,7 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{
 			modulePath + "/display",
 			modulePath + "/geometry",
+			modulePath + "/identity",
 			modulePath + "/ir",
 			modulePath + "/source",
 		},
@@ -253,7 +259,7 @@ var allowedProjectImports = map[string]packageRules{
 		},
 	},
 	modulePath + "/ir": {
-		Production: []string{modulePath + "/source"},
+		Production: []string{modulePath + "/identity", modulePath + "/source"},
 	},
 	modulePath + "/render": {
 		Production: []string{modulePath + "/display", modulePath + "/geometry"},

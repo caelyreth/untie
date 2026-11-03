@@ -86,6 +86,42 @@ the current font loader and display-item model. An unsupported color cluster
 must use the same visible missing-cluster placeholder and diagnostic rather
 than disappearing.
 
+## Caret Stops and Source Identity
+
+`Box.Carets()` returns source-ordered caret stops in parent-frame coordinates.
+Every stop contains the absolute source byte offset, horizontal position,
+vertical top and bottom, and an optional `NodeID`.
+
+`Box.CaretAt(offset)` prefers an exact proven boundary and otherwise returns the
+nearest stop. Shaped text exposes cluster boundaries rather than inventing
+interior positions for a ligature or grapheme cluster. RTL clusters map source
+start and end to the correct visual edges, and bidi mixed text remains sorted by
+source even when hits are stored in visual paint order.
+
+Use `NodeID` when the host needs stable animation or selection identity:
+
+- assign a nonzero `ir.NodeID` to canonical nodes;
+- keep IDs unique within one formula;
+- preserve an ID yourself when rebuilding a tree after a source edit;
+- read the same ID from emitted `Hit` and `Item` records.
+
+Untie deliberately provides no automatic identity inference and no `Expr.Edit`.
+Without an incremental parser and a source-to-syntax correspondence, automatic
+stable IDs would be offset-derived guesses. The explicit host assignment rule
+is the smallest sound boundary until that infrastructure exists.
+
+## Inline Splitting
+
+Editors that break paragraph text inside an inline formula can call
+`box.Split(box.Breaks[i])`. The returned boxes contain independent items,
+paths, clipped hits, caret stops, and remaining break opportunities. The left
+box keeps parent coordinates; the right box is translated to a zero origin.
+
+Only untagged inline boxes are splittable. Width-constrained display boxes use
+`Style.MaxWidth` and `Box.Lines`; equation-tagged boxes retain their single
+unambiguous tag owner. Alternative text is cleared on split fragments because
+there is no sound semantic split for `Alt`.
+
 ## Hybrid Text-Shaper Boundary
 
 The long-term architecture is a hybrid:

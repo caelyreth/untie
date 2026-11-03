@@ -83,6 +83,9 @@ func TestShapeTextRTLOrderAndArabicScript(t *testing.T) {
 	starts := make([]int, len(shaped.Clusters))
 	for i, cluster := range shaped.Clusters {
 		starts[i] = cluster.RuneStart
+		if !cluster.RTL {
+			t.Fatalf("RTL cluster %#v has RTL=false", cluster)
+		}
 	}
 	if want := []int{2, 1, 0}; !reflect.DeepEqual(starts, want) {
 		t.Fatalf("cluster order = %v, want visual RTL order %v", starts, want)
@@ -109,6 +112,11 @@ func TestShapeTextMixedBidiVisualOrder(t *testing.T) {
 	starts := make([]int, len(shaped.Clusters))
 	for i, cluster := range shaped.Clusters {
 		starts[i] = cluster.RuneStart
+		wantRTL := cluster.RuneStart >= 1 && cluster.RuneStart <= 4 ||
+			cluster.RuneStart >= 8 && cluster.RuneStart <= 11
+		if cluster.RTL != wantRTL {
+			t.Fatalf("cluster %#v RTL=%t, want %t", cluster, cluster.RTL, wantRTL)
+		}
 	}
 	want := []int{0, 11, 10, 9, 8, 5, 6, 7, 4, 3, 2, 1, 12}
 	if !reflect.DeepEqual(starts, want) {
