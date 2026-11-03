@@ -47,8 +47,8 @@ func initFont(_ js.Value, args []js.Value) any {
 }
 
 func renderSVG(_ js.Value, args []js.Value) any {
-	if len(args) != 4 {
-		return renderError("renderSVG expects source, dialect, display, and size")
+	if len(args) != 3 {
+		return renderError("renderSVG expects source, dialect, and display")
 	}
 	source := args[0].String()
 	dialect, err := parseDialect(args[1].String())
@@ -58,10 +58,6 @@ func renderSVG(_ js.Value, args []js.Value) any {
 	mode := untie.Inline
 	if args[2].Bool() {
 		mode = untie.Display
-	}
-	size := float32(args[3].Float())
-	if size <= 0 {
-		size = 32
 	}
 
 	state.mu.Lock()
@@ -73,7 +69,7 @@ func renderSVG(_ js.Value, args []js.Value) any {
 	result, err := renderer.Render(context.Background(), source, untie.RenderRequest{
 		Dialect: dialect,
 		Mode:    mode,
-		Style:   untie.Style{Size: size},
+		Style:   untie.Style{Size: 32},
 	})
 	if err != nil {
 		return renderError(err.Error())

@@ -65,8 +65,8 @@ function wrapAPI(api: UntieWasmAPI): UntieWasmAPI {
     initFont(data) {
       return api.initFont(data)
     },
-    renderSVG(source, dialect, display, size) {
-      const result = api.renderSVG(source, dialect, display, size)
+    renderSVG(source, dialect, display) {
+      const result = api.renderSVG(source, dialect, display)
       return {
         error: result.error,
         svg: result.svg.replaceAll('fill="#000000"', 'fill="currentColor"'),

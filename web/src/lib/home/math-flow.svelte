@@ -6,7 +6,6 @@
   interface Formula {
     source: string
     dialect: 'tex' | 'typst'
-    size: number
     accent: string
   }
 
@@ -14,175 +13,146 @@
     {
       source: String.raw`e^{i\pi}+1=0`,
       dialect: 'tex',
-      size: 22,
       accent: 'var(--halo)',
     },
     {
       source: String.raw`\int_0^1 x^2\,dx`,
       dialect: 'tex',
-      size: 24,
       accent: 'var(--regolith)',
     },
     {
       source: String.raw`sum_(k=1)^n k^2`,
       dialect: 'typst',
-      size: 21,
       accent: 'var(--unripe)',
     },
     {
       source: String.raw`\nabla_\mu\phi`,
       dialect: 'tex',
-      size: 22,
       accent: 'var(--life)',
     },
     {
       source: String.raw`\mathcal{L}_m`,
       dialect: 'tex',
-      size: 23,
       accent: 'var(--afterglow)',
     },
     {
       source: String.raw`a^2+b^2=c^2`,
       dialect: 'tex',
-      size: 21,
       accent: 'var(--remnant)',
     },
     {
       source: String.raw`\frac{-b\pm\sqrt{b^2-4ac}}{2a}`,
       dialect: 'tex',
-      size: 19,
       accent: 'var(--moonveil)',
     },
     {
       source: String.raw`sqrt(x^2+y^2)`,
       dialect: 'typst',
-      size: 20,
       accent: 'var(--halo)',
     },
     {
       source: String.raw`\lim_{x\to0}\frac{\sin x}{x}`,
       dialect: 'tex',
-      size: 20,
       accent: 'var(--life)',
     },
     {
       source: String.raw`mat(1, 2; 3, 4)`,
       dialect: 'typst',
-      size: 19,
       accent: 'var(--regolith)',
     },
     {
       source: String.raw`\oint_{\partial\Omega}\omega`,
       dialect: 'tex',
-      size: 21,
       accent: 'var(--afterglow)',
     },
     {
       source: String.raw`\prod_{p\mid n} p`,
       dialect: 'tex',
-      size: 20,
       accent: 'var(--unripe)',
     },
     {
       source: String.raw`\mathbb{R}^{n\times n}`,
       dialect: 'tex',
-      size: 20,
       accent: 'var(--remnant)',
     },
     {
       source: String.raw`partial_t u = Delta u`,
       dialect: 'typst',
-      size: 20,
       accent: 'var(--moonveil)',
     },
     {
       source: String.raw`\det(A-\lambda I)=0`,
       dialect: 'tex',
-      size: 19,
       accent: 'var(--halo)',
     },
     {
       source: String.raw`\sum_{\mu\nu} g^{\mu\nu}R_{\mu\nu}`,
       dialect: 'tex',
-      size: 19,
       accent: 'var(--regolith)',
     },
     {
       source: String.raw`1/(1+1/(1+1/x))`,
       dialect: 'typst',
-      size: 18,
       accent: 'var(--halo)',
     },
     {
       source: String.raw`\binom{n}{k}=\frac{n!}{k!(n-k)!}`,
       dialect: 'tex',
-      size: 19,
       accent: 'var(--life)',
     },
     {
       source: String.raw`root(3, x+1) + sqrt(sqrt(sqrt(x)))`,
       dialect: 'typst',
-      size: 18,
       accent: 'var(--afterglow)',
     },
     {
       source: String.raw`integral_0^infinity e^(-x^2) dif x = sqrt(pi)/2`,
       dialect: 'typst',
-      size: 18,
       accent: 'var(--moonveil)',
     },
     {
       source: String.raw`\oint_C \vec F\cdot d\vec r`,
       dialect: 'tex',
-      size: 20,
       accent: 'var(--unripe)',
     },
     {
       source: String.raw`lim_(n -> infinity) (1+1/n)^n = e`,
       dialect: 'typst',
-      size: 19,
       accent: 'var(--remnant)',
     },
     {
       source: String.raw`\begin{pmatrix}a&b\\c&d\end{pmatrix}`,
       dialect: 'tex',
-      size: 20,
       accent: 'var(--regolith)',
     },
     {
       source: String.raw`f(x)=cases(x^2 & x >= 0, -x & x < 0)`,
       dialect: 'typst',
-      size: 18,
       accent: 'var(--halo)',
     },
     {
       source: String.raw`\langle\phi|\psi\rangle`,
       dialect: 'tex',
-      size: 22,
       accent: 'var(--afterglow)',
     },
     {
       source: String.raw`alpha beta gamma Gamma epsilon.alt theta.alt phi Omega`,
       dialect: 'typst',
-      size: 19,
       accent: 'var(--life)',
     },
     {
       source: String.raw`\hat{x}\,\tilde{y}\,\vec{v}\,\dot{a}\,\ddot{b}`,
       dialect: 'tex',
-      size: 19,
       accent: 'var(--moonveil)',
     },
     {
       source: String.raw`hat(f)(xi)=integral_(-infinity)^infinity f(x)e^(-2 pi i x xi) dif x`,
       dialect: 'typst',
-      size: 17,
       accent: 'var(--halo)',
     },
     {
       source: String.raw`P(A\mid B)=\frac{P(B\mid A)P(A)}{P(B)}`,
       dialect: 'tex',
-      size: 18,
       accent: 'var(--regolith)',
     },
   ]
@@ -212,7 +182,6 @@
             formula.source,
             formula.dialect,
             true,
-            formula.size,
           )
           if (result.error) {
             console.error(`Untie Wasm formula ${index}:`, result.error)

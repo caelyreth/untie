@@ -9,6 +9,5 @@ export interface UntieWasmAPI {
     source: string,
     dialect: string,
     display: boolean,
-    size: number,
   ): WasmRenderResult
 }
