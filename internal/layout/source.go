@@ -187,6 +187,7 @@ type TextCluster struct {
 	RuneStart int
 	RuneEnd   int
 	Source    source.Range
+	Missing   bool
 }
 
 // PositionedGlyph is one glyph in a shaped text run, in local ems relative to
@@ -197,6 +198,9 @@ type PositionedGlyph struct {
 	At    Point
 	// Cluster is the zero-based index into TextRun.Clusters.
 	Cluster int
+	// Missing marks one synthetic glyph substituting for an unavailable text
+	// cluster. Layout paints it with the error role.
+	Missing bool
 }
 
 // TextRun is a shaped one-line text run in local ems.

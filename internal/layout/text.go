@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -32,6 +33,23 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 	})
 	if err != nil {
 		return nil, err
+	}
+	runes := []rune(node.Text)
+	for _, cluster := range run.Clusters {
+		if !cluster.Missing {
+			continue
+		}
+		if cluster.RuneStart < 0 || cluster.RuneEnd <= cluster.RuneStart || cluster.RuneEnd > len(runes) {
+			return nil, fmt.Errorf("%w: invalid missing text cluster", ErrInvalidInput)
+		}
+		if !s.recoverMissingGlyph {
+			return nil, fmt.Errorf(
+				"%w: %q",
+				ErrMissingGlyph,
+				string(runes[cluster.RuneStart:cluster.RuneEnd]),
+			)
+		}
+		s.recordMissingGlyphText(node.Base.Span, string(runes[cluster.RuneStart:cluster.RuneEnd]), nil)
 	}
 	return s.layoutTextRun(run, env, true)
 }
@@ -128,6 +146,30 @@ func (s *layoutState) layoutTextRun(run TextRun, env environment, textLike bool)
 		y, err := scale(positioned.At.Y, factor)
 		if err != nil {
 			return nil, err
+		}
+		if positioned.Missing {
+			thickness, err := s.metricAt(geometry.Em(geometry.EmScale/64), env.Style)
+			if err != nil {
+				return nil, err
+			}
+			placeholder, err := s.placeholderFragment(
+				Metrics{
+					Width:   draw.Glyph.Advance,
+					Ascent:  draw.Glyph.Ascent,
+					Descent: draw.Glyph.Descent,
+				},
+				thickness,
+				factor,
+				env.Style.Size,
+				ir.Paint{Role: ir.PaintError},
+			)
+			if err != nil {
+				return nil, err
+			}
+			if err := fragment.pushGroup(x, y, placeholder); err != nil {
+				return nil, err
+			}
+			continue
 		}
 		if err := fragment.pushGlyph(x, y, draw); err != nil {
 			return nil, err

@@ -266,6 +266,44 @@ func TestRenderStrictMissingGlyphReturnsLayoutError(t *testing.T) {
 	}
 }
 
+func TestRenderRecoversOnlyMissingTextCluster(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		`x+\text{A中B}+y`,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if result.Box == nil {
+		t.Fatal("Render() Box = nil")
+	}
+	if len(result.Box.Diagnostics) != 1 || result.Box.Diagnostics[0].Message != `missing glyph: "中"` {
+		t.Fatalf("Box.Diagnostics = %+v, want one CJK cluster diagnostic", result.Box.Diagnostics)
+	}
+	errorRules, inkGlyphs := 0, 0
+	for _, item := range result.Box.Items {
+		switch {
+		case item.Paint.Role == display.RoleError && item.Kind == display.ItemRule:
+			errorRules++
+		case item.Paint.Role == display.RoleInk && item.Kind == display.ItemGlyphPath:
+			inkGlyphs++
+		}
+	}
+	if errorRules != 4 {
+		t.Fatalf("error rules = %d, want one four-rule placeholder", errorRules)
+	}
+	if inkGlyphs < 4 {
+		t.Fatalf("ink glyphs = %d, want surrounding x, A, B, and y", inkGlyphs)
+	}
+}
+
 func hasCode(diagnostics []source.Diagnostic, code source.Code) bool {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {

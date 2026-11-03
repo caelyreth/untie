@@ -71,23 +71,39 @@ func (a *adapter) shapeTextRun(
 		if !ok {
 			return layout.TextRun{}, fmt.Errorf("%w: invalid styled text cluster", layout.ErrInvalidInput)
 		}
-		if cluster.Missing {
-			return layout.TextRun{}, fmt.Errorf(
-				"%w: %q",
-				layout.ErrMissingGlyph,
-				string(sourceRunes[start:end]),
-			)
-		}
 		run.Clusters[i] = layout.TextCluster{
 			RuneStart: start,
 			RuneEnd:   end,
 			Source:    source.NewRange(sourceOffsets[start], sourceOffsets[end]),
+			Missing:   cluster.Missing,
 		}
+	}
+
+	missingAdvances := make(map[int]geometry.Em)
+	for _, positioned := range shaped.Glyphs {
+		if positioned.Cluster < 0 || positioned.Cluster >= len(run.Clusters) ||
+			!run.Clusters[positioned.Cluster].Missing {
+			continue
+		}
+		info, ok := a.fonts.Face(positioned.Glyph.Face)
+		if !ok {
+			return layout.TextRun{}, fmt.Errorf("%w: face %d", layout.ErrMissingGlyph, positioned.Glyph.Face)
+		}
+		advance, err := a.emFromUnits(int64(positioned.Advance), info.UnitsPerEm)
+		if err != nil {
+			return layout.TextRun{}, err
+		}
+		total, err := missingAdvances[positioned.Cluster].Add(advance)
+		if err != nil {
+			return layout.TextRun{}, err
+		}
+		missingAdvances[positioned.Cluster] = total
 	}
 
 	var pen geometry.Em
 	lastCluster := -1
 	pathSegments := 0
+	renderedMissing := make(map[int]bool)
 	for i, positioned := range shaped.Glyphs {
 		if err := checkEvery(ctx, i, 16); err != nil {
 			return layout.TextRun{}, err
@@ -103,6 +119,41 @@ func (a *adapter) shapeTextRun(
 				}
 			}
 			lastCluster = positioned.Cluster
+		}
+		if run.Clusters[positioned.Cluster].Missing {
+			if renderedMissing[positioned.Cluster] {
+				continue
+			}
+			renderedMissing[positioned.Cluster] = true
+			advance := missingAdvances[positioned.Cluster]
+			if advance <= 0 {
+				advance = geometry.Em(geometry.EmScale / 2)
+			}
+			ascent := geometry.Em(geometry.EmScale * 3 / 4)
+			descent := geometry.Em(geometry.EmScale / 8)
+			glyph := layout.Glyph{
+				Advance:               advance,
+				Ascent:                ascent,
+				Descent:               descent,
+				AdvanceIncludesItalic: true,
+				TextLike:              true,
+			}
+			if len(run.Glyphs) >= a.limits.MaxOutputItems {
+				return layout.TextRun{}, fmt.Errorf("%w: output item count", layout.ErrLimit)
+			}
+			run.Glyphs = append(run.Glyphs, layout.PositionedGlyph{
+				Glyph:   glyph,
+				At:      layout.Point{X: pen},
+				Cluster: positioned.Cluster,
+				Missing: true,
+			})
+			pen, err = pen.Add(advance)
+			if err != nil {
+				return layout.TextRun{}, err
+			}
+			run.Ascent = maxEm(run.Ascent, ascent)
+			run.Descent = maxEm(run.Descent, descent)
+			continue
 		}
 		info, ok := a.fonts.Face(positioned.Glyph.Face)
 		if !ok {
@@ -182,6 +233,11 @@ func (a *adapter) shapeTextRun(
 	}
 	if len(run.Glyphs) == 0 {
 		return layout.TextRun{}, fmt.Errorf("%w: empty shaped run", layout.ErrMissingGlyph)
+	}
+	for i, cluster := range run.Clusters {
+		if cluster.Missing && !renderedMissing[i] {
+			return layout.TextRun{}, fmt.Errorf("%w: missing cluster has no placeholder", layout.ErrMissingGlyph)
+		}
 	}
 	run.Width = pen
 	return run, nil

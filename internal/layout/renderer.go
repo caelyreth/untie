@@ -166,7 +166,7 @@ func (r *Renderer) layoutFormulaContext(
 		glyphs:              scratch.glyphs,
 		pathCache:           scratch.pathCache,
 		recoverMissingGlyph: options.RecoverMissingGlyph,
-		missingGlyphSpans:   make(map[source.Range]struct{}),
+		missingGlyphKeys:    make(map[missingGlyphDiagnosticKey]struct{}),
 	}
 	defer state.releaseScratch()
 	if preparedStats != nil {
@@ -243,7 +243,12 @@ type layoutState struct {
 	scratch             *layoutScratch
 	recoverMissingGlyph bool
 	diagnostics         []source.Diagnostic
-	missingGlyphSpans   map[source.Range]struct{}
+	missingGlyphKeys    map[missingGlyphDiagnosticKey]struct{}
+}
+
+type missingGlyphDiagnosticKey struct {
+	span source.Range
+	text string
 }
 
 func (s *layoutState) releaseScratch() {
@@ -653,30 +658,35 @@ func (s *layoutState) recordMissingGlyph(node ir.Node, cause error) {
 	if base == nil {
 		return
 	}
-	if _, exists := s.missingGlyphSpans[base.Span]; exists {
+	s.recordMissingGlyphText(base.Span, nodeText(node), cause)
+}
+
+func (s *layoutState) recordMissingGlyphText(span source.Range, text string, cause error) {
+	key := missingGlyphDiagnosticKey{span: span, text: text}
+	if _, exists := s.missingGlyphKeys[key]; exists {
 		return
 	}
-	s.missingGlyphSpans[base.Span] = struct{}{}
-	text := nodeText(node)
-	message := "configured fonts cannot supply the required glyph"
+	s.missingGlyphKeys[key] = struct{}{}
+	message := "missing glyph"
 	args := []string(nil)
 	if text != "" {
-		message = fmt.Sprintf("configured fonts cannot supply glyphs for %q", text)
+		message = fmt.Sprintf("missing glyph: %q", text)
 		args = []string{text}
 	}
+	hints := []string{
+		"Add a fallback font that covers this text or symbol.",
+		"The missing item is drawn as an error-colored box.",
+	}
 	if cause != nil {
-		message += ": " + cause.Error()
+		hints = append(hints, cause.Error())
 	}
 	s.diagnostics = append(s.diagnostics, source.Diagnostic{
-		Range:    base.Span,
+		Range:    span,
 		Severity: source.SeverityError,
 		Code:     source.CodeMissingGlyph,
 		Message:  message,
 		Args:     args,
-		Hints: []string{
-			"Add a fallback font that covers this text or symbol.",
-			"The missing item is drawn as an error-colored box.",
-		},
+		Hints:    hints,
 	})
 }
 

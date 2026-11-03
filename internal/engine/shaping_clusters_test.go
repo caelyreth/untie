@@ -162,14 +162,21 @@ func TestShapeTextMissingGlyphAndLimits(t *testing.T) {
 	t.Parallel()
 
 	adapter := newClusteredShapingAdapter(t, source.Limits{})
-	if _, err := adapter.ShapeText(layout.TextRequest{
+	run, err := adapter.ShapeText(layout.TextRequest{
 		Context: context.Background(),
 		Text:    "😀",
 		Style:   layout.Style{Size: layout.Text},
 		Variant: ir.VariantAuto,
 		Font:    ir.FontText,
-	}); !errors.Is(err, layout.ErrMissingGlyph) {
-		t.Fatalf("missing emoji error = %v, want ErrMissingGlyph", err)
+	})
+	if err != nil {
+		t.Fatalf("missing emoji error = %v", err)
+	}
+	if len(run.Clusters) != 1 || !run.Clusters[0].Missing {
+		t.Fatalf("missing emoji clusters = %#v", run.Clusters)
+	}
+	if len(run.Glyphs) != 1 || !run.Glyphs[0].Missing {
+		t.Fatalf("missing emoji glyphs = %#v", run.Glyphs)
 	}
 
 	limited := newClusteredShapingAdapter(t, source.Limits{MaxOutputItems: 1})
