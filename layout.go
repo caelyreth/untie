@@ -185,7 +185,7 @@ func (e *Engine) layoutRootContext(
 	altLimits Limits,
 	parsed bool,
 	stats ir.Stats,
-	recoverMissingGlyph bool,
+	recoverVisible bool,
 ) (*Box, error) {
 	var box *Box
 	var err error
@@ -196,7 +196,7 @@ func (e *Engine) layoutRootContext(
 			stats,
 			mode,
 			style,
-			recoverMissingGlyph,
+			recoverVisible,
 		)
 	} else {
 		box, err = e.inner.LayoutFormulaWithRecovery(
@@ -204,7 +204,7 @@ func (e *Engine) layoutRootContext(
 			root,
 			mode,
 			style,
-			recoverMissingGlyph,
+			recoverVisible,
 		)
 	}
 	if err != nil {

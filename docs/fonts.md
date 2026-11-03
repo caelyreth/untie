@@ -187,6 +187,11 @@ The reference font set intentionally triggers visible CJK recovery because it
 does not contain a CJK face. Install a fallback face to render the characters
 instead of the placeholder.
 
+The same `RecoveryVisible` policy also converts unsupported layout constructs
+and insufficient stretch data into placeholders. Their diagnostics use
+`CodeUnsupported` and `CodeInsufficientStretch`. Limits, cancellation, invalid
+IR, and internal failures remain hard errors.
+
 ## Recommended Setup
 
 ```go

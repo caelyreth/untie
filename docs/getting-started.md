@@ -74,6 +74,11 @@ func classifyLayoutError(err error) string {
 }
 ```
 
+`RecoveryVisible` is the default, so the missing-glyph, unsupported-layout, and
+insufficient-stretch cases normally return a drawable box plus diagnostics.
+The error classifier above is primarily for `RecoveryStrict` hosts and for hard
+failures such as limits, cancellation, and invalid input.
+
 The order is intentional:
 
 1. Load and validate fonts once.

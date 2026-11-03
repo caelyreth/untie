@@ -89,15 +89,15 @@ func (e *Engine) Layout(ctx context.Context, root ir.Node, mode ir.Mode, style d
 	return e.LayoutFormula(ctx, &ir.Formula{Root: root}, mode, style)
 }
 
-// LayoutWithRecovery lays out root with explicit missing-glyph recovery.
+// LayoutWithRecovery lays out root with explicit visible recovery.
 func (e *Engine) LayoutWithRecovery(
 	ctx context.Context,
 	root ir.Node,
 	mode ir.Mode,
 	style display.Style,
-	recoverMissingGlyph bool,
+	recoverVisible bool,
 ) (*display.Box, error) {
-	return e.LayoutFormulaWithRecovery(ctx, &ir.Formula{Root: root}, mode, style, recoverMissingGlyph)
+	return e.LayoutFormulaWithRecovery(ctx, &ir.Formula{Root: root}, mode, style, recoverVisible)
 }
 
 // LayoutFormula lays out a complete formula, including formula-scoped metadata.
@@ -105,16 +105,15 @@ func (e *Engine) LayoutFormula(ctx context.Context, formula *ir.Formula, mode ir
 	return e.LayoutFormulaWithRecovery(ctx, formula, mode, style, true)
 }
 
-// LayoutFormulaWithRecovery lays out a formula with explicit missing-glyph
-// recovery.
+// LayoutFormulaWithRecovery lays out a formula with explicit visible recovery.
 func (e *Engine) LayoutFormulaWithRecovery(
 	ctx context.Context,
 	formula *ir.Formula,
 	mode ir.Mode,
 	style display.Style,
-	recoverMissingGlyph bool,
+	recoverVisible bool,
 ) (*display.Box, error) {
-	return e.layoutFormula(ctx, formula, ir.Stats{}, mode, style, false, recoverMissingGlyph)
+	return e.layoutFormula(ctx, formula, ir.Stats{}, mode, style, false, recoverVisible)
 }
 
 // LayoutParsedFormula lays out a formula that was structurally validated and
@@ -125,16 +124,16 @@ func (e *Engine) LayoutParsedFormula(ctx context.Context, formula *ir.Formula, s
 }
 
 // LayoutParsedFormulaWithRecovery lays out parser-validated formula IR with
-// explicit missing-glyph recovery.
+// explicit visible recovery.
 func (e *Engine) LayoutParsedFormulaWithRecovery(
 	ctx context.Context,
 	formula *ir.Formula,
 	stats ir.Stats,
 	mode ir.Mode,
 	style display.Style,
-	recoverMissingGlyph bool,
+	recoverVisible bool,
 ) (*display.Box, error) {
-	return e.layoutFormula(ctx, formula, stats, mode, style, true, recoverMissingGlyph)
+	return e.layoutFormula(ctx, formula, stats, mode, style, true, recoverVisible)
 }
 
 func (e *Engine) layoutFormula(
@@ -144,7 +143,7 @@ func (e *Engine) layoutFormula(
 	mode ir.Mode,
 	style display.Style,
 	parsed bool,
-	recoverMissingGlyph bool,
+	recoverVisible bool,
 ) (*display.Box, error) {
 	if e == nil || e.renderer == nil {
 		return nil, fmt.Errorf("%w: nil engine", ErrInvalidInput)
@@ -162,7 +161,7 @@ func (e *Engine) layoutFormula(
 		return nil, fmt.Errorf("%w: nil formula", ErrInvalidInput)
 	}
 	style.Features = append([]string(nil), style.Features...)
-	layoutOptions := layout.LayoutOptions{RecoverMissingGlyph: recoverMissingGlyph}
+	layoutOptions := layout.LayoutOptions{RecoverVisible: recoverVisible}
 	if parsed {
 		return e.renderer.LayoutParsedFormulaContextOptions(ctx, formula, stats, mode, style, layoutOptions)
 	}

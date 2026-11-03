@@ -198,7 +198,7 @@ func TestMissingTextClusterRetainsSourceRange(t *testing.T) {
 		&ir.Formula{Root: text},
 		ir.Inline,
 		testStyle(16),
-		LayoutOptions{RecoverMissingGlyph: true},
+		LayoutOptions{RecoverVisible: true},
 	)
 	if err != nil {
 		t.Fatalf("LayoutFormulaContextOptions() error = %v", err)

@@ -205,23 +205,24 @@ input can still exceed an output budget through repetition or large constructs.
 
 ## Font and Layout Failures
 
-`CodeMissingGlyph` reports an unmapped rune or shaped cluster. With the default
-`RecoveryVisible` mode, layout replaces only the affected item with an
-error-painted placeholder, preserves the rest of the formula, and returns a
-non-nil `Box`. The same diagnostic appears in `RenderResult.Diagnostics` and
-`Box.Diagnostics`.
+With the default `RecoveryVisible` mode, these semantic/font failures become
+error-painted placeholders while the rest of the formula remains drawable:
 
-With `RecoveryStrict`, `ErrMissingGlyph` is returned instead. Add a capable
-fallback face; do not silently substitute a different character. Missing glyph
-metrics or outlines from an already mapped glyph remain a font-integrity
-failure rather than a normal fallback boundary.
+- `CodeMissingGlyph` for an unmapped rune or shaped cluster;
+- `CodeInsufficientStretch` when no variant or assembly reaches the required
+  size;
+- `CodeUnsupported` for a recognized construct the current layout cannot
+  represent.
 
-`ErrInsufficientStretch` means the font has no variant or assembly that reaches
-the required size. Check the primary MATH font and the requested construct.
+The same diagnostics appear in `RenderResult.Diagnostics` and
+`Box.Diagnostics`. With `RecoveryStrict`, the corresponding
+`ErrMissingGlyph`, `ErrInsufficientStretch`, or `ErrUnsupported` is returned
+with a structured `*LayoutError`.
 
-`ErrUnsupported` is a capability boundary, not a corrupt input. Examples
-include unsupported Typst code constructs and Phase 1 equation-tag shapes that
-the presenter cannot place unambiguously.
+Missing metrics or outlines from an already mapped glyph remain a
+font-integrity failure rather than a normal fallback boundary. Cancellation,
+resource limits, malformed IR, and internal invariant failures also remain hard
+errors in both modes.
 
 ## Context and Cancellation
 

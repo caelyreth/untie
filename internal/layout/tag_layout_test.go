@@ -64,8 +64,24 @@ func TestEquationTagLayoutRejectsUnsupportedShapes(t *testing.T) {
 
 	renderer, _, _ := newTestRenderer(t)
 	inline := taggedTestFormula(glyph("x", ir.ClassNormal), tagGlyph("1"))
-	if _, err := renderer.LayoutFormulaContext(context.Background(), inline, ir.Inline, testStyle(16)); !errors.Is(err, ErrUnsupported) {
+	if _, err := renderer.LayoutFormulaContextOptions(
+		context.Background(),
+		inline,
+		ir.Inline,
+		testStyle(16),
+		LayoutOptions{RecoverVisible: false},
+	); !errors.Is(err, ErrUnsupported) {
 		t.Fatalf("inline tag error = %v, want ErrUnsupported", err)
+	}
+	inlineBox, err := renderer.LayoutFormulaContext(context.Background(), inline, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("recovering inline tag error = %v", err)
+	}
+	if inlineBox.Tag != nil {
+		t.Fatalf("recovering inline tag = %+v, want tag omitted", inlineBox.Tag)
+	}
+	if len(inlineBox.Diagnostics) != 1 || inlineBox.Diagnostics[0].Code != source.CodeUnsupported {
+		t.Fatalf("recovering inline tag diagnostics = %+v", inlineBox.Diagnostics)
 	}
 
 	multiline := &ir.Formula{

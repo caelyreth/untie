@@ -538,7 +538,13 @@ func TestLargeOperatorStretchesToWideLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := withoutStretch.Layout(scripts, ir.Display, style); !errors.Is(err, ErrInsufficientStretch) {
+	if _, err := withoutStretch.LayoutFormulaContextOptions(
+		context.Background(),
+		&ir.Formula{Root: scripts},
+		ir.Display,
+		style,
+		LayoutOptions{RecoverVisible: false},
+	); !errors.Is(err, ErrInsufficientStretch) {
 		t.Fatalf("unstretched operator error = %v", err)
 	}
 }

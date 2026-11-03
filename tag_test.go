@@ -2,7 +2,6 @@ package untie
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 
@@ -201,8 +200,21 @@ func TestEquationTagLayoutRejectsInlineButAllowsNestedMultilineValues(t *testing
 		Manual: true,
 		Line:   FormulaTagLine,
 	}}
-	if _, err := engine.Layout(inline, Style{Size: 16}); !errors.Is(err, ErrInvalidStyle) && !strings.Contains(err.Error(), "display mode") {
-		t.Fatalf("inline tag layout error = %v, want display-mode rejection", err)
+	if _, err := engine.LayoutContextWithOptions(
+		context.Background(),
+		inline,
+		Style{Size: 16},
+		LayoutOptions{Recovery: RecoveryStrict},
+	); err == nil || !strings.Contains(err.Error(), "display mode") {
+		t.Fatalf("strict inline tag layout error = %v, want display-mode rejection", err)
+	}
+	inlineBox, err := engine.Layout(inline, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("visible inline tag layout error = %v", err)
+	}
+	if inlineBox.Tag != nil || len(inlineBox.Diagnostics) != 1 ||
+		inlineBox.Diagnostics[0].Code != CodeUnsupported {
+		t.Fatalf("visible inline tag = tag:%+v diagnostics:%+v", inlineBox.Tag, inlineBox.Diagnostics)
 	}
 
 	nested := ParseTeX(`x+\substack{a\\b}\tag{2}`, Display, ParseOptions{})

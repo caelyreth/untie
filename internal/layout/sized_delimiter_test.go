@@ -264,7 +264,7 @@ func TestSizedDelimiterRejectsMalformedInputAndMissingStretch(t *testing.T) {
 	}
 	node := ir.NewSizedDelimiter(source.NewRange(0, 4), "(", relative(150))
 	node.Class = ir.ClassOpening
-	if _, err := noStretch.Layout(node, ir.Inline, testStyle(16)); !errors.Is(err, ErrInsufficientStretch) {
+	if _, err := layoutStrict(noStretch, node, testStyle(16)); !errors.Is(err, ErrInsufficientStretch) {
 		t.Fatalf("Layout() error = %v, want insufficient stretch", err)
 	}
 }

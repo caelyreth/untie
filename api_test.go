@@ -762,8 +762,21 @@ func TestPublicDetachedLayoutErrors(t *testing.T) {
 			Line:   FormulaTagLine,
 		}},
 	}
-	_, err = engine.LayoutFormulaContext(context.Background(), tagged, Inline, Style{Size: 16})
+	_, err = engine.LayoutFormulaContextWithOptions(
+		context.Background(),
+		tagged,
+		Inline,
+		Style{Size: 16},
+		LayoutOptions{Recovery: RecoveryStrict},
+	)
 	requireLayoutError(t, err, ErrUnsupported, LayoutErrorUnsupported, source.Detached())
+	box, err := engine.LayoutFormulaContext(context.Background(), tagged, Inline, Style{Size: 16})
+	if err != nil {
+		t.Fatalf("visible tagged layout error = %v", err)
+	}
+	if box.Tag != nil || len(box.Diagnostics) != 1 || box.Diagnostics[0].Code != CodeUnsupported {
+		t.Fatalf("visible tagged layout = tag:%+v diagnostics:%+v", box.Tag, box.Diagnostics)
+	}
 }
 
 func TestPublicLayoutErrorRangeFallsBackToSpan(t *testing.T) {

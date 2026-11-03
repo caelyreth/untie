@@ -45,7 +45,7 @@ func (s *layoutState) layoutText(node *ir.Text, env environment, depth int) (*Fr
 		if cluster.RuneStart < 0 || cluster.RuneEnd <= cluster.RuneStart || cluster.RuneEnd > len(runes) {
 			return nil, fmt.Errorf("%w: invalid missing text cluster", ErrInvalidInput)
 		}
-		if !s.recoverMissingGlyph {
+		if !s.recoverVisible {
 			return nil, fmt.Errorf(
 				"%w: %q",
 				ErrMissingGlyph,
@@ -56,7 +56,12 @@ func (s *layoutState) layoutText(node *ir.Text, env environment, depth int) (*Fr
 		if len(node.Clusters) > 0 && cluster.Source.IsValid() {
 			span = cluster.Source
 		}
-		s.recordMissingGlyphText(span, string(runes[cluster.RuneStart:cluster.RuneEnd]), nil)
+		s.recordRecoveryDiagnosticText(
+			span,
+			string(runes[cluster.RuneStart:cluster.RuneEnd]),
+			nil,
+			source.CodeMissingGlyph,
+		)
 	}
 	return s.layoutTextRun(run, env, true, node, depth)
 }

@@ -84,9 +84,16 @@ func TestAccentReportsInsufficientStretch(t *testing.T) {
 		body.Items = append(body.Items, glyph("x", ir.ClassNormal))
 	}
 	accent := ir.NewAccent(source.NewRange(0, 1), body, glyph("^", ir.ClassDiacritic), ir.PositionAbove)
-	_, err = renderer.Layout(accent, ir.Inline, testStyle(16))
+	_, err = layoutStrict(renderer, accent, testStyle(16))
 	if !errors.Is(err, ErrUnsupported) || !errors.Is(err, ErrInsufficientStretch) {
 		t.Fatalf("Layout() error = %v, want unsupported insufficient stretch", err)
+	}
+	box, err := renderer.Layout(accent, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("recovering Layout() error = %v", err)
+	}
+	if len(box.Diagnostics) != 1 || box.Diagnostics[0].Code != source.CodeInsufficientStretch {
+		t.Fatalf("recovering diagnostics = %+v", box.Diagnostics)
 	}
 }
 
@@ -131,13 +138,27 @@ func TestDelimiterAndRadicalReportInsufficientStretch(t *testing.T) {
 	fenced.Open = glyph("(", ir.ClassOpening)
 	fenced.Close = glyph(")", ir.ClassClosing)
 	fenced.Balanced = true
-	if _, err := renderer.Layout(fenced, ir.Inline, testStyle(16)); !errors.Is(err, ErrInsufficientStretch) {
+	if _, err := layoutStrict(renderer, fenced, testStyle(16)); !errors.Is(err, ErrInsufficientStretch) {
 		t.Fatalf("fenced stretch error = %v", err)
+	}
+	fencedBox, err := renderer.Layout(fenced, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("recovering fenced error = %v", err)
+	}
+	if len(fencedBox.Diagnostics) != 1 || fencedBox.Diagnostics[0].Code != source.CodeInsufficientStretch {
+		t.Fatalf("fenced diagnostics = %+v", fencedBox.Diagnostics)
 	}
 
 	radical := ir.NewRadical(source.NewRange(0, 1), glyph("T", ir.ClassNormal), nil)
-	if _, err := renderer.Layout(radical, ir.Inline, testStyle(16)); !errors.Is(err, ErrInsufficientStretch) {
+	if _, err := layoutStrict(renderer, radical, testStyle(16)); !errors.Is(err, ErrInsufficientStretch) {
 		t.Fatalf("radical stretch error = %v", err)
+	}
+	radicalBox, err := renderer.Layout(radical, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("recovering radical error = %v", err)
+	}
+	if len(radicalBox.Diagnostics) != 1 || radicalBox.Diagnostics[0].Code != source.CodeInsufficientStretch {
+		t.Fatalf("radical diagnostics = %+v", radicalBox.Diagnostics)
 	}
 }
 

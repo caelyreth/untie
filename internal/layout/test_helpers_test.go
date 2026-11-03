@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -342,6 +343,16 @@ func newTestRenderer(t testing.TB) (*Renderer, *fakeGlyphSource, *fakeStretcher)
 		t.Fatalf("New() error = %v", err)
 	}
 	return renderer, glyphs, stretcher
+}
+
+func layoutStrict(renderer *Renderer, node ir.Node, style display.Style) (*display.Box, error) {
+	return renderer.LayoutFormulaContextOptions(
+		context.Background(),
+		&ir.Formula{Root: node},
+		ir.Inline,
+		style,
+		LayoutOptions{RecoverVisible: false},
+	)
 }
 
 func em(n, d int64) geometry.Em {

@@ -30,14 +30,24 @@ The MyGo adapter is a bridge, not a second owner of Untie's math font state.
 
 The default layout recovery mode is `RecoveryVisible`.
 
-- A missing glyph or shaped cluster becomes an error-painted placeholder.
+- A missing glyph or shaped cluster becomes an error-painted placeholder with
+  `CodeMissingGlyph`.
+- An unsupported layout construct becomes a placeholder with
+  `CodeUnsupported`.
+- A delimiter or accent that exceeds the font's stretch data becomes a
+  placeholder with `CodeInsufficientStretch`.
 - The remainder of the formula keeps its normal geometry and draw order.
 - `Box.Diagnostics` and `RenderResult.Diagnostics` identify
-  `CodeMissingGlyph` and its source range.
+  the recoverable problem and its source range.
 - A host that requires a complete font match can select `RecoveryStrict`.
 
 Recovery happens in layout because glyph coverage depends on the prepared font
 set. The canonical IR is never rewritten with font-specific placeholders.
+Empty source produces a stable placeholder-sized root with a clickable hit.
+
+Cancellation, resource limits, malformed IR, and internal invariant failures
+remain hard errors. Visible recovery must not hide work that did not complete
+or output that violates the display contract.
 
 ## Text And Math Are Different
 

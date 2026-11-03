@@ -495,6 +495,46 @@ func TestRenderLayoutCancellationProducesDiagnostic(t *testing.T) {
 	}
 }
 
+func TestEmptySourceProducesClickablePlaceholder(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	for _, dialect := range []Dialect{TeX, Typst} {
+		for _, mode := range []Mode{Inline, Display} {
+			result, err := renderer.Render(context.Background(), "", RenderRequest{
+				Dialect: dialect,
+				Mode:    mode,
+				Style:   Style{Size: 16},
+			})
+			if err != nil || result == nil || result.Box == nil {
+				t.Fatalf("Render(%d,%d) = %#v, %v", dialect, mode, result, err)
+			}
+			box := result.Box
+			if box.Width <= 0 || box.Ascent <= 0 || box.Descent < 0 {
+				t.Fatalf("empty box metrics = %+v", box)
+			}
+			if len(result.Diagnostics) != 0 || len(box.Diagnostics) != 0 {
+				t.Fatalf("empty diagnostics = %+v / %+v", result.Diagnostics, box.Diagnostics)
+			}
+			if len(box.Items) != 4 {
+				t.Fatalf("empty items = %+v, want four placeholder rules", box.Items)
+			}
+			for _, item := range box.Items {
+				if item.Kind != display.ItemRule || item.Paint.Role != display.RolePlaceholder {
+					t.Fatalf("empty item = %+v, want placeholder rule", item)
+				}
+			}
+			hit, ok := box.At(Point{X: box.Width / 2, Y: (-box.Ascent + box.Descent) / 2})
+			if !ok || hit.Area.Width <= 0 || hit.Area.Height <= 0 {
+				t.Fatalf("empty hit = %+v, %v", hit, ok)
+			}
+		}
+	}
+}
+
 func TestRendererCacheHitEvictionAndEffectiveKey(t *testing.T) {
 	t.Parallel()
 

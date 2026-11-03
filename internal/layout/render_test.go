@@ -390,7 +390,7 @@ func TestGlyphRefsAndMissingGlyph(t *testing.T) {
 		&ir.Formula{Root: glyph("missing", ir.ClassNormal)},
 		ir.Inline,
 		testStyle(16),
-		LayoutOptions{RecoverMissingGlyph: true},
+		LayoutOptions{RecoverVisible: true},
 	)
 	if err != nil {
 		t.Fatalf("recovering Layout() error = %v", err)
@@ -405,6 +405,57 @@ func TestGlyphRefsAndMissingGlyph(t *testing.T) {
 		if item.Kind != display.ItemRule || item.Paint.Role != display.RoleError {
 			t.Fatalf("recovering item = %+v, want error-role rule", item)
 		}
+	}
+}
+
+func TestVisibleRecoveryForUnsupportedLayout(t *testing.T) {
+	t.Parallel()
+
+	glyphs := &fakeGlyphSource{glyphs: map[string]Glyph{
+		"x": testGlyph("x", em(1, 2)),
+		"y": testGlyph("y", em(1, 2)),
+	}}
+	renderer, err := New(Fonts{Glyphs: glyphs, Metrics: fakeStyleFont{}}, Options{})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	operator := ir.NewOperator(source.NewRange(1, 4), "abc")
+	row := ir.NewRow(source.NewRange(0, 5),
+		glyph("x", ir.ClassNormal),
+		operator,
+		glyph("y", ir.ClassNormal),
+	)
+	strictBox, err := renderer.LayoutFormulaContextOptions(
+		context.Background(),
+		&ir.Formula{Root: row},
+		ir.Inline,
+		testStyle(16),
+		LayoutOptions{RecoverVisible: false},
+	)
+	if !errors.Is(err, ErrUnsupported) || strictBox != nil {
+		t.Fatalf("strict layout = %#v, %v; want unsupported error", strictBox, err)
+	}
+
+	box, err := renderer.Layout(row, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("recovering Layout() error = %v", err)
+	}
+	if len(box.Diagnostics) != 1 ||
+		box.Diagnostics[0].Code != source.CodeUnsupported ||
+		box.Diagnostics[0].Range != operator.Span {
+		t.Fatalf("recovering diagnostics = %+v", box.Diagnostics)
+	}
+	if len(box.Items) != 6 {
+		t.Fatalf("recovering items = %d, want two glyphs and four placeholder rules", len(box.Items))
+	}
+	placeholderRules := 0
+	for _, item := range box.Items {
+		if item.Kind == display.ItemRule && item.Paint.Role == display.RoleError {
+			placeholderRules++
+		}
+	}
+	if placeholderRules != 4 {
+		t.Fatalf("placeholder rules = %d, items = %+v", placeholderRules, box.Items)
 	}
 }
 

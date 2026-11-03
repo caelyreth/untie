@@ -214,7 +214,9 @@ func diagnosticForLayoutError(err error) (source.Diagnostic, bool) {
 	switch layoutErr.Kind {
 	case LayoutErrorMissingGlyph:
 		code = source.CodeMissingGlyph
-	case LayoutErrorUnsupported, LayoutErrorInsufficientStretch:
+	case LayoutErrorInsufficientStretch:
+		code = source.CodeInsufficientStretch
+	case LayoutErrorUnsupported:
 		code = source.CodeUnsupported
 	case LayoutErrorLimit:
 		code = source.CodeLimitExceeded

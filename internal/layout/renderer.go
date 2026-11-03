@@ -24,7 +24,7 @@ type Options struct {
 
 // LayoutOptions controls recoverable behavior for one layout call.
 type LayoutOptions struct {
-	RecoverMissingGlyph bool
+	RecoverVisible bool
 }
 
 // Renderer is an immutable layout engine. It is safe for concurrent use if its
@@ -59,7 +59,7 @@ func (r *Renderer) Layout(root ir.Node, mode ir.Mode, style display.Style) (*dis
 // limits.
 func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode, style display.Style) (*display.Box, error) {
 	return r.LayoutFormulaContextOptions(ctx, &ir.Formula{Root: root}, mode, style, LayoutOptions{
-		RecoverMissingGlyph: true,
+		RecoverVisible: true,
 	})
 }
 
@@ -67,7 +67,7 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 // deterministic resource limits.
 func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
 	return r.LayoutFormulaContextOptions(ctx, formula, mode, style, LayoutOptions{
-		RecoverMissingGlyph: true,
+		RecoverVisible: true,
 	})
 }
 
@@ -88,7 +88,7 @@ func (r *Renderer) LayoutFormulaContextOptions(
 // final output invariants are still enforced.
 func (r *Renderer) LayoutParsedFormulaContext(ctx context.Context, formula *ir.Formula, stats ir.Stats, mode ir.Mode, style display.Style) (*display.Box, error) {
 	return r.LayoutParsedFormulaContextOptions(ctx, formula, stats, mode, style, LayoutOptions{
-		RecoverMissingGlyph: true,
+		RecoverVisible: true,
 	})
 }
 
@@ -152,21 +152,21 @@ func (r *Renderer) layoutFormulaContext(
 	metrics := r.fonts.Metrics.MathMetrics(rootStyle, ir.VariantAuto).normalized()
 	scratch := r.scratchPool.acquire()
 	state := &layoutState{
-		ctx:                 ctx,
-		renderer:            r,
-		request:             style,
-		mode:                mode,
-		rootStyle:           rootStyle,
-		metrics:             metrics,
-		hostSize:            hostSize,
-		limits:              r.limits,
-		scratchPool:         r.scratchPool,
-		scratch:             scratch,
-		fragments:           scratch.fragments,
-		glyphs:              scratch.glyphs,
-		pathCache:           scratch.pathCache,
-		recoverMissingGlyph: options.RecoverMissingGlyph,
-		missingGlyphKeys:    make(map[missingGlyphDiagnosticKey]struct{}),
+		ctx:            ctx,
+		renderer:       r,
+		request:        style,
+		mode:           mode,
+		rootStyle:      rootStyle,
+		metrics:        metrics,
+		hostSize:       hostSize,
+		limits:         r.limits,
+		scratchPool:    r.scratchPool,
+		scratch:        scratch,
+		fragments:      scratch.fragments,
+		glyphs:         scratch.glyphs,
+		pathCache:      scratch.pathCache,
+		recoverVisible: options.RecoverVisible,
+		diagnosticKeys: make(map[recoveryDiagnosticKey]struct{}),
 	}
 	defer state.releaseScratch()
 	if preparedStats != nil {
@@ -179,13 +179,24 @@ func (r *Renderer) layoutFormulaContext(
 		Font:     ir.FontMath,
 		Features: append([]string(nil), style.Features...),
 	}
-	rootFragment, err := state.layoutNode(root, env, 0)
+	var rootFragment *Fragment
+	if isEmptyRoot(root) {
+		rootFragment, err = state.layoutEmptyRoot(root, env)
+	} else {
+		rootFragment, err = state.layoutNode(root, env, 0)
+	}
 	if err != nil {
 		return nil, err
 	}
 	tag, err := state.prepareSingleLineTag(formula.Tags, env)
 	if err != nil {
-		return nil, err
+		code, recoverable := recoveryDiagnosticCode(err)
+		if !state.recoverVisible || !recoverable {
+			return nil, err
+		}
+		span, text := tagRecoverySource(formula.Tags)
+		state.recordRecoveryDiagnosticText(span, text, err, code)
+		tag = nil
 	}
 	var box *display.Box
 	if tag != nil {
@@ -224,31 +235,53 @@ func (r *Renderer) layoutFormulaContext(
 	return box, nil
 }
 
-type layoutState struct {
-	ctx                 context.Context
-	renderer            *Renderer
-	request             display.Style
-	mode                ir.Mode
-	rootStyle           Style
-	metrics             MathMetrics
-	hostSize            int64
-	limits              source.Limits
-	nodes               int
-	pathSegments        int
-	plannedOutput       int
-	fragments           fragmentArena
-	glyphs              glyphArena
-	pathCache           flattenPathCache
-	scratchPool         *layoutScratchPool
-	scratch             *layoutScratch
-	recoverMissingGlyph bool
-	diagnostics         []source.Diagnostic
-	missingGlyphKeys    map[missingGlyphDiagnosticKey]struct{}
+func tagRecoverySource(tags []ir.EquationTag) (source.Range, string) {
+	span := source.Detached()
+	for i := range tags {
+		if tags[i].Suppressed {
+			continue
+		}
+		if !span.IsValid() || span.IsDetached() {
+			span = tags[i].Span
+		}
+	}
+	if !span.IsValid() || span.IsDetached() {
+		return source.NewRange(0, 0), "equation tag"
+	}
+	return span, "equation tag"
 }
 
-type missingGlyphDiagnosticKey struct {
+type layoutState struct {
+	ctx            context.Context
+	renderer       *Renderer
+	request        display.Style
+	mode           ir.Mode
+	rootStyle      Style
+	metrics        MathMetrics
+	hostSize       int64
+	limits         source.Limits
+	nodes          int
+	pathSegments   int
+	plannedOutput  int
+	fragments      fragmentArena
+	glyphs         glyphArena
+	pathCache      flattenPathCache
+	scratchPool    *layoutScratchPool
+	scratch        *layoutScratch
+	recoverVisible bool
+	diagnostics    []source.Diagnostic
+	diagnosticKeys map[recoveryDiagnosticKey]struct{}
+}
+
+type recoveryDiagnosticKey struct {
 	span source.Range
+	code source.Code
 	text string
+}
+
+func isEmptyRoot(node ir.Node) bool {
+	row, ok := node.(*ir.Row)
+	return ok && len(row.Items) == 0
 }
 
 func (s *layoutState) releaseScratch() {
@@ -556,12 +589,15 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 		return nil, err
 	}
 	defer func() {
-		if err != nil && s.recoverMissingGlyph && errors.Is(err, ErrMissingGlyph) {
-			s.recordMissingGlyph(n, err)
-			replacement, recoveryErr := s.layoutMissingGlyph(n, env)
-			if recoveryErr == nil {
-				fragment = replacement
-				err = nil
+		if err != nil && s.recoverVisible {
+			code, recoverable := recoveryDiagnosticCode(err)
+			if recoverable {
+				s.recordRecoveryDiagnostic(n, err, code)
+				replacement, recoveryErr := s.layoutRecoveryPlaceholder(n, env)
+				if recoveryErr == nil {
+					fragment = replacement
+					err = nil
+				}
 			}
 		}
 		if err == nil && fragment != nil {
@@ -653,29 +689,56 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 	}
 }
 
-func (s *layoutState) recordMissingGlyph(node ir.Node, cause error) {
+func recoveryDiagnosticCode(err error) (source.Code, bool) {
+	switch {
+	case errors.Is(err, ErrMissingGlyph):
+		return source.CodeMissingGlyph, true
+	case errors.Is(err, ErrInsufficientStretch):
+		return source.CodeInsufficientStretch, true
+	case errors.Is(err, ErrUnsupported):
+		return source.CodeUnsupported, true
+	default:
+		return "", false
+	}
+}
+
+func (s *layoutState) recordRecoveryDiagnostic(node ir.Node, cause error, code source.Code) {
 	base := node.NodeBase()
 	if base == nil {
 		return
 	}
-	s.recordMissingGlyphText(base.Span, nodeText(node), cause)
+	s.recordRecoveryDiagnosticText(base.Span, nodeText(node), cause, code)
 }
 
-func (s *layoutState) recordMissingGlyphText(span source.Range, text string, cause error) {
-	key := missingGlyphDiagnosticKey{span: span, text: text}
-	if _, exists := s.missingGlyphKeys[key]; exists {
+func (s *layoutState) recordRecoveryDiagnosticText(
+	span source.Range,
+	text string,
+	cause error,
+	code source.Code,
+) {
+	key := recoveryDiagnosticKey{span: span, code: code, text: text}
+	if _, exists := s.diagnosticKeys[key]; exists {
 		return
 	}
-	s.missingGlyphKeys[key] = struct{}{}
-	message := "missing glyph"
+	s.diagnosticKeys[key] = struct{}{}
+
+	message := string(code)
+	hints := []string{"The recoverable item is drawn as an error-colored box."}
+	switch code {
+	case source.CodeMissingGlyph:
+		message = "missing glyph"
+		hints = append([]string{"Add a fallback font that covers this text or symbol."}, hints...)
+	case source.CodeInsufficientStretch:
+		message = "insufficient stretch"
+		hints = append([]string{"Add a font with a larger stretchy variant or assembly."}, hints...)
+	case source.CodeUnsupported:
+		message = "unsupported layout"
+		hints = append([]string{"Simplify or rewrite this construct for the current renderer."}, hints...)
+	}
 	args := []string(nil)
 	if text != "" {
-		message = fmt.Sprintf("missing glyph: %q", text)
+		message = fmt.Sprintf("%s: %q", message, text)
 		args = []string{text}
-	}
-	hints := []string{
-		"Add a fallback font that covers this text or symbol.",
-		"The missing item is drawn as an error-colored box.",
 	}
 	if cause != nil {
 		hints = append(hints, cause.Error())
@@ -683,14 +746,14 @@ func (s *layoutState) recordMissingGlyphText(span source.Range, text string, cau
 	s.diagnostics = append(s.diagnostics, source.Diagnostic{
 		Range:    span,
 		Severity: source.SeverityError,
-		Code:     source.CodeMissingGlyph,
+		Code:     code,
 		Message:  message,
 		Args:     args,
 		Hints:    hints,
 	})
 }
 
-func (s *layoutState) layoutMissingGlyph(node ir.Node, env environment) (*Fragment, error) {
+func (s *layoutState) layoutRecoveryPlaceholder(node ir.Node, env environment) (*Fragment, error) {
 	fragment, err := s.layoutMissingFragment(env, ir.Paint{Role: ir.PaintError})
 	if err != nil {
 		return nil, err
@@ -698,6 +761,20 @@ func (s *layoutState) layoutMissingGlyph(node ir.Node, env environment) (*Fragme
 	base := node.NodeBase()
 	if base != nil {
 		fragment = withClass(fragment, base.Class)
+	}
+	return fragment, nil
+}
+
+func (s *layoutState) layoutEmptyRoot(node ir.Node, env environment) (*Fragment, error) {
+	fragment, err := s.layoutMissingFragment(env, ir.Paint{Role: ir.PaintPlaceholder})
+	if err != nil {
+		return nil, err
+	}
+	if base := node.NodeBase(); base != nil {
+		fragment = withClass(fragment, base.Class)
+	}
+	if err := s.attachNodeHit(fragment, node, 0); err != nil {
+		return nil, err
 	}
 	return fragment, nil
 }
