@@ -60,7 +60,6 @@ await run(
   [
     wasmOpt,
     '--enable-bulk-memory',
-    '--enable-bulk-memory-opt',
     '--enable-nontrapping-float-to-int',
     '--enable-sign-ext',
     '-Oz',
