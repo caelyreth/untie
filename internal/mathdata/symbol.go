@@ -120,6 +120,11 @@ type TypstSymbol struct {
 	Deprecation string
 }
 
+type negatedRelation struct {
+	base    string
+	negated string
+}
+
 // LookupTeXSymbol returns metadata for a TeX command such as \alpha.
 func LookupTeXSymbol(command string) (TeXSymbol, bool) {
 	return lookupTeXSymbol(command)
@@ -137,4 +142,10 @@ func LookupTypstSymbolVariant(name, modifier string) (TypstSymbol, bool) {
 		return lookupTypstSymbol(name)
 	}
 	return lookupTypstSymbol(name + "." + modifier)
+}
+
+// LookupNegatedRelation returns the precomposed Unicode relation whose visual
+// semantics are the base relation plus a negation stroke.
+func LookupNegatedRelation(base string) (string, bool) {
+	return lookupNegatedRelation(base)
 }

@@ -161,19 +161,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		"\\mathinner", "\\mathord", "\\mathop":
 		return p.parseMathClass(t)
 	case "\\not":
-		body := p.parseRequiredArgument(t)
-		cancel := &astCancelNode{
-			astBase: newASTBaseAt(astCancel, source.Merge(t.span, body.base().span), tokenOrigin(t)),
-			body:    body,
-			role:    ir.CancelRoleNegation,
-		}
-		return &astClassNode{
-			astBase:   newASTBaseAt(astClass, cancel.span, tokenOrigin(t)),
-			body:      cancel,
-			class:     ir.ClassRelation,
-			limits:    ir.LimitsNever,
-			setLimits: true,
-		}
+		return p.parseNot(t)
 	case "\\dblcolon", "\\coloncolon":
 		return p.parseCompositeRelation(t, "∷")
 	case "\\coloneqq", "\\colonequals":
@@ -435,6 +423,39 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		})
 	}
 	return astErr(t.span, t.text, source.CodeUnknownCommand)
+}
+
+func (p *parser) parseNot(command token) astNode {
+	parsedBody := p.parseRequiredArgument(command)
+	span := source.Merge(command.span, parsedBody.base().span)
+	body := compactAST(parsedBody)
+	// Prefer canonical Unicode negation over a generic cancellation overlay.
+	if glyph, ok := body.(*astGlyphNode); ok {
+		if negated, ok := mathdata.LookupNegatedRelation(glyph.text); ok {
+			return p.astGlyphSpec(
+				span,
+				source.Merge(tokenOrigin(command), glyph.origin),
+				symbolSpec{
+					text:    negated,
+					class:   ir.ClassRelation,
+					variant: glyph.variant,
+					limits:  glyph.limits,
+				},
+			)
+		}
+	}
+	cancel := &astCancelNode{
+		astBase: newASTBaseAt(astCancel, span, tokenOrigin(command)),
+		body:    body,
+		role:    ir.CancelRoleNegation,
+	}
+	return &astClassNode{
+		astBase:   newASTBaseAt(astClass, span, tokenOrigin(command)),
+		body:      cancel,
+		class:     ir.ClassRelation,
+		limits:    ir.LimitsNever,
+		setLimits: true,
+	}
 }
 
 func (p *parser) parseBeginGroup(command token) astNode {

@@ -32,6 +32,16 @@ func lookupTypstSymbol(path string) (TypstSymbol, bool) {
 	return TypstSymbol{}, false
 }
 
+func lookupNegatedRelation(base string) (string, bool) {
+	i := sort.Search(len(negatedRelations), func(i int) bool {
+		return negatedRelations[i].base >= base
+	})
+	if i < len(negatedRelations) && negatedRelations[i].base == base {
+		return negatedRelations[i].negated, true
+	}
+	return "", false
+}
+
 func lookupTypstShorthand(text string) (TypstShorthand, bool) {
 	i := sort.Search(len(typstShorthands), func(i int) bool {
 		return typstShorthands[i].Syntax >= text

@@ -436,6 +436,46 @@ func TestTypstSymbolTableShape(t *testing.T) {
 	}
 }
 
+func TestNegatedRelations(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"=": "≠",
+		"∈": "∉",
+		"≤": "≰",
+		"≡": "≢",
+		"⊆": "⊈",
+		"→": "↛",
+		"∼": "≁",
+		"⇔": "⇎",
+	}
+	for base, want := range tests {
+		got, ok := LookupNegatedRelation(base)
+		if !ok || got != want {
+			t.Errorf("LookupNegatedRelation(%q) = (%q, %t), want (%q, true)", base, got, ok, want)
+		}
+	}
+	if _, ok := LookupNegatedRelation("∉"); ok {
+		t.Fatal("already-negated relation mapped again")
+	}
+}
+
+func TestNegatedRelationTableShape(t *testing.T) {
+	t.Parallel()
+
+	if got := len(negatedRelations); got != 43 {
+		t.Fatalf("negated relations = %d, want 43", got)
+	}
+	for i, pair := range negatedRelations {
+		if i > 0 && negatedRelations[i-1].base >= pair.base {
+			t.Fatalf("negated relations are not strictly sorted at %d", i)
+		}
+		if len([]rune(pair.base)) != 1 || len([]rune(pair.negated)) != 1 || pair.base == pair.negated {
+			t.Fatalf("invalid negated relation at %d: %#v", i, pair)
+		}
+	}
+}
+
 func TestTypstShorthands(t *testing.T) {
 	t.Parallel()
 

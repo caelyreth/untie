@@ -85,9 +85,13 @@ func TestStackrelNotAndStructuralBracesUseKaTeXClasses(t *testing.T) {
 		t.Fatalf("stackrel class/limits = %v/%v, want relation/always", stackrel.Class, stackrel.Limits)
 	}
 
-	not := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\not=`, Options{}).Root)[0])
-	if not.Class != ir.ClassRelation || not.Body.NodeBase().Class != ir.ClassRelation {
-		t.Fatalf("not classes = %v/%v, want relation/relation", not.Class, not.Body.NodeBase().Class)
+	not := requireKind[*ir.Glyph](t, rowItems(t, parseTest(t, `\not=`, Options{}).Root)[0])
+	if not.Text != "≠" || not.Class != ir.ClassRelation {
+		t.Fatalf("not glyph = %q/%v, want ≠/relation", not.Text, not.Class)
+	}
+	fallback := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\not\between`, Options{}).Root)[0])
+	if fallback.Class != ir.ClassRelation || fallback.Body.NodeBase().Class != ir.ClassRelation {
+		t.Fatalf("not fallback classes = %v/%v, want relation/relation", fallback.Class, fallback.Body.NodeBase().Class)
 	}
 
 	for _, source := range []string{`\overbrace{x}`, `\underbrace{x}`, `\overbracket{x}`, `\underbracket{x}`} {
@@ -156,13 +160,60 @@ func TestSemanticRolesComeFromTeXSyntax(t *testing.T) {
 		t.Fatalf("cases role = %v", cases.Role)
 	}
 
-	not := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\not=`, Options{}).Root)[0])
+	not := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\not\between`, Options{}).Root)[0])
 	if not.Role != ir.CancelRoleNegation {
 		t.Fatalf("not role = %v", not.Role)
 	}
 	cancel := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, `\cancel{x}`, Options{}).Root)[0])
 	if cancel.Role != ir.CancelRoleStrike {
 		t.Fatalf("cancel role = %v", cancel.Role)
+	}
+}
+
+func TestNotPrefersSemanticNegatedRelations(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		`\not=`:           "≠",
+		`\not{=}`:         "≠",
+		`\not\equiv`:      "≢",
+		`\not\exists`:     "∄",
+		`\not\in`:         "∉",
+		`\not\leq`:        "≰",
+		`\not\sim`:        "≁",
+		`\not\subseteq`:   "⊈",
+		`\not\rightarrow`: "↛",
+	}
+	for source, want := range tests {
+		source, want := source, want
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			node := requireKind[*ir.Glyph](t, rowItems(t, parseTest(t, source, Options{}).Root)[0])
+			if node.Text != want || node.Class != ir.ClassRelation {
+				t.Fatalf("not glyph = %q/%v, want %q/relation", node.Text, node.Class, want)
+			}
+		})
+	}
+}
+
+func TestCancelCommandsSetStrokeMode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		source   string
+		cross    bool
+		inverted bool
+	}{
+		{source: `\cancel{x}`},
+		{source: `\bcancel{x}`, inverted: true},
+		{source: `\xcancel{x}`, cross: true},
+	}
+	for _, test := range tests {
+		node := requireKind[*ir.Cancel](t, rowItems(t, parseTest(t, test.source, Options{}).Root)[0])
+		if node.Cross != test.cross || node.Inverted != test.inverted {
+			t.Errorf("%s cross/inverted = %t/%t, want %t/%t",
+				test.source, node.Cross, node.Inverted, test.cross, test.inverted)
+		}
 	}
 }
 

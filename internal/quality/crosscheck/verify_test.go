@@ -81,6 +81,45 @@ func TestRepeatedGlyphRun(t *testing.T) {
 	}
 }
 
+func TestTeXNotMatchesTypstPrecomposedNegations(t *testing.T) {
+	root, _ := crosscheckPaths(t)
+	harness := testHarness(t, root)
+	texRoot := requireValidRoot(t, untie.ParseTeX(
+		`a \not\equiv b, c \not\leq d, e \not\in f`,
+		ir.Inline,
+		untie.ParseOptions{},
+	))
+	typstRoot := requireValidRoot(t, untie.ParseTypst(
+		`a equiv.not b, c lt.eq.not d, e in.not f`,
+		ir.Inline,
+		untie.ParseOptions{},
+	))
+
+	texSemantic, err := normalizeFormula(texRoot, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typstSemantic, err := normalizeFormula(typstRoot, ir.Inline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareSemantic(texSemantic, typstSemantic); difference != nil {
+		t.Fatalf("semantic mismatch: %v", difference)
+	}
+
+	texBox, err := harness.layout(t.Context(), texRoot.Root, ir.Inline, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typstBox, err := harness.layout(t.Context(), typstRoot.Root, ir.Inline, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareOutputs(texBox, typstBox); difference != "" {
+		t.Fatalf("layout mismatch: %s", difference)
+	}
+}
+
 func TestSemanticNormalizationRejectsMaterialDifference(t *testing.T) {
 	superscript := requireValidRoot(t, untie.ParseTeX(`x^2`, ir.Inline, untie.ParseOptions{}))
 	subscript := requireValidRoot(t, untie.ParseTeX(`x_2`, ir.Inline, untie.ParseOptions{}))

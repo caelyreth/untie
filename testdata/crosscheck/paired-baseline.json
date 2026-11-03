@@ -437,8 +437,8 @@
       "index": 58,
       "category": "symbols",
       "kind": "semantic-ir-mismatch",
-      "detail": "root[1].body: expected {\"class\":\"relation\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"text\",\"text\":\"≡\",\"variant\":\"normal-or-auto\"}, got \u003cabsent\u003e",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root[4].amount: expected null, got \u003cabsent\u003e",
+      "reason": "Reviewed remaining source-spacing difference: TeX `\\ ` is an explicit Space node while Typst named `space` is a class-space glyph; both now lower the negated relations to the same precomposed glyphs."
     },
     {
       "id": "xarrow",

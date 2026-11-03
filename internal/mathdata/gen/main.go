@@ -87,6 +87,16 @@ type typstSymbol struct {
 	deprecation string
 }
 
+type negationPair struct {
+	base    string
+	negated string
+}
+
+var negatedRelationBaseAliases = map[string]string{
+	// Typlet exposes the relation form as `tilde.op`, not a bare `tilde` path.
+	"tilde.not": "tilde.op",
+}
+
 type shorthand struct {
 	syntax string
 	value  string
@@ -194,6 +204,10 @@ func run(sources, out string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", typletSymbolPath, err)
 	}
+	negations, err := parseNegatedRelations(tsymbols)
+	if err != nil {
+		return fmt.Errorf("%s: %w", typletSymbolPath, err)
+	}
 
 	files := []struct {
 		name    string
@@ -219,6 +233,11 @@ func run(sources, out string) error {
 			name:    "typst_generated.go",
 			sources: []sourceRef{typletSymRef, typstSyntaxRef},
 			body:    generateTypst(tsymbols, shorthands),
+		},
+		{
+			name:    "negation_generated.go",
+			sources: []sourceRef{typletSymRef},
+			body:    generateNegatedRelations(negations),
 		},
 		{
 			name:    "operator_generated.go",
@@ -971,6 +990,46 @@ func generateVariants(infos []variantInfo, exceptions []variantException, extras
 	return b.String()
 }
 
+func parseNegatedRelations(symbols []typstSymbol) ([]negationPair, error) {
+	byPath := make(map[string]typstSymbol, len(symbols))
+	for _, symbol := range symbols {
+		byPath[symbol.path] = symbol
+	}
+	byBase := make(map[string]string)
+	for _, symbol := range symbols {
+		if !strings.HasSuffix(symbol.path, ".not") {
+			continue
+		}
+		basePath := strings.TrimSuffix(symbol.path, ".not")
+		if alias, ok := negatedRelationBaseAliases[symbol.path]; ok {
+			basePath = alias
+		}
+		base, ok := byPath[basePath]
+		if !ok {
+			continue
+		}
+		if utf8.RuneCountInString(base.value) != 1 || utf8.RuneCountInString(symbol.value) != 1 {
+			continue
+		}
+		if base.value == symbol.value {
+			continue
+		}
+		if previous, ok := byBase[base.value]; ok && previous != symbol.value {
+			return nil, fmt.Errorf("negated relation %q is both %q and %q", base.value, previous, symbol.value)
+		}
+		byBase[base.value] = symbol.value
+	}
+	if len(byBase) == 0 {
+		return nil, errors.New("no Typst negated relations found")
+	}
+	out := make([]negationPair, 0, len(byBase))
+	for base, negated := range byBase {
+		out = append(out, negationPair{base: base, negated: negated})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].base < out[j].base })
+	return out, nil
+}
+
 func generateTeXSymbols(symbols []texSymbol) string {
 	var b strings.Builder
 	b.WriteString("var texSymbols = [...]TeXSymbol{\n")
@@ -979,6 +1038,17 @@ func generateTeXSymbols(symbols []texSymbol) string {
 			"\t{Command: %s, Text: %s, Class: Class%s, Group: TeXGroup%s, Font: TeXFont%s, AcceptUnicode: %t, Kind: TeXSymbol%s, SourceGlyph: 0x%04x},\n",
 			strconv.Quote(symbol.command), strconv.Quote(symbol.text), symbol.class,
 			symbol.group, symbol.font, symbol.acceptUnicode, symbol.kind, symbol.sourceGlyph)
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func generateNegatedRelations(pairs []negationPair) string {
+	var b strings.Builder
+	b.WriteString("var negatedRelations = [...]negatedRelation{\n")
+	for _, pair := range pairs {
+		fmt.Fprintf(&b, "\t{base: %s, negated: %s},\n",
+			strconv.Quote(pair.base), strconv.Quote(pair.negated))
 	}
 	b.WriteString("}\n")
 	return b.String()

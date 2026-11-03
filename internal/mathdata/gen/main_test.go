@@ -132,6 +132,48 @@ impl MathShorthand<'_> {
 	}
 }
 
+func TestParseNegatedRelations(t *testing.T) {
+	t.Parallel()
+
+	symbols := []typstSymbol{
+		{path: "arrow.r", value: "→"},
+		{path: "arrow.r.not", value: "↛"},
+		{path: "eq", value: "="},
+		{path: "eq.not", value: "≠"},
+		{path: "eq.triple", value: "≡"},
+		{path: "eq.triple.not", value: "≢"},
+		{path: "tilde.op", value: "∼"},
+		{path: "tilde.not", value: "≁"},
+	}
+	got, err := parseNegatedRelations(symbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []negationPair{
+		{base: "=", negated: "≠"},
+		{base: "→", negated: "↛"},
+		{base: "∼", negated: "≁"},
+		{base: "≡", negated: "≢"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("negated relations = %#v, want %#v", got, want)
+	}
+}
+
+func TestParseNegatedRelationsRejectsConflicts(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseNegatedRelations([]typstSymbol{
+		{path: "eq", value: "="},
+		{path: "eq.not", value: "≠"},
+		{path: "eq.alt", value: "="},
+		{path: "eq.alt.not", value: "≢"},
+	})
+	if err == nil {
+		t.Fatal("parseNegatedRelations accepted conflicting negations")
+	}
+}
+
 func TestParseTypstOperators(t *testing.T) {
 	t.Parallel()
 

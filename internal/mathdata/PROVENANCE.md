@@ -49,6 +49,11 @@ The generator performs representation-preserving transformations:
   Unicode ranges.
 - Typlet symbol variant records, alphanumeric ranges, exceptions, and
   deprecation metadata are decoded and sorted.
+- Pairs of single-code-point Typlet symbols whose path differs only by a
+  trailing `.not` are indexed by base code point for semantic negation
+  lowering. Missing bases and multi-code-point values are excluded; conflicting
+  negations are rejected. The one upstream naming exception, `tilde.not`,
+  resolves to `tilde.op` because Typlet has no bare `tilde` symbol.
 
 No public spelling, portable code point, deprecation, class, or symbol value is
 changed. Ordering is canonicalized for deterministic binary search.
