@@ -154,7 +154,8 @@ imports of Untie internals from the separate example module. See
 The root module has no MyGo dependency. Framework integration lives in the
 nested `github.com/caelyreth/untie/contrib/mygo` module. Its exact import
 allowlist permits only declared public Untie and MyGo packages and rejects both
-projects' internals. See [MyGo integration](mygo.md).
+projects' internals. The module declares package `untiemygo`, so hosts import
+the path without an alias. See [MyGo integration](mygo.md).
 
 ## Content Identity
 

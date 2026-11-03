@@ -2,6 +2,8 @@
 
 This module connects Untie to [MyGo](https://mygo.egoist.dev/) with one
 bounded, concurrency-safe adapter:
+The module path is `github.com/caelyreth/untie/contrib/mygo`; its package name
+is `untiemygo`, so no import alias is needed.
 
 ```go
 fonts, err := untie.LoadMathFont(fontBytes)
@@ -9,10 +11,10 @@ if err != nil {
 	return err
 }
 
-math, err := mygo.New(fonts, mygo.Options{
+math, err := untiemygo.New(fonts, untiemygo.Options{
 	Dialect:      untie.TeX,
 	CacheEntries: 128,
-	Draw: mygo.DrawOptions{
+	Draw: untiemygo.DrawOptions{
 		Padding: 8,
 		Align:   render.AlignCenter,
 	},

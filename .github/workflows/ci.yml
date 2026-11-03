@@ -27,6 +27,8 @@ jobs:
           go mod verify
           cd contrib/mygo
           go mod verify
+          cd ../../examples/mygo
+          go mod verify
       - name: Vet
         run: go vet ./...
       - name: Lint
@@ -71,6 +73,8 @@ jobs:
         run: |
           go test -race ./...
           cd contrib/mygo
+          go test -race ./...
+          cd ../../examples/mygo
           go test -race ./...
 
   cross-compile:

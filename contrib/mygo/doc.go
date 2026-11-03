@@ -1,4 +1,4 @@
-// Package mygo integrates Untie with MyGo's UI painter and Markdown math
+// Package untiemygo integrates Untie with MyGo's UI painter and Markdown math
 // hooks.
 //
 // Renderer is a reusable, concurrency-safe adapter. It renders with one
@@ -7,4 +7,4 @@
 //
 // Callers may inspect boxes returned by Render, but must treat them as
 // immutable. Drawing or caching a box must never modify it or its slices.
-package mygo
+package untiemygo

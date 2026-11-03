@@ -94,7 +94,8 @@ separate `examples/mygo` module is additionally checked to reject any Untie
 internal import. Do not build a host against internal files even when working
 inside the repository.
 
-The `contrib/mygo` adapter is versioned separately from the root module. Its
+The `contrib/mygo` adapter is versioned separately from the root module and
+declares package `untiemygo`, so callers do not need an import alias. Its
 architecture gate rejects Untie internals, MyGo internals, cgo, and undeclared
 framework dependencies. Importing the root module never imports MyGo.
 

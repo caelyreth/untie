@@ -1,4 +1,4 @@
-package mygo
+package untiemygo
 
 import (
 	"fmt"
@@ -147,12 +147,12 @@ func (r *Renderer) drawWithTransform(
 					case untie.SegClose:
 						path.Close()
 					default:
-						return fmt.Errorf("mygo: unsupported path segment %d", segment.Op)
+						return fmt.Errorf("untiemygo: unsupported path segment %d", segment.Op)
 					}
 				}
 				painter.FillPath(&path, color)
 			default:
-				return fmt.Errorf("mygo: unsupported render command %d", command.Kind)
+				return fmt.Errorf("untiemygo: unsupported render command %d", command.Kind)
 			}
 			return nil
 		})

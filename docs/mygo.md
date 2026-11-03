@@ -2,16 +2,18 @@
 
 `github.com/caelyreth/untie/contrib/mygo` is a separate Go module that adapts
 Untie to MyGo without adding any UI dependency to the root library.
+The module declares package `untiemygo`, so imports use that name without an
+alias.
 
 ```go
 fonts, err := untie.LoadMathFont(fontBytes)
 if err != nil {
 	return err
 }
-math, err := mygo.New(fonts, mygo.Options{
+math, err := untiemygo.New(fonts, untiemygo.Options{
 	Dialect:      untie.TeX,
 	CacheEntries: 128,
-	Draw: mygo.DrawOptions{
+	Draw: untiemygo.DrawOptions{
 		Padding: 8,
 		Align:   render.AlignCenter,
 	},

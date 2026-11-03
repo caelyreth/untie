@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/caelyreth/untie"
+	"github.com/caelyreth/untie/contrib/mygo"
+	"github.com/caelyreth/untie/render"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -23,8 +26,8 @@ const (
 // app is the complete example state. MyGo calls view on the main thread after
 // input and whenever the window needs another frame.
 type app struct {
-	engine  *untie.Engine
-	dialect int
+	renderers [2]*untiemygo.Renderer
+	dialect   int
 
 	texSource   string
 	typstSource string
@@ -43,12 +46,28 @@ func newApp(fontBytes []byte) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
-	engine, err := untie.NewEngine(fonts, untie.Limits{})
+	newRenderer := func(dialect untie.Dialect) (*untiemygo.Renderer, error) {
+		return untiemygo.New(fonts, untiemygo.Options{
+			Dialect:      dialect,
+			BaseSize:     16,
+			DisplaySize:  32,
+			CacheEntries: 128,
+			Draw: untiemygo.DrawOptions{
+				Padding: 16,
+				Align:   render.AlignCenter,
+			},
+		})
+	}
+	texRenderer, err := newRenderer(untie.TeX)
+	if err != nil {
+		return nil, err
+	}
+	typstRenderer, err := newRenderer(untie.Typst)
 	if err != nil {
 		return nil, err
 	}
 	a := &app{
-		engine:       engine,
+		renderers:    [2]*untiemygo.Renderer{texRenderer, typstRenderer},
 		texSource:    initialTeX,
 		typstSource:  initialTypst,
 		editorHeight: 300,
@@ -106,9 +125,15 @@ func (a *app) preview(c *ui.Context) {
 				drawMessage(p, r, a.message, t.Danger)
 				return
 			}
-			drawMath(p, r, a.box)
+			if err := a.renderer().Draw(p, a.box, r); err != nil {
+				drawMessage(p, r, err.Error(), t.Danger)
+			}
 		})
 	})
+}
+
+func (a *app) renderer() *untiemygo.Renderer {
+	return a.renderers[a.dialect]
 }
 
 func (a *app) source() *string {
@@ -126,22 +151,22 @@ func (a *app) dialectName() string {
 }
 
 func (a *app) compile() {
-	var expr *untie.Expr
-	if a.dialect == dialectTypst {
-		expr = untie.ParseTypst(*a.source(), untie.Display, untie.ParseOptions{})
-	} else {
-		expr = untie.ParseTeX(*a.source(), untie.Display, untie.ParseOptions{})
+	result, err := a.renderer().Render(
+		context.Background(),
+		*a.source(),
+		untie.Display,
+		untie.Style{},
+	)
+	a.box = nil
+	a.diagnostics = nil
+	if result != nil {
+		a.box = result.Box
+		a.diagnostics = result.Diagnostics
 	}
-
-	a.diagnostics = expr.Diagnostics()
 	a.message = diagnosticMessage(a.diagnostics)
-	box, err := a.engine.Layout(expr, untie.Style{Size: 32})
 	if err != nil {
-		a.box = nil
 		a.message = layoutErrorMessage(err)
-		return
 	}
-	a.box = box
 }
 
 func layoutErrorMessage(err error) string {

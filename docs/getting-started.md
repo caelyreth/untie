@@ -186,9 +186,10 @@ func paint(painter Painter, box *untie.Box, colorFor func(untie.Paint) Color) {
 }
 ```
 
-`Painter`, `Color`, `FillPath`, and `placePath` above are placeholders for the host's
-graphics API. The real MyGo implementation is in
-[`examples/mygo/mathview.go`](../examples/mygo/mathview.go).
+`Painter`, `Color`, `FillPath`, and `placePath` above are placeholders for the
+host's graphics API. The reusable MyGo implementation is
+[`contrib/mygo/draw.go`](../contrib/mygo/draw.go), and the bundled example calls
+it from [`examples/mygo/app.go`](../examples/mygo/app.go).
 
 Do not draw `ItemGlyphPath` and its accompanying `ItemGlyphRef` as two shapes.
 When `Style.GlyphRefs` is true, an exact glyph can produce both an outline path
@@ -260,4 +261,4 @@ text under the engine's effective limits.
   [`doc.go`](../doc.go)
 - End-to-end examples: [`example_test.go`](../example_test.go)
 - Lifecycle and style tests: [`layout_lifecycle_test.go`](../layout_lifecycle_test.go)
-- Drawing example: [`examples/mygo/mathview.go`](../examples/mygo/mathview.go)
+- Drawing example: [`examples/mygo/app.go`](../examples/mygo/app.go)

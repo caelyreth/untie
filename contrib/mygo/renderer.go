@@ -1,4 +1,4 @@
-package mygo
+package untiemygo
 
 import (
 	"context"
@@ -26,11 +26,11 @@ const (
 
 var (
 	// ErrInvalidOptions reports unusable renderer configuration.
-	ErrInvalidOptions = errors.New("mygo: invalid options")
+	ErrInvalidOptions = errors.New("untiemygo: invalid options")
 	// ErrInvalidBox reports a nil box passed to a drawing helper.
-	ErrInvalidBox = errors.New("mygo: invalid box")
+	ErrInvalidBox = errors.New("untiemygo: invalid box")
 	// ErrInvalidPainter reports a nil painter passed to a drawing helper.
-	ErrInvalidPainter = errors.New("mygo: invalid painter")
+	ErrInvalidPainter = errors.New("untiemygo: invalid painter")
 )
 
 // DrawOptions controls placement of a complete Box.Bounds rectangle in a
