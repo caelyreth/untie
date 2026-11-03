@@ -3,7 +3,7 @@ module github.com/caelyreth/untie/contrib/mygo
 go 1.27.3
 
 require (
-	github.com/caelyreth/untie v0.2.0
+	github.com/caelyreth/untie v0.2.1
 	github.com/egoist/mygo v0.7.4
 )
 

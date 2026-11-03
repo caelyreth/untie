@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.2.0` with layout revision `1`. This page defines
+Untie is currently version `0.2.1` with layout revision `1`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -82,7 +82,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.2.0+layout.1
+0.2.1+layout.1
 ```
 
 The package-level engine cache includes that whole string. A layout behavior
