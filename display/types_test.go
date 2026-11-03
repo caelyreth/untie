@@ -224,6 +224,30 @@ func TestValidateBox(t *testing.T) {
 	}
 }
 
+func TestValidateBoxRejectsPlacedPathOverflow(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{
+		Paths: []PathTemplate{{
+			Segments: []geometry.Segment{{
+				Op:     geometry.SegMoveTo,
+				Points: [3]geometry.Point{{X: 1e38}},
+			}},
+			Bound: geometry.Rect{X: 1e38},
+		}},
+		Items: []Item{{
+			Kind:      ItemGlyphPath,
+			Bound:     geometry.Rect{X: 1e38},
+			PathIndex: 0,
+			At:        geometry.Point{X: 1e38},
+			Em:        2,
+		}},
+	}
+	if err := box.Validate(); err == nil {
+		t.Fatal("Validate() accepted overflowing path placement")
+	}
+}
+
 func TestBoxItalicCorrectionIsSignedAndFinite(t *testing.T) {
 	t.Parallel()
 

@@ -448,6 +448,9 @@ func validateItem(item Item, paths []PathTemplate) error {
 			Width:  path.Bound.Width * item.Em,
 			Height: path.Bound.Height * item.Em,
 		}
+		if !finite(placed.X) || !finite(placed.Y) || !finite(placed.Width) || !finite(placed.Height) {
+			return errors.New("glyph path placement overflows")
+		}
 		if !rectContains(item.Bound, placed) {
 			return errors.New("glyph path bound does not cover its placed template")
 		}

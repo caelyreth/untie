@@ -77,6 +77,9 @@ func TestEmMulDivPowerOfTwoRoundingAndOverflow(t *testing.T) {
 	if _, err := Em(math.MaxInt64).MulDiv(3, 2); err != ErrOverflow {
 		t.Fatalf("power-of-two overflow error = %v, want %v", err, ErrOverflow)
 	}
+	if got, err := Em(math.MinInt64).MulDiv(1, 1); err != nil || got != Em(math.MinInt64) {
+		t.Fatalf("MinInt64 MulDiv = %d, %v; want %d, nil", got, err, Em(math.MinInt64))
+	}
 }
 
 func TestEmFloat(t *testing.T) {

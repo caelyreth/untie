@@ -189,17 +189,17 @@ func mulDiv(a, b, c int64) (int64, error) {
 		q, r = bitsDiv(hi, lo, uc)
 	}
 	if r >= uc/2+uc%2 {
-		if q == math.MaxInt64 {
+		if q == math.MaxUint64 {
 			return 0, ErrOverflow
 		}
 		q++
 	}
-	if q > math.MaxInt64 {
-		return 0, ErrOverflow
-	}
 	if negative {
 		if q > 1<<63 {
 			return 0, ErrOverflow
+		}
+		if q == 1<<63 {
+			return math.MinInt64, nil
 		}
 		return -int64(q), nil
 	}
