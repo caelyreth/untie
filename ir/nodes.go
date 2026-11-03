@@ -60,6 +60,24 @@ type Text struct {
 	Text     string
 	Font     FontRole
 	Tracking Length
+	// Clusters partitions Text into contiguous UTF-8 byte ranges and maps each
+	// range to its absolute source range. Clusters are in logical text order;
+	// shaped glyphs may later appear in a different visual order. An empty
+	// slice means no parser-authored source map is available and layout uses
+	// the node-level hit fallback.
+	Clusters []TextClusterSource
+}
+
+// TextClusterSource maps one contiguous byte range in Text to the source range
+// that produced it.
+//
+// A non-empty map must cover Text completely, preserve text order, and contain
+// non-overlapping source ranges. A parser may leave the map empty when it
+// cannot prove those invariants; it must not guess offsets from delimiters.
+type TextClusterSource struct {
+	TextStart int
+	TextEnd   int
+	Source    source.Range
 }
 
 // NewText constructs text in the text face.

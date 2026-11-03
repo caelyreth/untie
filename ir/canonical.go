@@ -89,7 +89,13 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 	case *Glyph:
 		return map[string]any{"base": base, "text": n.Text}, nil
 	case *Text:
-		return map[string]any{"base": base, "text": n.Text, "font": n.Font, "tracking": snapshotLength(n.Tracking)}, nil
+		return map[string]any{
+			"base":     base,
+			"text":     n.Text,
+			"font":     n.Font,
+			"tracking": snapshotLength(n.Tracking),
+			"clusters": snapshotTextClusters(n.Clusters),
+		}, nil
 	case *Operator:
 		return map[string]any{"base": base, "text": n.Text}, nil
 	case *Space:
@@ -288,6 +294,20 @@ func snapshotLengths(lengths []Length) []any {
 	out := make([]any, len(lengths))
 	for i, l := range lengths {
 		out[i] = snapshotLength(l)
+	}
+	return out
+}
+
+func snapshotTextClusters(clusters []TextClusterSource) []any {
+	if len(clusters) == 0 {
+		return nil
+	}
+	out := make([]any, len(clusters))
+	for i, cluster := range clusters {
+		out[i] = map[string]any{
+			"text":   []int{cluster.TextStart, cluster.TextEnd},
+			"source": []int{cluster.Source.Start, cluster.Source.End},
+		}
 	}
 	return out
 }
