@@ -46,6 +46,7 @@ type FaceInfo struct {
 	UnitsPerEm     uint16
 	GlyphCount     int
 	HasMath        bool
+	Variable       bool
 }
 
 // Bounds is a design-unit control bounding box in the same y-down coordinate
@@ -109,11 +110,13 @@ type Outline struct {
 
 // VerticalMetrics are design-unit font metrics.
 type VerticalMetrics struct {
-	Ascender   int32
-	Descender  int32
-	LineGap    int32
-	CapHeight  int32
-	XHeight    int32
+	Ascender  int32
+	Descender int32
+	LineGap   int32
+	CapHeight int32
+	XHeight   int32
+	// FontBounds is the static head-table bounding box. It is not recomputed
+	// from variable glyph outlines.
 	FontBounds Bounds
 }
 

@@ -19,16 +19,17 @@ const (
 )
 
 type parsedFace struct {
-	data      FontFace
-	info      FaceInfo
-	glyphFont *tsfont.Font
-	sfntBytes []byte
-	tables    map[string][]byte
-	math      mathTable
-	gsub      gsubTable
-	metrics   []GlyphMetrics
-	vertical  VerticalMetrics
-	outlineMu outlineCache
+	data       FontFace
+	info       FaceInfo
+	glyphFont  *tsfont.Font
+	sfntBytes  []byte
+	tables     map[string][]byte
+	variations resolvedVariation
+	math       mathTable
+	gsub       gsubTable
+	metrics    []GlyphMetrics
+	vertical   VerticalMetrics
+	outlineMu  outlineCache
 }
 
 type tableRecord struct {
@@ -258,6 +259,14 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 	if glyphFont.Upem() == 0 {
 		return nil, fmt.Errorf("face %d (%q): invalid units per em 0", data.Index, data.ID)
 	}
+	axes, err := parseVariationAxes(tables["fvar"])
+	if err != nil {
+		return nil, fmt.Errorf("face %d (%q): parse fvar: %w", data.Index, data.ID, err)
+	}
+	variations, err := resolveVariations(glyphFont, axes, data.Variations)
+	if err != nil {
+		return nil, fmt.Errorf("face %d (%q): variation coordinates: %w", data.Index, data.ID, err)
+	}
 	glyphCount, err := readGlyphCount(tables["maxp"])
 	if err != nil {
 		return nil, fmt.Errorf("face %d (%q): read glyph count: %w", data.Index, data.ID, err)
@@ -278,7 +287,10 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 			return nil, fmt.Errorf("face %d (%q): parse MATH: %w", data.Index, data.ID, err)
 		}
 	}
-	g, err := parseGSUBTable(tables["GSUB"])
+	g, err := parseGSUBTable(
+		tables["GSUB"],
+		normalizedCoordinateValues(variations.coordinates),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("face %d (%q): parse GSUB: %w", data.Index, data.ID, err)
 	}
@@ -298,12 +310,14 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 			UnitsPerEm:     glyphFont.Upem(),
 			GlyphCount:     glyphCount,
 			HasMath:        m.present,
+			Variable:       len(axes) != 0,
 		},
-		glyphFont: glyphFont,
-		sfntBytes: standalone,
-		tables:    tables,
-		math:      m,
-		gsub:      g,
+		glyphFont:  glyphFont,
+		sfntBytes:  standalone,
+		tables:     tables,
+		variations: variations,
+		math:       m,
+		gsub:       g,
 	}
 	if err := pf.readVerticalMetrics(); err != nil {
 		return nil, err
@@ -314,12 +328,20 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 	return pf, nil
 }
 
+func (f *parsedFace) newTextFace() *tsfont.Face {
+	face := tsfont.NewFace(f.glyphFont)
+	if len(f.variations.coordinates) != 0 {
+		face.SetCoords(f.variations.coordinates)
+	}
+	return face
+}
+
 func (f *parsedFace) readVerticalMetrics() error {
 	fontBounds, err := readFontBounds(f.tables["head"])
 	if err != nil {
 		return fmt.Errorf("face %d (%q): read font bounds: %w", f.data.Index, f.data.ID, err)
 	}
-	face := tsfont.NewFace(f.glyphFont)
+	face := f.newTextFace()
 	extents, ok := face.FontHExtents()
 	if !ok {
 		return fmt.Errorf("face %d (%q): missing horizontal font metrics", f.data.Index, f.data.ID)

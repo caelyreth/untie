@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 )
@@ -16,9 +17,10 @@ import (
 // ID is optional when the face is passed to LoadFontSet, LoadMathFont, or
 // another high-level source helper. Empty IDs are derived deterministically.
 type FontFace struct {
-	ID    string
-	Bytes []byte
-	Index int
+	ID         string
+	Bytes      []byte
+	Index      int
+	Variations []Variation
 }
 
 // FontSetConfig configures a validated font collection. Math must contain
@@ -44,6 +46,15 @@ func WithFontID(id string) FontOption {
 func WithFontIndex(index int) FontOption {
 	return func(face *FontFace) {
 		face.Index = index
+	}
+}
+
+// WithFontVariations sets OpenType design-variation coordinates for one face.
+// Omitted axes use the defaults declared in the font's fvar table.
+func WithFontVariations(variations ...Variation) FontOption {
+	values := append([]Variation(nil), variations...)
+	return func(face *FontFace) {
+		face.Variations = append([]Variation(nil), values...)
 	}
 }
 
@@ -208,7 +219,7 @@ func faceRole(index int, hasText bool) string {
 
 func derivedFaceID(role string, face *parsedFace) string {
 	h := sha256.New()
-	_, _ = h.Write([]byte("untie-font-face-id\x00v1\x00"))
+	_, _ = h.Write([]byte("untie-font-face-id\x00v2\x00"))
 	_, _ = h.Write([]byte(role))
 	_, _ = h.Write([]byte{0})
 	_, _ = h.Write([]byte(face.info.PostScriptName))
@@ -216,6 +227,7 @@ func derivedFaceID(role string, face *parsedFace) string {
 	var index [8]byte
 	binary.BigEndian.PutUint64(index[:], uint64(face.data.Index))
 	_, _ = h.Write(index[:])
+	writeVariations(h, face.data.Variations)
 	_, _ = h.Write(face.data.Bytes)
 	sum := h.Sum(nil)
 
@@ -309,6 +321,32 @@ func (f *FontSet) FaceCount() int {
 	return len(f.faces)
 }
 
+// VariationAxes returns an independent copy of ref's OpenType fvar axes.
+// The second result is false when ref is not present. A present static face
+// returns an empty slice and true.
+func (f *FontSet) VariationAxes(ref FaceRef) ([]VariationAxis, bool) {
+	face := f.face(ref)
+	if face == nil {
+		return nil, false
+	}
+	return append([]VariationAxis(nil), face.variations.axes...), true
+}
+
+// VariationCoordinates returns the complete resolved design-space position for
+// ref, including defaults for axes not explicitly configured. Axes are returned
+// in fvar order.
+func (f *FontSet) VariationCoordinates(ref FaceRef) ([]Variation, bool) {
+	face := f.face(ref)
+	if face == nil {
+		return nil, false
+	}
+	out := make([]Variation, len(face.variations.axes))
+	for i, axis := range face.variations.axes {
+		out[i] = Variation{Tag: axis.Tag, Value: face.variations.designValues[i]}
+	}
+	return out, true
+}
+
 // VerticalMetrics returns design-unit vertical metrics for ref.
 func (f *FontSet) VerticalMetrics(ref FaceRef) (VerticalMetrics, bool) {
 	face := f.face(ref)
@@ -377,7 +415,8 @@ func (f *FontSet) Outline(g Glyph) (Outline, bool) {
 }
 
 // MathConstant returns one design-unit MATH constant. Percentage constants are
-// returned as literal percentages.
+// returned as literal percentages. OpenType MATH constants are static table
+// data; variable-axis coordinates do not change these values.
 func (f *FontSet) MathConstant(ref FaceRef, c MathConstant) (int32, bool) {
 	face := f.face(ref)
 	if face == nil || !face.math.hasConstants || c >= MathConstantCount {
@@ -444,7 +483,9 @@ func (f *FontSet) MathKern(g Glyph, corner MathKernCorner, correctionHeight int3
 	return curve.At(correctionHeight)
 }
 
-// MathConstruction returns size variants and an optional assembly recipe.
+// MathConstruction returns size variants and an optional assembly recipe. The
+// recipe and variant advances come from the static MATH table; variable
+// coordinates apply to the metrics and outlines of referenced glyphs.
 func (f *FontSet) MathConstruction(g Glyph, axis MathAxis) (MathConstruction, bool) {
 	face := f.face(g.Face)
 	if face == nil || !face.math.present {
@@ -550,7 +591,7 @@ func (f *FontSet) face(ref FaceRef) *parsedFace {
 
 func canonicalFontKey(config FontSetConfig) [32]byte {
 	h := sha256.New()
-	_, _ = h.Write([]byte("untie-font-set\x00v1\x00"))
+	_, _ = h.Write([]byte("untie-font-set\x00v2\x00"))
 	writeKeyFace(h, 1, config.Math)
 	writeKeyFace(h, boolByte(config.Text != nil), valueOrZero(config.Text))
 	writeUint32(h, uint32(len(config.Fallbacks)))
@@ -571,8 +612,19 @@ func writeKeyFace(h hashWriter, role byte, face FontFace) {
 	writeUint32(h, uint32(face.Index))
 	writeUint32(h, uint32(len(face.ID)))
 	_, _ = h.Write([]byte(face.ID))
+	writeVariations(h, face.Variations)
 	writeUint32(h, uint32(len(face.Bytes)))
 	_, _ = h.Write(face.Bytes)
+}
+
+func writeVariations(h hashWriter, variations []Variation) {
+	writeUint32(h, uint32(len(variations)))
+	for _, variation := range variations {
+		_, _ = h.Write([]byte(variation.Tag))
+		var value [4]byte
+		binary.BigEndian.PutUint32(value[:], math.Float32bits(variation.Value))
+		_, _ = h.Write(value[:])
+	}
 }
 
 func writeUint32(h hashWriter, v uint32) {
@@ -584,6 +636,7 @@ func writeUint32(h hashWriter, v uint32) {
 func copyFontFace(in FontFace) FontFace {
 	out := in
 	out.Bytes = append([]byte(nil), in.Bytes...)
+	out.Variations = sortedVariations(in.Variations)
 	return out
 }
 

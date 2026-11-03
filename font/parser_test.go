@@ -83,7 +83,7 @@ func TestParseGSUBRejectsMalformed(t *testing.T) {
 	}
 	for name, data := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := parseGSUBTable(data); err == nil {
+			if _, err := parseGSUBTable(data, nil); err == nil {
 				t.Fatal("parseGSUBTable() error = nil")
 			}
 		})

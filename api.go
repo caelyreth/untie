@@ -96,6 +96,8 @@ type (
 	FontSetConfig       = font.FontSetConfig
 	FontSet             = font.FontSet
 	FontOption          = font.FontOption
+	Variation           = font.Variation
+	VariationAxis       = font.VariationAxis
 	Formula             = ir.Formula
 	EquationTag         = ir.EquationTag
 	NodeID              = ir.NodeID
@@ -686,6 +688,12 @@ func WithFontID(id string) FontOption {
 // WithFontIndex selects a TTC face for LoadMathFont.
 func WithFontIndex(index int) FontOption {
 	return font.WithFontIndex(index)
+}
+
+// WithFontVariations sets OpenType design-variation coordinates for
+// LoadMathFont. Omitted axes use the defaults declared by the font.
+func WithFontVariations(variations ...Variation) FontOption {
+	return font.WithFontVariations(variations...)
 }
 
 func fallbackFormula(src string, limits source.Limits) *ir.Formula {

@@ -18,8 +18,41 @@ import (
 func TestVersionIncludesOutputPolicyLayoutRevision(t *testing.T) {
 	t.Parallel()
 
-	if got, want := Version(), "0.4.0+layout.6"; got != want {
+	if got, want := Version(), "0.4.0+layout.7"; got != want {
 		t.Fatalf("Version() = %q, want %q", got, want)
+	}
+}
+
+func TestVariableFontFacade(t *testing.T) {
+	t.Parallel()
+
+	data, err := os.ReadFile("testdata/upstream/fonts/SourceSans-VF-MATH.ttf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fonts, err := LoadMathFont(data, WithFontVariations(
+		Variation{Tag: "wght", Value: 650},
+	))
+	if err != nil {
+		t.Fatalf("LoadMathFont: %v", err)
+	}
+	coordinates, ok := fonts.VariationCoordinates(0)
+	if !ok || len(coordinates) != 1 || coordinates[0] != (Variation{Tag: "wght", Value: 650}) {
+		t.Fatalf("coordinates = %+v, %v", coordinates, ok)
+	}
+
+	narrow, err := LoadMathFont(data, WithFontVariations(Variation{Tag: "wght", Value: 200}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wide, err := LoadMathFont(data, WithFontVariations(Variation{Tag: "wght", Value: 900}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	narrowKey := makeLayoutEngineCacheKey(narrow, source.Limits{}, Version())
+	wideKey := makeLayoutEngineCacheKey(wide, source.Limits{}, Version())
+	if narrowKey == wideKey {
+		t.Fatal("layout engine cache key ignored variation coordinates")
 	}
 }
 

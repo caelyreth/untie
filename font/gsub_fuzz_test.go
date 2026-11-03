@@ -13,7 +13,7 @@ func FuzzParseGSUB(f *testing.F) {
 	}
 	f.Add([]byte("not a GSUB table"))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseGSUBTable(data)
+		_, _ = parseGSUBTable(data, nil)
 	})
 }
 

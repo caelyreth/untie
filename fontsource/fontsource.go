@@ -15,9 +15,10 @@ import (
 //
 // ID is optional. The font loader derives a stable ID when it is blank.
 type Face struct {
-	Path  string
-	ID    string
-	Index int
+	Path       string
+	ID         string
+	Index      int
+	Variations []font.Variation
 }
 
 // Config identifies the files that make up a font set.
@@ -84,6 +85,9 @@ func (face Face) read(fsys fs.FS) (font.FontFace, error) {
 	opts := []font.FontOption{font.WithFontIndex(face.Index)}
 	if face.ID != "" {
 		opts = append(opts, font.WithFontID(face.ID))
+	}
+	if len(face.Variations) != 0 {
+		opts = append(opts, font.WithFontVariations(face.Variations...))
 	}
 	return ReadFace(fsys, face.Path, opts...)
 }
