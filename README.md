@@ -120,6 +120,7 @@ elements, Markdown binding, and existing-box drawing.
 
 ### Documentation
 
+- [Runnable Examples](examples/README.md)
 - [Getting Started](docs/getting-started.md)
 - [Core Concepts](docs/concepts.md)
 - [Rendering](docs/rendering.md)
