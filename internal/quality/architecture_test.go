@@ -208,6 +208,10 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/ir": {
 		Production: []string{modulePath + "/source"},
 	},
+	modulePath + "/render": {
+		Production: []string{modulePath + "/display", modulePath + "/geometry"},
+		Tests:      []string{modulePath + "/render"},
+	},
 	modulePath + "/source": {},
 }
 
