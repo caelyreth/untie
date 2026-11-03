@@ -5,8 +5,8 @@ out with a host-supplied OpenType MATH font. The result is a UI-independent
 display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
-These docs describe the public API at library version `0.2.1` and layout
-revision `1`. They focus on the behavior a host or code assistant can rely on
+These docs describe the public API at library version `0.3.0` and layout
+revision `2`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here
@@ -19,6 +19,9 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Rendering the display list](rendering.md) defines coordinates, items,
   lines, tags, hits, overflow, bounds, drawing helpers, and optional SVG/PNG
   output.
+- [Editor integration](editor-integration.md) defines recovery, source
+  mapping, host shaping, color policy, and MyGo font ownership for live
+  editors.
 
 ## Integration Guides
 
@@ -55,6 +58,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   strategies, and allocation metrics.
 - [Migrating to 0.2](migration.md) maps the removed low-level font and drawing
   conveniences to the current host facade, render helpers, and output adapters.
+- [Migrating to 0.3](migration-v0.3.md) records editor recovery, shaping,
+  diagnostics, source maps, and MyGo drawing changes.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a

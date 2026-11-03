@@ -197,6 +197,10 @@ type Box struct {
 	Hits   []Hit
 	Breaks []Break
 	Alt    Alt
+	// Diagnostics reports recoverable layout problems, such as unavailable
+	// glyphs rendered as visible placeholders. Parse diagnostics remain on the
+	// high-level RenderResult.
+	Diagnostics []source.Diagnostic
 	// Tag is a single-line display equation tag in parent coordinates. Its
 	// Items and Hits ranges identify its records in this Box. It is excluded
 	// from formula-root breaks.
@@ -234,6 +238,12 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	out.Paths = clonePaths(b.Paths)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
+	if len(b.Diagnostics) > 0 {
+		out.Diagnostics = make([]source.Diagnostic, len(b.Diagnostics))
+		for i, diagnostic := range b.Diagnostics {
+			out.Diagnostics[i] = diagnostic.Clone()
+		}
+	}
 	var canonicalTag *TagBox
 	if b.Tag != nil {
 		tag := *b.Tag

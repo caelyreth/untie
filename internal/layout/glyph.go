@@ -296,6 +296,10 @@ func (s *layoutState) layoutSpace(space *ir.Space, env environment) (*Fragment, 
 }
 
 func (s *layoutState) layoutPlaceholder(node *ir.Placeholder, env environment) (*Fragment, error) {
+	return s.layoutMissingFragment(env, ir.Paint{Role: ir.PaintPlaceholder})
+}
+
+func (s *layoutState) layoutMissingFragment(env environment, paint ir.Paint) (*Fragment, error) {
 	width, err := s.metricAt(geometry.Em(geometry.EmScale/2), env.Style)
 	if err != nil {
 		return nil, err
@@ -312,21 +316,36 @@ func (s *layoutState) layoutPlaceholder(node *ir.Placeholder, env environment) (
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	return s.placeholderFragment(
+		Metrics{Width: width, Ascent: ascent, Descent: descent},
+		thickness,
+		s.scale(env.Style),
+		env.Style.Size,
+		paint,
+	)
+}
+
+func (s *layoutState) placeholderFragment(
+	metrics Metrics,
+	thickness geometry.Em,
+	scale geometry.Em,
+	size MathSize,
+	paint ir.Paint,
+) (*Fragment, error) {
+	fragment, err := s.newFragment(metrics, ir.ClassNormal, size, scale)
 	if err != nil {
 		return nil, err
 	}
 	fragment.reserveDraws(4)
-	paint := ir.Paint{Role: ir.PaintPlaceholder}
 	// Four thin rules form a deterministic missing-content box.
 	rules := []struct {
 		x, y geometry.Em
 		rule ruleDraw
 	}{
-		{0, -descent, ruleDraw{width: width, thickness: thickness, paint: paint}},
-		{0, ascent - thickness, ruleDraw{width: width, thickness: thickness, paint: paint}},
-		{0, -descent, ruleDraw{width: ascent + descent, thickness: thickness, paint: paint, vertical: true}},
-		{width - thickness, -descent, ruleDraw{width: ascent + descent, thickness: thickness, paint: paint, vertical: true}},
+		{0, -metrics.Descent, ruleDraw{width: metrics.Width, thickness: thickness, paint: paint}},
+		{0, metrics.Ascent - thickness, ruleDraw{width: metrics.Width, thickness: thickness, paint: paint}},
+		{0, -metrics.Descent, ruleDraw{width: metrics.Ascent + metrics.Descent, thickness: thickness, paint: paint, vertical: true}},
+		{metrics.Width - thickness, -metrics.Descent, ruleDraw{width: metrics.Ascent + metrics.Descent, thickness: thickness, paint: paint, vertical: true}},
 	}
 	for _, at := range rules {
 		rule := at.rule
@@ -334,7 +353,7 @@ func (s *layoutState) layoutPlaceholder(node *ir.Placeholder, env environment) (
 			return nil, err
 		}
 	}
-	fragment.BaseAscent = ascent
-	fragment.BaseDescent = descent
+	fragment.BaseAscent = metrics.Ascent
+	fragment.BaseDescent = metrics.Descent
 	return fragment, nil
 }

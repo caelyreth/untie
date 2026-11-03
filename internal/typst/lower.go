@@ -85,7 +85,7 @@ func (l *lowerer) lower(n *astNode) ir.Node {
 	case astIdentifier, astField:
 		return l.lowerIdentifier(n)
 	case astString:
-		return l.text(n.span, n.text)
+		return l.textFromAST(n)
 	case astNumber:
 		return l.lowerNumber(n)
 	case astShorthand:
@@ -259,13 +259,24 @@ func (l *lowerer) lowerNumber(n *astNode) ir.Node {
 }
 
 func (l *lowerer) text(span source.Range, text string) ir.Node {
+	return l.textNode(span, text, nil)
+}
+
+func (l *lowerer) textWithClusters(span source.Range, text string, clusters []ir.TextClusterSource) ir.Node {
+	return l.textNode(span, text, clusters)
+}
+
+func (l *lowerer) textNode(span source.Range, text string, clusters []ir.TextClusterSource) ir.Node {
+	original := text
 	text = sanitizeFrontendText(text)
 	if text == "" {
 		return l.placeholder(span, "empty text")
 	}
+	changed := text != original
 	if len(text) > l.limits.MaxTextBytes {
 		l.errorAt(span, source.CodeLimitExceeded, "text length limit exceeded")
 		text = text[:l.limits.MaxTextBytes]
+		changed = true
 		for !utf8.ValidString(text) && len(text) > 0 {
 			text = text[:len(text)-1]
 		}
@@ -273,7 +284,21 @@ func (l *lowerer) text(span source.Range, text string) ir.Node {
 			return l.placeholder(span, "text too long")
 		}
 	}
-	return l.newText(span, text)
+	node := l.newText(span, text)
+	if node == nil {
+		return nil
+	}
+	if !changed {
+		node.Clusters = ir.NormalizeTextClusters(text, clusters)
+	}
+	if len(node.Clusters) == 0 && !span.IsDetached() && span.End > span.Start {
+		node.Clusters = ir.NormalizeTextClusters(text, []ir.TextClusterSource{{
+			TextStart: 0,
+			TextEnd:   len(text),
+			Source:    span,
+		}})
+	}
+	return node
 }
 
 func (l *lowerer) lowerRow(n *astNode) ir.Node {

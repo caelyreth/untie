@@ -101,10 +101,10 @@ for _, d := range expr.Diagnostics() {
 }
 ```
 
-The recovery tree can still be laid out. A later layout error is a different
+The recovery tree can still be laid out. A later layout problem is a different
 event, possibly unrelated to syntax:
 
-- the font lacks a glyph;
+- the font lacks a glyph, which is visible recovery by default;
 - the font cannot build a required stretchy delimiter;
 - an output or path-segment budget is too small;
 - a parsed node shape is unsupported by the current layout phase.
@@ -205,9 +205,16 @@ input can still exceed an output budget through repetition or large constructs.
 
 ## Font and Layout Failures
 
-`ErrMissingGlyph` is returned for an unmapped rune, missing glyph metrics, or a
-missing outline. Add a capable fallback face; do not silently substitute a
-different character.
+`CodeMissingGlyph` reports an unmapped rune or shaped cluster. With the default
+`RecoveryVisible` mode, layout replaces only the affected item with an
+error-painted placeholder, preserves the rest of the formula, and returns a
+non-nil `Box`. The same diagnostic appears in `RenderResult.Diagnostics` and
+`Box.Diagnostics`.
+
+With `RecoveryStrict`, `ErrMissingGlyph` is returned instead. Add a capable
+fallback face; do not silently substitute a different character. Missing glyph
+metrics or outlines from an already mapped glyph remain a font-integrity
+failure rather than a normal fallback boundary.
 
 `ErrInsufficientStretch` means the font has no variant or assembly that reaches
 the required size. Check the primary MATH font and the requested construct.

@@ -118,6 +118,7 @@ func (s *cloneState) cloneNode(n Node, depth int) (Node, error) {
 		return &out, nil
 	case *Text:
 		out := *n
+		out.Clusters = append([]TextClusterSource(nil), n.Clusters...)
 		return &out, nil
 	case *Operator:
 		out := *n

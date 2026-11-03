@@ -80,6 +80,17 @@ func (e *Engine) FontKeySHA256() [32]byte {
 // under the per-field stricter intersection of Engine and expression limits,
 // so it may be a bounded fallback that differs from Expr.Alt.
 func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*Box, error) {
+	return e.LayoutContextWithOptions(ctx, expr, style, LayoutOptions{})
+}
+
+// LayoutContextWithOptions lays out an expression with explicit recovery
+// behavior.
+func (e *Engine) LayoutContextWithOptions(
+	ctx context.Context,
+	expr *Expr,
+	style Style,
+	options LayoutOptions,
+) (*Box, error) {
 	if e == nil || e.inner == nil {
 		return nil, ErrInvalidEngine
 	}
@@ -92,6 +103,9 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if expr == nil {
 		return nil, ErrInvalidExpr
 	}
+	if err := options.Recovery.validate(); err != nil {
+		return nil, err
+	}
 	style, err := snapshotLayoutStyle(style)
 	if err != nil {
 		return nil, err
@@ -100,7 +114,16 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 	if root == nil || root.Root == nil {
 		return nil, ErrInvalidExpr
 	}
-	return e.layoutRootContext(ctx, root, expr.mode, style, intersectLimits(e.limits, expr.limits), true, expr.stats)
+	return e.layoutRootContext(
+		ctx,
+		root,
+		expr.mode,
+		style,
+		intersectLimits(e.limits, expr.limits),
+		true,
+		expr.stats,
+		options.Recovery == RecoveryVisible,
+	)
 }
 
 // LayoutFormulaContext lays out canonical IR with cancellation and the
@@ -111,6 +134,18 @@ func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*B
 // it through another validated frontend. Parsed expressions should use
 // LayoutContext so parser-validated structure can be reused.
 func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mode Mode, style Style) (*Box, error) {
+	return e.LayoutFormulaContextWithOptions(ctx, formula, mode, style, LayoutOptions{})
+}
+
+// LayoutFormulaContextWithOptions lays out canonical IR with explicit recovery
+// behavior.
+func (e *Engine) LayoutFormulaContextWithOptions(
+	ctx context.Context,
+	formula *Formula,
+	mode Mode,
+	style Style,
+	options LayoutOptions,
+) (*Box, error) {
 	if e == nil || e.inner == nil {
 		return nil, ErrInvalidEngine
 	}
@@ -123,11 +158,23 @@ func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mod
 	if formula == nil || formula.Root == nil {
 		return nil, publicLayoutError(fmt.Errorf("%w: nil formula", ErrInvalidInput))
 	}
+	if err := options.Recovery.validate(); err != nil {
+		return nil, err
+	}
 	style, err := snapshotLayoutStyle(style)
 	if err != nil {
 		return nil, err
 	}
-	return e.layoutRootContext(ctx, formula, mode, style, e.limits, false, ir.Stats{})
+	return e.layoutRootContext(
+		ctx,
+		formula,
+		mode,
+		style,
+		e.limits,
+		false,
+		ir.Stats{},
+		options.Recovery == RecoveryVisible,
+	)
 }
 
 func (e *Engine) layoutRootContext(
@@ -138,13 +185,27 @@ func (e *Engine) layoutRootContext(
 	altLimits Limits,
 	parsed bool,
 	stats ir.Stats,
+	recoverMissingGlyph bool,
 ) (*Box, error) {
 	var box *Box
 	var err error
 	if parsed {
-		box, err = e.inner.LayoutParsedFormula(ctx, root, stats, mode, style)
+		box, err = e.inner.LayoutParsedFormulaWithRecovery(
+			ctx,
+			root,
+			stats,
+			mode,
+			style,
+			recoverMissingGlyph,
+		)
 	} else {
-		box, err = e.inner.LayoutFormula(ctx, root, mode, style)
+		box, err = e.inner.LayoutFormulaWithRecovery(
+			ctx,
+			root,
+			mode,
+			style,
+			recoverMissingGlyph,
+		)
 	}
 	if err != nil {
 		return nil, publicLayoutError(err)

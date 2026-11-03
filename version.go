@@ -1,8 +1,8 @@
 package untie
 
 const (
-	libraryVersion = "0.2.1"
-	layoutRevision = "1"
+	libraryVersion = "0.3.0"
+	layoutRevision = "2"
 	version        = libraryVersion + "+layout." + layoutRevision
 )
 

@@ -73,6 +73,29 @@ The 1,075-line core corpus excludes RaTeX's chemistry and proof-tree suites.
 This is the exact font face named `NewCMMath-Book` by the Typlet frame fixtures.
 Its SHA-256 is pinned in `manifest.sha256`.
 
+## Noto shaping subsets
+
+- Copyright: 2013 Google LLC
+- License: SIL Open Font License 1.1; see `licenses/Noto-OFL-1.1.txt`
+- Transformation: each source was reduced with `pyftsubset` 4.63.0 to the code
+  points used by the complex-script shaping tests while retaining all layout
+  features.
+
+Imported sources and paths:
+
+- Noto Emoji regular, `v65`:
+  <https://fonts.gstatic.com/s/notoemoji/v65/bMrnmSyK7YY-MEu6aWjPDs-ar6uWaGWuob-r0jwv.ttf>
+  to `fonts/NotoEmoji-ShapingSubset.ttf`
+- Noto Naskh Arabic regular, `v44`:
+  <https://fonts.gstatic.com/s/notonaskharabic/v44/RrQ5bpV-9Dd1b1OAGA6M9PkyDuVBePeKNaxcsss0Y7bwvc5krA.ttf>
+  to `fonts/NotoNaskhArabic-ShapingSubset.ttf`
+- Noto Sans Devanagari regular, `v33`:
+  <https://fonts.gstatic.com/s/notosansdevanagari/v33/TuGoUUFzXI5FBtUq5a8bjKYTZjtRU6Sgv3NaV_SNmI0b8QQCQmHn6B2OHjbL_08AlXQly-A.ttf>
+  to `fonts/NotoSansDevanagari-ShapingSubset.ttf`
+
+Only the shaping tests load these test fonts. They are not selected by Untie
+itself and do not imply system-font discovery or bundled production fonts.
+
 ## Corpus Manifest
 
 `manifests/corpora.json` records the exact loadable corpus paths and counts.

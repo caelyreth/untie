@@ -110,14 +110,16 @@ func (c *layoutCache) get(key layoutKey) (cachedRender, bool) {
 	}
 	c.hits++
 	c.order.MoveToFront(entry.order)
-	return entry.value, true
+	value := entry.value
+	value.diagnostics = cloneDiagnostics(value.diagnostics)
+	return value, true
 }
 
 func (c *layoutCache) put(key layoutKey, value cachedRender) {
 	if c == nil || value.box == nil {
 		return
 	}
-	value.diagnostics = append([]untie.Diagnostic(nil), value.diagnostics...)
+	value.diagnostics = cloneDiagnostics(value.diagnostics)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if entry := c.entries[key]; entry != nil {
@@ -138,6 +140,17 @@ func (c *layoutCache) put(key layoutKey, value cachedRender) {
 		delete(c.entries, evicted.key)
 		c.evictions++
 	}
+}
+
+func cloneDiagnostics(in []untie.Diagnostic) []untie.Diagnostic {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]untie.Diagnostic, len(in))
+	for i, diagnostic := range in {
+		out[i] = diagnostic.Clone()
+	}
+	return out
 }
 
 func (c *layoutCache) stats() CacheStats {

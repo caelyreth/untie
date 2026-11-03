@@ -43,11 +43,18 @@ const (
 )
 
 type token struct {
-	kind        tokenKind
-	span        source.Range
-	text        string
-	literal     string
-	spaceBefore bool
+	kind         tokenKind
+	span         source.Range
+	text         string
+	literal      string
+	literalSpans []literalSpan
+	spaceBefore  bool
+}
+
+type literalSpan struct {
+	textStart int
+	textEnd   int
+	source    source.Range
 }
 
 func (t token) describe() string {
@@ -380,53 +387,48 @@ func (l *lexer) invalidUTF8(start int) {
 
 func (l *lexer) stringToken(start int, space bool) token {
 	l.pos++ // opening quote
-	literalStart := l.pos
 	var decoded strings.Builder
-	decoding := false
-	startDecoding := func(until int) {
-		if decoding {
-			return
-		}
-		decoded.WriteString(l.src[literalStart:until])
-		decoding = true
+	var spans []literalSpan
+	appendRune := func(r rune, sourceStart, sourceEnd int) {
+		textStart := decoded.Len()
+		decoded.WriteRune(r)
+		spans = append(spans, literalSpan{
+			textStart: textStart,
+			textEnd:   decoded.Len(),
+			source:    source.NewRange(sourceStart, sourceEnd),
+		})
 	}
 	for l.pos < len(l.src) {
 		if l.src[l.pos] == '"' {
-			literal := l.src[literalStart:l.pos]
 			l.pos++
-			if decoding {
-				literal = decoded.String()
-			}
 			return token{
-				kind:        tokString,
-				span:        source.NewRange(start, l.pos),
-				text:        l.src[start:l.pos],
-				literal:     literal,
-				spaceBefore: space,
+				kind:         tokString,
+				span:         source.NewRange(start, l.pos),
+				text:         l.src[start:l.pos],
+				literal:      decoded.String(),
+				literalSpans: spans,
+				spaceBefore:  space,
 			}
 		}
 		if l.src[l.pos] != '\\' {
 			runeStart := l.pos
 			r, size := utf8.DecodeRuneInString(l.src[l.pos:])
 			if r == utf8.RuneError && size == 1 {
-				startDecoding(runeStart)
 				l.invalidUTF8(l.pos)
 				l.pos++
 				continue
 			}
-			if decoding {
-				decoded.WriteRune(r)
-			}
 			l.pos += size
+			appendRune(r, runeStart, l.pos)
 			continue
 		}
-		startDecoding(l.pos)
+		escapeStart := l.pos
 		escaped, emit, ok := l.scanEscape()
 		if !ok {
 			break
 		}
 		if emit {
-			decoded.WriteRune(escaped)
+			appendRune(escaped, escapeStart, l.pos)
 		}
 	}
 	l.diags = append(l.diags, source.Diagnostic{
@@ -435,16 +437,13 @@ func (l *lexer) stringToken(start int, space bool) token {
 		Code:     source.CodeUnclosedGroup,
 		Message:  "unclosed string",
 	})
-	literal := l.src[literalStart:l.pos]
-	if decoding {
-		literal = decoded.String()
-	}
 	return token{
-		kind:        tokString,
-		span:        source.NewRange(start, l.pos),
-		text:        l.src[start:l.pos],
-		literal:     literal,
-		spaceBefore: space,
+		kind:         tokString,
+		span:         source.NewRange(start, l.pos),
+		text:         l.src[start:l.pos],
+		literal:      decoded.String(),
+		literalSpans: spans,
+		spaceBefore:  space,
 	}
 }
 

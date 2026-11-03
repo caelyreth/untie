@@ -1,0 +1,344 @@
+package engine
+
+import (
+	"context"
+	"errors"
+	"os"
+	"reflect"
+	"testing"
+
+	"github.com/caelyreth/untie/font"
+	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/internal/layout"
+	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
+)
+
+func TestShapeTextPreservesClustersAndPerClusterFallback(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	const text = "A👩‍💻B"
+	run, err := adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    text,
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	wantClusters := []layout.TextCluster{
+		{RuneStart: 0, RuneEnd: 1, Source: source.NewRange(0, 1)},
+		{RuneStart: 1, RuneEnd: 4, Source: source.NewRange(1, 12)},
+		{RuneStart: 4, RuneEnd: 5, Source: source.NewRange(12, 13)},
+	}
+	if len(run.Clusters) != len(wantClusters) {
+		t.Fatalf("clusters = %#v, want %#v", run.Clusters, wantClusters)
+	}
+	for i, want := range wantClusters {
+		got := run.Clusters[i]
+		if got.RuneStart != want.RuneStart || got.RuneEnd != want.RuneEnd ||
+			got.Source != want.Source || got.Missing != want.Missing ||
+			got.X < 0 || got.Advance <= 0 {
+			t.Fatalf("cluster %d = %#v, want runes/source %#v with geometry", i, got, want)
+		}
+		if i > 0 && got.X != run.Clusters[i-1].X+run.Clusters[i-1].Advance {
+			t.Fatalf("cluster %d starts at %d, want previous cluster end %d",
+				i, got.X, run.Clusters[i-1].X+run.Clusters[i-1].Advance)
+		}
+	}
+	if len(run.Glyphs) != 3 {
+		t.Fatalf("glyph count = %d, want 3", len(run.Glyphs))
+	}
+	wantFonts := []string{"NewCMMath-Book", "NotoEmoji-ShapingSubset", "NewCMMath-Book"}
+	for i, positioned := range run.Glyphs {
+		if positioned.Cluster != i {
+			t.Errorf("glyph %d cluster = %d, want %d", i, positioned.Cluster, i)
+		}
+		if positioned.Glyph.FontID != wantFonts[i] {
+			t.Errorf("glyph %d font = %q, want %q", i, positioned.Glyph.FontID, wantFonts[i])
+		}
+		if i > 0 && positioned.At.X <= run.Glyphs[i-1].At.X {
+			t.Errorf("glyph positions are not visual-order increasing: %+v", run.Glyphs)
+		}
+	}
+}
+
+func TestShapeTextTracksShapingClusters(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	shape := func(tracking geometry.Em) layout.TextRun {
+		t.Helper()
+		run, err := adapter.ShapeText(layout.TextRequest{
+			Context:  context.Background(),
+			Text:     "कर्मक्ष",
+			Style:    layout.Style{Size: layout.Text},
+			Variant:  ir.VariantAuto,
+			Font:     ir.FontText,
+			Tracking: tracking,
+		})
+		if err != nil {
+			t.Fatalf("ShapeText: %v", err)
+		}
+		return run
+	}
+	base := shape(0)
+	tracked := shape(geometry.Em(geometry.EmScale / 10))
+	if len(base.Clusters) != 3 || len(base.Glyphs) != 4 {
+		t.Fatalf("base clusters/glyphs = %d/%d, want 3/4", len(base.Clusters), len(base.Glyphs))
+	}
+	wantDelta, err := geometry.EmFromParts(3, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := tracked.Width - base.Width; !closeEm(got, wantDelta) {
+		t.Fatalf("tracked width delta = %d, want %d (one tracking step per cluster)", got, wantDelta)
+	}
+}
+
+func TestShapeTextTrackingSkipsInvisibleClusters(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	shape := func(text string, tracking geometry.Em) layout.TextRun {
+		t.Helper()
+		run, err := adapter.ShapeText(layout.TextRequest{
+			Context:  context.Background(),
+			Text:     text,
+			Style:    layout.Style{Size: layout.Text},
+			Variant:  ir.VariantAuto,
+			Font:     ir.FontText,
+			Tracking: tracking,
+		})
+		if err != nil {
+			t.Fatalf("ShapeText(%q): %v", text, err)
+		}
+		return run
+	}
+	tracking := geometry.Em(geometry.EmScale / 10)
+	plain := shape("AB", tracking)
+	withControl := shape("A\u2067B", tracking)
+	if withControl.Width != plain.Width {
+		t.Fatalf("width with invisible bidi control = %d, want %d", withControl.Width, plain.Width)
+	}
+}
+
+func TestShapeTextKeepsRTLRunsInVisualOrder(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	run, err := adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "سلام",
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	starts := make([]int, len(run.Clusters))
+	if len(run.Glyphs) != len(run.Clusters) {
+		t.Fatalf("RTL cluster/glyph count = %d/%d, want one glyph per Arabic cluster", len(run.Clusters), len(run.Glyphs))
+	}
+	for i, cluster := range run.Clusters {
+		starts[i] = cluster.RuneStart
+		if i > 0 && run.Glyphs[i].At.X <= run.Glyphs[i-1].At.X {
+			t.Fatalf("RTL glyphs are not left-to-right visual order: %+v", run.Glyphs)
+		}
+	}
+	if want := []int{3, 2, 1, 0}; !reflect.DeepEqual(starts, want) {
+		t.Fatalf("cluster order = %v, want visual RTL order %v", starts, want)
+	}
+}
+
+func TestShapeTextUsesCanonicalClusterSourcesInVisualOrder(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	run, err := adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "سلام",
+		Clusters: []ir.TextClusterSource{
+			{TextStart: 0, TextEnd: 2, Source: source.NewRange(100, 102)},
+			{TextStart: 2, TextEnd: 4, Source: source.NewRange(102, 104)},
+			{TextStart: 4, TextEnd: 6, Source: source.NewRange(104, 106)},
+			{TextStart: 6, TextEnd: 8, Source: source.NewRange(106, 108)},
+		},
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	want := []source.Range{
+		source.NewRange(106, 108),
+		source.NewRange(104, 106),
+		source.NewRange(102, 104),
+		source.NewRange(100, 102),
+	}
+	if len(run.Clusters) != len(want) {
+		t.Fatalf("cluster count = %d, want %d", len(run.Clusters), len(want))
+	}
+	for i, cluster := range run.Clusters {
+		if cluster.Source != want[i] {
+			t.Fatalf("cluster %d source = %v, want visual-order source %v", i, cluster.Source, want[i])
+		}
+	}
+}
+
+func TestShapeTextMapsStyledRunesBackToSource(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	tests := []struct {
+		name    string
+		text    string
+		variant ir.Variant
+		runeEnd int
+		source  source.Range
+	}{
+		{name: "single rune", text: "x", variant: ir.VariantItalic, runeEnd: 1, source: source.NewRange(0, 1)},
+		{name: "styled selector", text: "A\uFE01", variant: ir.VariantScript, runeEnd: 2, source: source.NewRange(0, 4)},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			run, err := adapter.ShapeText(layout.TextRequest{
+				Context: context.Background(),
+				Text:    test.text,
+				Style:   layout.Style{Size: layout.Text},
+				Variant: test.variant,
+				Font:    ir.FontMath,
+			})
+			if err != nil {
+				t.Fatalf("ShapeText: %v", err)
+			}
+			if len(run.Clusters) != 1 ||
+				run.Clusters[0].RuneStart != 0 ||
+				run.Clusters[0].RuneEnd != test.runeEnd ||
+				run.Clusters[0].Source != test.source ||
+				run.Clusters[0].X != 0 ||
+				run.Clusters[0].Advance <= 0 {
+				t.Fatalf("styled clusters = %#v", run.Clusters)
+			}
+			if len(run.Glyphs) != 1 || run.Glyphs[0].Glyph.Text != test.text {
+				t.Fatalf("styled glyphs = %#v", run.Glyphs)
+			}
+		})
+	}
+}
+
+func TestShapeTextMissingGlyphAndLimits(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	run, err := adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "😀",
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("missing emoji error = %v", err)
+	}
+	if len(run.Clusters) != 1 || !run.Clusters[0].Missing {
+		t.Fatalf("missing emoji clusters = %#v", run.Clusters)
+	}
+	if len(run.Glyphs) != 1 || !run.Glyphs[0].Missing {
+		t.Fatalf("missing emoji glyphs = %#v", run.Glyphs)
+	}
+
+	run, err = adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "😀",
+		Clusters: []ir.TextClusterSource{{
+			TextStart: 0,
+			TextEnd:   4,
+			Source:    source.NewRange(200, 204),
+		}},
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("mapped missing emoji error = %v", err)
+	}
+	if len(run.Clusters) != 1 || run.Clusters[0].Source != (source.Range{Start: 200, End: 204}) {
+		t.Fatalf("mapped missing cluster = %#v", run.Clusters)
+	}
+
+	limited := newClusteredShapingAdapter(t, source.Limits{MaxOutputItems: 1})
+	if _, err := limited.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "ab",
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	}); !errors.Is(err, layout.ErrLimit) {
+		t.Fatalf("glyph limit error = %v, want ErrLimit", err)
+	}
+}
+
+func TestNamedOperatorsStayOnMathGSUBPath(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	run, err := adapter.ShapeOperator(layout.OperatorRequest{
+		Context: context.Background(),
+		Text:    "sin",
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+	})
+	if err != nil {
+		t.Fatalf("ShapeOperator: %v", err)
+	}
+	if len(run.Clusters) != 0 {
+		t.Fatalf("operator unexpectedly used general text clusters: %#v", run.Clusters)
+	}
+	if len(run.Glyphs) != 3 {
+		t.Fatalf("operator glyph count = %d, want 3", len(run.Glyphs))
+	}
+}
+
+func newClusteredShapingAdapter(t testing.TB, limits source.Limits) *adapter {
+	t.Helper()
+	mathData, err := os.ReadFile("../../testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		t.Fatalf("read math font: %v", err)
+	}
+	emojiData, err := os.ReadFile("../../testdata/upstream/fonts/NotoEmoji-ShapingSubset.ttf")
+	if err != nil {
+		t.Fatalf("read emoji font: %v", err)
+	}
+	arabicData, err := os.ReadFile("../../testdata/upstream/fonts/NotoNaskhArabic-ShapingSubset.ttf")
+	if err != nil {
+		t.Fatalf("read Arabic font: %v", err)
+	}
+	devanagariData, err := os.ReadFile("../../testdata/upstream/fonts/NotoSansDevanagari-ShapingSubset.ttf")
+	if err != nil {
+		t.Fatalf("read Devanagari font: %v", err)
+	}
+	set, err := font.LoadFontSet(font.FontSetConfig{
+		Math: font.FontFace{Bytes: mathData, ID: "NewCMMath-Book"},
+		Fallbacks: []font.FontFace{
+			{Bytes: emojiData, ID: "NotoEmoji-ShapingSubset"},
+			{Bytes: arabicData, ID: "NotoNaskhArabic-ShapingSubset"},
+			{Bytes: devanagariData, ID: "NotoSansDevanagari-ShapingSubset"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("LoadFontSet: %v", err)
+	}
+	adapter, err := newAdapter(set, limits)
+	if err != nil {
+		t.Fatalf("newAdapter: %v", err)
+	}
+	return adapter
+}

@@ -99,7 +99,7 @@ ordinary inter-atom gap.
 | ---------------- | ----------------------------------------------------------------------------- |
 | `Row`            | Horizontal sequence and the common container.                                 |
 | `Glyph`          | One semantic symbol or grapheme cluster.                                      |
-| `Text`           | Shaped text-mode run, with optional font role and tracking.                   |
+| `Text`           | Shaped text-mode run, with optional font role, tracking, and source clusters. |
 | `Operator`       | Named mathematical operator.                                                  |
 | `Space`          | Explicit, interword, or ignored space.                                        |
 | `Fraction`       | Vertical, horizontal, skewed, or barless fraction; also binomial/stack roles. |
@@ -125,6 +125,29 @@ The frontends lower dialect syntax into these families. TeX `pmatrix` and
 Typst `mat` can both become a `Table`; TeX `aligned` and Typst alignment rows
 can both become `Multiline`; a Typst `frac(..., style: "skewed")` and TeX
 `\genfrac` can share `Fraction`.
+
+### Text Source Clusters
+
+`Text` may carry a parser-authored source map:
+
+```go
+type TextClusterSource struct {
+	TextStart int
+	TextEnd   int
+	Source    source.Range
+}
+```
+
+Each entry maps a half-open UTF-8 byte range in `Text` to the absolute source
+range that produced it. A non-empty map is a complete, ordered partition of
+`Text`; its source ranges are also non-overlapping and ordered in logical text
+order. Layout may later place those clusters in a different visual order for
+bidirectional text.
+
+The map is empty when the frontend cannot prove those invariants. Manual or
+synthetic IR built without a map remains valid and uses the node-level
+`Text.Origin`/`Span` hit fallback. Frontends must derive maps from lexer or
+parser evidence, not by guessing offsets from braces or quotes.
 
 ## Semantic Roles
 

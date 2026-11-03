@@ -404,6 +404,7 @@ func (p *parser) parsePrimary() *astNode {
 		str := p.node(tok.span, astString)
 		str.text = tok.literal
 		str.raw = tok.text
+		str.literalSpans = tok.literalSpans
 		return str
 	case tokShorthand:
 		p.advance()
@@ -761,6 +762,7 @@ func (p *parser) parseCodeAtom() *astNode {
 		lit := p.node(tok.span, astString)
 		lit.text = tok.literal
 		lit.raw = tok.text
+		lit.literalSpans = tok.literalSpans
 		lit.value = stringValue(tok.literal)
 		return lit
 	case tokLParen:

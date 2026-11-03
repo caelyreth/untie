@@ -430,11 +430,7 @@ func (p *parser) parseTMspace(command token) astNode {
 }
 
 func (p *parser) parseBmod(command token) astNode {
-	mod := &astTextNode{
-		astBase: newASTBaseAt(astText, command.span, tokenOrigin(command)),
-		text:    "mod",
-		variant: ir.VariantNormal,
-	}
+	mod := newASTTextNode(command.span, tokenOrigin(command), "mod", ir.VariantNormal)
 	items := []astNode{explicitSpaceAST(command.span, 1), mod, explicitSpaceAST(command.span, 1)}
 	row := &astRowNode{
 		astBase: newASTBaseAt(astRow, command.span, tokenOrigin(command)),

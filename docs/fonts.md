@@ -71,13 +71,28 @@ The text face does not become the source of math symbols. The math face is
 still required for operators, MATH constants, script variants, stretchy
 constructions, and math italics.
 
-Fallback selection is per shaped unit, not a global font switch. A CJK text
-run can use a fallback face while surrounding math uses the primary math face.
-The host can add a CJK face to `Fallbacks` without changing math symbols.
+Fallback selection is per shaped unit, not a global font switch. Ordinary text
+is segmented by Unicode bidi, script, and extended grapheme cluster before a
+face is selected, so combining marks and emoji ZWJ sequences are not split
+merely to change fonts. A CJK text run can use a fallback face while surrounding
+math uses the primary math face. The host can add a CJK face to `Fallbacks`
+without changing math symbols.
 
-If no face maps the required rune or variation sequence, layout returns an
-error wrapping `ErrMissingGlyph`. There is no automatic visible placeholder
-during layout.
+When a single face covers a complete bidi/script run, it is used for that whole
+run to preserve contextual shaping. For complex text scripts, an explicit text
+face or fallback is preferred over the primary MATH face when both nominally
+cover the run. Latin, Greek, and Cyrillic continue to prefer the normal face
+order.
+
+If no face maps the required rune or variation sequence, the default
+`RecoveryVisible` layout keeps the rest of the formula drawable. It substitutes
+an error-painted placeholder box, records a `missing-glyph` diagnostic on both
+the box and high-level render result, and continues with the surrounding row.
+Use `RecoveryStrict` when a complete font match is required.
+
+Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.3
+outline-only font and display contract. When such coverage is required, load a
+monochrome outline font or let the missing cluster use visible recovery.
 
 ## Unicode and Variation Selectors
 
@@ -157,17 +172,20 @@ available tags directly.
 
 ## Missing Glyphs
 
-A missing glyph is a layout error, not a parse diagnostic:
+A missing glyph is a recoverable layout problem by default:
 
-- `errors.Is(err, untie.ErrMissingGlyph)` identifies it;
-- `errors.As(err, &layoutErr)` exposes the attributed source range when the
-  error is a `*untie.LayoutError`;
-- the host can retry with an additional fallback face;
-- the parse tree and its `Expr.Alt()` remain available even when layout fails.
+- `RendererOptions.Recovery == RecoveryVisible` returns a non-nil box with an
+  error-painted placeholder for the missing item;
+- `RenderResult.Diagnostics` and `Box.Diagnostics` contain
+  `untie.CodeMissingGlyph` with the attributed source range;
+- surrounding symbols, fractions, scripts, and rows remain in the display list;
+- hosts that require a complete font match can use `RecoveryStrict`, in which
+  case `errors.Is(err, untie.ErrMissingGlyph)` and the structured
+  `*untie.LayoutError` remain available.
 
-The reference font set intentionally produces `ErrMissingGlyph` for text-only
-CJK cases. This documents the fallback boundary rather than implying that one
-font covers every script.
+The reference font set intentionally triggers visible CJK recovery because it
+does not contain a CJK face. Install a fallback face to render the characters
+instead of the placeholder.
 
 ## Recommended Setup
 

@@ -388,6 +388,9 @@ func validateNode(n Node, s *validationState) error {
 		if err := s.validateNonNegativeField(n.Tracking, ".tracking"); err != nil {
 			return err
 		}
+		if err := validateTextClusterSources(n, s); err != nil {
+			return err
+		}
 	case *Operator:
 		if err := validateTextBytes(n.Text, limits, &s.path, "operator"); err != nil {
 			return err
@@ -574,6 +577,57 @@ func validateNode(n Node, s *validationState) error {
 		// No extra fields.
 	default:
 		return fmt.Errorf("%w: %s: unsupported node %T", ErrInvalidIR, &s.path, n)
+	}
+	return nil
+}
+
+func validateTextClusterSources(n *Text, s *validationState) error {
+	if len(n.Clusters) == 0 {
+		return nil
+	}
+	textEnd := 0
+	var previousSource source.Range
+	for i, cluster := range n.Clusters {
+		s.path.pushChild(KindText, i)
+		err := func() error {
+			if cluster.TextStart != textEnd {
+				return fmt.Errorf("%w: %s: text cluster must partition Text at byte %d",
+					ErrInvalidIR, &s.path, textEnd)
+			}
+			if cluster.TextEnd <= cluster.TextStart || cluster.TextEnd > len(n.Text) {
+				return fmt.Errorf("%w: %s: invalid text byte range %d:%d",
+					ErrInvalidIR, &s.path, cluster.TextStart, cluster.TextEnd)
+			}
+			if !utf8.RuneStart(n.Text[cluster.TextStart]) ||
+				(cluster.TextEnd < len(n.Text) && !utf8.RuneStart(n.Text[cluster.TextEnd])) {
+				return fmt.Errorf("%w: %s: text cluster splits a UTF-8 rune", ErrInvalidIR, &s.path)
+			}
+			if cluster.Source.IsDetached() || !cluster.Source.IsValid() ||
+				cluster.Source.End <= cluster.Source.Start {
+				return fmt.Errorf("%w: %s: invalid source range %+v",
+					ErrInvalidIR, &s.path, cluster.Source)
+			}
+			if i > 0 && cluster.Source.Start < previousSource.End {
+				return fmt.Errorf("%w: %s: source ranges overlap or are out of order",
+					ErrInvalidIR, &s.path)
+			}
+			s.path.pushText(".source")
+			err := s.validateRange(cluster.Source)
+			s.path.pop()
+			return err
+		}()
+		s.path.pop()
+		if err != nil {
+			return err
+		}
+		textEnd = cluster.TextEnd
+		previousSource = cluster.Source
+	}
+	if textEnd != len(n.Text) {
+		s.path.pushText(".clusters")
+		err := fmt.Errorf("%w: %s: source map does not cover Text", ErrInvalidIR, &s.path)
+		s.path.pop()
+		return err
 	}
 	return nil
 }

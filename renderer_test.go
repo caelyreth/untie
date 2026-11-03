@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -27,6 +28,12 @@ func TestNewRendererValidationAndDefaults(t *testing.T) {
 		DefaultStyle: display.Style{Size: -1},
 	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) || !errors.Is(err, ErrInvalidStyle) {
 		t.Fatalf("NewRenderer(invalid style) = %v, %v", renderer, err)
+	}
+	if renderer, err := NewRenderer(fonts, RendererOptions{
+		Recovery: RecoveryMode(255),
+	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) ||
+		!errors.Is(err, ErrInvalidRecovery) {
+		t.Fatalf("NewRenderer(invalid recovery) = %v, %v", renderer, err)
 	}
 
 	renderer, err := NewRenderer(fonts, RendererOptions{CacheEntries: -1})
@@ -200,7 +207,7 @@ func TestRenderIntersectsRendererAndRequestParseLimits(t *testing.T) {
 	}
 }
 
-func TestRenderReturnsDiagnosticsWithLayoutError(t *testing.T) {
+func TestRenderRecoversMissingGlyphWithDiagnostic(t *testing.T) {
 	t.Parallel()
 
 	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
@@ -209,24 +216,207 @@ func TestRenderReturnsDiagnosticsWithLayoutError(t *testing.T) {
 	}
 	result, err := renderer.Render(
 		context.Background(),
-		`中\bad`,
+		`x+\text{中}+y`,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v, want visible recovery", err)
+	}
+	if result == nil {
+		t.Fatal("Render(recovered) result = nil")
+	}
+	if result.Box == nil {
+		t.Fatal("Render(recovered) returned no box")
+	}
+	if len(result.Box.Items) == 0 {
+		t.Fatal("Render(recovered) box has no drawable items")
+	}
+	if !hasCode(result.Diagnostics, source.CodeMissingGlyph) {
+		t.Fatalf("Render() diagnostics = %+v, want missing-glyph", result.Diagnostics)
+	}
+	if !hasCode(result.Box.Diagnostics, source.CodeMissingGlyph) {
+		t.Fatalf("Box.Diagnostics = %+v, want missing-glyph", result.Box.Diagnostics)
+	}
+	for _, item := range result.Box.Items {
+		if item.Paint.Role == display.RoleError {
+			return
+		}
+	}
+	t.Fatal("recovered box has no error-colored missing-glyph placeholder")
+}
+
+func TestRenderStrictMissingGlyphReturnsLayoutError(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{
+		Recovery: RecoveryStrict,
+	})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		`中`,
 		RenderRequest{Style: display.Style{Size: 16}},
 	)
 	if !errors.Is(err, ErrMissingGlyph) {
 		t.Fatalf("Render() error = %v, want ErrMissingGlyph", err)
 	}
-	if result == nil {
-		t.Fatal("Render(layout error) result = nil")
+	if result == nil || result.Box != nil {
+		t.Fatalf("Render(strict) result = %+v, want diagnostics and no box", result)
 	}
-	if result.Box != nil {
-		t.Fatal("Render(layout error) returned a box")
+	if !hasCode(result.Diagnostics, source.CodeMissingGlyph) {
+		t.Fatalf("Render(strict) diagnostics = %+v, want missing-glyph", result.Diagnostics)
 	}
-	if result.Alt != (display.Alt{}) {
-		t.Fatalf("Render(layout error) Alt = %#v, want zero", result.Alt)
+}
+
+func TestRenderRecoversOnlyMissingTextCluster(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	if len(result.Diagnostics) == 0 {
-		t.Fatal("Render(layout error) lost parse diagnostics")
+	result, err := renderer.Render(
+		context.Background(),
+		`x+\text{A中B}+y`,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
 	}
+	if result.Box == nil {
+		t.Fatal("Render() Box = nil")
+	}
+	if len(result.Box.Diagnostics) != 1 || result.Box.Diagnostics[0].Message != `missing glyph: "中"` {
+		t.Fatalf("Box.Diagnostics = %+v, want one CJK cluster diagnostic", result.Box.Diagnostics)
+	}
+	errorRules, inkGlyphs := 0, 0
+	for _, item := range result.Box.Items {
+		switch {
+		case item.Paint.Role == display.RoleError && item.Kind == display.ItemRule:
+			errorRules++
+		case item.Paint.Role == display.RoleInk && item.Kind == display.ItemGlyphPath:
+			inkGlyphs++
+		}
+	}
+	if errorRules != 4 {
+		t.Fatalf("error rules = %d, want one four-rule placeholder", errorRules)
+	}
+	if inkGlyphs < 4 {
+		t.Fatalf("ink glyphs = %d, want surrounding x, A, B, and y", inkGlyphs)
+	}
+}
+
+func TestRenderAcceptsShortTextFeatureTags(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		`\text{abc}`,
+		RenderRequest{Style: display.Style{
+			Size:     16,
+			Features: []string{"ss1"},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("Render(ss1) error = %v", err)
+	}
+	if result.Box == nil || len(result.Box.Items) == 0 {
+		t.Fatal("Render(ss1) returned no visible text")
+	}
+}
+
+func TestRenderReportsEachRepeatedMissingTextCluster(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	const sourceText = `x+\text{中中}+y`
+	result, err := renderer.Render(
+		context.Background(),
+		sourceText,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if len(result.Box.Diagnostics) != 2 {
+		t.Fatalf("diagnostics = %#v, want two clusters", result.Box.Diagnostics)
+	}
+	first := strings.Index(sourceText, "中")
+	second := strings.Index(sourceText[first+len("中"):], "中") + first + len("中")
+	for i, start := range []int{first, second} {
+		want := source.NewRange(start, start+len("中"))
+		if got := result.Box.Diagnostics[i].Range; got != want {
+			t.Fatalf("diagnostic %d range = %v, want %v", i, got, want)
+		}
+		if _, ok := findAtomHit(result.Box.Hits, want); !ok {
+			t.Fatalf("missing atom hit for diagnostic %d range %v", i, want)
+		}
+	}
+}
+
+func TestRenderMissingGlyphRecoveryAcrossStructures(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	sources := []string{
+		`\frac{x}{\text{中}}`,
+		`x^{\text{中}}`,
+		`\sqrt{\text{中}}`,
+		`\begin{matrix}\text{中}&x\\y&z\end{matrix}`,
+		`\begin{aligned}x&=1\\y&=\text{中}\end{aligned}`,
+	}
+	for _, sourceText := range sources {
+		sourceText := sourceText
+		t.Run(sourceText, func(t *testing.T) {
+			t.Parallel()
+			result, err := renderer.Render(
+				context.Background(),
+				sourceText,
+				RenderRequest{Style: display.Style{Size: 16}},
+			)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+			if result.Box == nil || len(result.Box.Items) == 0 {
+				t.Fatal("recovered formula has no drawable items")
+			}
+			if !hasCode(result.Box.Diagnostics, source.CodeMissingGlyph) {
+				t.Fatalf("diagnostics = %+v, want missing-glyph", result.Box.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestContextFailureProducesDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	for _, err := range []error{context.Canceled, context.DeadlineExceeded} {
+		diagnostic, ok := diagnosticForContextError(err)
+		if !ok || diagnostic.Code != source.CodeCanceled {
+			t.Fatalf("diagnosticForContextError(%v) = %+v, %v", err, diagnostic, ok)
+		}
+	}
+}
+
+func hasCode(diagnostics []source.Diagnostic, code source.Code) bool {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func TestRenderAlternativeTextIsOptional(t *testing.T) {
@@ -275,6 +465,33 @@ func TestRenderContextCancellation(t *testing.T) {
 	if result, err := renderer.Render(ctx, "x", RenderRequest{}); result != nil ||
 		!errors.Is(err, context.Canceled) {
 		t.Fatalf("Render(canceled) = %#v, %v", result, err)
+	}
+}
+
+func TestRenderLayoutCancellationProducesDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	parseOptions := renderer.effectiveParseOptions(ParseOptions{})
+	expr, err := renderer.parse(context.Background(), "x", TeX, Inline, parseOptions)
+	if err != nil {
+		t.Fatalf("parse error = %v", err)
+	}
+	style, err := renderer.effectiveStyle(RenderRequest{}.Style)
+	if err != nil {
+		t.Fatalf("effectiveStyle error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	result, err := renderer.renderParsed(ctx, "x", expr, style)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("renderParsed error = %v, want context.Canceled", err)
+	}
+	if result == nil || !hasCode(result.Diagnostics, source.CodeCanceled) {
+		t.Fatalf("renderParsed result = %#v, want cancellation diagnostic", result)
 	}
 }
 

@@ -127,19 +127,21 @@ Markdown binding, and existing-box drawing.
 - [Getting Started](docs/getting-started.md)
 - [Core Concepts](docs/concepts.md)
 - [Rendering](docs/rendering.md)
+- [Editor Integration](docs/editor-integration.md)
 - [Fonts](docs/fonts.md)
 - [Parsing](docs/parsing.md)
 - [MyGo Integration](docs/mygo.md)
 - [Supported TeX](docs/tex-support.md)
 - [Supported Typst](docs/typst-support.md)
 - [API Stability](docs/stability.md)
+- [Migrating to 0.3](docs/migration-v0.3.md)
 - [Release Process](docs/releasing.md)
 - [Security Policy](SECURITY.md)
 - [Full Documentation Index](docs/README.md)
 
 ### Release
 
-The current tagged release is `v0.2.1`. Untie remains pre-1.0 while its API
+The current tagged release is `v0.3.0`. Untie remains pre-1.0 while its API
 stability tiers are validated in real integrations. Release notes are generated
 from Conventional Commits; see [GitHub Releases](https://github.com/caelyreth/untie/releases)
 for published changes and [Release Process](docs/releasing.md) for the

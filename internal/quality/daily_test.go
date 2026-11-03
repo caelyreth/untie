@@ -59,6 +59,9 @@ func TestDailySTEMCorpus(t *testing.T) {
 		Rendered: 112, Recovered: 7, MissingGlyph: 4, LayoutError: 1, Failure: 0,
 	}
 	if report.Summary != want {
+		for _, result := range report.UnexpectedFailureCases() {
+			t.Logf("%s: outcome=%q detail=%q", result.ID, result.Outcome, result.Detail)
+		}
 		t.Fatalf("summary = %+v, want %+v", report.Summary, want)
 	}
 	for _, result := range report.Cases {

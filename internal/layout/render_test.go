@@ -375,8 +375,36 @@ func TestGlyphRefsAndMissingGlyph(t *testing.T) {
 	if box.Items[1].Em != 16 || box.Items[1].Glyph != 7 {
 		t.Fatalf("glyph ref = %+v, want Em=16 Glyph=7", box.Items[1])
 	}
-	if _, err := renderer.Layout(glyph("missing", ir.ClassNormal), ir.Inline, testStyle(16)); !errors.Is(err, ErrMissingGlyph) {
+	if _, err := renderer.LayoutFormulaContextOptions(
+		context.Background(),
+		&ir.Formula{Root: glyph("missing", ir.ClassNormal)},
+		ir.Inline,
+		testStyle(16),
+		LayoutOptions{},
+	); !errors.Is(err, ErrMissingGlyph) {
 		t.Fatalf("missing glyph error = %v", err)
+	}
+
+	box, err = renderer.LayoutFormulaContextOptions(
+		context.Background(),
+		&ir.Formula{Root: glyph("missing", ir.ClassNormal)},
+		ir.Inline,
+		testStyle(16),
+		LayoutOptions{RecoverMissingGlyph: true},
+	)
+	if err != nil {
+		t.Fatalf("recovering Layout() error = %v", err)
+	}
+	if len(box.Diagnostics) != 1 || box.Diagnostics[0].Code != source.CodeMissingGlyph {
+		t.Fatalf("recovering diagnostics = %+v", box.Diagnostics)
+	}
+	if len(box.Items) != 4 {
+		t.Fatalf("recovering items = %d, want four placeholder rules", len(box.Items))
+	}
+	for _, item := range box.Items {
+		if item.Kind != display.ItemRule || item.Paint.Role != display.RoleError {
+			t.Fatalf("recovering item = %+v, want error-role rule", item)
+		}
 	}
 }
 

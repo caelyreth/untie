@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.2.1` with layout revision `1`. This page defines
+Untie is currently version `0.3.0` with layout revision `2`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -20,16 +20,21 @@ Primary packages:
 Primary surface:
 
 - `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`, `NewEngine`,
-  `Engine.Layout`, `Engine.LayoutContext`;
+  `Engine.Layout`, `Engine.LayoutContext`,
+  `Engine.LayoutContextWithOptions`;
+- `FontSet.ShapeText`, `TextShapeRequest`, `ShapedText`, `ShapedCluster`,
+  `ShapedGlyph`;
 - `NewRenderer`, `RendererOptions`, `RenderRequest`, `RenderResult`,
-  `Renderer.Render`;
+  `Renderer.Render`, `RecoveryMode`, `LayoutOptions`;
 - `render.Walk`, `render.Command`, `render.ResolvePath`, `render.Fit`,
   `render.FitOptions`, and `render.Transform`;
 - `(*untiemygo.Renderer).Element`, `BindMarkdown`, `InlineMath`, `DisplayMath`,
-  `Draw`, and `CacheStats` in the optional MyGo adapter;
+  `DisplayMathWidth`, `Draw`, `DrawBox`, `PaintResolver`, `ScaleMode`, and
+  `CacheStats` in the optional MyGo adapter;
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
-- `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`;
+- `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`,
+  and `Box.Diagnostics`;
 - public error sentinels and diagnostic severities/codes.
 
 Tier 1 is the recommended integration surface. Breaking changes are allowed
@@ -82,7 +87,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.2.1+layout.1
+0.3.0+layout.2
 ```
 
 The package-level engine cache includes that whole string. A layout behavior
