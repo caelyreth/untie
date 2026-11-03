@@ -23,7 +23,10 @@ jobs:
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - name: Verify modules
-        run: go mod verify
+        run: |
+          go mod verify
+          cd contrib/mygo
+          go mod verify
       - name: Vet
         run: go vet ./...
       - name: Lint
@@ -41,6 +44,14 @@ jobs:
         run: |
           go test ./...
           go vet ./...
+      - name: Test MyGo contrib adapter
+        working-directory: contrib/mygo
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go test ./...
+          go vet ./...
+          go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run ./...
       - name: Tagged TeX layout integration
         env:
           CGO_ENABLED: "0"
@@ -57,7 +68,10 @@ jobs:
       - name: Race detector
         env:
           CGO_ENABLED: "1"
-        run: go test -race ./...
+        run: |
+          go test -race ./...
+          cd contrib/mygo
+          go test -race ./...
 
   cross-compile:
     runs-on: ubuntu-latest

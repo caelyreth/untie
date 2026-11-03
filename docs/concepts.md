@@ -151,6 +151,11 @@ The repository's architecture test enforces the import direction and rejects
 imports of Untie internals from the separate example module. See
 [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go).
 
+The root module has no MyGo dependency. Framework integration lives in the
+nested `github.com/caelyreth/untie/contrib/mygo` module. Its exact import
+allowlist permits only declared public Untie and MyGo packages and rejects both
+projects' internals. See [MyGo integration](mygo.md).
+
 ## Content Identity
 
 Two identities are exposed for different jobs:

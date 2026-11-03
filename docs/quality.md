@@ -29,6 +29,15 @@ cd examples/mygo
 go test ./...
 ```
 
+The optional MyGo adapter is another nested module:
+
+```sh
+cd contrib/mygo
+go test ./...
+go test -race ./...
+go vet ./...
+```
+
 ## Daily STEM Corpus
 
 Tracked at [`testdata/daily-stem`](../testdata/daily-stem):
@@ -137,6 +146,8 @@ An exact import allowlist protects the intended dependency direction:
 - layout consumes display, geometry, IR, and source;
 - the root facade composes internals;
 - the example module can use Untie's public API but no internal package.
+- the contrib adapter uses only declared public Untie and MyGo packages;
+- the root module cannot acquire a MyGo dependency.
 
 See
 [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go).

@@ -21,6 +21,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Integration Guides
 
+- [MyGo integration](mygo.md) provides the bounded adapter for MyGo Markdown
+  math, theme-role drawing, and framework-neutral box drawing.
 - [Fonts and fallback](fonts.md) covers the required math face, optional text
   face, ordered fallbacks, face IDs, and font identity.
 - [Parsing, diagnostics, and recovery](parsing.md) covers TeX and Typst input,
@@ -84,3 +86,7 @@ text, and its source metadata.
 The bundled `examples/mygo` application is a complete drawing integration for
 the public display list. The example module is separate from the library; the
 library itself has no UI dependency.
+
+For plug-and-play Markdown math, use the separately versioned
+[`contrib/mygo`](../contrib/mygo/README.md) adapter. Importing the root module
+never imports MyGo.

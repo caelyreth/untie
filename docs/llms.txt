@@ -194,6 +194,8 @@ directly and is never wrapped in `LayoutError`.
 - `LoadFontSet` and `LoadMathFont` copy font bytes.
 - `Expr` and `FontSet` are immutable; `Engine` is safe for concurrent layouts.
 - `Box` is caller-owned and should be treated as immutable when shared.
+- `contrib/mygo` is a nested module; importing the root module never imports
+  MyGo. Its adapter caches immutable boxes and installs Markdown math hooks.
 
 ## Supported-Syntax Rule
 
