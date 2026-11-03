@@ -4,6 +4,7 @@ package tex
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -28,6 +29,7 @@ type Result struct {
 	Root        ir.Node
 	Tags        []ir.EquationTag
 	Diagnostics []source.Diagnostic
+	Arena       *irarena.Arena
 }
 
 // Parse lowers TeX source into the neutral IR.
@@ -60,11 +62,12 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	}
 
 	p := newParser(src, mode, opts.Macros, limits)
-	root, tags := p.parse()
+	root, tags, arena := p.parse()
 	return Result{
 		Root:        root,
 		Tags:        tags,
 		Diagnostics: source.NormalizeDiagnostics(p.diagnostics),
+		Arena:       arena,
 	}
 }
 

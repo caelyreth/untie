@@ -222,7 +222,7 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,
-			mark:     newGlyphAST(t.span, mark, ir.ClassDiacritic),
+			mark:     p.newGlyphAST(t.span, mark, ir.ClassDiacritic),
 			position: position,
 		}
 	}
@@ -290,7 +290,7 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,
-			mark:     newGlyphAST(t.span, spec.text, ir.ClassDiacritic),
+			mark:     p.newGlyphAST(t.span, spec.text, ir.ClassDiacritic),
 			position: ir.PositionAbove,
 			stretchy: false,
 		}

@@ -26,8 +26,8 @@ func (p *parser) parseDelimitedArgument(command token) astNode {
 	body := p.parseRequiredArgument(command)
 	return &astFencedNode{
 		astBase:  newASTBaseAt(astFenced, source.Merge(command.span, body.base().span), tokenOrigin(command)),
-		open:     newGlyphAST(command.span, openText, ir.ClassOpening),
-		close:    newGlyphAST(command.span, closeText, ir.ClassClosing),
+		open:     p.newGlyphAST(command.span, openText, ir.ClassOpening),
+		close:    p.newGlyphAST(command.span, closeText, ir.ClassClosing),
 		body:     []astNode{body},
 		balanced: true,
 	}
@@ -241,7 +241,7 @@ func (p *parser) parseScriptGroup(owner token, side string) (top, bottom astNode
 func (p *parser) parseCompositeRelation(command token, glyphs ...string) astNode {
 	items := make([]astNode, 0, len(glyphs))
 	for _, glyph := range glyphs {
-		items = append(items, newGlyphAST(command.span, glyph, ir.ClassRelation))
+		items = append(items, p.newGlyphAST(command.span, glyph, ir.ClassRelation))
 	}
 	return &astRowNode{
 		astBase: newASTBaseAt(astRow, command.span, tokenOrigin(command)),
@@ -358,10 +358,10 @@ func (p *parser) rawDelimiter(span source.Range, text string, fallback ir.MathCl
 		return nil
 	}
 	if spec, ok := delimiterCommands[text]; ok {
-		return newGlyphAST(span, spec.text, fallback)
+		return p.newGlyphAST(span, spec.text, fallback)
 	}
 	if len([]rune(text)) == 1 {
-		return newGlyphAST(span, text, fallback)
+		return p.newGlyphAST(span, text, fallback)
 	}
 	p.report(source.Diagnostic{
 		Range:    normalizeRange(span),
@@ -475,8 +475,8 @@ func (p *parser) parseModArgument(command token) astNode {
 	if command.text == "\\pmod" || command.text == "\\pod" {
 		body = &astFencedNode{
 			astBase:  newASTBaseAt(astFenced, source.Merge(command.span, arg.base().span), tokenOrigin(command)),
-			open:     newGlyphAST(command.span, "(", ir.ClassOpening),
-			close:    newGlyphAST(command.span, ")", ir.ClassClosing),
+			open:     p.newGlyphAST(command.span, "(", ir.ClassOpening),
+			close:    p.newGlyphAST(command.span, ")", ir.ClassClosing),
 			body:     []astNode{body},
 			balanced: true,
 		}
@@ -568,7 +568,7 @@ func (p *parser) parseChar(command token) astNode {
 			return newPlaceholderAST(source.Merge(command.span, value.span), "invalid character code")
 		}
 		span := source.Merge(command.span, value.span)
-		return newGlyphASTAt(span, tokenOrigin(command), string(r), symbolForChar(string(r)).class)
+		return p.newGlyphASTAt(span, tokenOrigin(command), string(r), symbolForChar(string(r)).class)
 	}
 
 	var b strings.Builder
@@ -604,7 +604,7 @@ func (p *parser) parseChar(command token) astNode {
 		})
 		return newPlaceholderAST(span, "invalid character code")
 	}
-	return newGlyphAST(span, string(rune(value)), symbolForChar(string(rune(value))).class)
+	return p.newGlyphAST(span, string(rune(value)), symbolForChar(string(rune(value))).class)
 }
 
 func (p *parser) parseHTMLMetadataWrapper(command token) astNode {

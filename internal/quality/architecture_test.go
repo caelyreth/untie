@@ -99,6 +99,7 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/geometry",
 			modulePath + "/internal/alt",
 			modulePath + "/internal/engine",
+			modulePath + "/internal/irarena",
 			modulePath + "/internal/layout",
 			modulePath + "/internal/tex",
 			modulePath + "/internal/typst",
@@ -175,6 +176,9 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/internal/quality/fixture": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
+	modulePath + "/internal/irarena": {
+		Production: []string{modulePath + "/ir", modulePath + "/source"},
+	},
 	modulePath + "/internal/layout": {
 		Production: []string{
 			modulePath + "/display",
@@ -187,6 +191,7 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/internal/mathdata/gen": {},
 	modulePath + "/internal/tex": {
 		Production: []string{
+			modulePath + "/internal/irarena",
 			modulePath + "/internal/mathdata",
 			modulePath + "/ir",
 			modulePath + "/source",
@@ -194,6 +199,7 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/internal/typst": {
 		Production: []string{
+			modulePath + "/internal/irarena",
 			modulePath + "/internal/mathdata",
 			modulePath + "/ir",
 			modulePath + "/source",

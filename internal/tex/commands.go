@@ -19,7 +19,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 				semanticLimits: spec.limits != ir.LimitsNever,
 			}
 		}
-		return astGlyphSpec(t.span, t.origin, spec)
+		return p.astGlyphSpec(t.span, t.origin, spec)
 	}
 	if spec, ok := spacingCommands[t.text]; ok {
 		return &astSpaceNode{
@@ -30,7 +30,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	}
 	if spec, ok := accentCommands[t.text]; ok {
 		body := p.parseRequiredArgument(t)
-		mark := newGlyphAST(t.span, spec.text, ir.ClassDiacritic)
+		mark := p.newGlyphAST(t.span, spec.text, ir.ClassDiacritic)
 		return &astAccentNode{
 			astBase:  newASTBaseAt(astAccent, source.Merge(t.span, body.base().span), tokenOrigin(t)),
 			body:     body,
@@ -52,7 +52,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	}
 	if spec, ok := delimiterCommands[t.text]; ok {
 		spec.class = fixedDelimiterClass(spec.class)
-		return astGlyphSpec(t.span, t.origin, symbolSpec{text: spec.text, class: spec.class, variant: ir.VariantAuto})
+		return p.astGlyphSpec(t.span, t.origin, symbolSpec{text: spec.text, class: spec.class, variant: ir.VariantAuto})
 	}
 
 	switch t.text {
@@ -153,7 +153,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	case "\\mathstrut":
 		return &astPhantomNode{
 			astBase: newASTBaseAt(astPhantom, t.span, tokenOrigin(t)),
-			body:    newGlyphAST(t.span, "(", ir.ClassOpening),
+			body:    p.newGlyphAST(t.span, "(", ir.ClassOpening),
 			height:  true,
 			depth:   true,
 		}
@@ -604,7 +604,7 @@ func (p *parser) parseSharedTeXCommand(t token) astNode {
 			semanticLimits: true,
 		}
 	}
-	return astGlyphSpec(t.span, t.origin, symbolSpec{
+	return p.astGlyphSpec(t.span, t.origin, symbolSpec{
 		text:    symbol.Text,
 		class:   class,
 		variant: ir.VariantAuto,
@@ -685,8 +685,8 @@ func (p *parser) parseBinomial(command token) astNode {
 	}
 	return &astFencedNode{
 		astBase:  newASTBaseAt(astFenced, f.span, tokenOrigin(command)),
-		open:     newGlyphAST(command.span, "(", ir.ClassOpening),
-		close:    newGlyphAST(command.span, ")", ir.ClassClosing),
+		open:     p.newGlyphAST(command.span, "(", ir.ClassOpening),
+		close:    p.newGlyphAST(command.span, ")", ir.ClassClosing),
 		body:     []astNode{f},
 		balanced: false,
 	}
@@ -803,7 +803,7 @@ func (p *parser) parseDelimiter(owner token, fallbackClass ir.MathClass) astNode
 			Code:     source.CodeInvalidValue,
 			Message:  "invalid delimiter '" + t.text + "'",
 		})
-		return newGlyphAST(t.span, t.text, fallbackClass)
+		return p.newGlyphAST(t.span, t.text, fallbackClass)
 	}
 	if spec.text == "." {
 		return nil
@@ -812,7 +812,7 @@ func (p *parser) parseDelimiter(owner token, fallbackClass ir.MathClass) astNode
 	if fallbackClass != ir.ClassFence {
 		class = fallbackClass
 	}
-	return astGlyphSpec(t.span, t.origin, symbolSpec{text: spec.text, class: class, variant: ir.VariantAuto})
+	return p.astGlyphSpec(t.span, t.origin, symbolSpec{text: spec.text, class: class, variant: ir.VariantAuto})
 }
 
 func (p *parser) parseLine(command token, position ir.Position) astNode {

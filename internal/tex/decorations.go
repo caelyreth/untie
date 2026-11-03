@@ -32,7 +32,7 @@ func (p *parser) parseOverUnderAccent(command token, position ir.Position, mark 
 	return &astAccentNode{
 		astBase:  newASTBaseAt(astAccent, source.Merge(command.span, body.base().span), tokenOrigin(command)),
 		body:     body,
-		mark:     newGlyphAST(command.span, mark, ir.ClassDiacritic),
+		mark:     p.newGlyphAST(command.span, mark, ir.ClassDiacritic),
 		position: position,
 		stretchy: stretchy,
 	}
@@ -91,7 +91,7 @@ func (p *parser) parseExtensibleArrow(command token) astNode {
 	arrowText := extensibleArrows[command.text]
 	below := p.parseOptionalArgument(command)
 	above := p.parseRequiredArgument(command)
-	arrow := newGlyphAST(command.span, arrowText, ir.ClassRelation)
+	arrow := p.newGlyphAST(command.span, arrowText, ir.ClassRelation)
 	scripts := &astScriptsNode{
 		astBase: newASTBaseAt(astScripts, source.Merge(command.span, above.base().span), tokenOrigin(command)),
 		main:    arrow,

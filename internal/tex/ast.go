@@ -46,6 +46,49 @@ type astNode interface {
 	base() *astBase
 }
 
+const astArenaMinHint = 128
+
+// astArena batches high-volume parser glyph nodes. It is owned by one parser
+// and never escapes the parse/lowering operation.
+type astArena struct {
+	glyphs []astGlyphNode
+	next   int
+	size   int
+}
+
+func newASTArena(hint int) astArena {
+	a := astArena{}
+	if hint >= astArenaMinHint {
+		a.size = max(hint*2/5, 16)
+		a.glyphs = make([]astGlyphNode, a.size)
+	}
+	return a
+}
+
+func (a *astArena) allocGlyph(span, origin source.Range, text string, class ir.MathClass, variant ir.Variant, limits ir.LimitsPlacement) *astGlyphNode {
+	value := astGlyphNode{
+		astBase: newASTBaseAt(astGlyph, span, origin),
+		text:    text,
+		class:   class,
+		variant: variant,
+		limits:  limits,
+	}
+	if a.size == 0 {
+		out := new(astGlyphNode)
+		*out = value
+		return out
+	}
+	if a.next >= len(a.glyphs) {
+		a.size = max(a.size*2, 8)
+		a.glyphs = make([]astGlyphNode, a.size)
+		a.next = 0
+	}
+	out := &a.glyphs[a.next]
+	a.next++
+	*out = value
+	return out
+}
+
 func (b *astBase) base() *astBase {
 	return b
 }

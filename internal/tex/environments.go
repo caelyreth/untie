@@ -66,10 +66,10 @@ func (p *parser) parseEnvironment(command token) astNode {
 		var open astNode
 		var close astNode
 		if env.open != "" {
-			open = newGlyphAST(nameSpan, env.open, ir.ClassOpening)
+			open = p.newGlyphAST(nameSpan, env.open, ir.ClassOpening)
 		}
 		if env.close != "" {
-			close = newGlyphAST(nameSpan, env.close, ir.ClassClosing)
+			close = p.newGlyphAST(nameSpan, env.close, ir.ClassClosing)
 		}
 		return &astFencedNode{
 			astBase:  newASTBaseAt(astFenced, span, tokenOrigin(command)),
@@ -294,7 +294,7 @@ func (p *parser) parseTableEnvironment(name string, command token, nameSpan sour
 	}
 	if spec != nil {
 		if len(spec.columns) != 0 {
-			table.columns = append([]ir.ColumnAlign(nil), spec.columns...)
+			table.columns = spec.columns
 		}
 		table.vertical = spec.vertical
 	}

@@ -70,9 +70,7 @@ func applyVariant(n ir.Node, variant ir.Variant) {
 	}
 	base := n.NodeBase()
 	base.Variant = combineVariant(base.Variant, variant)
-	for _, child := range ir.Children(n) {
-		applyVariant(child, variant)
-	}
+	ir.VisitChildren(n, func(child ir.Node) { applyVariant(child, variant) })
 }
 
 func combineVariant(current, incoming ir.Variant) ir.Variant {

@@ -1,6 +1,7 @@
 package tex
 
 import (
+	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -15,14 +16,15 @@ var defaultStrokeThickness = ir.RawLength(ir.LengthEm, 50_000)
 type lowerer struct {
 	limits     source.Limits
 	diagnostic func(source.Diagnostic)
+	arena      *irarena.Arena
 	count      int
 	depth      int
 	limitHit   bool
 	exhausted  bool
 }
 
-func newLowerer(limits source.Limits, diagnostic func(source.Diagnostic)) *lowerer {
-	return &lowerer{limits: limits, diagnostic: diagnostic}
+func newLowerer(limits source.Limits, diagnostic func(source.Diagnostic), arena *irarena.Arena) *lowerer {
+	return &lowerer{limits: limits, diagnostic: diagnostic, arena: arena}
 }
 
 func (l *lowerer) lowerTags(tags []astEquationTag) []ir.EquationTag {
@@ -55,7 +57,7 @@ func (l *lowerer) lowerTags(tags []astEquationTag) []ir.EquationTag {
 			if !l.reserve(tag.span) {
 				break
 			}
-			lowered.Body = ir.NewPlaceholder(normalizeRange(tag.span), "missing equation tag body")
+			lowered.Body = l.arena.NewPlaceholder(normalizeRange(tag.span), "missing equation tag body")
 		}
 		out = append(out, lowered)
 	}
@@ -118,11 +120,11 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 				items = append(items, child)
 			}
 		}
-		out := ir.NewRow(n.span, items...)
+		out := l.arena.NewRow(n.span, items...)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astGlyphNode:
-		out := ir.NewGlyph(n.span, n.text)
+		out := l.arena.NewGlyph(n.span, n.text)
 		variant := n.variant
 		if variant == ir.VariantAuto {
 			variant = ctx.variant
@@ -132,7 +134,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		l.applyBase(&out.Base, &n.astBase, ctx, n.class)
 		return out
 	case *astTextNode:
-		out := ir.NewText(n.span, n.text)
+		out := l.arena.NewText(n.span, n.text)
 		out.Variant = n.variant
 		if out.Variant == ir.VariantAuto {
 			out.Variant = ctx.variant
@@ -140,7 +142,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astOperatorNode:
-		out := ir.NewOperator(n.span, n.text)
+		out := l.arena.NewOperator(n.span, n.text)
 		out.Limits = n.limits
 		out.Variant = n.variant
 		if out.Variant == ir.VariantAuto {
@@ -149,7 +151,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassLarge)
 		return out
 	case *astSpaceNode:
-		out := ir.NewSpace(n.span, n.kind, n.amount)
+		out := l.arena.NewSpace(n.span, n.kind, n.amount)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassSpace)
 		return out
 	case *astFractionNode:
@@ -164,7 +166,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if numerator == nil || denominator == nil {
 			return l.placeholder(n.span, "missing fraction part")
 		}
-		out := ir.NewFraction(n.span, numerator, denominator)
+		out := l.arena.NewFraction(n.span, numerator, denominator)
 		out.Bar = n.bar
 		out.Style = n.style
 		out.Role = n.role
@@ -192,7 +194,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if radicand == nil {
 			return l.placeholder(n.span, "missing radicand")
 		}
-		out := ir.NewRadical(n.span, radicand, index)
+		out := l.arena.NewRadical(n.span, radicand, index)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astScriptsNode:
@@ -216,7 +218,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if base == nil {
 			return l.placeholder(n.span, "missing script base")
 		}
-		out := ir.NewScripts(n.span, base)
+		out := l.arena.NewScripts(n.span, base)
 		out.Top = top
 		out.Bottom = bottom
 		if n.topLeft != nil {
@@ -270,14 +272,14 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			if !l.reserve(n.span) {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
-			open = ir.NewRow(n.span)
+			open = l.arena.NewRow(n.span)
 			open.NodeBase().Class = ir.ClassOpening
 		}
 		if close == nil {
 			if !l.reserve(n.span) {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
-			close = ir.NewRow(n.span)
+			close = l.arena.NewRow(n.span)
 			close.NodeBase().Class = ir.ClassClosing
 		}
 		body := make([]ir.Node, 0, len(n.body))
@@ -294,9 +296,9 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			if !l.reserve(n.span) {
 				return l.placeholder(n.span, "IR node limit exceeded")
 			}
-			body = append(body, ir.NewRow(n.span))
+			body = append(body, l.arena.NewRow(n.span))
 		}
-		out := ir.NewFenced(n.span, body...)
+		out := l.arena.NewFenced(n.span, body...)
 		out.Open = open
 		out.Close = close
 		out.Balanced = n.balanced
@@ -306,7 +308,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassInner)
 		return out
 	case *astSizedDelimiterNode:
-		out := ir.NewSizedDelimiter(n.span, n.text, n.sizing)
+		out := l.arena.NewSizedDelimiter(n.span, n.text, n.sizing)
 		l.applyBase(&out.Base, &n.astBase, ctx, n.class)
 		// KaTeX renders explicit \big... tiers in text style, so their em-valued
 		// targets remain fixed even when the surrounding math style is a script.
@@ -324,7 +326,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil || mark == nil {
 			return l.placeholder(n.span, "missing accent part")
 		}
-		out := ir.NewAccent(n.span, body, mark, n.position)
+		out := l.arena.NewAccent(n.span, body, mark, n.position)
 		out.Stretchy = n.stretchy
 		out.Dotless = n.dotless
 		out.ExactFrameWidth = n.exactWidth
@@ -338,7 +340,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil {
 			return l.placeholder(n.span, "missing line body")
 		}
-		out := ir.NewLine(n.span, body, n.position)
+		out := l.arena.NewLine(n.span, body, n.position)
 		out.Thickness = defaultStrokeThickness
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
@@ -350,7 +352,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil {
 			return l.placeholder(n.span, "missing cancel body")
 		}
-		out := ir.NewCancel(n.span, body)
+		out := l.arena.NewCancel(n.span, body)
 		out.Cross = n.cross
 		out.Inverted = n.inverted
 		out.Role = n.role
@@ -365,7 +367,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil {
 			return l.placeholder(n.span, "missing color body")
 		}
-		out := ir.NewColor(n.span, body, n.paint)
+		out := l.arena.NewColor(n.span, body, n.paint)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astBoxNode:
@@ -376,7 +378,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil {
 			return l.placeholder(n.span, "missing box body")
 		}
-		out := ir.NewBox(n.span, body)
+		out := l.arena.NewBox(n.span, body)
 		out.Fill = n.fill
 		out.HasFill = n.hasFill
 		out.Border = n.border
@@ -393,7 +395,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil {
 			return l.placeholder(n.span, "missing phantom body")
 		}
-		out := ir.NewPhantom(n.span, body)
+		out := l.arena.NewPhantom(n.span, body)
 		out.Width = n.width
 		out.Height = n.height
 		out.Depth = n.depth
@@ -416,8 +418,8 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if !l.reserve(n.span) {
 			return l.placeholder(n.span, "IR node limit exceeded")
 		}
-		body := ir.NewRow(n.span)
-		out := ir.NewBox(n.span, body)
+		body := l.arena.NewRow(n.span)
+		out := l.arena.NewBox(n.span, body)
 		out.Padding[0] = n.height
 		out.Padding[3] = n.width
 		out.Fill = ir.Paint{Role: ir.PaintInk}
@@ -432,7 +434,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if body == nil {
 			return l.placeholder(n.span, "missing style body")
 		}
-		out := ir.NewStyle(n.span, body)
+		out := l.arena.NewStyle(n.span, body)
 		out.SetSize = n.size != ir.SizeInherit
 		out.NewSize = n.size
 		out.SetCramped = n.cramped
@@ -461,13 +463,13 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 			}
 			rows = append(rows, ir.TableRow{Cells: rowCells})
 		}
-		out := ir.NewTable(n.span, rows...)
+		out := l.arena.NewTable(n.span, rows...)
 		out.Role = n.role
-		out.Columns = append([]ir.ColumnAlign(nil), n.columns...)
+		out.Columns = n.columns
 		out.RowGap = n.rowGap
 		out.ColumnGap = n.columnGap
-		out.Horizontal = append([]ir.TableLine(nil), n.horizontal...)
-		out.Vertical = append([]ir.TableLine(nil), n.vertical...)
+		out.Horizontal = n.horizontal
+		out.Vertical = n.vertical
 		if n.size != ir.SizeInherit {
 			out.Size = n.size
 		}
@@ -492,22 +494,22 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		if len(rows) == 0 {
 			return l.placeholder(n.span, "empty multiline")
 		}
-		out := ir.NewMultiline(n.span, rows...)
+		out := l.arena.NewMultiline(n.span, rows...)
 		out.Centered = n.centered
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astErrorNode:
-		out := ir.NewError(n.span, n.text, n.code)
+		out := l.arena.NewError(n.span, n.text, n.code)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astPlaceholderNode:
 		return l.placeholder(n.span, n.reason)
 	case *astBreakNode:
-		out := ir.NewBreak(n.span, n.kind)
+		out := l.arena.NewBreak(n.span, n.kind)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassSpecial)
 		return out
 	case *astAlignNode:
-		out := ir.NewAlignMarker(n.span)
+		out := l.arena.NewAlignMarker(n.span)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassSpecial)
 		return out
 	default:
@@ -545,7 +547,7 @@ func (l *lowerer) limit(span source.Range, message string) {
 }
 
 func (l *lowerer) placeholder(span source.Range, reason string) ir.Node {
-	return ir.NewPlaceholder(normalizeRange(span), reason)
+	return l.arena.NewPlaceholder(normalizeRange(span), reason)
 }
 
 func (l *lowerer) applyBase(base *ir.Base, ast *astBase, ctx lowerContext, class ir.MathClass) {
@@ -564,7 +566,5 @@ func applyExplicitAlphabetClass(node ir.Node) {
 	if node.NodeBase().Class == ir.ClassAlphabetic {
 		node.NodeBase().Class = ir.ClassNormal
 	}
-	for _, child := range ir.Children(node) {
-		applyExplicitAlphabetClass(child)
-	}
+	ir.VisitChildren(node, applyExplicitAlphabetClass)
 }
