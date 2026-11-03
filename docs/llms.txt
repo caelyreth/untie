@@ -22,6 +22,11 @@ Use this file as the short entry point for code assistants. Read
 - Draw `ItemGlyphPath` and `ItemRule`; `ItemGlyphRef` is optional cache metadata.
 - A path item resolves `Box.Paths[item.PathIndex]` as
   `item.At + templatePoint*item.Em`; `item.Bound` is already placed.
+- `render.Walk` streams visible paths and rules in item order without
+  materializing transformed paths; `render.ResolvePath` is the allocating
+  escape hatch.
+- `render.Fit` uses `Box.Bounds()` to fit overflow, padding, vertical centering,
+  and horizontal start/center/end alignment into a viewport.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
 - Draw `Box.Items` once; line/tag ranges select subsets of the same storage.
 - Use `Box.Bounds()` to include certified overflow.
@@ -97,6 +102,10 @@ func (e *Expr) HasErrors() bool
 func (e *Engine) Layout(expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mode Mode, style Style) (*Box, error)
+
+func Walk(box *display.Box, visit func(render.Command) error) error
+func ResolvePath(command render.Command) (geometry.Path, error)
+func Fit(box *display.Box, viewport geometry.Rect, options render.FitOptions) (render.Transform, error)
 
 type LayoutErrorKind string
 type LayoutError struct {
