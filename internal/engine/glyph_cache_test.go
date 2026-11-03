@@ -162,6 +162,33 @@ func TestGlyphTemplateCacheConcurrentUse(t *testing.T) {
 	}
 }
 
+func TestMathConstructionCacheReusesImmutableRecipe(t *testing.T) {
+	data := readEngineTestFont(t)
+	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: data, ID: "construction-math"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := newAdapter(set, source.Limits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parenthesis, ok := set.MapRune(font.MathFace, '(')
+	if !ok {
+		t.Fatal("math face does not map '('")
+	}
+	first, ok := adapter.cachedMathConstruction(parenthesis, font.VerticalAxis)
+	if !ok || first.Assembly == nil || len(first.Assembly.Parts) == 0 {
+		t.Fatalf("vertical construction = %+v, %v", first, ok)
+	}
+	second, ok := adapter.cachedMathConstruction(parenthesis, font.VerticalAxis)
+	if !ok || second.Assembly == nil || len(second.Assembly.Parts) == 0 {
+		t.Fatalf("second vertical construction = %+v, %v", second, ok)
+	}
+	if first.Assembly != second.Assembly || &first.Assembly.Parts[0] != &second.Assembly.Parts[0] {
+		t.Fatal("MATH construction cache returned copied recipe storage")
+	}
+}
+
 func TestGlyphLookupUsesCachedTemplate(t *testing.T) {
 	data := readEngineTestFont(t)
 	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: data, ID: "cached-lookup-math"}})
