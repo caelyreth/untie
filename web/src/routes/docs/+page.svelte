@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Seo from '#lib/components/seo.svelte'
   import DocArticle from '#lib/docs/article.svelte'
 
   import type { PageProps } from './$types'
@@ -6,8 +7,11 @@
   let { data }: PageProps = $props()
 </script>
 
-<svelte:head>
-  <title>{data.doc.title} — Untie</title>
-</svelte:head>
+<Seo
+  title={data.doc.title}
+  description={data.doc.description}
+  path="/docs/"
+  type="article"
+/>
 
 <DocArticle doc={data.doc} />

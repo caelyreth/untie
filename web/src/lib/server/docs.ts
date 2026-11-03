@@ -46,13 +46,15 @@ export async function loadDoc(slug: string): Promise<DocPage> {
     async: false,
     gfm: true,
   })
+  const title =
+    docs.find((doc) => doc.href === `/docs/${slug}`.replace(/\/$/, ''))
+      ?.title ?? extractTitle(markdown)
   return {
+    description: extractDescription(markdown, title),
     html: addHeadingIDs(rawHtml),
     slug,
     sourceHref: `${repository}web/src/content/docs/${file}`,
-    title:
-      docs.find((doc) => doc.href === `/docs/${slug}`.replace(/\/$/, ''))
-        ?.title ?? extractTitle(markdown),
+    title,
   }
 }
 
@@ -102,6 +104,34 @@ function extractTitle(markdown: string) {
       ?.replaceAll('`', '')
       .trim() ?? 'Untie documentation'
   )
+}
+
+function extractDescription(markdown: string, title: string) {
+  const blocks = markdown.replace(/```[\s\S]*?```/g, '').split(/\n\s*\n/)
+  for (const block of blocks) {
+    const trimmed = block.trim()
+    if (!trimmed || /^(?:#|[-*+]\s|\d+\.\s|\||>|<)/.test(trimmed)) {
+      continue
+    }
+    const description = trimmed
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[`*_]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (description.length >= 40) {
+      return truncateDescription(description)
+    }
+  }
+  return `${title} — Untie documentation for TeX and Typst math rendering.`
+}
+
+function truncateDescription(description: string) {
+  const limit = 180
+  if (description.length <= limit) {
+    return description
+  }
+  const boundary = description.lastIndexOf(' ', limit)
+  return `${description.slice(0, boundary > 80 ? boundary : limit).trim()}…`
 }
 
 function rewriteLinks(markdown: string) {

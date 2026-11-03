@@ -5,6 +5,7 @@ export interface DocLink {
 }
 
 export interface DocPage {
+  description: string
   html: string
   slug: string
   sourceHref: string

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LoaderCircle } from '@lucide/svelte'
 
+  import Seo from '#lib/components/seo.svelte'
   import { loadUntie } from '#lib/wasm/untie'
 
   type Dialect = 'tex' | 'typst'
@@ -79,13 +80,11 @@
   }
 </script>
 
-<svelte:head>
-  <title>Playground — Untie</title>
-  <meta
-    name="description"
-    content="Try Untie's TeX and Typst math renderer directly in the browser."
-  />
-</svelte:head>
+<Seo
+  title="Playground"
+  description="Try Untie's TeX and Typst math renderer directly in the browser, with live rendering and automatic updates."
+  path="/playground/"
+/>
 
 <main id="main" class="playground">
   <header class="playground-head">

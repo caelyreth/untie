@@ -21,8 +21,11 @@ bun run dev
 
 ```sh
 cd web
-bun run build
+PUBLIC_SITE_URL=https://your-domain.example bun run build
 ```
+
+`PUBLIC_SITE_URL` sets the canonical origin used by canonical, Open Graph, and
+Twitter metadata. It defaults to `https://untie.iki.moe`.
 
 The build script:
 

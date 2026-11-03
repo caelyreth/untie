@@ -1,17 +1,16 @@
 <script lang="ts">
   import { ArrowUpRight } from '@lucide/svelte'
 
+  import Seo from '#lib/components/seo.svelte'
   import Wordmark from '#lib/components/wordmark.svelte'
   import MathFlow from '#lib/home/math-flow.svelte'
 </script>
 
-<svelte:head>
-  <title>Untie — One math renderer for TeX and Typst</title>
-  <meta
-    name="description"
-    content="Untie is a pure-Go renderer that turns TeX and Typst math into one UI-independent display list."
-  />
-</svelte:head>
+<Seo
+  title="One math renderer for TeX and Typst"
+  description="Untie is a pure-Go renderer that turns TeX and Typst math into one UI-independent display list."
+  path="/"
+/>
 
 <main id="main" class="home">
   <MathFlow />
