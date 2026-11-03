@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	arenaMinHint = 32
+	arenaMinHint        = 32
+	maxArenaInitialHint = 4096
 )
 
 // Arena owns the node blocks allocated through it. Callers must treat every
@@ -25,6 +26,9 @@ type Arena struct {
 // New returns an empty node arena.
 func New(hint int) *Arena {
 	a := &Arena{}
+	if hint > maxArenaInitialHint {
+		hint = maxArenaInitialHint
+	}
 	if hint < arenaMinHint {
 		return a
 	}

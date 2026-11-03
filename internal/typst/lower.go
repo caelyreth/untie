@@ -25,8 +25,9 @@ type lowerer struct {
 }
 
 func lower(root *astNode, src string, limits source.Limits) Result {
-	arena := irarena.New(len(src))
-	l := lowerer{src: src, limits: limits.WithDefaults(), arena: arena}
+	limits = limits.WithDefaults()
+	arena := irarena.New(arenaHint(len(src), limits))
+	l := lowerer{src: src, limits: limits, arena: arena}
 	node := l.lower(root)
 	if l.exhausted {
 		node = l.fallbackWithinBudget(rootSpan(root, len(src)))
@@ -34,14 +35,21 @@ func lower(root *astNode, src string, limits source.Limits) Result {
 	if node == nil {
 		node = l.newRow(source.NewRange(0, len(src)))
 	}
-	if l.exhausted {
-		node = l.fallbackWithinBudget(rootSpan(root, len(src)))
-	}
 	return Result{
 		Root:        node,
 		Diagnostics: source.NormalizeDiagnostics(l.diags),
 		Arena:       arena,
 	}
+}
+
+func arenaHint(length int, limits source.Limits) int {
+	if limits.MaxNodes > 0 {
+		length = min(length, limits.MaxNodes)
+	}
+	if limits.MaxTokens > 0 {
+		length = min(length, limits.MaxTokens)
+	}
+	return length
 }
 
 func rootSpan(root *astNode, sourceLen int) source.Range {

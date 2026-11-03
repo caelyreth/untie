@@ -3,6 +3,7 @@ package tex
 import (
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/ir"
@@ -47,5 +48,16 @@ func TestASTArenaShortInputUsesBlocks(t *testing.T) {
 	arena := newASTArena(astArenaMinHint)
 	if arena.size == 0 || len(arena.glyphs) == 0 {
 		t.Fatal("short input did not enable the AST glyph arena")
+	}
+}
+
+func TestParserArenaHintHonorsNodeBudgetForLargeSource(t *testing.T) {
+	t.Parallel()
+
+	limits := source.DefaultLimits()
+	limits.MaxNodes = 1
+	parser := newParser(strings.Repeat("%\n", 1<<19), ir.Inline, nil, limits)
+	if parser.arena.size != 0 || len(parser.arena.glyphs) != 0 {
+		t.Fatalf("large comment-only source allocated AST arena slots: size=%d block=%d", parser.arena.size, len(parser.arena.glyphs))
 	}
 }

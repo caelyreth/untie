@@ -63,15 +63,30 @@ const (
 )
 
 func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.Limits) *parser {
-	p := &parser{src: src, mode: mode, limits: limits, arena: newASTArena(len(src))}
+	p := &parser{
+		src:    src,
+		mode:   mode,
+		limits: limits,
+		arena:  newASTArena(arenaHint(len(src), limits)),
+	}
 	p.exp = newExpander(src, limits, macros, p.report)
 	return p
+}
+
+func arenaHint(length int, limits source.Limits) int {
+	if limits.MaxNodes > 0 {
+		length = min(length, limits.MaxNodes)
+	}
+	if limits.MaxTokens > 0 {
+		length = min(length, limits.MaxTokens)
+	}
+	return length
 }
 
 func (p *parser) parse() (ir.Node, []ir.EquationTag, *irarena.Arena) {
 	defer p.exp.release()
 	parsedRoot := p.parseSequence(stopEOF)
-	arena := irarena.New(len(p.src))
+	arena := irarena.New(arenaHint(len(p.src), p.limits))
 	lower := newLowerer(p.limits, p.report, arena)
 	// Parsing and lowering share one resource-limit diagnostic per parse.
 	lower.limitHit = p.limitHit

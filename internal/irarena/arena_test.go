@@ -1,6 +1,7 @@
 package irarena
 
 import (
+	"math"
 	"runtime"
 	"strconv"
 	"testing"
@@ -53,5 +54,17 @@ func TestArenaShortInputUsesBlocks(t *testing.T) {
 	arena := New(arenaMinHint)
 	if !arena.glyphs.enabled || !arena.rows.enabled {
 		t.Fatal("short input did not enable IR node blocks")
+	}
+}
+
+func TestArenaCapsInitialHint(t *testing.T) {
+	t.Parallel()
+
+	arena := New(math.MaxInt)
+	if len(arena.glyphs.block) > maxArenaInitialHint {
+		t.Fatalf("glyph block = %d slots, want at most %d", len(arena.glyphs.block), maxArenaInitialHint)
+	}
+	if len(arena.rows.block) > maxArenaInitialHint {
+		t.Fatalf("row block = %d slots, want at most %d", len(arena.rows.block), maxArenaInitialHint)
 	}
 }
