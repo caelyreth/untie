@@ -249,12 +249,16 @@ func TestGenerateDecorationsAndWrappers(t *testing.T) {
 			wantSpeech: "phantom of x",
 		},
 		{
-			name: "style and color are semantic pass-throughs",
+			name: "style color overlay and raise are semantic pass-throughs",
 			node: func() ir.Node {
 				colored := ir.NewColor(testSpan, glyph("x"), ir.Paint{HasExplicit: true, Explicit: ir.RGBA{A: 255}})
-				styled := ir.NewStyle(testSpan, colored)
+				raised := ir.NewRaise(testSpan, colored, ir.RawLength(ir.LengthEm, 250_000))
+				overlay := ir.NewOverlay(testSpan, raised, ir.OverlayCenter)
+				styled := ir.NewStyle(testSpan, overlay)
 				styled.SetSize = true
 				styled.NewSize = ir.SizeDisplay
+				styled.SetFontSize = true
+				styled.FontSize = ir.RawLength(ir.LengthPercent, 150_000_000)
 				return styled
 			}(),
 			wantText:   "x",

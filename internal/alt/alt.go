@@ -214,6 +214,10 @@ func (r *renderer) render(node ir.Node, env renderEnv, depth int) (piece, error)
 		out, err = r.multiline(n, env, depth)
 	case *ir.Style:
 		out, err = r.style(n, env, depth)
+	case *ir.Overlay:
+		out, err = r.child(n.Body, env, depth)
+	case *ir.Raise:
+		out, err = r.child(n.Body, env, depth)
 	case *ir.Color:
 		out, err = r.child(n.Body, env, depth)
 	case *ir.Box:
@@ -1445,6 +1449,10 @@ func nodeKindName(kind ir.NodeKind) string {
 		return "multiline"
 	case ir.KindStyle:
 		return "style"
+	case ir.KindOverlay:
+		return "overlay"
+	case ir.KindRaise:
+		return "raise"
 	case ir.KindColor:
 		return "color"
 	case ir.KindBox:
