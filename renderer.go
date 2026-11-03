@@ -162,6 +162,12 @@ func (r *Renderer) Render(
 		Recovery: r.recovery,
 	})
 	if err != nil {
+		if diagnostic, ok := diagnosticForLayoutError(err); ok {
+			result.Diagnostics = source.NormalizeDiagnosticsFor(
+				append(result.Diagnostics, diagnostic),
+				len(src),
+			)
+		}
 		return result, err
 	}
 	result.Box = box
@@ -171,6 +177,30 @@ func (r *Renderer) Render(
 		len(src),
 	)
 	return result, nil
+}
+
+func diagnosticForLayoutError(err error) (source.Diagnostic, bool) {
+	var layoutErr *LayoutError
+	if !errors.As(err, &layoutErr) {
+		return source.Diagnostic{}, false
+	}
+	code := source.CodeInternal
+	switch layoutErr.Kind {
+	case LayoutErrorMissingGlyph:
+		code = source.CodeMissingGlyph
+	case LayoutErrorUnsupported, LayoutErrorInsufficientStretch:
+		code = source.CodeUnsupported
+	case LayoutErrorLimit:
+		code = source.CodeLimitExceeded
+	case LayoutErrorInvalidInput:
+		code = source.CodeInvalidValue
+	}
+	return source.Diagnostic{
+		Range:    layoutErr.Range,
+		Severity: source.SeverityError,
+		Code:     code,
+		Message:  layoutErr.Error(),
+	}, true
 }
 
 func (r *Renderer) parse(

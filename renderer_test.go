@@ -264,6 +264,9 @@ func TestRenderStrictMissingGlyphReturnsLayoutError(t *testing.T) {
 	if result == nil || result.Box != nil {
 		t.Fatalf("Render(strict) result = %+v, want diagnostics and no box", result)
 	}
+	if !hasCode(result.Diagnostics, source.CodeMissingGlyph) {
+		t.Fatalf("Render(strict) diagnostics = %+v, want missing-glyph", result.Diagnostics)
+	}
 }
 
 func TestRenderRecoversOnlyMissingTextCluster(t *testing.T) {
