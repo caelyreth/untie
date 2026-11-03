@@ -36,6 +36,10 @@ type app struct {
 	diagnostics  []untie.Diagnostic
 	message      string
 	ready        bool
+
+	hitRange   untie.Range
+	hitPhase   untiemygo.HitPhase
+	hitVisible bool
 }
 
 func newApp(fontBytes []byte) (*app, error) {
@@ -116,6 +120,11 @@ func (a *app) preview(c *ui.Context) {
 				}
 				ui.Text(c, summary).FontSize(12).TextColor(color)
 			}
+			if a.hitVisible {
+				ui.Textf(c, "%s [%d,%d)",
+					a.hitPhase, a.hitRange.Start, a.hitRange.End).
+					FontSize(12).TextColor(t.TextMuted)
+			}
 			ui.Text(c, "Display").FontSize(12).Grow(1).
 				TextAlign(ui.End).TextColor(t.TextMuted)
 		})
@@ -127,9 +136,37 @@ func (a *app) preview(c *ui.Context) {
 				})
 				return
 			}
-			a.renderer().Element(c, *a.source(), untie.Display).Fill()
+			a.renderer().ElementWithOptions(
+				c,
+				*a.source(),
+				untie.Display,
+				untiemygo.ElementOptions{
+					OnHit: func(event untiemygo.HitEvent) {
+						a.recordHit(c, event)
+					},
+					Diagnostics: untiemygo.DiagnosticOptions{
+						Mode: untiemygo.DiagnosticUnderline |
+							untiemygo.DiagnosticTooltip,
+					},
+					Clipboard: untiemygo.ClipboardOptions{Enabled: true},
+				},
+			).Fill()
 		})
 	})
+}
+
+func (a *app) recordHit(c *ui.Context, event untiemygo.HitEvent) {
+	if !event.Found {
+		if event.Phase == untiemygo.HitHover {
+			a.hitVisible = false
+		}
+		c.Invalidate()
+		return
+	}
+	a.hitRange = event.Hit.Source
+	a.hitPhase = event.Phase
+	a.hitVisible = true
+	c.Invalidate()
 }
 
 func (a *app) renderer() *untiemygo.Renderer {

@@ -4,7 +4,9 @@ A native desktop example built with [MyGo](https://mygo.egoist.dev/). The
 window has two areas:
 
 - a source editor with TeX/Typst switching;
-- a renderer that displays a direct `untiemygo` formula element.
+- a renderer that displays a direct `untiemygo` formula element;
+- source-hit feedback from pointer hover and clicks;
+- diagnostic underlines, tooltips, accessible formula labels, and copy actions.
 
 The two dialects keep separate source buffers, so switching syntax does not
 discard the formula being edited.
