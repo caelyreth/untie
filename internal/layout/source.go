@@ -159,11 +159,12 @@ type GlyphStretcher interface {
 
 // TextRequest identifies a shaped text run.
 type TextRequest struct {
-	Context context.Context
-	Text    string
-	Style   Style
-	Variant ir.Variant
-	Font    ir.FontRole
+	Context  context.Context
+	Text     string
+	Clusters []ir.TextClusterSource
+	Style    Style
+	Variant  ir.Variant
+	Font     ir.FontRole
 	// Tracking is unscaled base ems, independent of Style.Size. Shaping
 	// produces base-em glyph positions; layout applies the style scale once.
 	Tracking geometry.Em
@@ -188,6 +189,10 @@ type TextCluster struct {
 	RuneEnd   int
 	Source    source.Range
 	Missing   bool
+	// X and Advance are the cluster's horizontal extent in local ems relative
+	// to the run origin. They are independent of per-glyph positioning offsets.
+	X       geometry.Em
+	Advance geometry.Em
 }
 
 // PositionedGlyph is one glyph in a shaped text run, in local ems relative to

@@ -13,6 +13,10 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 		return nil
 	}
 	fragment.ownHit = -1
+	if text, ok := node.(*ir.Text); ok && len(text.Clusters) > 0 && fragment.hitCount > 0 {
+		// Cluster hits already describe the complete text run.
+		return nil
+	}
 	kind, ok := nodeHitKind(node)
 	if !ok {
 		return nil

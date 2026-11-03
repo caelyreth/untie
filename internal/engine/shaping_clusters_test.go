@@ -34,8 +34,20 @@ func TestShapeTextPreservesClustersAndPerClusterFallback(t *testing.T) {
 		{RuneStart: 1, RuneEnd: 4, Source: source.NewRange(1, 12)},
 		{RuneStart: 4, RuneEnd: 5, Source: source.NewRange(12, 13)},
 	}
-	if !reflect.DeepEqual(run.Clusters, wantClusters) {
+	if len(run.Clusters) != len(wantClusters) {
 		t.Fatalf("clusters = %#v, want %#v", run.Clusters, wantClusters)
+	}
+	for i, want := range wantClusters {
+		got := run.Clusters[i]
+		if got.RuneStart != want.RuneStart || got.RuneEnd != want.RuneEnd ||
+			got.Source != want.Source || got.Missing != want.Missing ||
+			got.X < 0 || got.Advance <= 0 {
+			t.Fatalf("cluster %d = %#v, want runes/source %#v with geometry", i, got, want)
+		}
+		if i > 0 && got.X != run.Clusters[i-1].X+run.Clusters[i-1].Advance {
+			t.Fatalf("cluster %d starts at %d, want previous cluster end %d",
+				i, got.X, run.Clusters[i-1].X+run.Clusters[i-1].Advance)
+		}
 	}
 	if len(run.Glyphs) != 3 {
 		t.Fatalf("glyph count = %d, want 3", len(run.Glyphs))
@@ -116,6 +128,42 @@ func TestShapeTextKeepsRTLRunsInVisualOrder(t *testing.T) {
 	}
 }
 
+func TestShapeTextUsesCanonicalClusterSourcesInVisualOrder(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	run, err := adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "سلام",
+		Clusters: []ir.TextClusterSource{
+			{TextStart: 0, TextEnd: 2, Source: source.NewRange(100, 102)},
+			{TextStart: 2, TextEnd: 4, Source: source.NewRange(102, 104)},
+			{TextStart: 4, TextEnd: 6, Source: source.NewRange(104, 106)},
+			{TextStart: 6, TextEnd: 8, Source: source.NewRange(106, 108)},
+		},
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	want := []source.Range{
+		source.NewRange(106, 108),
+		source.NewRange(104, 106),
+		source.NewRange(102, 104),
+		source.NewRange(100, 102),
+	}
+	if len(run.Clusters) != len(want) {
+		t.Fatalf("cluster count = %d, want %d", len(run.Clusters), len(want))
+	}
+	for i, cluster := range run.Clusters {
+		if cluster.Source != want[i] {
+			t.Fatalf("cluster %d source = %v, want visual-order source %v", i, cluster.Source, want[i])
+		}
+	}
+}
+
 func TestShapeTextMapsStyledRunesBackToSource(t *testing.T) {
 	t.Parallel()
 
@@ -144,11 +192,12 @@ func TestShapeTextMapsStyledRunesBackToSource(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ShapeText: %v", err)
 			}
-			if len(run.Clusters) != 1 || run.Clusters[0] != (layout.TextCluster{
-				RuneStart: 0,
-				RuneEnd:   test.runeEnd,
-				Source:    test.source,
-			}) {
+			if len(run.Clusters) != 1 ||
+				run.Clusters[0].RuneStart != 0 ||
+				run.Clusters[0].RuneEnd != test.runeEnd ||
+				run.Clusters[0].Source != test.source ||
+				run.Clusters[0].X != 0 ||
+				run.Clusters[0].Advance <= 0 {
 				t.Fatalf("styled clusters = %#v", run.Clusters)
 			}
 			if len(run.Glyphs) != 1 || run.Glyphs[0].Glyph.Text != test.text {
@@ -177,6 +226,25 @@ func TestShapeTextMissingGlyphAndLimits(t *testing.T) {
 	}
 	if len(run.Glyphs) != 1 || !run.Glyphs[0].Missing {
 		t.Fatalf("missing emoji glyphs = %#v", run.Glyphs)
+	}
+
+	run, err = adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "😀",
+		Clusters: []ir.TextClusterSource{{
+			TextStart: 0,
+			TextEnd:   4,
+			Source:    source.NewRange(200, 204),
+		}},
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("mapped missing emoji error = %v", err)
+	}
+	if len(run.Clusters) != 1 || run.Clusters[0].Source != (source.Range{Start: 200, End: 204}) {
+		t.Fatalf("mapped missing cluster = %#v", run.Clusters)
 	}
 
 	limited := newClusteredShapingAdapter(t, source.Limits{MaxOutputItems: 1})
