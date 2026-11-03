@@ -47,7 +47,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		})
 		rawClasses = append(rawClasses, effectiveNodeClass(node, fragment.Class))
 	}
-	normalized := normalizeRowClasses(rawClasses)
+	normalized := normalizeRowClassesInPlace(rawClasses)
 	for i := range atoms {
 		atoms[i].fragment.Class = normalized[i]
 		atoms[i].leftClass = spacingLeftClass(atoms[i].node, normalized[i])
@@ -56,7 +56,8 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.reserveDraws(len(atoms))
 
 	var x, ascent, descent, italic geometry.Em
-	var previousClass *ir.MathClass
+	var previousClass ir.MathClass
+	var havePreviousClass bool
 	var previousNode ir.Node
 	var previousEnv environment
 	var pendingSpace geometry.Em
@@ -186,9 +187,9 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 			if err := flushSpace(); err != nil {
 				return nil, err
 			}
-		} else if !hasExplicit && !afterExplicitSpace && previousClass != nil &&
+		} else if !hasExplicit && !afterExplicitSpace && havePreviousClass &&
 			!previousNode.NodeBase().IgnoreAsSpace && !node.NodeBase().IgnoreAsSpace {
-			local := MathSpacing(*previousClass, leftClass, nodeEnv.Style)
+			local := MathSpacing(previousClass, leftClass, nodeEnv.Style)
 			if local != 0 {
 				auto, err := s.metricAt(local, nodeEnv.Style)
 				if err != nil {
@@ -224,8 +225,8 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		if fragment.Width != 0 {
 			italic = fragment.Italic
 		}
-		spacingClass := current.rightClass
-		previousClass = &spacingClass
+		previousClass = current.rightClass
+		havePreviousClass = true
 		previousNode = node
 		previousEnv = nodeEnv
 		afterExplicitSpace = false

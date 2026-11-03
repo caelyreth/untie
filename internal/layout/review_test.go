@@ -144,6 +144,13 @@ func TestBinaryClassLookahead(t *testing.T) {
 		if got[test.index] != test.want {
 			t.Fatalf("%s: normalized class = %v, want %v", test.name, got[test.index], test.want)
 		}
+		scratch := append([]ir.MathClass(nil), test.classes...)
+		inPlace := normalizeRowClassesInPlace(scratch)
+		for i := range got {
+			if inPlace[i] != got[i] {
+				t.Fatalf("%s: in-place class %d = %v, want %v", test.name, i, inPlace[i], got[i])
+			}
+		}
 	}
 
 	renderer, _, _ := newTestRenderer(t)
