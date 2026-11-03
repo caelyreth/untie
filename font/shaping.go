@@ -127,7 +127,7 @@ func newTextShaper(set *FontSet) *textShaper {
 		if parsed == nil {
 			continue
 		}
-		faces = append(faces, indexedFace{ref: ref, face: tsfont.NewFace(parsed.glyphFont)})
+		faces = append(faces, indexedFace{ref: ref, face: parsed.newTextFace()})
 	}
 	return &textShaper{set: set, faces: faces}
 }

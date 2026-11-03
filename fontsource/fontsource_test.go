@@ -68,6 +68,34 @@ func TestLoadSet(t *testing.T) {
 	}
 }
 
+func TestLoadSetPreservesVariationCoordinates(t *testing.T) {
+	t.Parallel()
+
+	mathData := testFontBytes(t)
+	textData, err := os.ReadFile("../testdata/upstream/fonts/SourceSans-VF-MATH.ttf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys := fstest.MapFS{
+		"math.otf": {Data: mathData},
+		"text.ttf": {Data: textData},
+	}
+	set, err := fontsource.LoadSet(fsys, fontsource.Config{
+		Math: fontsource.Face{Path: "math.otf"},
+		Text: &fontsource.Face{
+			Path:       "text.ttf",
+			Variations: []font.Variation{{Tag: "wght", Value: 650}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("LoadSet: %v", err)
+	}
+	coordinates, ok := set.VariationCoordinates(font.TextFace)
+	if !ok || len(coordinates) != 1 || coordinates[0] != (font.Variation{Tag: "wght", Value: 650}) {
+		t.Fatalf("text coordinates = %+v, %v", coordinates, ok)
+	}
+}
+
 func TestErrors(t *testing.T) {
 	t.Parallel()
 

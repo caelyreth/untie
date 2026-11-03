@@ -8,9 +8,15 @@ metadata, selected collection index, and bytes.
 
 ```go
 type FontFace struct {
-	ID    string
-	Bytes []byte
-	Index int
+	ID         string
+	Bytes      []byte
+	Index      int
+	Variations []Variation
+}
+
+type Variation struct {
+	Tag   string
+	Value float32
 }
 
 type FontSetConfig struct {
@@ -32,6 +38,59 @@ primary face or faces.
 
 `FontFace.Index` selects a face in a TrueType/OpenType collection. A non-zero
 index is invalid for a single-face SFNT.
+
+## Variable Fonts
+
+`FontFace.Variations` selects an OpenType design-space position for that face.
+Values are in the font's design coordinate space, not normalized CSS units:
+
+```go
+text := untie.FontFace{
+	Bytes: sourceSansBytes,
+	Variations: []untie.Variation{
+		{Tag: "wght", Value: 650},
+	},
+}
+```
+
+The API supports every axis declared by the selected face; `wght` is a
+convenience convention, not a special case. Tags must be exact four-byte
+OpenType tags. Unknown tags, duplicate axes, non-finite values, values outside
+the face's `fvar` range, and any coordinate on a static face are rejected at
+load time. There is no clamping.
+
+Omitted axes use their `fvar` defaults. `VariationCoordinates` returns the
+complete effective position in `fvar` order, while `Config` returns the
+explicitly supplied coordinates:
+
+```go
+axes, ok := fonts.VariationAxes(untie.TextFace)
+coordinates, ok := fonts.VariationCoordinates(untie.TextFace)
+```
+
+`FaceInfo.Variable` reports whether the selected face has `fvar` axes. Each
+math, text, and fallback face is configured independently. Named instances are
+not a separate API; hosts select the equivalent coordinates.
+
+The pinned pure-Go substrate honors variation coordinates for:
+
+- `fvar`/`avar` normalization;
+- TrueType `gvar` and CFF2 outlines;
+- `HVAR` and `VVAR` advances;
+- `MVAR` horizontal/vertical metrics and common line metrics;
+- GPOS variation deltas; and
+- GSUB FeatureVariations, including the local `ssty`/`dtls` MATH-feature path.
+
+Some OpenType MATH data cannot vary. MATH constants, cut-in kern curves, italic
+corrections, top-accent attachments, extended-shape membership, construction
+recipes, and variant advance thresholds remain the values stored in the static
+MATH table. Glyph IDs, metrics, and outlines referenced by a construction do use
+the selected coordinates. The `head` font bounding box is also static and is not
+recomputed from varied glyphs.
+
+Untie does not interpolate, clamp, synthesize a named instance, or discover a
+font. The schema is limited to coordinates the pinned substrate can apply
+without approximation.
 
 ## Face IDs
 
@@ -152,8 +211,8 @@ configuration. Mutating the copy cannot affect the loaded set.
 ## Identity and Caching
 
 `FontSet.KeySHA256()` is the canonical identity of the complete font set,
-including face IDs and selected collection indexes. `FontSet.Key()` is its
-first 64 bits for smaller host maps.
+including face IDs, selected collection indexes, and variation coordinates.
+`FontSet.Key()` is its first 64 bits for smaller host maps.
 
 The package-level layout cache uses the full SHA-256 identity. This means two
 sets with identical bytes but different IDs are distinct cache entries. It also
@@ -218,10 +277,14 @@ IR, and internal failures remain hard errors.
 ## Recommended Setup
 
 ```go
-text := untie.FontFace{Bytes: textBytes}
 fonts, err := untie.LoadFontSet(untie.FontSetConfig{
 	Math: untie.FontFace{Bytes: mathBytes},
-	Text: &text,
+	Text: &untie.FontFace{
+		Bytes: textBytes,
+		Variations: []untie.Variation{
+			{Tag: "wght", Value: 550},
+		},
+	},
 	Fallbacks: []untie.FontFace{
 		{Bytes: broadUnicodeBytes},
 	},

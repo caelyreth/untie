@@ -19,7 +19,8 @@ Primary packages:
 
 Primary surface:
 
-- `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`, `NewEngine`,
+- `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`,
+  `WithFontVariations`, `Variation`, `VariationAxis`, `NewEngine`,
   `Engine.Layout`, `Engine.LayoutContext`,
   `Engine.LayoutContextWithOptions`;
 - `FontSet.ShapeText`, `TextShapeRequest`, `ShapedText`, `ShapedCluster`,
@@ -136,7 +137,8 @@ serialization format.
 
 Resolved face IDs are part of the public cache and glyph-reference contract:
 
-- empty IDs are derived from role, metadata, selected index, and bytes;
+- empty IDs are derived from role, metadata, selected index, variation
+  coordinates, and bytes;
 - explicit IDs must be nonblank and unique within a `FontSet`;
 - derived and explicit IDs must not collide;
 - `ItemGlyphRef.FontID` is the resolved ID;
@@ -161,6 +163,7 @@ version, migration, and validation layer.
 - Do not depend on diagnostic message spelling.
 - Do not parse canonical JSON as a long-lived external format.
 - Pin the Untie version used by persisted caches.
-- Recompute font keys after changing bytes, IDs, indexes, or fallback order.
+- Recompute font keys after changing bytes, IDs, indexes, variation coordinates,
+  or fallback order.
 - Use `Version()` rather than assuming two binary versions share layout
   behavior.

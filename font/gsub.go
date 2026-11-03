@@ -31,7 +31,7 @@ type gsubSubtable struct {
 	alternates map[GlyphID][]GlyphID
 }
 
-func parseGSUBTable(b []byte) (gsubTable, error) {
+func parseGSUBTable(b []byte, coordinates []float32) (gsubTable, error) {
 	g := gsubTable{}
 	if len(b) == 0 {
 		return g, nil
@@ -40,8 +40,12 @@ func parseGSUBTable(b []byte) (gsubTable, error) {
 		return g, errors.New("GSUB header is truncated")
 	}
 	major := binary.BigEndian.Uint16(b[0:2])
-	if major != 1 {
-		return g, fmt.Errorf("unsupported GSUB major version %d", major)
+	minor := binary.BigEndian.Uint16(b[2:4])
+	if major != 1 || minor > 1 {
+		return g, fmt.Errorf("unsupported GSUB version %d.%d", major, minor)
+	}
+	if minor == 1 && len(b) < 14 {
+		return g, errors.New("GSUB 1.1 header is truncated")
 	}
 	featureOff := int(binary.BigEndian.Uint16(b[6:8]))
 	lookupOff := int(binary.BigEndian.Uint16(b[8:10]))
@@ -58,6 +62,27 @@ func parseGSUBTable(b []byte) (gsubTable, error) {
 	if err != nil {
 		return g, err
 	}
+	activeLookups := make(map[int][]uint16, len(records))
+	for _, rec := range records {
+		activeLookups[rec.index] = rec.lookups
+	}
+	if minor == 1 && len(b) >= 14 {
+		featureVariationsOff := int(binary.BigEndian.Uint32(b[10:14]))
+		if featureVariationsOff != 0 {
+			substitutions, err := parseFeatureVariations(
+				b,
+				featureVariationsOff,
+				len(records),
+				coordinates,
+			)
+			if err != nil {
+				return g, fmt.Errorf("FeatureVariations: %w", err)
+			}
+			for index, lookups := range substitutions {
+				activeLookups[index] = lookups
+			}
+		}
+	}
 	lookupOffsets, err := parseLookupOffsets(lookupBytes)
 	if err != nil {
 		return g, err
@@ -67,7 +92,7 @@ func parseGSUBTable(b []byte) (gsubTable, error) {
 		if _, ok := mathFeatureTags[rec.tag]; !ok {
 			continue
 		}
-		for _, idx := range rec.lookups {
+		for _, idx := range activeLookups[rec.index] {
 			if int(idx) >= len(lookupOffsets) {
 				return g, fmt.Errorf("feature %q references lookup %d of %d", rec.tag, idx, len(lookupOffsets))
 			}
@@ -89,7 +114,7 @@ func parseGSUBTable(b []byte) (gsubTable, error) {
 		if _, ok := mathFeatureTags[rec.tag]; !ok {
 			continue
 		}
-		for _, idx := range rec.lookups {
+		for _, idx := range activeLookups[rec.index] {
 			g.features[rec.tag] = append(g.features[rec.tag], lookups[int(idx)])
 		}
 	}
@@ -97,6 +122,7 @@ func parseGSUBTable(b []byte) (gsubTable, error) {
 }
 
 type featureRecord struct {
+	index   int
 	tag     string
 	lookups []uint16
 }
@@ -112,6 +138,7 @@ func parseFeatureRecords(b []byte) ([]featureRecord, error) {
 		if off+6 > len(b) {
 			return nil, errors.New("FeatureList records are truncated")
 		}
+		records[i].index = i
 		records[i].tag = string(b[off : off+4])
 		featureOff := int(binary.BigEndian.Uint16(b[off+4 : off+6]))
 		off += 6
@@ -144,6 +171,150 @@ func parseFeatureRecords(b []byte) ([]featureRecord, error) {
 		records[i].lookups = lookups
 	}
 	return records, nil
+}
+
+func parseFeatureVariations(
+	table []byte,
+	offset int,
+	featureCount int,
+	coordinates []float32,
+) (map[int][]uint16, error) {
+	if offset <= 0 || offset > len(table) {
+		return nil, fmt.Errorf("offset %d is outside %d-byte table", offset, len(table))
+	}
+	b := table[offset:]
+	if len(b) < 8 {
+		return nil, errors.New("header is truncated")
+	}
+	major := binary.BigEndian.Uint16(b[0:2])
+	minor := binary.BigEndian.Uint16(b[2:4])
+	if major != 1 || minor != 0 {
+		return nil, fmt.Errorf("unsupported version %d.%d", major, minor)
+	}
+	count64 := uint64(binary.BigEndian.Uint32(b[4:8]))
+	if count64 > uint64((len(b)-8)/8) {
+		return nil, errors.New("records are truncated")
+	}
+	count := int(count64)
+	for i := 0; i < count; i++ {
+		record := b[8+i*8 : 16+i*8]
+		conditionOff := int(binary.BigEndian.Uint32(record[0:4]))
+		substitutionOff := int(binary.BigEndian.Uint32(record[4:8]))
+		matches, err := featureConditionsMatch(b, conditionOff, coordinates)
+		if err != nil {
+			return nil, fmt.Errorf("record %d conditions: %w", i, err)
+		}
+		if !matches {
+			continue
+		}
+		substitutions, err := parseFeatureTableSubstitution(b, substitutionOff, featureCount)
+		if err != nil {
+			return nil, fmt.Errorf("record %d substitution: %w", i, err)
+		}
+		return substitutions, nil
+	}
+	return nil, nil
+}
+
+func featureConditionsMatch(
+	table []byte,
+	offset int,
+	coordinates []float32,
+) (bool, error) {
+	if offset == 0 {
+		return true, nil
+	}
+	if offset < 0 || offset > len(table) {
+		return false, fmt.Errorf("offset %d is outside %d-byte table", offset, len(table))
+	}
+	b := table[offset:]
+	if len(b) < 2 {
+		return false, errors.New("condition set is truncated")
+	}
+	count := int(binary.BigEndian.Uint16(b[0:2]))
+	if count > (len(b)-2)/4 {
+		return false, errors.New("condition offsets are truncated")
+	}
+	for i := 0; i < count; i++ {
+		conditionOff := int(binary.BigEndian.Uint32(b[2+i*4 : 6+i*4]))
+		if conditionOff <= 0 || conditionOff > len(b) {
+			return false, fmt.Errorf("condition %d offset %d is outside %d-byte set", i, conditionOff, len(b))
+		}
+		condition := b[conditionOff:]
+		if len(condition) < 8 {
+			return false, fmt.Errorf("condition %d is truncated", i)
+		}
+		format := binary.BigEndian.Uint16(condition[0:2])
+		if format != 1 {
+			return false, fmt.Errorf("condition %d has unsupported format %d", i, format)
+		}
+		axisIndex := int(binary.BigEndian.Uint16(condition[2:4]))
+		if axisIndex >= len(coordinates) {
+			return false, fmt.Errorf("condition %d references axis %d of %d", i, axisIndex, len(coordinates))
+		}
+		minimum := float32(int16(binary.BigEndian.Uint16(condition[4:6]))) / 16384
+		maximum := float32(int16(binary.BigEndian.Uint16(condition[6:8]))) / 16384
+		if minimum > maximum || minimum < -1 || maximum > 1 {
+			return false, fmt.Errorf("condition %d has invalid range [%g,%g]", i, minimum, maximum)
+		}
+		value := coordinates[axisIndex]
+		if value < minimum || value > maximum {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func parseFeatureTableSubstitution(
+	table []byte,
+	offset int,
+	featureCount int,
+) (map[int][]uint16, error) {
+	if offset <= 0 || offset > len(table) {
+		return nil, fmt.Errorf("offset %d is outside %d-byte table", offset, len(table))
+	}
+	b := table[offset:]
+	if len(b) < 6 {
+		return nil, errors.New("header is truncated")
+	}
+	major := binary.BigEndian.Uint16(b[0:2])
+	minor := binary.BigEndian.Uint16(b[2:4])
+	if major != 1 || minor != 0 {
+		return nil, fmt.Errorf("unsupported version %d.%d", major, minor)
+	}
+	count := int(binary.BigEndian.Uint16(b[4:6]))
+	if count > (len(b)-6)/6 {
+		return nil, errors.New("records are truncated")
+	}
+	out := make(map[int][]uint16, count)
+	for i := 0; i < count; i++ {
+		record := b[6+i*6 : 12+i*6]
+		featureIndex := int(binary.BigEndian.Uint16(record[0:2]))
+		if featureIndex >= featureCount {
+			return nil, fmt.Errorf("feature index %d is outside %d features", featureIndex, featureCount)
+		}
+		if _, exists := out[featureIndex]; exists {
+			return nil, fmt.Errorf("duplicate feature index %d", featureIndex)
+		}
+		alternateOff := int(binary.BigEndian.Uint32(record[2:6]))
+		if alternateOff <= 0 || alternateOff > len(b) {
+			return nil, fmt.Errorf("alternate feature %d offset %d is outside %d-byte table", featureIndex, alternateOff, len(b))
+		}
+		alternate := b[alternateOff:]
+		if len(alternate) < 4 {
+			return nil, fmt.Errorf("alternate feature %d is truncated", featureIndex)
+		}
+		lookupCount := int(binary.BigEndian.Uint16(alternate[2:4]))
+		if lookupCount > (len(alternate)-4)/2 {
+			return nil, fmt.Errorf("alternate feature %d lookup list is truncated", featureIndex)
+		}
+		lookups := make([]uint16, lookupCount)
+		for j := range lookups {
+			lookups[j] = binary.BigEndian.Uint16(alternate[4+j*2 : 6+j*2])
+		}
+		out[featureIndex] = lookups
+	}
+	return out, nil
 }
 
 func parseLookupOffsets(b []byte) ([]uint16, error) {

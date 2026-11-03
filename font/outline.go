@@ -32,7 +32,7 @@ func (f *parsedFace) readGlyphMetrics() error {
 		return fmt.Errorf("face %d (%q): font contains no glyphs", f.data.Index, f.data.ID)
 	}
 	f.metrics = make([]GlyphMetrics, glyphCount)
-	face := tsfont.NewFace(f.glyphFont)
+	face := f.newTextFace()
 	var totalSegments uint64
 	for i := 0; i < glyphCount; i++ {
 		gid := tsfont.GID(i)
@@ -78,7 +78,7 @@ func (f *parsedFace) outline(id GlyphID) (outlineData, bool) {
 		actual, _ := f.outlineMu.entries.LoadOrStore(id, data)
 		return actual.(outlineData), true
 	}
-	face := tsfont.NewFace(f.glyphFont)
+	face := f.newTextFace()
 	outline, ok := face.GlyphDataOutline(tsfont.GID(id))
 	if !ok {
 		return outlineData{}, false

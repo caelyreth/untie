@@ -96,6 +96,27 @@ Imported sources and paths:
 Only the shaping tests load these test fonts. They are not selected by Untie
 itself and do not imply system-font discovery or bundled production fonts.
 
+## Variable-font fixtures
+
+- Source Sans variable, from `go-text/typesetting-utils` revision
+  `4ffe8874dabc`, path `opentype/common/SourceSans-VF.ttf`.
+- Estedad variable, from the same revision and path
+  `opentype/common/Estedad-VF.ttf`.
+- License: SIL Open Font License 1.1. Source Sans is Copyright 2010-2020 Adobe,
+  with Reserved Font Name "Source". Estedad is from
+  <https://github.com/aminabedi68/Estedad>.
+
+`fonts/SourceSans-VF-MATH.ttf` is a test-only derivative of the Source Sans
+fixture. A deterministic SFNT rewrite preserves every upstream table and adds
+a minimal MATH table with axis height, a horizontal variant for glyph 1, and
+zero-valued remaining constants. This gives the variable-outline, HVAR, MVAR,
+and MATH-construction tests one small offline fixture. It is not a production
+font and does not imply system-font discovery.
+
+Only variable-font tests load these faces. `fonts/Estedad-VF.ttf` is byte-for-
+byte upstream data and supplies a second real design axis (`wdth`) for generic
+axis and canonical-order tests.
+
 ## Corpus Manifest
 
 `manifests/corpora.json` records the exact loadable corpus paths and counts.
