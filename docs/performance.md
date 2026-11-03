@@ -1,125 +1,66 @@
 # Performance
 
-Untie's tracked performance target is the complete public geometry pipeline:
+Untie's primary performance target is the complete public geometry pipeline:
 parse, validate, lay out, validate the output box, and return a drawable
-display list. Accessibility text is generated only when
-`Style.GenerateAlt` is set, so it is not part of the default benchmark.
-Font loading and corpus loading are setup, not part of the timed operation.
+display list. Accessibility generation is optional and excluded unless
+`Style.GenerateAlt` is enabled. Font loading and corpus loading are setup work.
 
-Run benchmarks on an otherwise idle machine and compare repeated runs on the
-same hardware and Go toolchain. Do not compare isolated numbers from different
-processors or with different corpus revisions.
+## Whole-Corpus Workload
 
-## Whole-Corpus Benchmark
-
-```sh
-CGO_ENABLED=0 go test ./internal/quality \
-  -run '^$' -bench '^BenchmarkEndToEndDailyCorpus$' -benchmem
-```
-
-One benchmark operation is one pass over the tracked daily-STEM corpus:
+The daily performance workload contains:
 
 - 92 formulas;
 - 51 TeX and 41 Typst;
 - 2,252 source bytes;
 - four effective limit configurations.
 
-The baseline reports both attempted cases and successful layouts:
+Each benchmark operation completes one pass over the corpus. Reported metrics
+include complete corpus passes, attempted formulas, successful layouts, output
+items, source hits, and retained path segments.
 
-- `corpora/s`: complete corpus passes per second;
-- `cases/s`: attempted formulas per second;
-- `items/success`, `hits/success`, and `path-seg/success`: output volume per
-  successful layout;
-- `items/case`, `hits/case`, and `path-seg/case`: output volume divided by all
-  attempted formulas;
-- `path-template/case` and `template-path-seg/case`: unique path templates and
-  retained template geometry after per-box deduplication;
-- `path-storage-x`: retained template segments divided by path-segment
-  references across items, so repeated glyphs can reduce physical storage;
-- `successes/case` and `successes/corpus`: successful-layout rate;
-- `layout-errors/case`: expected font or output-limit failures.
+The `/case` and `/success` denominators are intentionally different:
 
-The `/case` and `/success` denominators differ deliberately. A successful
-layout count excludes reviewed layout failures, while throughput metrics still
-need to account for the work spent attempting those cases.
+- `/case` divides by every attempted formula;
+- `/success` divides by layouts that produced a box.
+
+This keeps work spent on expected missing-glyph and limit failures visible.
 
 ## Engine Strategies
 
-The benchmark compares:
+The benchmark compares several reusable-engine strategies:
 
-- `parse-only`: parse and validate, without layout;
-- `e2e/caller-engine`: engines prepared outside the timer and reused;
-- `e2e/caller-engine-accessible`: the same geometry path with
-  `Style.GenerateAlt` enabled;
-- `e2e/package-cache-warm`: the bounded package cache pre-filled outside the
-  timer;
-- `e2e/package-cache-cold`: package cache cleared at the start of each corpus
-  pass;
-- `e2e/no-cache`: a new engine constructed for every formula.
+- parse and validation without layout;
+- caller-owned engine prepared outside the measured operation;
+- caller-owned engine with accessibility text enabled;
+- warm package-level engine cache;
+- cold package-level engine cache;
+- a new engine for every formula.
 
-Use `caller-engine` for normal application performance. The package-cache rows
-measure the convenience API, and `no-cache` is a worst-case comparison.
+Use the caller-owned-engine result for normal application throughput. The
+package-cache rows measure the convenience API, and the no-cache row is a
+worst-case comparison.
 
-## Constrained Display Storage
+## Constrained Display
 
-```sh
-CGO_ENABLED=0 go test ./internal/quality \
-  -run '^$' -bench '^BenchmarkEndToEndConstrainedDailyCorpus$' -benchmem
-```
+Constrained display has a separate storage-focused benchmark. It distinguishes:
 
-This focused benchmark selects the daily corpus's constrained display cases
-and distinguishes canonical storage from range references:
+- canonical item, hit, and path-segment references;
+- line and tag ranges into that canonical storage;
+- actual retained item and deduplicated path-template storage.
 
-- `parent-*`: item/hit storage and path-segment references from canonical
-  `Box.Items`/`Box.Hits`;
-- `line-range-*` and `tag-range-*`: records selected from that canonical
-  storage by ranges;
-- `physical-*`: actual retained item and deduplicated path-template storage;
-- `item-storage-x` and `path-storage-x`: physical storage divided by canonical
-  parent references. Item ranges keep `item-storage-x` at `1.0`; path
-  templates may be below `1.0` when glyph geometry is shared.
-
-Use this benchmark when reviewing constrained-layout or tag changes; timing
-alone will not reveal accidental reintroduction of duplicate retained memory.
-
-## Tracked Parser Corpora
-
-```sh
-CGO_ENABLED=0 go test ./internal/quality \
-  -run '^$' -bench '^BenchmarkParseTrackedCorpora$' -benchmem
-```
-
-This benchmark runs every tracked upstream corpus through the public parse
-boundary. Each sub-benchmark reports its exact case count, source bytes, and
-reviewed diagnostics. The diagnostic counts matter: a parser benchmark is not
-an all-clean workload merely because every case has a reviewed outcome.
+Timing alone does not reveal accidental duplicate retained memory, so storage
+ratios are reported alongside time.
 
 ## Interpreting Allocations
 
-`B/op` and `allocs/op` include parser, validation, layout, and output
-construction. A speed improvement that moves work outside the timed operation
-or caches output across benchmark iterations is not comparable. Every corpus
-pass must construct fresh expressions and boxes.
+`B/op` and `allocs/op` include parsing, validation, layout, and output
+construction. A speed improvement is not comparable if it moves work outside
+the measured operation or reuses output across iterations.
 
-The engine legitimately caches immutable font-derived data and recycles cleared,
-bounded layout scratch between calls. It never reuses an expression or a
-returned `Box`. The package-cache warm/cold and no-cache rows make lifecycle
-and setup costs explicit; use the caller-engine row for steady-state engine
-performance.
+Every corpus pass constructs fresh expressions and boxes. Font-derived data and
+bounded layout scratch may be reused, but individual expressions and returned
+boxes are not.
 
-## Profiling
-
-Generate CPU and allocation profiles around the caller-owned pipeline:
-
-```sh
-CGO_ENABLED=0 go test ./internal/quality \
-  -run '^$' \
-  -bench 'BenchmarkEndToEndDailyCorpus/e2e/caller-engine$' \
-  -benchtime=500x -cpuprofile=/tmp/untie.cpu -memprofile=/tmp/untie.mem
-
-go tool pprof -top /tmp/untie.cpu
-go tool pprof -top -alloc_space /tmp/untie.mem
-```
-
-Profile changes against the same commit series and corpus. Treat a smaller
-allocation count as useful only when corpus time is also unchanged or lower.
+Compare repeated runs on the same hardware, toolchain, and corpus revision.
+When optimizing, treat lower allocation count as useful only if corpus time is
+also unchanged or lower.

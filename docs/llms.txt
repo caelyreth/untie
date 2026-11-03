@@ -38,11 +38,13 @@ Use this file as the short entry point for code assistants. Read
 - `encode/svg.Marshal` emits deterministic standalone SVG from the same visible
   command stream. It includes certified overflow, maps roles through a palette,
   and is not a stable wire protocol.
+- MyGo applications can call `(*untiemygo.Renderer).Element` to turn a formula
+  string directly into a `ui.Element`, or use `BindMarkdown` for Markdown math.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
 - Draw `Box.Items` once; line/tag ranges select subsets of the same storage.
 - Use `Box.Bounds()` to include certified overflow.
 - Use `Expr.Alt()` or `Style.GenerateAlt` plus `Box.Alt` for accessibility.
-- Do not import any `internal/` package from a host.
+- Use only documented public packages in a host application.
 
 ## Minimal Pipeline
 
@@ -82,6 +84,8 @@ draw(result.Box.Items)
   [`encode/raster`](../encode/raster/doc.go)
 - SVG export, viewport sizing, roles, and metadata:
   [`encode/svg`](../encode/svg/doc.go)
+- MyGo elements, Markdown math, existing-box drawing, and cache ownership:
+  [mygo.md](mygo.md)
 - Font roles, IDs, TTC, fallback, missing glyphs:
   [fonts.md](fonts.md)
 - Diagnostics and recoverable parse output:
@@ -130,6 +134,15 @@ type LayoutError struct {
 	Range source.Range
 	Err   error
 }
+```
+
+MyGo adapter:
+
+```go
+func New(fonts *untie.FontSet, opts Options) (*Renderer, error)
+func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Element
+func (r *Renderer) Render(ctx context.Context, source string, mode untie.Mode, style untie.Style) (*untie.RenderResult, error)
+func (r *Renderer) BindMarkdown(options *markdown.Options)
 ```
 
 `render` package:
@@ -212,9 +225,9 @@ directly and is never wrapped in `LayoutError`.
 - `LoadFontSet` and `LoadMathFont` copy font bytes.
 - `Expr` and `FontSet` are immutable; `Engine` is safe for concurrent layouts.
 - `Box` is caller-owned and should be treated as immutable when shared.
-- `contrib/mygo` is a nested module that declares package `untiemygo`;
-  importing the root module never imports MyGo. Its adapter caches immutable
-  boxes and installs Markdown math hooks.
+- The optional `contrib/mygo` adapter declares package `untiemygo`. It can
+  render direct elements, install Markdown math hooks, and cache immutable
+  boxes.
 
 ## Supported-Syntax Rule
 
@@ -228,7 +241,7 @@ Known limitations must be reported as diagnostics, layout errors, or explicit
 fallback behavior. Do not invent a workaround that leaks dialect syntax into
 layout or lets a host import internals.
 
-## Source of Truth
+## Core Source Files
 
 - Public facade and types: [`api.go`](../api.go), [`layout.go`](../layout.go)
 - Display contract: [`display/types.go`](../display/types.go)
@@ -238,8 +251,4 @@ layout or lets a host import internals.
 - Optional raster/PNG output: [`encode/raster/raster.go`](../encode/raster/raster.go)
 - Canonical IR: [`ir/nodes.go`](../ir/nodes.go)
 - Font substrate: [`font/README.md`](../font/README.md)
-- Frontends: [`internal/tex`](../internal/tex), [`internal/typst`](../internal/typst)
-- Layout: [`internal/layout`](../internal/layout)
 - Acceptance corpora: [`testdata/README.md`](../testdata/README.md)
-- Architecture boundaries:
-  [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go)

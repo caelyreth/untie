@@ -11,27 +11,24 @@ and keep per-call inputs immutable for the duration of a call.
 | `*FontSet` | Safe for concurrent readers. |
 | `*Engine` | Safe for concurrent `Layout`/`LayoutContext` calls. |
 | `*Renderer` | Safe for concurrent `Render` calls. |
+| MyGo `*untiemygo.Renderer` | Safe for concurrent adapter use when callers treat returned boxes as immutable. |
 | `*Expr` | Immutable and safe to share for reads. |
 | `Style.Features` | Caller-owned; snapshotted per layout. |
 | `*Box` | Independent per successful layout; not safe for concurrent mutation. |
 | `*Formula` passed to `LayoutFormulaContext` | Safe to share only if every caller treats it as immutable for the call. |
 | Package-level layout cache | Concurrency-safe, bounded LRU with shared in-flight builds. |
 
-The engine's font adapter uses concurrency-safe font caches. A custom
-substitution of public font types does not affect the root engine because the
-root engine always uses its internal font adapter.
-
 ## No Close Lifecycle
 
-There is no `Close` method on `FontSet` or `Engine`. Both are ordinary Go
-objects:
+There is no `Close` method on `FontSet`, `Renderer`, or `Engine`. They are
+ordinary Go objects:
 
 1. `LoadMathFont` or `LoadFontSet` copies and validates bytes.
-2. `NewEngine` prepares immutable layout state.
-3. Retain the engine for the configured font set's lifetime.
+2. `NewRenderer` prepares an engine and optional parse cache.
+3. Retain the renderer for the configured font set's lifetime.
 4. Let Go's garbage collector release it.
 
-Avoid rebuilding an engine for every keystroke. It repeats font-derived setup
+Avoid rebuilding a renderer for every keystroke. It repeats font-derived setup
 that does not depend on the formula.
 
 ## Recommended Application Lifecycle
@@ -52,16 +49,8 @@ func NewMathRenderer(fontBytes []byte) (*untie.Renderer, error) {
 The same `untie.Renderer` can serve many UI workers concurrently as long as
 each worker uses its own request data and does not mutate a shared `Box`.
 
-An `Engine` retains immutable base-em design paths for glyphs it has shaped.
-That cache is safe for concurrent layouts, grows only with glyphs actually
-encountered, and is released with the engine. It never shares final display
-paths between returned boxes.
-
-Layout also recycles transient fragment, glyph, and path-cache scratch storage
-through a process-wide hard-bounded pool. Every retained slot is cleared before
-reuse, and a returned `Box` never references pooled scratch. The pool holds at
-most 16 idle scratch sets, and oversized scratch is discarded rather than
-retained indefinitely.
+The renderer and engine use bounded internal caches for immutable font-derived
+and parse data. Returned boxes never share mutable storage.
 
 ## Context Cancellation
 
@@ -110,6 +99,9 @@ the font set or engine.
 
 Treat a `Box` as read-only after handing it to another goroutine. If a host
 needs to annotate or transform one, clone it first.
+
+The MyGo adapter intentionally returns immutable cached boxes on a cache hit.
+Callers must never mutate those boxes or their nested slices.
 
 ## Expression and IR Ownership
 
@@ -206,27 +198,3 @@ drain channels. Cancellation is cooperative within the layout pass.
 Concurrent cache misses can wait for another goroutine's engine build. The wait
 honors the caller's context. An unrelated slow layout does not hold a lock over
 the complete render path.
-
-## Testing Concurrent Use
-
-The repository verifies:
-
-- concurrent shared-font layouts with multiple styles and dialects;
-- deterministic canonical output across repeated concurrent calls;
-- shared concurrent engine-cache builds;
-- cancellation while waiting for a build;
-- cache clearing around an in-flight build;
-- font cache reads under concurrent goroutines.
-
-See the evidence links below before inventing a weaker locking scheme around
-`Engine` or `FontSet`.
-
-## Evidence
-
-- Engine lifecycle: [`layout.go`](../layout.go)
-- Cache implementation: [`layout_cache.go`](../layout_cache.go)
-- Concurrent style/layout tests: [`layout_lifecycle_test.go`](../layout_lifecycle_test.go)
-- Font concurrent reads: [`font/font_test.go`](../font/font_test.go)
-- Display clone: [`display/types.go`](../display/types.go)
-- Canonical IR validation and clone: [`ir/validate.go`](../ir/validate.go),
-  [`ir/clone.go`](../ir/clone.go)

@@ -155,8 +155,8 @@ counters, file inclusion, and arbitrary external macros are outside the
 frontend.
 
 When a macro body produces nodes, source ranges preserve both the expanded
-body and the invocation origin where the implementation can map them. Layout
-hits can therefore point back to the host source invocation.
+body and the invocation origin where they can be mapped. Layout hits can
+therefore point back to the host source invocation.
 
 ## Links Are Text-Only
 
@@ -187,37 +187,28 @@ text, and dimension limits while validating the produced tree. See
 ## Recommended Editor Flow
 
 ```go
-expr := untie.Parse(source, dialect, untie.Display, untie.ParseOptions{
-	Limits: parseLimits,
+result, err := renderer.Render(ctx, source, untie.RenderRequest{
+	Dialect: dialect,
+	Mode:    untie.Display,
+	Style:   untie.Style{Size: 24},
+	Parse:   untie.ParseOptions{Limits: parseLimits},
 })
 
-for _, diagnostic := range expr.Diagnostics() {
-	span := diagnostic.Range
-	// Map UTF-8 byte offsets to the editor's native coordinates.
-	showDiagnostic(span, diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+if result != nil {
+	for _, diagnostic := range result.Diagnostics {
+		span := diagnostic.Range
+		// Map UTF-8 byte offsets to the editor's native coordinates.
+		showDiagnostic(span, diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+	}
 }
 
-box, err := engine.Layout(expr, untie.Style{Size: 24})
 if err != nil {
 	// Keep the parse diagnostics visible and show a layout-level message.
 	return err
 }
+draw(result.Box)
 ```
 
 A recoverable parse diagnostic should not by itself disable the preview.
 Layout failure should be shown separately because it can be caused by fonts,
 limits, unsupported layout shapes, or an invalid host call.
-
-## Evidence
-
-- Public parse facade and fallback:
-  [`api.go`](../api.go)
-- Diagnostic types and normalization:
-  [`source/diagnostic.go`](../source/diagnostic.go),
-  [`source/range.go`](../source/range.go)
-- Recovery tests: [`api_test.go`](../api_test.go)
-- TeX frontend boundary: [`internal/tex/api.go`](../internal/tex/api.go)
-- Typst frontend boundary: [`internal/typst/api.go`](../internal/typst/api.go)
-- TeX macro tests: [`internal/tex/macro_test.go`](../internal/tex/macro_test.go)
-- Link behavior: [`internal/tex/url_test.go`](../internal/tex/url_test.go),
-  [`internal/typst/link_test.go`](../internal/typst/link_test.go)

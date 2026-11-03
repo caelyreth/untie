@@ -28,7 +28,7 @@ Supported and tested:
 - basic numeric literals and fractions such as `1/2`;
 - superscripts, subscripts, primes, and multiline math rows;
 - relation, binary, punctuation, and large-operator spacing;
-- shorthands from the tracked Typst fixture, including `<=`, `>=`, `!=`,
+- supported Typst shorthands, including `<=`, `>=`, `!=`,
   `->`, `and`, and `in`;
 - `sqrt`, `root`, `frac`, and `binom`;
 - `attach`, `scripts`, and `limits` for explicit script/limit semantics;
@@ -45,7 +45,7 @@ Supported and tested:
   booleans, `none`, arrays used by tested multi-delimiter forms, and selected
   dictionaries.
 
-The symbol catalogue is fixture-backed and much larger than the examples above.
+The symbol catalogue is substantially larger than the examples above.
 
 ## Common Constructs
 
@@ -142,7 +142,7 @@ The following are also boundaries rather than complete-language claims:
 - all named arguments for every Typst function;
 - all matrix/table styling and stroke fields;
 - equation numbering and tags (the current tag contract is TeX Phase 1);
-- every parser/CST syntax probe in upstream Typst fixtures.
+- every parser or concrete-syntax-tree stress probe from upstream Typst.
 
 The tracked conformance policy records reviewed exclusions and known
 limitations. At this revision, selected Typlet syntax probes involving BOM
@@ -173,24 +173,9 @@ A Typst construct is documented here only when it is:
 
 - accepted by the restricted parser/evaluator;
 - lowered to validated canonical IR;
-- covered by a normal test, daily corpus case, or tracked Typlet fixture; and
+- covered by compatibility evidence; and
 - assigned an explicit outcome in the conformance policy when it differs from
   upstream Typst.
 
 Green conformance tests can include reviewed `bug` dispositions. They do not
 retroactively turn those cases into supported behavior.
-
-## Evidence
-
-- Typst frontend boundary: [`internal/typst/api.go`](../internal/typst/api.go)
-- Builtin dispatch: [`internal/typst/lower.go`](../internal/typst/lower.go)
-- Constructs and matrices: [`internal/typst/constructs.go`](../internal/typst/constructs.go),
-  [`internal/typst/matrix.go`](../internal/typst/matrix.go)
-- Symbol catalogue tests: [`internal/typst/coverage_test.go`](../internal/typst/coverage_test.go)
-- Static feature corpus: [`internal/typst/frontend_test.go`](../internal/typst/frontend_test.go)
-- Semantic roles: [`internal/typst/semantic_test.go`](../internal/typst/semantic_test.go)
-- Link behavior: [`internal/typst/link_test.go`](../internal/typst/link_test.go)
-- Policy:
-  [`testdata/conformance/typst-policy.json`](../testdata/conformance/typst-policy.json)
-- Known-bug ratchet:
-  [`internal/quality/typst_bug_budget_test.go`](../internal/quality/typst_bug_budget_test.go)

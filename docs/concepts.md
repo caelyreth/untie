@@ -18,6 +18,10 @@ canonical IR (ir.Formula)
   neutral nodes + metadata
         |
         v
+  Renderer.Render
+  parse facade + cache
+        |
+        v
   Engine.Layout
   font metrics + shapes + layout policy
         |
@@ -62,15 +66,26 @@ clone error explicitly; there is no silent snapshot accessor.
 change the expression. `Expr.HasErrors()` provides the common
 error-severity check without allocating a diagnostic copy.
 
+### `Renderer`
+
+`NewRenderer(fonts, options)` is the main application entry point. It prepares
+one engine, applies dialect and style defaults, parses each source string, and
+optionally caches immutable parsed expressions. Its `Render` method returns a
+result containing the box, parse diagnostics, and any requested alternative
+text.
+
+`Renderer` is safe for concurrent renders. It never caches returned boxes, so
+each successful call produces independent layout output.
+
 ### `Engine`
 
 `NewEngine(fonts, limits)` prepares reusable layout state for one font set and
 one effective limit configuration. An `Engine` is safe for concurrent layouts.
 It retains its font set and is garbage-collected; there is no shutdown call.
 
-Use `Engine.Layout` or `Engine.LayoutContext` for expressions produced by the
-public parser. The package-level `Layout` and `LayoutContext` functions use a
-separate bounded cache of prepared engines.
+`Engine` is the advanced entry point for hosts that need explicit layout
+control, canonical-IR layout, or a custom parse step. The package-level `Layout`
+and `LayoutContext` functions use a separate bounded cache of prepared engines.
 
 ### `Box`
 
@@ -93,6 +108,7 @@ public box contract.
 | --- | --- | --- |
 | Font bytes passed to `LoadMathFont` or `LoadFontSet` | Caller | The loader copies them; later caller mutation has no effect. |
 | `*FontSet` | Caller | Immutable and safe for concurrent readers. |
+| `*Renderer` | Caller | Reusable and concurrency-safe; returned boxes remain caller-owned. |
 | `*Engine` | Caller | Reusable and concurrency-safe; GC-managed. |
 | `ParseOptions.Macros` | Caller | Copied into the expression's parse calculation. |
 | `Style.Features` | Caller | Snapshot per layout call. |
@@ -124,18 +140,9 @@ engine.
 
 Negative script levels are invalid.
 
-## Internal and Public Boundaries
+## API Layers
 
-The root package composes two internal frontends and an internal layout engine:
-
-- `internal/tex`
-- `internal/typst`
-- `internal/engine`
-- `internal/layout`
-- `internal/alt`
-
-Those packages are implementation details. Hosts and code assistants should
-use the root facade and the public support packages:
+Most hosts only need these packages:
 
 - `github.com/caelyreth/untie`
 - `github.com/caelyreth/untie/display`
@@ -147,15 +154,10 @@ use the root facade and the public support packages:
 - `github.com/caelyreth/untie/encode/raster`
 - `github.com/caelyreth/untie/source`
 
-The repository's architecture test enforces the import direction and rejects
-imports of Untie internals from the separate example module. See
-[`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go).
-
-The root module has no MyGo dependency. Framework integration lives in the
-nested `github.com/caelyreth/untie/contrib/mygo` module. Its exact import
-allowlist permits only declared public Untie and MyGo packages and rejects both
-projects' internals. The module declares package `untiemygo`, so hosts import
-the path without an alias. See [MyGo integration](mygo.md).
+The [render](rendering.md) package provides the framework-neutral drawing
+protocol. [SVG and raster](rendering.md#svg-output) packages are optional output
+adapters. MyGo applications can use the [MyGo adapter](mygo.md) for direct
+`ui.Element` rendering and Markdown math.
 
 ## Content Identity
 
@@ -181,14 +183,3 @@ limits, and `Version()`. It never caches a rendered `Box`.
 - Screen-reader behavior beyond deterministic alternative text
 - GPU tessellation or glyph-atlas ownership
 - Validation of the upstream license terms of host-supplied fonts
-
-## Evidence
-
-- Public type aliases and ownership: [`api.go`](../api.go)
-- Engine and cache: [`layout.go`](../layout.go),
-  [`layout_cache.go`](../layout_cache.go)
-- Display contract: [`display/types.go`](../display/types.go)
-- Canonical IR: [`ir/base.go`](../ir/base.go),
-  [`ir/nodes.go`](../ir/nodes.go)
-- Import boundaries:
-  [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go)

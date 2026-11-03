@@ -31,11 +31,10 @@ the internal cache is immutable. `KeySHA256` is the collision-resistant font
 set identity. `Key` is the first 64 bits for host maps.
 
 Coordinates and advances are whole font design units. CFF 16.16 operands are
-quantized once to this integer grid by truncating toward zero, matching the
-pinned Typst/`ttf-parser` oracle; they are never rounded through a host or
-canvas pixel size. Sub-design-unit outline coordinates are intentionally not
-exposed by this API. Bounds are control bounds in y-down design units matching
-the NewCM fixture used by the tests.
+quantized once to this integer grid by truncating toward zero. They are never
+rounded through a host or canvas pixel size. Sub-design-unit outline coordinates
+are intentionally not exposed by this API. Bounds are control bounds in y-down
+design units.
 
 ## Intentional boundaries
 
@@ -56,24 +55,19 @@ the NewCM fixture used by the tests.
   selection remains a layout policy and is not implemented in `font`.
 - Text shaping is outside this package. `MapRune` and glyph advances are
   deterministic primitives for a later text shaper.
-- The two pinned parser dependencies are pure Go:
-  `github.com/go-opentype/opentype` at
-  `2c8922cb87c69d7555957e90370c19f890758b36`, and
-  `github.com/go-text/typesetting` at `v0.3.5`.
+- Font parsing and shaping support are pure Go and require no cgo toolchain.
 
-## Conformance data
+## Compatibility
 
-`testdata/upstream` tracks the unmodified NewCM Book font and Typlet's complete
-NewCM JSONL fixture. The tests compare all 8,598 glyph advances, control bounds,
-italic corrections, accent attachments, extended-shape membership, kerns,
-variants, and assemblies, plus every cmap character, variation sequence, and
-`ssty`/`dtls` shaping result.
+The package is validated against a pinned New Computer Modern Math Book
+reference covering all 8,598 glyph advances, control bounds, italic
+corrections, accent attachments, extended-shape membership, kerns, variants,
+assemblies, cmap entries, variation sequences, and `ssty`/`dtls` shaping.
 
 Four variation-sequence glyphs (`8465`, `8480`, `8481`, and `8483`) differ by
 one design unit because `ttf-parser` composes their legacy CFF endchar-seac
-components while the Go outline parser does not. Those IDs are listed
-explicitly in `fixture_test.go`; no other fixture difference is accepted. The
-fixture's U+FFFF entry maps to `.notdef`; public rune lookup intentionally
-reports that as unmapped. The fixture also omits one spec-defined left-corner
-kern; Untie retains all four corners for prescript layout.
+components while Untie's outline parser does not. U+FFFF maps to `.notdef` and
+public rune lookup reports it as unmapped. Untie also retains the one
+spec-defined left-corner kern omitted by the reference data for prescript
+layout.
 

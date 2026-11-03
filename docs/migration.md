@@ -89,21 +89,17 @@ stable wire protocol. PNG output is deterministic for the same box and options.
 
 ## MyGo Integration
 
-MyGo integration remains in the separately versioned nested module:
+Import the adapter with:
 
 ```go
 import "github.com/caelyreth/untie/contrib/mygo"
 ```
 
-The package itself is named `untiemygo`, so an explicit import alias is not
-required. Importing the root `untie` module never adds a MyGo dependency.
-
-`untiemygo.New` and the `(*untiemygo.Renderer).Render`,
-`(*untiemygo.Renderer).InlineMath`, `(*untiemygo.Renderer).DisplayMath`,
-`(*untiemygo.Renderer).BindMarkdown`, `(*untiemygo.Renderer).Draw`, and
-`(*untiemygo.Renderer).CacheStats` methods replace application-owned path
-fitting, paint resolution, and MyGo drawing code. The adapter may cache
-immutable boxes; callers must not mutate a box obtained from that cache.
+The package is named `untiemygo`. `(*untiemygo.Renderer).Element` renders a
+formula directly as a MyGo `ui.Element`. `BindMarkdown`, `InlineMath`, and
+`DisplayMath` handle Markdown integration. `Render` and `Draw` remain available
+for applications that need the underlying box. The adapter may cache immutable
+boxes; callers must not mutate a box obtained from that cache.
 
 ## Ownership and Caching
 
@@ -111,7 +107,8 @@ immutable boxes; callers must not mutate a box obtained from that cache.
 - `Renderer` is safe for concurrent `Render` calls.
 - Every successful `(*untie.Renderer).Render` or `(*untie.Engine).Layout` call
   returns independent mutable `Box` storage.
-- The root renderer and package-level engine cache never share returned boxes.
+- The high-level renderer and package-level engine cache never share returned
+  boxes.
 - The MyGo adapter is the documented exception: cache hits return the same
   immutable box, which callers must not mutate.
 - Path templates referenced by `render.Walk` are box-owned, callback-scoped

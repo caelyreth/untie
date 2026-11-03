@@ -1,32 +1,28 @@
-### Untie
+## Untie
 
-Untie is a pure-Go math renderer for TeX and Typst math. It parses both
-languages into one language-neutral IR, lays formulas out with an OpenType MATH
-font supplied by the host, and returns a UI-independent display list of glyph
-paths and filled rules.
-
-See the [documentation](docs/README.md) for integration, rendering, font,
-parsing, accessibility, and compatibility guidance.
+Untie is a pure-Go math renderer for TeX and Typst. It parses both input
+languages into one language-neutral representation, lays formulas out with a
+host-supplied OpenType MATH font, and returns a UI-independent display list of
+glyph paths, rules, source hits, and accessibility text.
 
 ### Properties
 
-- `CGO_ENABLED=0`
-- no UI, DOM, GPU, platform text, or system-font dependency
-- deterministic, byte-stable canonical test output
-- recoverable parsing with source diagnostics
-- UTF-8 byte spans
-- fixed-point internal geometry
-- OpenType MATH metrics and glyph outlines
-- reusable caller-owned layout engines with bounded convenience caching
-- source-linked hit rectangles emitted from placed layout fragments
-- deterministic inline break metadata and constrained display line boxes
-- TeX display equation-tag metadata and separately selectable tag ranges
-- text-only link bodies with explicit unsupported destination diagnostics
-- deterministic text/speech alternative output with bounded fallbacks
-- a tracked daily-STEM acceptance corpus
-- no upstream renderer is compiled or executed by the test suite
+- one renderer for TeX and Typst math;
+- pure Go with `CGO_ENABLED=0`;
+- no browser, DOM, GPU, platform text, or system-font dependency;
+- deterministic layout and output;
+- recoverable parsing with source diagnostics;
+- source-mapped hit regions;
+- OpenType MATH metrics, glyph outlines, variants, and assemblies;
+- reusable rendering with bounded caches;
+- inline and display layout, line breaking, equation tags, and overflow bounds;
+- deterministic text and speech alternatives for accessibility;
+- optional SVG and PNG output.
 
 ### Use
+
+`NewRenderer` is the main API for applications. Load the font once, keep the
+renderer, and call `Render` whenever the source or style changes.
 
 ```go
 import (
@@ -34,6 +30,7 @@ import (
 	"os"
 
 	"github.com/caelyreth/untie"
+	"github.com/caelyreth/untie/render"
 )
 
 fontBytes, err := os.ReadFile("NewCMMath-Book.otf")
@@ -44,66 +41,95 @@ fonts, err := untie.LoadMathFont(fontBytes)
 if err != nil {
 	return err
 }
-renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
-	DefaultStyle: untie.Style{Size: 16},
+math, err := untie.NewRenderer(fonts, untie.RendererOptions{
+	DefaultStyle: untie.Style{Size: 24},
 	CacheEntries: 128,
 })
 if err != nil {
 	return err
 }
 
-result, err := renderer.Render(context.Background(), `x^2+\frac{1}{2}`, untie.RenderRequest{
+result, err := math.Render(context.Background(), `x^2+\frac{1}{2}`, untie.RenderRequest{
 	Mode: untie.Display,
+})
+if err != nil {
+	// Recoverable parse diagnostics may still be present in result.
+	return err
+}
+
+err = render.Walk(result.Box, func(command render.Command) error {
+	switch command.Kind {
+	case render.CommandPath:
+		// Paint command.Path using command.At, command.Em, and command.Paint.
+	case render.CommandRule:
+		// Fill command.Rect with command.Paint.
+	}
+	return nil
+})
+```
+
+The renderer caches immutable parsed expressions when `CacheEntries` is
+positive. It never reuses returned boxes, so each successful `Render` produces
+an independent display list.
+
+For ready-made output, use
+[`encode/svg`](encode/svg/doc.go) or [`encode/raster`](encode/raster/doc.go).
+SVG supports deterministic vector export; the raster package provides
+antialiased RGBA and PNG output without cgo.
+
+### Lower-Level API
+
+Use `NewEngine` when you need explicit engine ownership, direct canonical-IR
+layout, or a custom parse/layout pipeline. It exposes the same layout core as
+`Renderer`, without the convenience facade.
+
+```go
+engine, err := untie.NewEngine(fonts, untie.Limits{})
+if err != nil {
+	return err
+}
+expr := untie.ParseTeX(`\sum_{i=1}^{n} i^2`, untie.Display, untie.ParseOptions{})
+box, err := engine.Layout(expr, untie.Style{Size: 24})
+```
+
+See [Getting Started](docs/getting-started.md) for the complete integration
+pipeline and [Rendering](docs/rendering.md) for the drawing contract.
+
+### MyGo
+
+The optional [`contrib/mygo`](contrib/mygo) adapter renders directly to MyGo
+elements and plugs into Markdown math:
+
+```go
+math, err := untiemygo.New(fonts, untiemygo.Options{
+	Dialect:      untie.TeX,
+	CacheEntries: 128,
 })
 if err != nil {
 	return err
 }
-// Draw result.Box through render.Walk or result.Box.Items.
+
+ui.Column(c).Children(func() {
+	math.Element(c, source, untie.Display).FillWidth()
+})
 ```
 
-`NewRenderer` is the recommended parse-and-layout facade. It prepares one
-`Engine`, applies bounded parsed-expression caching when requested, and never
-caches returned display boxes. Use `NewEngine` directly when the host needs the
-lower-level lifecycle boundary.
+`BindMarkdown` adds `$...$`, `$$...$$`, `\(...\)`, and `\[...\]` support to a
+MyGo Markdown view. See the [MyGo integration guide](docs/mygo.md) for direct
+elements, Markdown binding, and existing-box drawing.
 
-Display layout with a positive `Style.MaxWidth` returns `box.Lines` inside a
-`MaxWidth`-wide alignment frame. `box.Items` and `box.Hits` are the single
-drawable storage; each line carries ranges into them plus baseline, alignment,
-and overflow metadata. `Style.Align` positions each line in the frame with
-start, center, or end alignment. Inline layout ignores `MaxWidth` and `Align`.
+### Documentation
 
-The package-level `Layout` and `LayoutContext` helpers use a bounded
-process-wide engine cache that can be released with `ClearLayoutEngineCache`.
-
-### Development
-
-```sh
-nix develop
-go test ./...
-go vet ./...
-```
-
-Pure-Go verification:
-
-```sh
-CGO_ENABLED=0 go test ./...
-```
-
-The repository-wide corpus and compatibility gates live under
-`internal/quality`:
-
-```sh
-go test ./internal/quality
-```
-
-A two-pane native editor example is in
-[examples/mygo](examples/mygo).
-
-A separately versioned MyGo Markdown adapter is in
-[contrib/mygo](contrib/mygo). Its package name is `untiemygo`, so imports need
-no alias. It provides inline and display math hooks, a bounded immutable layout
-cache, theme-role drawing, and `ui.Tester` coverage without adding MyGo to the
-root module's dependencies.
+- [Getting Started](docs/getting-started.md)
+- [Core Concepts](docs/concepts.md)
+- [Rendering](docs/rendering.md)
+- [Fonts](docs/fonts.md)
+- [Parsing](docs/parsing.md)
+- [MyGo Integration](docs/mygo.md)
+- [Supported TeX](docs/tex-support.md)
+- [Supported Typst](docs/typst-support.md)
+- [API Stability](docs/stability.md)
+- [Full Documentation Index](docs/README.md)
 
 ### License
 

@@ -1,9 +1,7 @@
 # Getting Started
 
-The primary pipeline uses only the root `untie` package. Optional drawing and
-output helpers live in `render`, `encode/svg`, and `encode/raster`. The root
-package re-exports the public display, font, source, and geometry types needed
-by a host.
+The primary API is the root `untie` package. Drawing and export helpers are
+available in `render`, `encode/svg`, and `encode/raster` when needed.
 
 ## Requirements
 
@@ -195,9 +193,8 @@ func paint(painter Painter, box *untie.Box, colorFor func(untie.Paint) Color) {
 ```
 
 `Painter`, `Color`, `FillPath`, and `placePath` above are placeholders for the
-host's graphics API. The reusable MyGo implementation is
-[`contrib/mygo/draw.go`](../contrib/mygo/draw.go), and the bundled example calls
-it from [`examples/mygo/app.go`](../examples/mygo/app.go).
+host's graphics API. The [MyGo adapter](../contrib/mygo/README.md) provides a
+ready-made implementation for MyGo applications.
 
 Do not draw `ItemGlyphPath` and its accompanying `ItemGlyphRef` as two shapes.
 When `Style.GlyphRefs` is true, an exact glyph can produce both an outline path
@@ -262,11 +259,3 @@ text under the engine's effective limits.
 - Re-translating a `LineBox.Items` range by `OffsetX`/`Baseline`; range items
   are already in parent-frame coordinates.
 - Supplying a font without a valid OpenType MATH table as `FontSetConfig.Math`.
-
-## Evidence
-
-- Public facade: [`api.go`](../api.go), [`layout.go`](../layout.go),
-  [`doc.go`](../doc.go)
-- End-to-end examples: [`example_test.go`](../example_test.go)
-- Lifecycle and style tests: [`layout_lifecycle_test.go`](../layout_lifecycle_test.go)
-- Drawing example: [`examples/mygo/app.go`](../examples/mygo/app.go)

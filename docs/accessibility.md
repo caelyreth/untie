@@ -181,12 +181,3 @@ if err != nil && !errors.Is(err, untie.ErrAltUnsupportedNode) {
 accessibilityLabel := alt.Speech
 copyText := alt.Text
 ```
-
-## Evidence
-
-- Public Alt API: [`api.go`](../api.go)
-- Alt implementation: [`internal/alt/alt.go`](../internal/alt/alt.go)
-- Speech vocabulary: [`internal/alt/speech.go`](../internal/alt/speech.go)
-- Alt validation: [`display/validate.go`](../display/validate.go)
-- Determinism and semantic tests: [`api_test.go`](../api_test.go),
-  [`internal/alt/alt_test.go`](../internal/alt/alt_test.go)

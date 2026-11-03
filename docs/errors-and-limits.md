@@ -264,15 +264,3 @@ if err != nil {
 
 draw(diagnostics, box)
 ```
-
-## Evidence
-
-- Public errors: [`errors.go`](../errors.go), [`layout.go`](../layout.go)
-- Sentinels used by layout: [`internal/layout/arithmetic.go`](../internal/layout/arithmetic.go)
-- Internal source attribution:
-  [`internal/layout/source_error.go`](../internal/layout/source_error.go)
-- Defaults and layer notes: [`source/limits.go`](../source/limits.go)
-- Limit propagation tests: [`api_test.go`](../api_test.go)
-- Engine validation: [`internal/engine/engine.go`](../internal/engine/engine.go)
-- Layout accounting: [`internal/layout/renderer.go`](../internal/layout/renderer.go),
-  [`internal/layout/flatten.go`](../internal/layout/flatten.go)

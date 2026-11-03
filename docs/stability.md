@@ -14,8 +14,8 @@ Primary packages:
 - `github.com/caelyreth/untie/fontsource` for `io/fs` loading helpers
 - `github.com/caelyreth/untie/render` for framework-neutral drawing, path
   resolution, and viewport fitting
-- `github.com/caelyreth/untie/contrib/mygo` as an optional nested module for
-  MyGo Markdown math and painter integration
+- `github.com/caelyreth/untie/contrib/mygo` for MyGo elements, Markdown math,
+  and painter integration
 
 Primary surface:
 
@@ -25,14 +25,16 @@ Primary surface:
   `Renderer.Render`;
 - `render.Walk`, `render.Command`, `render.ResolvePath`, `render.Fit`,
   `render.FitOptions`, and `render.Transform`;
+- `(*untiemygo.Renderer).Element`, `BindMarkdown`, `InlineMath`, `DisplayMath`,
+  `Draw`, and `CacheStats` in the optional MyGo adapter;
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`;
 - public error sentinels and diagnostic severities/codes.
 
 Tier 1 is the recommended integration surface. Breaking changes are allowed
-while the module is pre-1.0, but hosts should not need internal packages or
-undocumented concrete layout logic.
+while the library is pre-1.0, but documented public behavior remains the
+compatibility target.
 
 ## Tier 2: Advanced Data Contracts
 
@@ -58,48 +60,22 @@ These are public and intended to be usable, but they expose more of the data
 model. Changes are more likely to require host code changes than a Tier 1
 drawing integration. SVG output is explicitly not a stable wire protocol.
 
-## Tier 3: Diagnostic and Test Serialization
+## Tier 3: Diagnostic Serialization
 
 Functions:
 
 - `ir.MarshalCanonical`;
 - `display.Box.MarshalCanonical`;
 - `display.Alt.MarshalCanonical`;
-- corpus/report schemas under `testdata` and internal quality tooling.
+- corpus and report schemas.
 
-The canonical serializers produce deterministic JSON for golden tests and
-diagnostics. They are explicitly not stable cross-language protocols and not
-the final public interchange format.
+The canonical serializers produce deterministic JSON for diagnostics and local
+inspection. They are not stable cross-language protocols or a public
+interchange format.
 
-Use them for:
-
-- regression tests;
-- local debugging;
-- deterministic snapshots.
+Use them for local debugging and application-controlled snapshots.
 
 Do not use them as an unversioned external wire protocol.
-
-## Internal Packages
-
-Anything under an `internal/` path is implementation detail:
-
-- `internal/tex`;
-- `internal/typst`;
-- `internal/engine`;
-- `internal/layout`;
-- `internal/alt`;
-- `internal/mathdata`;
-- `internal/quality`.
-
-Go's import rules prevent normal external modules from importing them. The
-separate `examples/mygo` module is additionally checked to reject any Untie
-internal import. Do not build a host against internal files even when working
-inside the repository.
-
-The `contrib/mygo` adapter is versioned separately from the root module and
-declares package `untiemygo`, so callers do not need an import alias. Its
-architecture gate rejects Untie internals, MyGo internals, cgo, and undeclared
-framework dependencies. Importing the root module never imports MyGo.
 
 ## Version and Cache Compatibility
 
@@ -160,9 +136,8 @@ invalidates host caches.
 
 ## JSON and Report Schemas
 
-Tracked corpus and report files have internal schema versions for repository
-tests. Those versions do not automatically define a public application
-protocol.
+Tracked corpus and report files have their own schema versions. Those versions
+do not automatically define a public application protocol.
 
 If a host persists canonical IR or reports, add its own application-level
 version, migration, and validation layer.
@@ -178,15 +153,3 @@ version, migration, and validation layer.
 - Recompute font keys after changing bytes, IDs, indexes, or fallback order.
 - Use `Version()` rather than assuming two binary versions share layout
   behavior.
-
-## Evidence
-
-- Version: [`version.go`](../version.go)
-- Root public aliases: [`api.go`](../api.go)
-- Public packages: [`go.mod`](../go.mod)
-- Canonical serialization disclaimers:
-  [`ir/canonical.go`](../ir/canonical.go),
-  [`display/canonical.go`](../display/canonical.go)
-- Diagnostic code contract: [`source/diagnostic.go`](../source/diagnostic.go)
-- Architecture allowlist:
-  [`internal/quality/architecture_test.go`](../internal/quality/architecture_test.go)

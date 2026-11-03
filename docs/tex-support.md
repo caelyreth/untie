@@ -159,17 +159,3 @@ For this project, "supported TeX" means:
 
 It does not mean every command accepted by KaTeX, every LaTeX package, or every
 visual edge case of TeX is implemented.
-
-## Evidence
-
-- Command dispatch: [`internal/tex/commands.go`](../internal/tex/commands.go)
-- Environment subset: [`internal/tex/environments.go`](../internal/tex/environments.go)
-- Symbol tables: [`internal/tex/symbols.go`](../internal/tex/symbols.go)
-- Macro behavior: [`internal/tex/macro_test.go`](../internal/tex/macro_test.go)
-- Construct coverage: [`internal/tex/coverage_test.go`](../internal/tex/coverage_test.go)
-- Unsupported behavior: [`internal/tex/unsupported_test.go`](../internal/tex/unsupported_test.go)
-- Recovery tests: [`internal/tex/recovery_test.go`](../internal/tex/recovery_test.go)
-- Tag tests: [`internal/tex/tags_test.go`](../internal/tex/tags_test.go)
-- Link tests: [`internal/tex/url_test.go`](../internal/tex/url_test.go)
-- Conformance policy:
-  [`testdata/conformance/tex-policy.json`](../testdata/conformance/tex-policy.json)

@@ -137,7 +137,7 @@ coordinates are quantized once by truncating toward zero. The layout engine
 converts those design units into deterministic host-unit geometry.
 
 See [`font/README.md`](../font/README.md) for the lower-level integration
-contract and the fixture provenance.
+contract.
 
 ## Layout Style Features
 
@@ -165,9 +165,9 @@ A missing glyph is a layout error, not a parse diagnostic:
 - the host can retry with an additional fallback face;
 - the parse tree and its `Expr.Alt()` remain available even when layout fails.
 
-The daily corpus intentionally includes text-only CJK cases that produce
-`ErrMissingGlyph` with the New Computer Modern fixture. They document the
-fallback boundary rather than pretending the font covers every script.
+The reference font set intentionally produces `ErrMissingGlyph` for text-only
+CJK cases. This documents the fallback boundary rather than implying that one
+font covers every script.
 
 ## Recommended Setup
 
@@ -184,7 +184,10 @@ if err != nil {
 	return err
 }
 
-engine, err := untie.NewEngine(fonts, untie.Limits{})
+renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
+	DefaultStyle: untie.Style{Size: 24},
+	CacheEntries: 128,
+})
 ```
 
 For one math face, the shorter form also accepts TTC selection:
@@ -212,22 +215,11 @@ fonts, err := fontsource.LoadMath(os.DirFS("assets"), "NewCMMath-Book.otf")
 Use `fontsource.LoadSet` for math, text, and ordered fallback files. Parsing and
 byte ownership still happen in `font.LoadFontSet`.
 
-Keep the font set and engine for the lifetime of the configured graphics
+Keep the font set and renderer for the lifetime of the configured graphics
 environment. There is no font reload or close callback.
 
 ## Licensing Boundary
 
 Untie does not determine whether a host may redistribute or embed a supplied
 font. The host is responsible for the font's license and for preserving any
-required notices. The repository's test font has separate provenance and
-license material under `testdata/upstream`.
-
-## Evidence
-
-- Font input and loading: [`font/font.go`](../font/font.go)
-- Public font types: [`font/types.go`](../font/types.go)
-- Located font documentation: [`font/README.md`](../font/README.md)
-- Input ownership and TTC tests: [`font/font_test.go`](../font/font_test.go)
-- Fallback-order implementation: [`internal/engine/ports.go`](../internal/engine/ports.go)
-- Shaping path: [`internal/engine/shaping.go`](../internal/engine/shaping.go)
-- Missing-glyph corpus cases: [`testdata/daily-stem/cases.jsonl`](../testdata/daily-stem/cases.jsonl)
+required notices.

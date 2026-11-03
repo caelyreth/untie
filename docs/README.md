@@ -23,13 +23,13 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 ## Integration Guides
 
 - [MyGo integration](mygo.md) provides the bounded adapter for MyGo Markdown
-  math, theme-role drawing, and framework-neutral box drawing.
+  math, direct UI elements, theme-role drawing, and existing-box drawing.
 - [Fonts and fallback](fonts.md) covers the required math face, optional text
   face, ordered fallbacks, face IDs, and font identity.
 - [Parsing, diagnostics, and recovery](parsing.md) covers TeX and Typst input,
   source ranges, diagnostics, links, and recoverable output.
 - [Errors and resource limits](errors-and-limits.md) describes fatal layout
-  errors, parse-time recovery, every limit, and the layer that enforces it.
+  errors, parse-time recovery, and configurable limits.
 - [Canonical IR and `Engine.LayoutFormulaContext`](canonical-ir.md) is for
   hosts that inspect or cache the language-neutral formula tree.
 - [Concurrency, lifecycle, and caching](concurrency.md) describes safe reuse,
@@ -37,18 +37,18 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Accessibility text](accessibility.md) explains `Alt.Text`, `Alt.Speech`,
   fallback markers, and how accessibility errors differ from layout errors.
 
-## Compatibility and Evidence
+## Compatibility and Verification
 
 - [Supported TeX](tex-support.md) summarizes the tested TeX math subset and
   its explicit exclusions.
 - [Supported Typst](typst-support.md) summarizes the restricted Typst math
   frontend and its explicit exclusions.
 - [API stability tiers](stability.md) separates the host API, advanced IR
-  types, diagnostic serialization, and internal packages.
-- [Compatibility evidence](quality.md) lists the tracked corpora and the
-  commands that verify parser, layout, font, and corpus contracts.
-- [Performance](performance.md) explains the tracked corpus benchmarks,
-  cache strategies, allocation metrics, and profiling commands.
+  types, and diagnostic serialization.
+- [Compatibility and verification](quality.md) summarizes the tracked corpora
+  and reviewed coverage.
+- [Performance](performance.md) explains the benchmark workload, cache
+  strategies, and allocation metrics.
 - [Migrating to 0.2](migration.md) maps the removed low-level font and drawing
   conveniences to the current host facade, render helpers, and output adapters.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
@@ -76,7 +76,7 @@ For a host that stores or transforms formula trees:
 
 1. [Canonical IR](canonical-ir.md)
 2. [API stability tiers](stability.md)
-3. [Compatibility evidence](quality.md)
+3. [Compatibility and verification](quality.md)
 4. [Performance](performance.md)
 
 ## Scope
@@ -86,10 +86,9 @@ layout, DOM, network access, or semantic TeX/Typst execution. The host owns
 those concerns. Untie's contract ends at a validated `Box`, its accessibility
 text, and its source metadata.
 
-The bundled `examples/mygo` application demonstrates the public adapter's
-`Renderer.Render` and `Renderer.Draw` helpers. The example module is separate
-from the library; the library itself has no UI dependency.
+The bundled [`examples/mygo`](../examples/mygo) application demonstrates direct
+formula elements in a native editor.
 
-For plug-and-play Markdown math, use the separately versioned
-[`contrib/mygo`](../contrib/mygo/README.md) adapter, whose package name is
-`untiemygo`. Importing the root module never imports MyGo.
+For MyGo integration, use [`contrib/mygo`](../contrib/mygo/README.md). It can
+render a formula directly as a `ui.Element`, bind Markdown math, or draw an
+existing Untie box.

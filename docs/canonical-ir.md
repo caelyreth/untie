@@ -184,7 +184,7 @@ formula is mutated.
 ## Canonical JSON
 
 `ir.MarshalCanonical` and `display.MarshalCanonical` produce deterministic JSON
-for golden tests and diagnostics. They are intentionally not stable
+for diagnostics and local inspection. They are intentionally not stable
 cross-language protocols. Do not persist them as an external interchange
 format without versioning your own adapter.
 
@@ -278,16 +278,3 @@ Manual construction is an advanced API. You are responsible for:
 
 Do not create unvalidated nodes and pass them directly to layout in a
 production host.
-
-## Evidence
-
-- Base and node contract: [`ir/base.go`](../ir/base.go)
-- Concrete nodes and tags: [`ir/nodes.go`](../ir/nodes.go)
-- Validation: [`ir/validate.go`](../ir/validate.go)
-- Traversal and cloning: [`ir/walk.go`](../ir/walk.go),
-  [`ir/clone.go`](../ir/clone.go)
-- Canonical serialization: [`ir/canonical.go`](../ir/canonical.go)
-- Formula layout facade: [`layout.go`](../layout.go)
-- Canonical IR layout test: [`api_test.go`](../api_test.go)
-- Tag contracts: [`ir/tags_test.go`](../ir/tags_test.go),
-  [`internal/tex/tags_test.go`](../internal/tex/tags_test.go)
