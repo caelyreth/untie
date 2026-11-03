@@ -22,7 +22,22 @@ func TestValidateWithStatsEnvelope(t *testing.T) {
 			NewGlyph(source.NewRange(2, 3), "c"),
 		}},
 	)
-	root := NewRow(source.NewRange(0, 8), scripts, boxed, table, NewText(source.NewRange(0, 5), "hello"))
+	delimiter := NewSizedDelimiter(
+		source.NewRange(0, 1),
+		".",
+		AbsoluteDelimiterSizing(RawLength(LengthEm, 2_000_000)),
+	)
+	fenced := NewFenced(source.NewRange(0, 1), NewGlyph(source.NewRange(0, 1), "x"))
+	fenced.Sizing = AbsoluteDelimiterSizing(RawLength(LengthEm, 2_000_000))
+	root := NewRow(
+		source.NewRange(0, 8),
+		scripts,
+		boxed,
+		table,
+		NewText(source.NewRange(0, 5), "hello"),
+		delimiter,
+		fenced,
+	)
 	tagBody := NewRow(source.NewRange(7, 8), NewGlyph(source.NewRange(7, 8), "1"))
 	formula := &Formula{
 		Root: root,
@@ -39,11 +54,11 @@ func TestValidateWithStatsEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ValidateWithStats() error = %v", err)
 	}
-	if stats.Nodes != 14 || stats.Tags != 1 {
-		t.Fatalf("Stats nodes/tags = %d/%d, want 14/1", stats.Nodes, stats.Tags)
+	if stats.Nodes != 17 || stats.Tags != 1 {
+		t.Fatalf("Stats nodes/tags = %d/%d, want 17/1", stats.Nodes, stats.Tags)
 	}
 	if stats.MaxDepth < 2 || stats.MaxTextBytes != 5 || stats.MaxTableCells != 3 ||
-		stats.MaxDimensionValue != 2_000_000 || stats.GlyphCapacity != 12 {
+		stats.MaxDimensionValue != 2_000_000 || stats.GlyphCapacity != 14 {
 		t.Fatalf("Stats envelope = %+v", stats)
 	}
 	if !stats.WithinLimits(source.DefaultLimits()) {

@@ -59,3 +59,31 @@ func TestPreparedStatsMatchFullConfiguredValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestConfiguredLimitsIncludeDelimiterSizing(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	for _, node := range []ir.Node{
+		ir.NewSizedDelimiter(span, ".", ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 2_000_000))),
+		func() ir.Node {
+			fenced := ir.NewFenced(span, ir.NewGlyph(span, "x"))
+			fenced.Sizing = ir.AbsoluteDelimiterSizing(ir.RawLength(ir.LengthEm, 2_000_000))
+			return fenced
+		}(),
+	} {
+		formula := &ir.Formula{Root: node}
+		stats, err := ir.ValidateWithStats(formula, source.DefaultLimits())
+		if err != nil {
+			t.Fatal(err)
+		}
+		limits := source.DefaultLimits()
+		limits.MaxDimension = 1
+		if err := validateConfiguredLimits(context.Background(), formula, limits, nil); err == nil {
+			t.Fatal("full configured-limit check accepted oversized delimiter sizing")
+		}
+		if err := validateConfiguredLimits(context.Background(), formula, limits, &stats); err == nil {
+			t.Fatal("stats configured-limit check accepted oversized delimiter sizing")
+		}
+	}
+}

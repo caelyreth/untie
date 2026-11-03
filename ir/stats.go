@@ -15,7 +15,10 @@ func (s *Stats) observe(node Node) {
 		s.GlyphCapacity++
 	case *SizedDelimiter:
 		s.observeText(value.Text)
+		s.observeLength(value.Sizing.Value)
 		s.GlyphCapacity++
+	case *Fenced:
+		s.observeLength(value.Sizing.Value)
 	case *Text:
 		s.observeText(value.Text)
 		s.GlyphCapacity = saturatedAddInt(s.GlyphCapacity, len(value.Text))

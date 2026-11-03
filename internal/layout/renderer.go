@@ -381,7 +381,10 @@ func checkConfiguredNodeLimits(node ir.Node, limits source.Limits) error {
 	case *ir.Glyph:
 		return checkText(value.Text)
 	case *ir.SizedDelimiter:
-		return checkText(value.Text)
+		if err := checkText(value.Text); err != nil {
+			return err
+		}
+		return checkLength(value.Sizing.Value)
 	case *ir.Text:
 		if err := checkText(value.Text); err != nil {
 			return err
@@ -400,6 +403,8 @@ func checkConfiguredNodeLimits(node ir.Node, limits source.Limits) error {
 		return checkLength(value.Gap)
 	case *ir.Cancel:
 		return checkLength(value.Thickness)
+	case *ir.Fenced:
+		return checkLength(value.Sizing.Value)
 	case *ir.Table:
 		if err := checkLength(value.RowGap); err != nil {
 			return err
