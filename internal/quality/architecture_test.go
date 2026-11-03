@@ -141,6 +141,13 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{modulePath + "/font"},
 		Tests:      []string{modulePath + "/fontsource"},
 	},
+	modulePath + "/examples/svg": {
+		Production: []string{
+			modulePath,
+			modulePath + "/encode/svg",
+			modulePath + "/fontsource",
+		},
+	},
 	modulePath + "/geometry": {},
 	modulePath + "/internal/engine": {
 		Production: []string{
