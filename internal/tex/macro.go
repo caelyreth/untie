@@ -107,8 +107,8 @@ func (e *expander) release() {
 	if e == nil || e.tokenSlot == nil {
 		return
 	}
-	clear(e.tokens)
 	if cap(e.tokens) <= maxPooledTokens {
+		clear(e.tokens[:cap(e.tokens)])
 		*e.tokenSlot = e.tokens[:0]
 		tokenBufferPool.Put(e.tokenSlot)
 	}
