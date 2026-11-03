@@ -88,6 +88,33 @@ func TestShapeTextRTLOrderAndArabicScript(t *testing.T) {
 	}
 }
 
+func TestShapeTextMixedBidiVisualOrder(t *testing.T) {
+	t.Parallel()
+
+	set := loadComplexTextFont(t)
+	arabic, ok := FallbackFace(1)
+	if !ok {
+		t.Fatal("Arabic fallback is unavailable")
+	}
+	const text = "Aسلام123عالمB"
+	shaped, err := set.ShapeText(TextShapeRequest{
+		Context: context.Background(),
+		Text:    text,
+		Faces:   []FaceRef{MathFace, arabic},
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	starts := make([]int, len(shaped.Clusters))
+	for i, cluster := range shaped.Clusters {
+		starts[i] = cluster.RuneStart
+	}
+	want := []int{0, 11, 10, 9, 8, 5, 6, 7, 4, 3, 2, 1, 12}
+	if !reflect.DeepEqual(starts, want) {
+		t.Fatalf("mixed bidi cluster order = %v, want visual order %v", starts, want)
+	}
+}
+
 func TestShapeTextShapesArabicAndDevanagari(t *testing.T) {
 	t.Parallel()
 
@@ -267,6 +294,24 @@ func TestShapeTextValidatesFacesAndUTF8(t *testing.T) {
 				t.Fatalf("ShapeText error = %v, want ErrInvalidText", err)
 			}
 		})
+	}
+}
+
+func TestShapeTextAcceptsShortFeatureTags(t *testing.T) {
+	t.Parallel()
+
+	set := loadSharedTestFont(t)
+	shaped, err := set.ShapeText(TextShapeRequest{
+		Context:  context.Background(),
+		Text:     "abc",
+		Faces:    []FaceRef{MathFace},
+		Features: []Feature{{Tag: "ss1"}},
+	})
+	if err != nil {
+		t.Fatalf("ShapeText(ss1): %v", err)
+	}
+	if len(shaped.Clusters) != 3 {
+		t.Fatalf("clusters = %d, want 3", len(shaped.Clusters))
 	}
 }
 

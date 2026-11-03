@@ -131,6 +131,7 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/font": {
 		Production: []string{
+			"github.com/go-text/typesetting/bidi",
 			"github.com/go-text/typesetting/di",
 			"github.com/go-text/typesetting/font",
 			"github.com/go-text/typesetting/font/opentype",
