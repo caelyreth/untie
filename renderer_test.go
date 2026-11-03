@@ -30,7 +30,8 @@ func TestNewRendererValidationAndDefaults(t *testing.T) {
 	}
 	if renderer, err := NewRenderer(fonts, RendererOptions{
 		Recovery: RecoveryMode(255),
-	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) {
+	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) ||
+		!errors.Is(err, ErrInvalidRecovery) {
 		t.Fatalf("NewRenderer(invalid recovery) = %v, %v", renderer, err)
 	}
 

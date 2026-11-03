@@ -1,6 +1,12 @@
 package untie
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrInvalidRecovery reports an unknown recovery mode.
+var ErrInvalidRecovery = errors.New("untie: invalid recovery mode")
 
 // RecoveryMode controls whether layout may replace recoverable font failures
 // with visible output.
@@ -20,7 +26,7 @@ const (
 
 func (m RecoveryMode) validate() error {
 	if m > RecoveryStrict {
-		return fmt.Errorf("%w: unknown recovery mode %d", ErrInvalidRenderer, m)
+		return fmt.Errorf("%w: %d", ErrInvalidRecovery, m)
 	}
 	return nil
 }

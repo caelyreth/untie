@@ -818,6 +818,24 @@ func TestPublicVisibleMissingGlyphRecovery(t *testing.T) {
 	}
 }
 
+func TestPublicInvalidRecoveryMode(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(loadTestFonts(t), Limits{})
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+	_, err = engine.LayoutContextWithOptions(
+		context.Background(),
+		ParseTeX("x", Inline, ParseOptions{}),
+		Style{Size: 16},
+		LayoutOptions{Recovery: RecoveryMode(255)},
+	)
+	if !errors.Is(err, ErrInvalidRecovery) {
+		t.Fatalf("LayoutContextWithOptions() error = %v, want ErrInvalidRecovery", err)
+	}
+}
+
 func TestPublicCancellationIsNotALayoutError(t *testing.T) {
 	t.Parallel()
 

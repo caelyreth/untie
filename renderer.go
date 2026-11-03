@@ -92,7 +92,7 @@ func NewRenderer(fonts *FontSet, opts RendererOptions) (*Renderer, error) {
 		return nil, fmt.Errorf("%w: unknown default dialect %d", ErrInvalidRenderer, dialect)
 	}
 	if err := opts.Recovery.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrInvalidRenderer, err)
 	}
 	style := opts.DefaultStyle
 	if style.Size == 0 {
