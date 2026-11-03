@@ -58,9 +58,9 @@ type RenderResult struct {
 	Alt         display.Alt
 }
 
-// Renderer is a concurrency-safe high-level parse-and-layout facade over one
-// caller-owned Engine. It may be retained for the lifetime of the font
-// configuration and shared by concurrent rendering workers.
+// Renderer is a caller-owned, concurrency-safe high-level parse-and-layout
+// facade. It retains one prepared Engine for the lifetime of the renderer and
+// may be shared by concurrent rendering workers.
 //
 // Parsed expressions may be reused through a bounded LRU cache. Every
 // successful Render call performs layout and returns a new Box.
@@ -72,10 +72,10 @@ type Renderer struct {
 	cache          *renderExprCache
 }
 
-// NewRenderer prepares a reusable renderer around a caller-owned Engine.
+// NewRenderer prepares a reusable renderer and its Engine.
 //
-// Font construction and engine preparation happen once here. The renderer
-// inherits the engine's concurrency and ownership guarantees.
+// Engine preparation happens once here. The renderer inherits the engine's
+// concurrency and resource-limit guarantees.
 func NewRenderer(fonts *FontSet, opts RendererOptions) (*Renderer, error) {
 	if fonts == nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRenderer, ErrInvalidFonts)
