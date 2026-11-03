@@ -30,7 +30,8 @@ type Segment struct {
 	Points [3]Point
 }
 
-// Path is a glyph outline in local ems, y down, with its baseline at y=0.
+// Path is a glyph outline in local ems, y down, relative to the font glyph
+// origin. Glyph.OriginY places that origin relative to the fragment baseline.
 type Path []Segment
 
 // GlyphRequest identifies one glyph lookup or shaping operation.
