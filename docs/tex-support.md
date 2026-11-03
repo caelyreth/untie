@@ -22,6 +22,8 @@ Supported and tested:
 - math alphabet commands such as `\mathrm`, `\mathit`, `\mathbf`,
   `\mathbb`, `\mathcal`, `\mathfrak`, `\mathsf`, and `\mathtt`;
 - math class commands such as `\mathrel`, `\mathbin`, and `\mathop`;
+- KaTeX-compatible size declarations from `\tiny` through `\Huge`, with
+  group-scoped text-style reset and exact size multipliers;
 - explicit spacing, `\allowbreak`, and basic `\not` negation.
 
 Examples exercised by the daily corpus include quadratic formulas, sums,
@@ -60,6 +62,9 @@ Supported and tested:
 - `\cancel`, `\bcancel`, `\xcancel`, and `\sout`;
 - `\boxed`, `\fbox`, `\colorbox`, and `\fcolorbox`;
 - `\phantom`, `\hphantom`, `\vphantom`, `\smash`, and `\mathstrut`;
+- zero-width overlap forms `\llap`, `\rlap`, `\clap`, `\mathllap`,
+  `\mathrlap`, and `\mathclap`;
+- signed vertical `\raisebox` with a text-mode hbox body;
 - `\rule` and supported explicit dimension units.
 
 ## Text, Color, Links, and Styling
@@ -95,18 +100,25 @@ document execution engine.
 
 ## Equation Tags
 
-Phase 1 supports top-level TeX display tags:
+Top-level TeX display tags and direct row tags in supported multiline
+environments are represented:
 
 - `\tag{...}` renders parenthesized tag text;
 - `\tag*{...}` renders without automatic parentheses;
 - `\nonumber` and `\notag` produce suppression metadata.
+
+Formula tags use `ir.FormulaTagLine`. Tags and suppression events directly
+inside `align`, `align*`, `gather`, `gather*`, `equation`, `equation*`,
+`aligned`, `gathered`, `split`, and aligned-at forms use the zero-based source
+row. Multiple events on one row, descending rows, and mixing formula and row
+scopes are rejected.
 
 The following are explicitly outside the current tag contract and produce
 diagnostics rather than being promoted silently:
 
 - tags in inline math;
 - tags inside a nested group;
-- tags inside a supported environment;
+- tags inside a nested environment or ordinary group;
 - more than one manual formula-level tag;
 - promotion of a tag from a script, fraction argument, root index, or similar
   syntactic argument;
@@ -126,8 +138,7 @@ The following capabilities are not treated as silently ignorable TeX:
 | External images: `\includegraphics`                                                                       | Error diagnostic; visible unsupported placeholder.                     |
 | Raw HTML/DOM hooks: `\htmlClass`, `\htmlData`, `\htmlId`, `\htmlStyle`                                    | Unsupported or discarded metadata with diagnostics; no DOM.            |
 | Commutative diagrams: `CD` environment                                                                    | Unsupported diagnostic; bounded environment skip.                      |
-| Manual overlap/raise/centering: `\llap`, `\rlap`, `\clap`, `\mathclap`, `\raisebox`, `\vcenter`, `\phase` | Unsupported; neutral IR cannot represent the geometry losslessly.      |
-| KaTeX size declarations: `\tiny`, `\small`, `\large`, and peers                                           | Unsupported because the neutral IR does not expose a KaTeX size index. |
+| Manual centering/enclosure: `\vcenter`, `\phase`, `\enclose`                                               | Unsupported; no lossless neutral primitive yet.                        |
 | `\nobreak`                                                                                                | Unsupported because suppression-only break policy is not represented.  |
 | Inline math delimiters nested in math mode: `\(`, `\)`, `\]`                                              | Parse diagnostic.                                                      |
 | Math commands in text mode, such as `\sqrt` inside `\text`                                                | `unsupported` diagnostic at the text-mode boundary.                    |

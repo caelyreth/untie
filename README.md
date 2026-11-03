@@ -134,14 +134,14 @@ Markdown binding, and existing-box drawing.
 - [Supported TeX](docs/tex-support.md)
 - [Supported Typst](docs/typst-support.md)
 - [API Stability](docs/stability.md)
-- [Migrating to 0.3](docs/migration-v0.3.md)
+- [Migrating to 0.4](docs/migration-v0.4.md)
 - [Release Process](docs/releasing.md)
 - [Security Policy](SECURITY.md)
 - [Full Documentation Index](docs/README.md)
 
 ### Release
 
-The current tagged release is `v0.3.0`. Untie remains pre-1.0 while its API
+The current release target is `v0.4.0`. Untie remains pre-1.0 while its API
 stability tiers are validated in real integrations. Release notes are generated
 from Conventional Commits; see [GitHub Releases](https://github.com/caelyreth/untie/releases)
 for published changes and [Release Process](docs/releasing.md) for the

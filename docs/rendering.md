@@ -46,6 +46,7 @@ type Box struct {
 	Alt    Alt
 	Diagnostics []source.Diagnostic
 	Tag    *TagBox
+	Tags   []TagBox
 	Lines  []LineBox
 }
 ```
@@ -288,8 +289,9 @@ text.
 
 ## Equation Tags
 
-The current public contract exposes formula-level tags for TeX display math.
-Typst input does not produce equation-tag metadata in this release.
+The current public contract exposes formula-level tags and source-row tags for
+TeX display math. Typst input does not produce equation-tag metadata in this
+release.
 
 An unconstrained tagged display box has:
 
@@ -314,10 +316,28 @@ The tag body is already positioned in parent-frame coordinates. Draw the tag
 range once as part of `Box.Items`; use `TagBox.Items` and `TagBox.Hits` only to
 identify that subset. A `\tag*` value has no automatic parentheses.
 
+### Source-Row Tags
+
+When direct tags occur in a supported multiline TeX environment:
+
+- `Box.Tag` is nil and `Box.Tags` contains one entry per rendered manual tag;
+- `TagBox.Line` is the zero-based source row, not a wrapped display-line index;
+- `TagBox.Y` is that row's baseline in parent coordinates;
+- `Box.Tags` is source ordered and each item/hit range follows the previous
+  range without gaps;
+- constrained display keeps the multiline block as one complete `LineBox` and
+  reserves `MaxWidth - max(TagBox.Width)` for its alignment frame;
+- row tags are right-aligned in the reserved tag column; if the formula already
+  overruns that frame, the tag follows the formula and contributes to
+  `Box.Overflow`.
+
+`Box.Lines[0].Tag` remains nil for source-row tags because a wrapped display
+line does not define source-row ownership. Use `TagBox.Line` for that mapping.
+
 Tag source metadata is available through `TagBox.Source` or the `Tags` field
-of a formula returned by `Expr.RootSnapshot()`.
-`Box.Tag.Manual` is true for the rendered formula-level tag. See the TeX
-support page for the exact Phase 1 tag limitations.
+of a formula returned by `Expr.RootSnapshot()`. `TagBox.Manual` is true for
+rendered formula-level and source-row tags. See the TeX support page for the
+exact tag limitations.
 
 ## Source Hits
 
