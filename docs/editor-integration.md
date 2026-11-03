@@ -57,6 +57,13 @@ text-mode runs needs normal text shaping:
 The default implementation must remain pure Go, deterministic, and independent
 of system locale and font discovery.
 
+Parsed `ir.Text` nodes carry `ir.TextClusterSource` entries that map decoded
+text bytes back to absolute source bytes. Layout emits one `HitAtom` per shaped
+visual cluster (coalescing multiple shaped clusters that share one macro-origin
+source range). Bidirectional runs therefore expose hits in visual order while
+the canonical IR map remains ordered in logical text order. Text without a
+parser-authored map keeps the existing whole-node hit fallback.
+
 ## Hybrid Text-Shaper Boundary
 
 The long-term architecture is a hybrid:
