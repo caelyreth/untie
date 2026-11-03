@@ -311,6 +311,7 @@ var allowedContribImports = map[string]packageRules{
 	contribModulePath: {
 		Production: []string{
 			modulePath,
+			modulePath + "/mathml",
 			modulePath + "/render",
 			"github.com/egoist/mygo/ui",
 			"github.com/egoist/mygo/ui/markdown",

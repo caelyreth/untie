@@ -13,6 +13,10 @@ func FuzzParseNoPanicAndValidIR(f *testing.F) {
 	f.Add(`x\tag{1}`)
 	f.Add(`\def\a#1{#1^2}\a{x}`)
 	f.Add(`\begin{matrix}a&b\\c&d\end{matrix}`)
+	f.Add(`\ce{2H2 + O2 ->[heat] 2H2O}`)
+	f.Add(`\ce{[\{(X2)3\}2]^3+}`)
+	f.Add(`\pu{1.2e3 kJ//mol}`)
+	f.Add(`\ce{A \bond{?} B`)
 	f.Add(string([]byte{0xff, '{', '}'}))
 
 	f.Fuzz(func(t *testing.T, src string) {

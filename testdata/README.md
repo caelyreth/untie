@@ -14,6 +14,9 @@ cross-dialect behavior. It is not a runtime dependency.
 - `tex/` contains additional reviewed TeX parser cases.
 - `upstream/` contains immutable reference corpora, frames, fonts, and
   attribution material.
+- `tex/mhchem_cases.json` contains source-only chemistry fixtures transcribed
+  from static KaTeX, Typlet, and RaTeX references, plus explicit Untie
+  malformed-recovery cases. It copies no reference output.
 
 ## Review Rules
 

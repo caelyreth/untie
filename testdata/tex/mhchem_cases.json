@@ -1,0 +1,152 @@
+[
+  {
+    "name": "typlet mhchem paired corpus",
+    "source": "\\ce{2H2 + O2 -> 2H2O}",
+    "provenance": "Typlet 0.2.0 test/corpus/paired.jsonl id=mhchem",
+    "diagnostics": []
+  },
+  {
+    "name": "water",
+    "source": "\\ce{H2O}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "group multiplier",
+    "source": "\\ce{(NH4)2S}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "nested visible groups",
+    "source": "\\ce{[\\{(X2)3\\}2]^3+}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "charge",
+    "source": "\\ce{CrO4^2-}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "complex ion charge",
+    "source": "\\ce{[AgCl2]-}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "isotope prescripts",
+    "source": "\\ce{^{227}_{90}Th+}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "state annotation",
+    "source": "\\ce{H2(aq)}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "state after charge",
+    "source": "\\ce{CO3^2-_{(aq)}}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "bonds",
+    "source": "\\ce{A-B=C#D}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "explicit dotted bond",
+    "source": "\\ce{A \\bond{...} B}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "addition compound",
+    "source": "\\ce{KCr(SO4)2*12H2O}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "right arrow",
+    "source": "\\ce{A -> B}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "equilibrium arrow",
+    "source": "\\ce{A <=> B}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "arrow annotations",
+    "source": "\\ce{A ->[heat][cat] B}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual annotation pattern",
+    "diagnostics": []
+  },
+  {
+    "name": "quantity quotient",
+    "source": "\\pu{123 kJ//mol}",
+    "provenance": "RaTeX 0.1.15 golden corpus; KaTeX mhchem syntax",
+    "diagnostics": []
+  },
+  {
+    "name": "quantity scientific notation",
+    "source": "\\pu{1.2e3 J s}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "quantity power",
+    "source": "\\pu{123 mm2}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "quantity inverse unit",
+    "source": "\\pu{123 kJ mol-1}",
+    "provenance": "KaTeX 0.19.1 contrib/mhchem manual example",
+    "diagnostics": []
+  },
+  {
+    "name": "unsupported bond remains visible",
+    "source": "\\ce{A \\bond{~} B}",
+    "provenance": "KaTeX 0.19.1 mhchem bond family; outside this bounded bond subset",
+    "diagnostics": ["unsupported"]
+  },
+  {
+    "name": "unsupported alignment remains visible",
+    "source": "\\ce{A & B}",
+    "provenance": "Untie malformed chemistry recovery regression",
+    "diagnostics": ["unsupported"]
+  },
+  {
+    "name": "unclosed argument preserves body",
+    "source": "\\ce{H2O",
+    "provenance": "Untie malformed chemistry recovery regression",
+    "diagnostics": ["unclosed-group"]
+  },
+  {
+    "name": "missing argument",
+    "source": "\\ce",
+    "provenance": "Untie malformed chemistry recovery regression",
+    "diagnostics": ["missing-argument"]
+  },
+  {
+    "name": "missing quantity",
+    "source": "\\pu{foo}",
+    "provenance": "Untie malformed chemistry recovery regression",
+    "diagnostics": ["invalid-value"]
+  },
+  {
+    "name": "uncertainty is explicit",
+    "source": "\\pu{1.23(4)e5}",
+    "provenance": "KaTeX mhchem quantity family; uncertainty notation is outside this bounded subset",
+    "diagnostics": ["unsupported"]
+  }
+]
