@@ -110,25 +110,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@v7.0.0
+      - uses: cachix/install-nix-action@v31.11.3
         with:
-          go-version: 1.27.3
-          cache: true
-      - uses: oven-sh/setup-bun@v2.2.0
-        with:
-          bun-version: 1.4.2
-      - name: Install WebAssembly optimizer
-        run: sudo apt-get update && sudo apt-get install -y binaryen
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install dependencies
         working-directory: web
-        run: bun install --frozen-lockfile
+        run: nix develop .. --command bun install --frozen-lockfile
       - name: Check
         working-directory: web
-        run: bun run check
+        run: nix develop .. --command bun run check
       - name: Lint
         working-directory: web
-        run: bun run lint
+        run: nix develop .. --command bun run lint
       - name: Build site and Wasm
         working-directory: web
-        run: bun run build
+        run: nix develop .. --command bun run build
+      - name: Deploy to Vercel
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: web
+        env:
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://untie.iki.moe' }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VERCEL_PROJECT_ID"
+          nix develop .. --impure --command bash -eu -o pipefail -c '
+            bunx vercel@65.10.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
+            bunx vercel@65.10.0 build --prod --token "$VERCEL_TOKEN"
+            bunx vercel@65.10.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          '
 
