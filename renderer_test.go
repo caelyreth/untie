@@ -547,6 +547,34 @@ func TestEmptySourceProducesClickablePlaceholder(t *testing.T) {
 	}
 }
 
+func TestRecursivelyEmptyRecoveryTreeProducesPlaceholder(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		string([]byte{0xff}),
+		RenderRequest{Dialect: TeX, Mode: Inline, Style: Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if result == nil || result.Box == nil {
+		t.Fatalf("Render() = %#v, want drawable result", result)
+	}
+	if result.Box.Width <= 0 || len(result.Box.Items) != 4 {
+		t.Fatalf("recursive empty box = %+v, want placeholder rules", result.Box)
+	}
+	for _, item := range result.Box.Items {
+		if item.Kind != display.ItemRule || item.Paint.Role != display.RolePlaceholder {
+			t.Fatalf("recursive empty item = %+v, want placeholder rule", item)
+		}
+	}
+}
+
 func TestRendererCacheHitEvictionAndEffectiveKey(t *testing.T) {
 	t.Parallel()
 

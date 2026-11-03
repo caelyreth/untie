@@ -75,6 +75,13 @@ func TestFontUsageValidation(t *testing.T) {
 			}},
 		},
 		{
+			name: "unordered faces",
+			usage: FontUsage{Faces: []FaceUse{
+				{Source: source.NewRange(2, 3), FaceID: "math"},
+				{Source: source.NewRange(0, 1), FaceID: "math"},
+			}},
+		},
+		{
 			name: "missing text",
 			usage: FontUsage{Missing: []MissingFallback{{
 				Source: source.NewRange(0, 1), TriedFaces: []string{"math"},
@@ -98,6 +105,13 @@ func TestFontUsageValidation(t *testing.T) {
 			usage: FontUsage{Missing: []MissingFallback{
 				{Source: source.NewRange(0, 1), Text: "x", TriedFaces: []string{"math"}},
 				{Source: source.NewRange(0, 1), Text: "x", TriedFaces: []string{"math"}},
+			}},
+		},
+		{
+			name: "unordered missing",
+			usage: FontUsage{Missing: []MissingFallback{
+				{Source: source.NewRange(2, 3), Text: "x", TriedFaces: []string{"math"}},
+				{Source: source.NewRange(0, 1), Text: "y", TriedFaces: []string{"math"}},
 			}},
 		},
 	}

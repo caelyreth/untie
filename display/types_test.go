@@ -279,6 +279,33 @@ func TestAltValidationRejectsMalformedAndDeferredOutput(t *testing.T) {
 	}
 }
 
+func TestMarshalCanonicalIncludesDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{Diagnostics: []source.Diagnostic{{
+		Range:    source.NewRange(2, 4),
+		Severity: source.SeverityError,
+		Code:     source.CodeMissingGlyph,
+		Message:  "missing glyph",
+		Args:     []string{"中"},
+		Hints:    []string{"add a fallback"},
+	}}}
+	canonical, err := box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	for _, want := range []string{
+		`"diagnostics":[`,
+		`"severity":"error"`,
+		`"code":"missing-glyph"`,
+		`"args":["中"]`,
+	} {
+		if !strings.Contains(string(canonical), want) {
+			t.Fatalf("canonical box omitted %s: %s", want, canonical)
+		}
+	}
+}
+
 func TestValidateBox(t *testing.T) {
 	t.Parallel()
 
@@ -486,10 +513,11 @@ func TestBoxCoveringSortsAndMerges(t *testing.T) {
 
 	box := &Box{
 		Hits: []Hit{
-			{Source: source.NewRange(3, 5), Area: geometry.Rect{X: 1, Y: 20, Width: 1, Height: 5}},
-			{Source: source.NewRange(2, 4), Area: geometry.Rect{X: 2, Y: 0, Width: 2, Height: 10}},
+			{Source: source.NewRange(3, 5), Area: geometry.Rect{X: 1, Y: 20, Width: 1, Height: 5}, Depth: 2},
+			{Source: source.NewRange(2, 4), Area: geometry.Rect{X: 2, Y: 0, Width: 2, Height: 10}, Depth: 2},
 			{Source: source.Detached(), Area: geometry.Rect{X: 8, Y: 30, Width: 1, Height: 1}},
-			{Source: source.NewRange(0, 2), Area: geometry.Rect{X: 0, Y: 0, Width: 2, Height: 10}},
+			{Source: source.NewRange(0, 2), Area: geometry.Rect{X: 0, Y: 0, Width: 2, Height: 10}, Depth: 2},
+			{Source: source.NewRange(0, 5), Area: geometry.Rect{X: -10, Y: -10, Width: 40, Height: 50}, Depth: 0},
 		},
 	}
 	got := box.Covering(source.NewRange(1, 4))

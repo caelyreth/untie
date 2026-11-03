@@ -305,8 +305,38 @@ type recoveryDiagnosticKey struct {
 }
 
 func isEmptyRoot(node ir.Node) bool {
-	row, ok := node.(*ir.Row)
-	return ok && len(row.Items) == 0
+	switch n := node.(type) {
+	case *ir.Row:
+		for _, item := range n.Items {
+			if !isEmptyRoot(item) {
+				return false
+			}
+		}
+		return true
+	case *ir.Multiline:
+		for _, row := range n.Rows {
+			for _, item := range row {
+				if !isEmptyRoot(item) {
+					return false
+				}
+			}
+		}
+		return true
+	case *ir.Style:
+		return n.Body == nil || isEmptyRoot(n.Body)
+	case *ir.Overlay:
+		return n.Body == nil || isEmptyRoot(n.Body)
+	case *ir.Raise:
+		return n.Body == nil || isEmptyRoot(n.Body)
+	case *ir.Color:
+		return n.Body == nil || isEmptyRoot(n.Body)
+	case *ir.Box:
+		return n.Body == nil || isEmptyRoot(n.Body)
+	case *ir.Break, *ir.AlignMarker:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *layoutState) releaseScratch() {

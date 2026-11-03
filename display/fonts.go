@@ -73,6 +73,7 @@ func (u FontUsage) Validate() error {
 		return nil
 	}
 	seenFaces := make(map[string]struct{}, len(u.Faces))
+	previousStart, previousEnd := -1, -1
 	for i, face := range u.Faces {
 		if !face.Source.IsValid() || face.Source.IsDetached() || face.Source.Len() == 0 {
 			return fmt.Errorf("face use %d has an invalid source range", i)
@@ -85,9 +86,15 @@ func (u FontUsage) Validate() error {
 		if _, exists := seenFaces[key]; exists {
 			return fmt.Errorf("face use %d duplicates a prior record", i)
 		}
+		if face.Source.Start < previousStart ||
+			face.Source.Start == previousStart && face.Source.End < previousEnd {
+			return fmt.Errorf("face use %d is not in source order", i)
+		}
+		previousStart, previousEnd = face.Source.Start, face.Source.End
 		seenFaces[key] = struct{}{}
 	}
 	seenMissing := make(map[string]struct{}, len(u.Missing))
+	previousStart, previousEnd = -1, -1
 	for i, missing := range u.Missing {
 		if !missing.Source.IsValid() || missing.Source.IsDetached() || missing.Source.Len() == 0 {
 			return fmt.Errorf("missing fallback %d has an invalid source range", i)
@@ -115,6 +122,11 @@ func (u FontUsage) Validate() error {
 		if _, duplicate := seenMissing[key]; duplicate {
 			return fmt.Errorf("missing fallback %d duplicates a prior record", i)
 		}
+		if missing.Source.Start < previousStart ||
+			missing.Source.Start == previousStart && missing.Source.End < previousEnd {
+			return fmt.Errorf("missing fallback %d is not in source order", i)
+		}
+		previousStart, previousEnd = missing.Source.Start, missing.Source.End
 		seenMissing[key] = struct{}{}
 	}
 	return nil

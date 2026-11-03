@@ -414,13 +414,15 @@ func (b *Box) At(p geometry.Point) (Hit, bool) {
 	return best, found
 }
 
-// Covering returns the placed areas intersecting source range r. Areas on the
-// same line that overlap or touch are merged deterministically.
+// Covering returns the innermost placed areas intersecting source range r.
+// Ancestor structure hits are ignored when a deeper hit also intersects r.
+// Areas on the same line that overlap or touch are merged deterministically.
 func (b *Box) Covering(r source.Range) []geometry.Rect {
 	if b == nil || r.IsDetached() || !r.IsValid() {
 		return nil
 	}
 	areas := make([]geometry.Rect, 0)
+	maxDepth := -1
 	for _, hit := range b.Hits {
 		if hit.Source.IsDetached() || !hit.Source.IsValid() {
 			continue
@@ -428,7 +430,14 @@ func (b *Box) Covering(r source.Range) []geometry.Rect {
 		if hit.Source.End <= r.Start || hit.Source.Start >= r.End {
 			continue
 		}
-		areas = append(areas, hit.Area)
+		switch {
+		case hit.Depth > maxDepth:
+			maxDepth = hit.Depth
+			areas = areas[:0]
+			areas = append(areas, hit.Area)
+		case hit.Depth == maxDepth:
+			areas = append(areas, hit.Area)
+		}
 	}
 	slices.SortFunc(areas, func(a, b geometry.Rect) int {
 		if a.Y != b.Y {

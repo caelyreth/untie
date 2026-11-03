@@ -238,6 +238,12 @@ func TestDiagnosticMarksAndPainter(t *testing.T) {
 	if len(marks) == 0 {
 		t.Fatalf("missing-glyph diagnostics have no mapped areas: %+v", result.Diagnostics)
 	}
+	for _, mark := range marks {
+		if mark.Area.Width >= result.Box.Width {
+			t.Fatalf("diagnostic mark covers the enclosing formula: mark=%+v box width=%v",
+				mark, result.Box.Width)
+		}
+	}
 	if text := DiagnosticTooltipText(result.Diagnostics, func(untie.Diagnostic) string {
 		return "localized diagnostic"
 	}); text != "localized diagnostic" {

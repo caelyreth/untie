@@ -15,13 +15,14 @@ var (
 	ErrInvalidFitOptions = errors.New("render: invalid fit options")
 )
 
-// Align is horizontal placement inside the padded viewport.
-type Align uint8
+// Align is horizontal placement inside the padded viewport. It aliases the
+// display alignment enum so host render and layout policies cannot drift.
+type Align = display.Align
 
 const (
-	AlignStart Align = iota
-	AlignCenter
-	AlignEnd
+	AlignStart  = display.AlignStart
+	AlignCenter = display.AlignCenter
+	AlignEnd    = display.AlignEnd
 )
 
 // FitOptions controls placement inside a viewport. Padding is applied equally

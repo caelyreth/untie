@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/source"
 )
 
 // MarshalCanonical returns deterministic JSON for alternative-text tests.
@@ -29,22 +30,63 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 }
 
 type canonicalBoxSnapshot struct {
-	Width      float32             `json:"width"`
-	Ascent     float32             `json:"ascent"`
-	Descent    float32             `json:"descent"`
-	Italic     float32             `json:"italic"`
-	AxisHeight float32             `json:"axisHeight"`
-	Overflow   float32             `json:"overflow"`
-	Items      []canonicalItem     `json:"items"`
-	Paths      []canonicalPath     `json:"paths,omitempty"`
-	Hits       []canonicalHit      `json:"hits,omitempty"`
-	Breaks     []canonicalBreak    `json:"breaks,omitempty"`
-	Carets     []canonicalCaret    `json:"carets,omitempty"`
-	Alt        *canonicalAlt       `json:"alt,omitempty"`
-	FontUsage  *canonicalFontUsage `json:"fontUsage,omitempty"`
-	Tag        *canonicalTagBox    `json:"tag,omitempty"`
-	Tags       []canonicalTagBox   `json:"tags,omitempty"`
-	Lines      []canonicalLine     `json:"lines,omitempty"`
+	Width       float32               `json:"width"`
+	Ascent      float32               `json:"ascent"`
+	Descent     float32               `json:"descent"`
+	Italic      float32               `json:"italic"`
+	AxisHeight  float32               `json:"axisHeight"`
+	Overflow    float32               `json:"overflow"`
+	Items       []canonicalItem       `json:"items"`
+	Paths       []canonicalPath       `json:"paths,omitempty"`
+	Hits        []canonicalHit        `json:"hits,omitempty"`
+	Breaks      []canonicalBreak      `json:"breaks,omitempty"`
+	Carets      []canonicalCaret      `json:"carets,omitempty"`
+	Alt         *canonicalAlt         `json:"alt,omitempty"`
+	FontUsage   *canonicalFontUsage   `json:"fontUsage,omitempty"`
+	Diagnostics []canonicalDiagnostic `json:"diagnostics,omitempty"`
+	Tag         *canonicalTagBox      `json:"tag,omitempty"`
+	Tags        []canonicalTagBox     `json:"tags,omitempty"`
+	Lines       []canonicalLine       `json:"lines,omitempty"`
+}
+
+type canonicalDiagnostic struct {
+	Range    [2]int   `json:"range"`
+	Severity string   `json:"severity"`
+	Code     string   `json:"code"`
+	Message  string   `json:"message"`
+	Args     []string `json:"args,omitempty"`
+	Hints    []string `json:"hints,omitempty"`
+}
+
+func canonicalDiagnostics(diagnostics []source.Diagnostic) []canonicalDiagnostic {
+	if len(diagnostics) == 0 {
+		return nil
+	}
+	out := make([]canonicalDiagnostic, len(diagnostics))
+	for i, diagnostic := range diagnostics {
+		out[i] = canonicalDiagnostic{
+			Range:    [2]int{diagnostic.Range.Start, diagnostic.Range.End},
+			Severity: severityValue(diagnostic.Severity),
+			Code:     string(diagnostic.Code),
+			Message:  diagnostic.Message,
+			Args:     append([]string(nil), diagnostic.Args...),
+			Hints:    append([]string(nil), diagnostic.Hints...),
+		}
+	}
+	return out
+}
+
+func severityValue(severity source.Severity) string {
+	switch severity {
+	case source.SeverityError:
+		return "error"
+	case source.SeverityWarning:
+		return "warning"
+	case source.SeverityInfo:
+		return "info"
+	default:
+		return "unknown"
+	}
 }
 
 type canonicalLine struct {
@@ -107,19 +149,20 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 		fontUsage = &snapshot
 	}
 	out := canonicalBoxSnapshot{
-		Width:      b.Width,
-		Ascent:     b.Ascent,
-		Descent:    b.Descent,
-		Italic:     b.Italic,
-		AxisHeight: b.AxisHeight,
-		Overflow:   b.Overflow,
-		Items:      items,
-		Paths:      canonicalPaths(b.Paths),
-		Hits:       canonicalHits(b.Hits),
-		Breaks:     canonicalBreaks(b.Breaks),
-		Carets:     canonicalCarets(b.CaretStops),
-		Alt:        alt,
-		FontUsage:  fontUsage,
+		Width:       b.Width,
+		Ascent:      b.Ascent,
+		Descent:     b.Descent,
+		Italic:      b.Italic,
+		AxisHeight:  b.AxisHeight,
+		Overflow:    b.Overflow,
+		Items:       items,
+		Paths:       canonicalPaths(b.Paths),
+		Hits:        canonicalHits(b.Hits),
+		Breaks:      canonicalBreaks(b.Breaks),
+		Carets:      canonicalCarets(b.CaretStops),
+		Alt:         alt,
+		FontUsage:   fontUsage,
+		Diagnostics: canonicalDiagnostics(b.Diagnostics),
 	}
 	if b.Tag != nil {
 		tag := canonicalTag(b.Tag)

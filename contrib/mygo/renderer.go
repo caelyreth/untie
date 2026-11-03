@@ -388,7 +388,7 @@ func (r *Renderer) DisplayMathWidthWithOptions(
 	}
 	style := r.elementStyle(r.displaySize)
 	style.MaxWidth = frameWidth
-	style.Align = untie.Align(r.draw.Align)
+	style.Align = r.draw.Align
 	result, err := r.Render(context.Background(), source, untie.Display, style)
 	if err != nil || result == nil || result.Box == nil {
 		return fallbackElement(
