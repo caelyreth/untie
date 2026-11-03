@@ -334,6 +334,54 @@ func TestValidateBoxRejectsUnknownAndAmbiguousPaint(t *testing.T) {
 	}
 }
 
+func TestValidateBoxRejectsInvalidSnapHints(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			name: "unknown axis",
+			item: Item{
+				Kind: ItemRule, Paint: Paint{Role: RoleInk}, PathIndex: NoPath,
+				Rect: geometry.Rect{Width: 1}, Snap: SnapY + 1,
+			},
+		},
+		{
+			name: "non-rule hint",
+			item: Item{
+				Kind: ItemGlyphRef, Paint: Paint{Role: RoleInk}, PathIndex: NoPath,
+				FontID: "math", Glyph: 1, At: geometry.Point{}, Em: 1, Snap: SnapX,
+			},
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			box := &Box{Items: []Item{test.item}}
+			if err := box.Validate(); err == nil {
+				t.Fatal("Validate() error = nil")
+			}
+		})
+	}
+
+	rule := Item{
+		Kind: ItemRule, Paint: Paint{Role: RoleInk}, PathIndex: NoPath,
+		Rect: geometry.Rect{Width: 1}, Snap: SnapY,
+	}
+	if err := (&Box{Items: []Item{rule}}).Validate(); err != nil {
+		t.Fatalf("valid rule snap hint error = %v", err)
+	}
+	canonical, err := (&Box{Items: []Item{rule}}).MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	if !strings.Contains(string(canonical), `"snap":"y"`) {
+		t.Fatalf("canonical output lost snap hint: %s", canonical)
+	}
+}
+
 func TestBoxAtPrefersInnermostThenSmallest(t *testing.T) {
 	t.Parallel()
 

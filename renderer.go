@@ -279,5 +279,6 @@ func isZeroRenderStyle(style display.Style) bool {
 		style.Features == nil &&
 		!style.GlyphRefs &&
 		!style.GenerateAlt &&
-		style.ColorPolicy == (display.ColorPolicy{})
+		style.ColorPolicy == (display.ColorPolicy{}) &&
+		style.PixelGrid == (display.PixelGrid{})
 }

@@ -55,6 +55,8 @@ type (
 	ColorPolicy      = display.ColorPolicy
 	ColorPolicyMode  = display.ColorPolicyMode
 	ColorRolePalette = display.ColorRolePalette
+	PixelGrid        = display.PixelGrid
+	SnapAxis         = display.SnapAxis
 	Hit              = display.Hit
 	HitKind          = display.HitKind
 	Break            = display.Break
@@ -109,6 +111,10 @@ const (
 	ColorMapToRoles     = display.ColorMapToRoles
 	ColorAdjustContrast = display.ColorAdjustContrast
 	DefaultMinContrast  = display.DefaultMinContrast
+
+	SnapNone = display.SnapNone
+	SnapX    = display.SnapX
+	SnapY    = display.SnapY
 
 	HitAtom                = display.HitAtom
 	HitGroup               = display.HitGroup

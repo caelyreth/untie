@@ -662,13 +662,27 @@ func (f *flattenState) ruleItem(x, y geometry.Em, rule *ruleDraw) (display.Item,
 	if rule.vertical {
 		rect.Width, rect.Height = thickness, width
 	}
+	axis := snapAxis(rect)
+	rect = f.layout.request.PixelGrid.SnapRect(rect, axis)
 	return display.Item{
 		Kind:      display.ItemRule,
 		Paint:     f.paint(rule.paint),
 		Bound:     rect,
 		PathIndex: display.NoPath,
 		Rect:      rect,
+		Snap:      axis,
 	}, nil
+}
+
+func snapAxis(rect geometry.Rect) display.SnapAxis {
+	switch {
+	case rect.Width > rect.Height:
+		return display.SnapY
+	case rect.Height > rect.Width:
+		return display.SnapX
+	default:
+		return display.SnapNone
+	}
 }
 
 func (s *layoutState) host(value geometry.Em) (float32, error) {

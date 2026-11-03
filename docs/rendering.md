@@ -176,7 +176,15 @@ hole.
 
 `item.Rect` is a filled rectangle in box coordinates. Rules are used for
 fraction bars, radicals, overlines, table boundaries, boxes, and other
-constructed geometry.
+constructed geometry. `item.Snap` identifies whether the rule is a conservative
+horizontal (`SnapY`) or vertical (`SnapX`) snapping candidate.
+
+`Style.PixelGrid` opts into deterministic snapping for rules whose minor
+thickness is between 0.25 and 3 physical pixels. `Scale` converts host units to
+output pixels and `PixelRatio` adds the device density. Only the rule's minor
+axis is adjusted; glyphs, paths, and thick rules are never moved. The zero-value
+grid is disabled, while `item.Snap` remains available to hosts that implement an
+equivalent draw-time policy.
 
 ### `ItemGlyphRef`
 

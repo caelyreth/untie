@@ -30,6 +30,9 @@ func ValidateStyle(style display.Style) error {
 	if err := style.ColorPolicy.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
+	if err := style.PixelGrid.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
 	if _, err := textFeatures(style.Features); err != nil {
 		return err
 	}

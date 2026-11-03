@@ -18,6 +18,7 @@ type layoutStyleKey struct {
 	glyphRefs   bool
 	generateAlt bool
 	colorPolicy untie.ColorPolicy
+	pixelGrid   untie.PixelGrid
 }
 
 type layoutKey struct {
@@ -41,6 +42,7 @@ func makeLayoutKey(source string, dialect untie.Dialect, mode untie.Mode, style 
 			glyphRefs:   style.GlyphRefs,
 			generateAlt: style.GenerateAlt,
 			colorPolicy: style.ColorPolicy,
+			pixelGrid:   style.PixelGrid,
 		},
 	}
 }

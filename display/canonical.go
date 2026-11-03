@@ -85,6 +85,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 			Bound:     []float32{item.Bound.X, item.Bound.Y, item.Bound.Width, item.Bound.Height},
 			PathIndex: canonicalPathIndex(item),
 			Rect:      []float32{item.Rect.X, item.Rect.Y, item.Rect.Width, item.Rect.Height},
+			Snap:      snapAxisName(item.Snap),
 			FontID:    item.FontID,
 			Glyph:     item.Glyph,
 			At:        []float32{item.At.X, item.At.Y},
@@ -217,6 +218,7 @@ type canonicalItem struct {
 	Bound     []float32 `json:"bound"`
 	PathIndex *int      `json:"pathIndex,omitempty"`
 	Rect      []float32 `json:"rect,omitempty"`
+	Snap      string    `json:"snap,omitempty"`
 	FontID    string    `json:"fontID,omitempty"`
 	Glyph     uint16    `json:"glyph,omitempty"`
 	At        []float32 `json:"at,omitempty"`
@@ -248,6 +250,17 @@ func canonicalPaths(paths []PathTemplate) []canonicalPath {
 		}
 	}
 	return out
+}
+
+func snapAxisName(axis SnapAxis) string {
+	switch axis {
+	case SnapX:
+		return "x"
+	case SnapY:
+		return "y"
+	default:
+		return ""
+	}
 }
 
 func canonicalSegments(path []geometry.Segment) [][]any {

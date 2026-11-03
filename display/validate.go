@@ -427,6 +427,12 @@ func validateItem(item Item, paths []PathTemplate) error {
 	if err := validatePaint(item.Paint); err != nil {
 		return fmt.Errorf("paint: %v", err)
 	}
+	if item.Snap > SnapY {
+		return fmt.Errorf("unknown snap axis %d", item.Snap)
+	}
+	if item.Kind != ItemRule && item.Snap != SnapNone {
+		return fmt.Errorf("non-rule item has snap axis %d", item.Snap)
+	}
 	if err := validateRect(item.Bound); err != nil {
 		return fmt.Errorf("bound: %v", err)
 	}

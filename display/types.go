@@ -38,6 +38,9 @@ type Style struct {
 	// ColorPolicy controls explicit-color resolution in the serializable
 	// display list. The zero value preserves authored colors.
 	ColorPolicy ColorPolicy
+	// PixelGrid enables conservative device-pixel snapping for thin rules and
+	// stems. The zero value is a no-op.
+	PixelGrid PixelGrid
 }
 
 // ItemRange identifies a contiguous range in Box.Items.
@@ -171,6 +174,10 @@ type Item struct {
 	// PathIndex selects Box.Paths. It is NoPath for items without path data.
 	PathIndex int
 	Rect      geometry.Rect
+	// Snap identifies a thin rule's minor axis. It is present even when
+	// Style.PixelGrid is disabled, allowing hosts to apply their own equivalent
+	// policy without inferring rule orientation again.
+	Snap SnapAxis
 
 	FontID string
 	Glyph  uint16
