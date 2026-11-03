@@ -15,6 +15,8 @@ const modulePath = "github.com/caelyreth/untie"
 
 const exampleModulePath = modulePath + "/examples/mygo"
 
+const contribModulePath = modulePath + "/contrib/mygo"
+
 type listedPackage struct {
 	ImportPath   string
 	ForTest      string
@@ -234,6 +236,23 @@ var allowedExampleImports = map[string]packageRules{
 	},
 }
 
+// contrib/mygo is a separately versionable integration module. It may import
+// only the public Untie packages it uses and MyGo packages it integrates with.
+// Keeping these grants exact prevents framework dependencies from leaking into
+// the root module and prevents accidental use of either project's internals.
+var allowedContribImports = map[string]packageRules{
+	contribModulePath: {
+		Production: []string{
+			modulePath,
+			modulePath + "/render",
+			"github.com/egoist/mygo/ui",
+			"github.com/egoist/mygo/ui/markdown",
+			"github.com/egoist/mygo/ui/markdown/parser",
+		},
+		Tests: []string{contribModulePath},
+	},
+}
+
 var architectureModules = []architectureModule{
 	{
 		Name:       "root",
@@ -250,6 +269,14 @@ var architectureModules = []architectureModule{
 		Allowed:    allowedExampleImports,
 		Stdlib:     exampleStdlibPolicy,
 		Violations: examplePackageImportViolations,
+	},
+	{
+		Name:       "contrib/mygo",
+		Path:       contribModulePath,
+		Dir:        filepath.Join("contrib", "mygo"),
+		Allowed:    allowedContribImports,
+		Stdlib:     exampleStdlibPolicy,
+		Violations: contribPackageImportViolations,
 	},
 }
 
@@ -480,6 +507,54 @@ func TestArchitectureExamplePolicyRejectsInternal(t *testing.T) {
 	}
 }
 
+func TestArchitectureContribPolicyRejectsInternal(t *testing.T) {
+	t.Parallel()
+
+	for _, internalImport := range []string{
+		modulePath + "/internal/engine",
+		"github.com/egoist/mygo/internal/l10n",
+	} {
+		allow := map[string]packageRules{
+			contribModulePath: {Production: []string{internalImport}},
+		}
+		violations := contribPackageImportViolations(
+			contribModulePath,
+			[]string{internalImport},
+			false,
+			allow,
+			exampleStdlibPolicy,
+		)
+		if len(violations) == 0 {
+			t.Fatalf("contrib policy accepted internal import %s", internalImport)
+		}
+	}
+
+	allowed := []string{
+		modulePath,
+		modulePath + "/render",
+		"github.com/egoist/mygo/ui",
+		"github.com/egoist/mygo/ui/markdown",
+	}
+	if got := contribPackageImportViolations(
+		contribModulePath,
+		allowed,
+		false,
+		allowedContribImports,
+		exampleStdlibPolicy,
+	); len(got) != 0 {
+		t.Fatalf("allowed contrib imports rejected: %v", got)
+	}
+	if got := contribPackageImportViolations(
+		contribModulePath,
+		[]string{"os/exec"},
+		false,
+		allowedContribImports,
+		exampleStdlibPolicy,
+	); len(got) == 0 {
+		t.Fatal("contrib policy accepted os/exec")
+	}
+}
+
 func packageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules, stdlib stdlibPolicy) []string {
 	rules, known := allow[pkg]
 	if !known {
@@ -516,9 +591,38 @@ func packageImportViolations(pkg string, imports []string, test bool, allow map[
 }
 
 func examplePackageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules, stdlib stdlibPolicy) []string {
+	return consumerPackageImportViolations(
+		pkg,
+		imports,
+		test,
+		exampleModulePath,
+		allow,
+		stdlib,
+	)
+}
+
+func contribPackageImportViolations(pkg string, imports []string, test bool, allow map[string]packageRules, stdlib stdlibPolicy) []string {
+	return consumerPackageImportViolations(
+		pkg,
+		imports,
+		test,
+		contribModulePath,
+		allow,
+		stdlib,
+	)
+}
+
+func consumerPackageImportViolations(
+	pkg string,
+	imports []string,
+	test bool,
+	consumerModulePath string,
+	allow map[string]packageRules,
+	stdlib stdlibPolicy,
+) []string {
 	rules, known := allow[pkg]
 	if !known {
-		return []string{fmt.Sprintf("%s is not in the example architecture allowlist", pkg)}
+		return []string{fmt.Sprintf("%s is not in the consumer architecture allowlist", pkg)}
 	}
 	allowed := rules.Production
 	if test {
@@ -536,7 +640,11 @@ func examplePackageImportViolations(pkg string, imports []string, test bool, all
 			violations = append(violations, fmt.Sprintf("%s imports Untie internal package %s", pkg, imp))
 			continue
 		}
-		if withinModule(imp, exampleModulePath) || allowedSet[imp] {
+		if internalPackageImport(imp) {
+			violations = append(violations, fmt.Sprintf("%s imports internal package %s", pkg, imp))
+			continue
+		}
+		if withinModule(imp, consumerModulePath) || allowedSet[imp] {
 			continue
 		}
 		if withinModule(imp, modulePath) {
@@ -592,6 +700,15 @@ func untieInternalImport(imp string) bool {
 		strings.HasPrefix(rest, "internal/") ||
 		strings.Contains(rest, "/internal/") ||
 		strings.HasSuffix(rest, "/internal")
+}
+
+func internalPackageImport(imp string) bool {
+	for _, part := range strings.Split(imp, "/") {
+		if part == "internal" {
+			return true
+		}
+	}
+	return false
 }
 
 func withinModule(imp, path string) bool {

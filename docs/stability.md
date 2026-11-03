@@ -12,6 +12,8 @@ Primary packages:
 - the host-facing types in `github.com/caelyreth/untie/display`
 - `github.com/caelyreth/untie/font` for `FontFace`, `FontSetConfig`, and `FontSet`
 - `github.com/caelyreth/untie/fontsource` for `io/fs` loading helpers
+- `github.com/caelyreth/untie/contrib/mygo` as an optional nested module for
+  MyGo Markdown math and painter integration
 
 Primary surface:
 
@@ -86,6 +88,10 @@ Go's import rules prevent normal external modules from importing them. The
 separate `examples/mygo` module is additionally checked to reject any Untie
 internal import. Do not build a host against internal files even when working
 inside the repository.
+
+The `contrib/mygo` adapter is versioned separately from the root module. Its
+architecture gate rejects Untie internals, MyGo internals, cgo, and undeclared
+framework dependencies. Importing the root module never imports MyGo.
 
 ## Version and Cache Compatibility
 
