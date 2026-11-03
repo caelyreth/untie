@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // FontFace is one face from a host-provided SFNT or TTC file.
@@ -53,6 +54,7 @@ type FontSet struct {
 	faces   []*parsedFace
 	hasText bool
 	key     [32]byte
+	shapers sync.Pool
 }
 
 // LoadMathFont prepares one math face. The face ID is derived when opts do not

@@ -131,10 +131,16 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/font": {
 		Production: []string{
+			"github.com/go-text/typesetting/di",
 			"github.com/go-text/typesetting/font",
 			"github.com/go-text/typesetting/font/opentype",
+			"github.com/go-text/typesetting/language",
+			"github.com/go-text/typesetting/segmenter",
+			"github.com/go-text/typesetting/shaping",
 			modulePath + "/geometry",
+			"golang.org/x/image/math/fixed",
 		},
+		Tests: []string{modulePath + "/source"},
 	},
 	modulePath + "/fontsource": {
 		Production: []string{modulePath + "/font"},

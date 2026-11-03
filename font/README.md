@@ -24,6 +24,13 @@ metrics, ok := set.GlyphMetrics(g)                // design units
 outline, ok := set.Outline(g)                     // y-down design units
 scaled, ok := set.ShapeMath(font.MathFace, []font.GlyphID{g.ID},
     font.ScriptVariant, false)
+
+shaped, err := set.ShapeText(font.TextShapeRequest{
+    Context: ctx,
+    Text:    "a\u0301 सालाम 👩‍💻",
+    Faces:   []font.FaceRef{font.TextFace, font.MathFace},
+    MaxGlyphs: 4096,
+})
 ```
 
 `FontSet` is safe for concurrent readers. `Outline` returns a defensive copy;
@@ -53,8 +60,17 @@ design units.
   assembly italic correction, minimum connector overlap, ordered parts, part
   glyph IDs, connector lengths, full advances, and extender flags. Variant
   selection remains a layout policy and is not implemented in `font`.
-- Text shaping is outside this package. `MapRune` and glyph advances are
-  deterministic primitives for a later text shaper.
+- Ordinary text runs use the pure-Go HarfBuzz shaper from `go-text/typesetting`
+  after Unicode bidi and script segmentation. Fallback is resolved once per
+  extended grapheme cluster, and shaped clusters retain byte and rune ranges for
+  editor hit testing.
+- When one face covers a complete bidi/script run, it is preferred for the
+  whole run so joining and reordering stay intact. For non-Latin, non-Greek,
+  and non-Cyrillic scripts, a supplied text or fallback face is preferred over
+  the MATH face when both have nominal coverage.
+- Math symbols, stretchy constructions, and named operators remain on the
+  dedicated cmap/MATH/GSUB path. General text ligatures and kerning do not leak
+  into formula-symbol layout.
 - Font parsing and shaping support are pure Go and require no cgo toolchain.
 
 ## Compatibility
