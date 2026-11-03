@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/source"
 )
 
 var ErrInvalidBox = errors.New("display: invalid box")
@@ -386,8 +387,15 @@ func lineTolerance(value float32) float32 {
 	return maxFloat(1e-5, absFloat(value)*1e-6)
 }
 
-// Validate checks that alternative text is valid UTF-8 and contains no NUL.
+// Validate checks that alternative text is valid UTF-8, contains no NUL, and,
+// when present, carries a valid structured description.
 func (a Alt) Validate() error {
+	return a.ValidateWithLimits(source.Limits{})
+}
+
+// ValidateWithLimits checks alternative text against caller-owned traversal
+// and literal-text limits. A zero-value limits uses source.DefaultLimits.
+func (a Alt) ValidateWithLimits(limits source.Limits) error {
 	for _, field := range []struct {
 		name  string
 		value string
@@ -400,6 +408,11 @@ func (a Alt) Validate() error {
 		}
 		if strings.ContainsRune(field.value, '\x00') {
 			return fmt.Errorf("%w: %s contains NUL", ErrInvalidAlt, field.name)
+		}
+	}
+	if a.Description != nil {
+		if err := a.Description.ValidateWithLimits(limits); err != nil {
+			return fmt.Errorf("%w: description: %w", ErrInvalidAlt, err)
 		}
 	}
 	return nil

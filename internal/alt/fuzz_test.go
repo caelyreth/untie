@@ -30,7 +30,7 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 			if firstErr != nil || secondErr != nil {
 				t.Fatalf("attachment fixture error = %v, %v", firstErr, secondErr)
 			}
-			if first != second {
+			if !first.Equal(second) {
 				t.Fatalf("attachment fixture is nondeterministic:\n%#v\n%#v", first, second)
 			}
 			if err := first.Validate(); err != nil {
@@ -44,7 +44,7 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 		if (firstErr == nil) != (secondErr == nil) || firstErr != nil && firstErr.Error() != secondErr.Error() {
 			t.Fatalf("nondeterministic errors: %v, %v", firstErr, secondErr)
 		}
-		if first != second {
+		if !first.Equal(second) {
 			t.Fatalf("nondeterministic output:\n%#v\n%#v", first, second)
 		}
 		if firstErr != nil && (first.Text == "" || first.Speech == "") {
@@ -52,6 +52,20 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 		}
 		if err := first.Validate(); err != nil {
 			t.Fatalf("invalid generated Alt: %v", err)
+		}
+		if first.Description == nil {
+			t.Fatal("generated Alt has no structured description")
+		}
+		descriptionJSON, err := first.Description.MarshalCanonical()
+		if err != nil {
+			t.Fatalf("description MarshalCanonical() error = %v", err)
+		}
+		cloneJSON, err := first.Description.Clone().MarshalCanonical()
+		if err != nil {
+			t.Fatalf("cloned description MarshalCanonical() error = %v", err)
+		}
+		if string(descriptionJSON) != string(cloneJSON) {
+			t.Fatal("cloned description changed canonical JSON")
 		}
 		if len(first.Text) > limits.MaxTextBytes || len(first.Speech) > limits.MaxTextBytes {
 			t.Fatalf("generated Alt exceeds MaxTextBytes: text=%d speech=%d limit=%d",

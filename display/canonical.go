@@ -172,8 +172,9 @@ func canonicalHitRange(hitRange HitRange) canonicalRange {
 }
 
 type canonicalAlt struct {
-	Speech string `json:"speech"`
-	Text   string `json:"text"`
+	Speech      string          `json:"speech"`
+	Text        string          `json:"text"`
+	Description *AltDescription `json:"description,omitempty"`
 }
 
 type canonicalFontUsage struct {

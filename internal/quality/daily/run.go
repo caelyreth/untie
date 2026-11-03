@@ -353,7 +353,7 @@ func (e engineEvaluator) Evaluate(ctx context.Context, testCase Case) CaseResult
 		if err := box.Alt.Validate(); err != nil {
 			return fail("box alt validation: " + err.Error())
 		}
-		if altExpectation == altOK && box.Alt != alt {
+		if altExpectation == altOK && !box.Alt.Equal(alt) {
 			return fail("Box.Alt differs from Expr.Alt")
 		}
 		if box.Alt.Text == "" || box.Alt.Speech == "" {
