@@ -46,3 +46,12 @@ func TestArenaDirectPointersRemainStable(t *testing.T) {
 		t.Fatalf("direct arena nodes changed: %#v %#v", first, second)
 	}
 }
+
+func TestArenaShortInputUsesBlocks(t *testing.T) {
+	t.Parallel()
+
+	arena := New(arenaMinHint)
+	if !arena.glyphs.enabled || !arena.rows.enabled {
+		t.Fatal("short input did not enable IR node blocks")
+	}
+}

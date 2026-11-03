@@ -40,3 +40,12 @@ func TestASTArenaSmallInputUsesStableDirectNodes(t *testing.T) {
 		t.Fatalf("direct AST nodes changed: %#v %#v", first, second)
 	}
 }
+
+func TestASTArenaShortInputUsesBlocks(t *testing.T) {
+	t.Parallel()
+
+	arena := newASTArena(astArenaMinHint)
+	if arena.size == 0 || len(arena.glyphs) == 0 {
+		t.Fatal("short input did not enable the AST glyph arena")
+	}
+}

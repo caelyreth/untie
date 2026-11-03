@@ -46,7 +46,7 @@ type astNode interface {
 	base() *astBase
 }
 
-const astArenaMinHint = 128
+const astArenaMinHint = 32
 
 // astArena batches high-volume parser glyph nodes. It is owned by one parser
 // and never escapes the parse/lowering operation.

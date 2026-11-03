@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	arenaMinHint = 128
+	arenaMinHint = 32
 )
 
 // Arena owns the node blocks allocated through it. Callers must treat every
