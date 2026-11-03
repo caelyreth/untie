@@ -14,6 +14,8 @@ type constrainedBenchStats struct {
 	parentItems        int64
 	parentHits         int64
 	parentPathSegments int64
+	physicalPathSegs   int64
+	pathTemplates      int64
 	lineRangeItems     int64
 	lineRangeHits      int64
 	lineRangePaths     int64
@@ -78,6 +80,10 @@ func BenchmarkEndToEndConstrainedDailyCorpus(b *testing.B) {
 func observeBoxStorage(box *untie.Box, stats *constrainedBenchStats) {
 	stats.parentItems += int64(len(box.Items))
 	stats.parentHits += int64(len(box.Hits))
+	stats.pathTemplates += int64(len(box.Paths))
+	for _, template := range box.Paths {
+		stats.physicalPathSegs += int64(len(template.Segments))
+	}
 	for _, item := range box.Items {
 		stats.parentPathSegments += int64(itemPathSegmentCount(box, item))
 	}
@@ -112,7 +118,6 @@ func reportConstrainedBenchmarkMetrics(b *testing.B, stats constrainedBenchStats
 	perCorpus := func(value int64) float64 {
 		return float64(value) / float64(stats.corpora)
 	}
-	physicalPathSegments := stats.parentPathSegments
 	physicalItems := stats.parentItems
 	b.ReportMetric(float64(stats.corpora)/elapsed, "corpora/s")
 	b.ReportMetric(perCorpus(stats.cases), "cases/corpus")
@@ -125,7 +130,8 @@ func reportConstrainedBenchmarkMetrics(b *testing.B, stats constrainedBenchStats
 	b.ReportMetric(perCorpus(stats.parentPathSegments), "parent-path-seg/corpus")
 	b.ReportMetric(perCorpus(stats.lineRangePaths), "line-range-path-seg/corpus")
 	b.ReportMetric(perCorpus(stats.tagRangePaths), "tag-range-path-seg/corpus")
-	b.ReportMetric(perCorpus(physicalPathSegments), "physical-path-seg/corpus")
+	b.ReportMetric(perCorpus(stats.physicalPathSegs), "physical-path-seg/corpus")
+	b.ReportMetric(perCorpus(stats.pathTemplates), "path-template/corpus")
 	b.ReportMetric(perCorpus(stats.parentHits), "parent-hits/corpus")
 	b.ReportMetric(perCorpus(stats.lineRangeHits), "line-range-hits/corpus")
 	b.ReportMetric(perCorpus(stats.tagRangeHits), "tag-range-hits/corpus")
@@ -133,6 +139,6 @@ func reportConstrainedBenchmarkMetrics(b *testing.B, stats constrainedBenchStats
 		b.ReportMetric(float64(physicalItems)/float64(stats.parentItems), "item-storage-x")
 	}
 	if stats.parentPathSegments > 0 {
-		b.ReportMetric(float64(physicalPathSegments)/float64(stats.parentPathSegments), "path-storage-x")
+		b.ReportMetric(float64(stats.physicalPathSegs)/float64(stats.parentPathSegments), "path-storage-x")
 	}
 }

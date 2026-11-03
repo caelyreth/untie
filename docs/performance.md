@@ -32,6 +32,10 @@ The baseline reports both attempted cases and successful layouts:
   successful layout;
 - `items/case`, `hits/case`, and `path-seg/case`: output volume divided by all
   attempted formulas;
+- `path-template/case` and `template-path-seg/case`: unique path templates and
+  retained template geometry after per-box deduplication;
+- `path-storage-x`: retained template segments divided by path-segment
+  references across items, so repeated glyphs can reduce physical storage;
 - `successes/case` and `successes/corpus`: successful-layout rate;
 - `layout-errors/case`: expected font or output-limit failures.
 
@@ -66,12 +70,14 @@ CGO_ENABLED=0 go test ./internal/quality \
 This focused benchmark selects the daily corpus's constrained display cases
 and distinguishes canonical storage from range references:
 
-- `parent-*`: the canonical `Box.Items`/`Box.Hits` storage;
+- `parent-*`: item/hit storage and path-segment references from canonical
+  `Box.Items`/`Box.Hits`;
 - `line-range-*` and `tag-range-*`: records selected from that canonical
   storage by ranges;
-- `physical-*`: actual retained item and path storage;
+- `physical-*`: actual retained item and deduplicated path-template storage;
 - `item-storage-x` and `path-storage-x`: physical storage divided by canonical
-  parent storage. The range-backed contract keeps both ratios at `1.0`.
+  parent references. Item ranges keep `item-storage-x` at `1.0`; path
+  templates may be below `1.0` when glyph geometry is shared.
 
 Use this benchmark when reviewing constrained-layout or tag changes; timing
 alone will not reveal accidental reintroduction of duplicate retained memory.
