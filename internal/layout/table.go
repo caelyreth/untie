@@ -114,7 +114,7 @@ type measuredTableRow struct {
 
 func (s *layoutState) layoutTableBuiltIn(node *ir.Table, env environment, depth int, shape tableShape) (*Fragment, error) {
 	if shape.rows == 0 || shape.columns == 0 {
-		fragment := emptyFragment(env.Style.Size, s.scale(env.Style))
+		fragment := s.emptyFragment(env.Style.Size, s.scale(env.Style))
 		fragment.Class = node.Class
 		return fragment, nil
 	}

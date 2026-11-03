@@ -133,10 +133,18 @@ func (s *layoutState) layoutRadical(node *ir.Radical, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	drawCount := 2
+	if index != nil {
+		drawCount++
+	}
+	if node.Radicand != nil {
+		drawCount++
+	}
+	fragment.reserveDraws(drawCount)
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
 	fragment.TextLike = false

@@ -140,10 +140,11 @@ func (s *layoutState) layoutAccent(node *ir.Accent, env environment, depth int) 
 		return nil, fmt.Errorf("%w: accent baseline outside frame", ErrInvalidInput)
 	}
 
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(2)
 	fragment.BaseAscent = body.BaseAscent
 	fragment.BaseDescent = body.BaseDescent
 	fragment.AccentTop = body.AccentTop

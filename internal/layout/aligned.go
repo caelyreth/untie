@@ -105,7 +105,7 @@ func (s *layoutState) layoutAlignmentNodes(nodes []ir.Node, env environment, dep
 			return nil, err
 		}
 		if transfer[i] > 0 {
-			space := emptyFragment(env.Style.Size, s.scale(env.Style))
+			space := s.emptyFragment(env.Style.Size, s.scale(env.Style))
 			space.Width = transfer[i]
 			if err := fragment.AddGroup(fragment.Width, 0, space); err != nil {
 				return nil, err

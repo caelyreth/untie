@@ -12,7 +12,7 @@ func (s *layoutState) layoutSizedDelimiter(node *ir.SizedDelimiter, env environm
 		return nil, fmt.Errorf("%w: empty sized delimiter", ErrInvalidInput)
 	}
 	if node.Text == "." {
-		fragment := emptyFragment(env.Style.Size, s.scale(env.Style))
+		fragment := s.emptyFragment(env.Style.Size, s.scale(env.Style))
 		fragment.TextLike = false
 		return withClass(fragment, node.Class), nil
 	}

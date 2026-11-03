@@ -20,7 +20,7 @@ func (s *layoutState) layoutPhantom(node *ir.Phantom, env environment, depth int
 	if node.Depth {
 		descent = body.Descent
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}

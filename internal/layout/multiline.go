@@ -110,7 +110,7 @@ func (s *layoutState) layoutMultiline(node *ir.Multiline, env environment, depth
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{
+	fragment, err := s.newFragment(Metrics{
 		Width:   totalWidth,
 		Ascent:  baseline,
 		Descent: descent,

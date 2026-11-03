@@ -107,6 +107,8 @@ func (s *layoutState) attachPreparedSingleLineTag(
 	itemStart := len(base.Items)
 	hitStart := len(base.Hits)
 	flatten := newFlattenState(s, base, x, 0)
+	base.Items = reserveDisplayItems(base.Items, prepared.fragment.flatItems, s.limits.MaxOutputItems)
+	base.Hits = reserveDisplayHits(base.Hits, prepared.fragment.flatHits, s.limits.MaxNodes)
 	if err := flatten.visit(prepared.fragment, 0, 0); err != nil {
 		return nil, err
 	}

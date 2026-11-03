@@ -64,6 +64,8 @@ func (s *layoutState) flattenSingleDisplayLine(root *Fragment, offsetX float32) 
 	if err != nil {
 		return nil, err
 	}
+	parent.Items = make([]display.Item, 0, s.outputItemCapacity(root.flatItems))
+	parent.Hits = make([]display.Hit, 0, s.outputHitCapacity(root.flatHits))
 	width, ascent, descent, italic, err := s.fragmentHostMetrics(root)
 	if err != nil {
 		return nil, err
@@ -106,6 +108,10 @@ func (s *layoutState) flattenPlannedDisplayLines(
 	if err != nil {
 		return nil, err
 	}
+	parent.Items = make([]display.Item, 0, s.outputItemCapacity(root.flatItems))
+	hitCapacity := root.flatHits - root.hitCount
+	hitCapacity = saturatedAdd(hitCapacity, root.hitCount*len(plans))
+	parent.Hits = make([]display.Hit, 0, s.outputHitCapacity(hitCapacity))
 	parent.Lines = make([]display.LineBox, 0, len(plans))
 	var baseline float32
 	for i, plan := range plans {
@@ -224,10 +230,10 @@ func (s *layoutState) fragmentHostMetrics(fragment *Fragment) (float32, float32,
 }
 
 func (s *layoutState) appendLineOwnHit(parent *display.Box, root *Fragment, line display.LineBox) error {
-	if root.ownHit < 0 || root.ownHit >= len(root.hits) {
+	hit, ok := root.hitAt(root.ownHit)
+	if !ok {
 		return nil
 	}
-	hit := root.hits[root.ownHit]
 	height, err := s.addHost(line.Ascent, line.Descent)
 	if err != nil {
 		return err
@@ -311,11 +317,11 @@ func (s *layoutState) displayLineBoundaries(root *Fragment) ([]lineBoundary, boo
 				return nil, false, err
 			}
 		}
-		if candidate.cut <= previousCut || candidate.cut > len(root.items) {
+		if candidate.cut <= previousCut || candidate.cut > root.drawCount {
 			return nil, false, nil
 		}
 		previousCut = candidate.cut
-		if candidate.cut == len(root.items) || candidate.x <= 0 || candidate.x >= root.Width {
+		if candidate.cut == root.drawCount || candidate.x <= 0 || candidate.x >= root.Width {
 			continue
 		}
 		if candidate.x < boundaries[len(boundaries)-1].x {
@@ -331,7 +337,7 @@ func (s *layoutState) displayLineBoundaries(root *Fragment) ([]lineBoundary, boo
 	if root.Width < boundaries[len(boundaries)-1].x {
 		return nil, false, nil
 	}
-	boundaries = append(boundaries, lineBoundary{itemIndex: len(root.items), x: root.Width})
+	boundaries = append(boundaries, lineBoundary{itemIndex: root.drawCount, x: root.Width})
 	return boundaries, true, nil
 }
 
@@ -395,7 +401,7 @@ func (s *layoutState) greedyLinePlans(boundaries []lineBoundary) ([]linePlan, er
 
 func (s *layoutState) lineFragment(root *Fragment, start, end lineBoundary) (*Fragment, error) {
 	if root == nil || start.itemIndex < 0 || end.itemIndex < start.itemIndex ||
-		end.itemIndex > len(root.items) {
+		end.itemIndex > root.drawCount {
 		return nil, fmt.Errorf("%w: invalid line fragment bounds", ErrInvalidInput)
 	}
 	if end.x < start.x {
@@ -405,10 +411,11 @@ func (s *layoutState) lineFragment(root *Fragment, start, end lineBoundary) (*Fr
 	if err != nil {
 		return nil, err
 	}
-	line := emptyFragment(root.Size, root.Scale)
+	line := s.emptyFragment(root.Size, root.Scale)
 	line.Width = width
 	line.Class = root.Class
 	line.TextLike = true
+	line.reserveDraws(end.itemIndex - start.itemIndex)
 
 	minTop, maxBottom := geometry.Em(0), geometry.Em(0)
 	haveExtent := false
@@ -418,13 +425,13 @@ func (s *layoutState) lineFragment(root *Fragment, start, end lineBoundary) (*Fr
 				return nil, err
 			}
 		}
-		item := root.items[i]
+		item := root.drawAt(i)
 		x, err := sub(item.x, start.x)
 		if err != nil {
 			return nil, err
 		}
 		item.x = x
-		line.items = append(line.items, item)
+		line.appendDraw(item)
 		top, bottom, italic, err := s.placedExtents(item)
 		if err != nil {
 			return nil, err

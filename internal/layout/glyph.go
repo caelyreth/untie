@@ -74,10 +74,11 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 		Ascent:  scaled.Glyph.Ascent,
 		Descent: scaled.Glyph.Descent,
 	}
-	fragment, err := newFragment(metrics, ir.ClassNormal, env.Style.Size, scale)
+	fragment, err := s.newFragment(metrics, ir.ClassNormal, env.Style.Size, scale)
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(1)
 	fragment.Italic = scaled.Glyph.Italic
 	fragment.TextLike = scaled.Glyph.TextLike
 	fragment.StretchableHorizontal = scaled.Glyph.StretchableHorizontal
@@ -330,7 +331,7 @@ func scaleKern(kern *MathKern, factor geometry.Em) (*MathKern, error) {
 }
 
 func (s *layoutState) layoutSpace(space *ir.Space, env environment) (*Fragment, error) {
-	fragment := emptyFragment(env.Style.Size, s.scale(env.Style))
+	fragment := s.emptyFragment(env.Style.Size, s.scale(env.Style))
 	fragment.Class = ir.ClassSpace
 	if space.Type == ir.SpaceIgnored {
 		return fragment, nil
@@ -370,10 +371,11 @@ func (s *layoutState) layoutPlaceholder(node *ir.Placeholder, env environment) (
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(4)
 	paint := ir.Paint{Role: ir.PaintPlaceholder}
 	// Four thin rules form a deterministic missing-content box.
 	rules := []struct {

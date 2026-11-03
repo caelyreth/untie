@@ -32,7 +32,7 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 	if err != nil {
 		return err
 	}
-	fragment.hits = append(fragment.hits, sourceHit{
+	index := fragment.appendHit(sourceHit{
 		source: span,
 		y:      -fragment.Ascent,
 		width:  fragment.Width,
@@ -40,7 +40,7 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 		depth:  depth,
 		kind:   kind,
 	})
-	fragment.ownHit = len(fragment.hits) - 1
+	fragment.ownHit = index
 	return nil
 }
 
@@ -53,10 +53,14 @@ func (s *layoutState) attachNodeHitAs(fragment *Fragment, node ir.Node, depth in
 }
 
 func setOwnHitKind(fragment *Fragment, kind display.HitKind) {
-	if fragment == nil || fragment.ownHit < 0 || fragment.ownHit >= len(fragment.hits) {
+	if fragment == nil {
 		return
 	}
-	fragment.hits[fragment.ownHit].kind = kind
+	hit, ok := fragment.hitAt(fragment.ownHit)
+	if !ok {
+		return
+	}
+	hit.kind = kind
 }
 
 func nodeHitKind(node ir.Node) (display.HitKind, bool) {
@@ -87,9 +91,13 @@ func nodeHitKind(node ir.Node) (display.HitKind, bool) {
 }
 
 func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x, y geometry.Em) error {
-	for _, hit := range fragment.hits {
+	for i := 0; i < fragment.hitCount; i++ {
 		if err := f.tick(); err != nil {
 			return err
+		}
+		hit, ok := fragment.hitAt(i)
+		if !ok {
+			return fmt.Errorf("%w: invalid fragment hit index %d", ErrInvalidInput, i)
 		}
 		hitX, err := add(x, hit.x)
 		if err != nil {
@@ -130,4 +138,25 @@ func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x,
 		}
 	}
 	return nil
+}
+
+func (f *Fragment) appendHit(hit sourceHit) int {
+	if f.hitCount == 0 {
+		f.firstHit = hit
+	} else {
+		f.moreHits = append(f.moreHits, hit)
+	}
+	f.hitCount++
+	f.flatHits = saturatedAdd(f.flatHits, 1)
+	return f.hitCount - 1
+}
+
+func (f *Fragment) hitAt(index int) (*sourceHit, bool) {
+	if f == nil || index < 0 || index >= f.hitCount {
+		return nil, false
+	}
+	if index == 0 {
+		return &f.firstHit, true
+	}
+	return &f.moreHits[index-1], true
 }

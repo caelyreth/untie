@@ -70,10 +70,17 @@ func (s *layoutState) layoutFenced(node *ir.Fenced, env environment, depth int) 
 		ascent = max(ascent, part.Ascent)
 		descent = max(descent, part.Descent)
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	drawCount := 0
+	for _, part := range []*Fragment{open, body, close} {
+		if part != nil {
+			drawCount++
+		}
+	}
+	fragment.reserveDraws(drawCount)
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
 	fragment.TextLike = false
