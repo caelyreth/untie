@@ -153,6 +153,9 @@ func (r *Renderer) Render(
 	if ctx == nil {
 		return nil, untie.ErrInvalidContext
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if mode != untie.Inline && mode != untie.Display {
 		return nil, fmt.Errorf("%w: unknown mode %d", ErrInvalidOptions, mode)
 	}

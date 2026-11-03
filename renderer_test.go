@@ -399,6 +399,17 @@ func TestRenderMissingGlyphRecoveryAcrossStructures(t *testing.T) {
 	}
 }
 
+func TestContextFailureProducesDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	for _, err := range []error{context.Canceled, context.DeadlineExceeded} {
+		diagnostic, ok := diagnosticForContextError(err)
+		if !ok || diagnostic.Code != source.CodeCanceled {
+			t.Fatalf("diagnosticForContextError(%v) = %+v, %v", err, diagnostic, ok)
+		}
+	}
+}
+
 func hasCode(diagnostics []source.Diagnostic, code source.Code) bool {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
@@ -454,6 +465,33 @@ func TestRenderContextCancellation(t *testing.T) {
 	if result, err := renderer.Render(ctx, "x", RenderRequest{}); result != nil ||
 		!errors.Is(err, context.Canceled) {
 		t.Fatalf("Render(canceled) = %#v, %v", result, err)
+	}
+}
+
+func TestRenderLayoutCancellationProducesDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	parseOptions := renderer.effectiveParseOptions(ParseOptions{})
+	expr, err := renderer.parse(context.Background(), "x", TeX, Inline, parseOptions)
+	if err != nil {
+		t.Fatalf("parse error = %v", err)
+	}
+	style, err := renderer.effectiveStyle(RenderRequest{}.Style)
+	if err != nil {
+		t.Fatalf("effectiveStyle error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	result, err := renderer.renderParsed(ctx, "x", expr, style)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("renderParsed error = %v, want context.Canceled", err)
+	}
+	if result == nil || !hasCode(result.Diagnostics, source.CodeCanceled) {
+		t.Fatalf("renderParsed result = %#v, want cancellation diagnostic", result)
 	}
 }
 

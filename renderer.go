@@ -157,12 +157,26 @@ func (r *Renderer) Render(
 	if err != nil {
 		return nil, err
 	}
+	return r.renderParsed(ctx, src, expr, style)
+}
+
+func (r *Renderer) renderParsed(
+	ctx context.Context,
+	src string,
+	expr *Expr,
+	style display.Style,
+) (*RenderResult, error) {
 	result := &RenderResult{Diagnostics: expr.Diagnostics()}
 	box, err := r.engine.LayoutContextWithOptions(ctx, expr, style, LayoutOptions{
 		Recovery: r.recovery,
 	})
 	if err != nil {
 		if diagnostic, ok := diagnosticForLayoutError(err); ok {
+			result.Diagnostics = source.NormalizeDiagnosticsFor(
+				append(result.Diagnostics, diagnostic),
+				len(src),
+			)
+		} else if diagnostic, ok := diagnosticForContextError(err); ok {
 			result.Diagnostics = source.NormalizeDiagnosticsFor(
 				append(result.Diagnostics, diagnostic),
 				len(src),
@@ -177,6 +191,18 @@ func (r *Renderer) Render(
 		len(src),
 	)
 	return result, nil
+}
+
+func diagnosticForContextError(err error) (source.Diagnostic, bool) {
+	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return source.Diagnostic{}, false
+	}
+	return source.Diagnostic{
+		Range:    source.NewRange(0, 0),
+		Severity: source.SeverityError,
+		Code:     source.CodeCanceled,
+		Message:  err.Error(),
+	}, true
 }
 
 func diagnosticForLayoutError(err error) (source.Diagnostic, bool) {

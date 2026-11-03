@@ -2,6 +2,7 @@ package untiemygo
 
 import (
 	"context"
+	"errors"
 	"math"
 	"os"
 	"strings"
@@ -114,6 +115,27 @@ func TestCacheHitsEvictionAndDiagnosticOwnership(t *testing.T) {
 	}
 	if stats.Hits != 1 || stats.Misses != 3 || stats.Evictions != 1 {
 		t.Fatalf("cache activity = %+v", stats)
+	}
+}
+
+func TestCanceledRenderDoesNotUseCache(t *testing.T) {
+	renderer := newTestRenderer(t, Options{})
+	ctx := context.Background()
+	if _, err := renderer.Render(ctx, `x`, untie.Inline, untie.Style{Size: 16}); err != nil {
+		t.Fatal(err)
+	}
+	stats := renderer.CacheStats()
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := renderer.Render(canceled, `x`, untie.Inline, untie.Style{Size: 16}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Render(canceled) error = %v, want context.Canceled", err)
+	}
+	if _, err := renderer.Render(canceled, `x`, untie.Mode(255), untie.Style{Size: 16}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Render(canceled, invalid mode) error = %v, want context.Canceled", err)
+	}
+	if got := renderer.CacheStats(); got != stats {
+		t.Fatalf("canceled cache lookup changed stats: before %+v after %+v", stats, got)
 	}
 }
 
