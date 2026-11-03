@@ -1,20 +1,24 @@
 # go
-bin
-dist
+bin/
+dist/
 *.test
 *.out
+*.syso
 coverage.*
 
-# dev
-/.direnv
-/web/node_modules
-/web/.svelte-kit
-/web/build
-/web/static/untie/untie.wasm
-/web/static/untie/untie.wasm.tmp
-/web/static/untie/wasm_exec.js
-/web/static/untie/NewCMMath-Book.otf
-/web/static/untie/GUST-FONT-LICENSE.txt
+# nix
+.direnv/
+
+# web
+node_modules/
+.svelte-kit/
+build/
+untie/
+/web/wasm/wasm
+
+# mygo
+.mygo/
+/examples/mygo/mygo
 
 # os
 .DS_Store
