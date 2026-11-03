@@ -174,6 +174,14 @@ resolution are outside this API.
 
 Do not assume a link warning means the body was discarded. It was not.
 
+## Chemistry Is A Bounded Frontend
+
+The TeX frontend recognizes bounded `\ce{...}` and `\pu{...}` syntax and
+lowers it to ordinary neutral IR. Chemistry is therefore subject to the same
+source, diagnostic, canonical-validation, layout, and accessibility rules as
+other math. See [Bounded TeX chemistry](chemistry.md) before relying on a
+specialist mhchem construct.
+
 ## Parser Limits
 
 `ParseOptions.Limits` is normalized with `Limits.WithDefaults`. Zero and

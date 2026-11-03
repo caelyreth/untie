@@ -48,6 +48,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 
 - [Supported TeX](tex-support.md) summarizes the tested TeX math subset and
   its explicit exclusions.
+- [TeX chemistry](chemistry.md) documents the bounded `\ce` / `\pu` grammar,
+  diagnostics, and explicit exclusions.
 - [Supported Typst](typst-support.md) summarizes the restricted Typst math
   frontend and its explicit exclusions.
 - [API stability tiers](stability.md) separates the host API, advanced IR
@@ -68,7 +70,7 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   reporting, pixel-grid snapping, MyGo accessibility, hit testing, diagnostics,
   clipboard, inline baseline integration, caret geometry, inline splitting,
   explicit stable node identities, TeX sizing, overlap/raise primitives,
-  source-row tags, and cache identity changes.
+  source-row tags, bounded chemistry, and cache identity changes.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a
@@ -89,6 +91,7 @@ For an editor or document application:
 2. [Concurrency, lifecycle, and caching](concurrency.md)
 3. [Accessibility text](accessibility.md)
 4. The supported-syntax page for the active input dialect
+5. [TeX chemistry](chemistry.md) when the source contains `\ce` or `\pu`
 
 For a host that stores or transforms formula trees:
 

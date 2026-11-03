@@ -22,6 +22,7 @@ glyph paths, rules, source hits, and accessibility text.
 - inline and display layout, line breaking, equation tags, and overflow bounds;
 - deterministic text and speech alternatives for accessibility;
 - deterministic Presentation MathML export and a bounded strict importer;
+- bounded `mhchem`-style `\ce` and `\pu` support without a chemistry database;
 - optional SVG and PNG output.
 
 ### Use
@@ -142,6 +143,7 @@ Markdown binding, and existing-box drawing.
 - [Parsing](docs/parsing.md)
 - [MyGo Integration](docs/mygo.md)
 - [Supported TeX](docs/tex-support.md)
+- [TeX Chemistry](docs/chemistry.md)
 - [Supported Typst](docs/typst-support.md)
 - [API Stability](docs/stability.md)
 - [Migrating to 0.3](docs/migration-v0.3.md)

@@ -2,12 +2,30 @@
 
 Untie 0.4 adds core output policy, shaped-text provenance, and the complete
 MyGo editor integration surface, editor geometry, and high-value TeX layout
-constructs. The runtime version is `0.4.0+layout.5`, and the process-wide
+constructs, plus a bounded chemistry frontend. The runtime version is
+`0.4.0+layout.5`, and the process-wide
 Engine cache schema is `5`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
 cache keys should update their application-owned version.
+
+## Bounded Chemistry
+
+TeX `\ce{...}` and `\pu{...}` now lower to existing neutral text, glyph,
+script, fence, fraction, spacing, and error nodes instead of an unsupported
+placeholder. The subset covers common formulas, coefficients, group
+multipliers, charges, isotopes, state annotations, common bonds, reaction
+arrows with optional above/below annotations, and common physical units.
+
+Source ranges, canonical validation, clone/canonical serialization,
+accessibility text, and visible recovery use the ordinary frontend contracts.
+There is no chemistry-specific IR node and no bundled chemistry database.
+Malformed or out-of-scope chemistry remains visible through error nodes and
+structured diagnostics.
+
+See [Bounded TeX chemistry](chemistry.md) for the complete accepted grammar and
+explicit exclusions.
 
 ## Core Color Policy
 
