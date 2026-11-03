@@ -40,7 +40,7 @@ func TestChemistryTeXAltAndLayout(t *testing.T) {
 		if box.Width <= 0 || box.Ascent <= 0 || len(box.Items) == 0 {
 			t.Fatalf("%s box = %#v", source, box)
 		}
-		if box.Alt != alt {
+		if !box.Alt.Equal(alt) {
 			t.Fatalf("%s Box.Alt = %#v, want %#v", source, box.Alt, alt)
 		}
 	}

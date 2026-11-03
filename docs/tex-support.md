@@ -83,8 +83,9 @@ Supported and tested:
 - visible link bodies for `\href` and `\url`.
 
 Links are deliberately text-only. The destination is discarded and the parser
-emits an `unsupported` warning after the arguments validate. Labels,
-references, and document-level link resolution are outside the API.
+emits an `unsupported` warning after the arguments validate. Formula labels and
+explicitly resolved equation references are supported; document-level link and
+cross-file resolution are outside the API.
 
 ## Macros
 
@@ -97,6 +98,28 @@ The TeX frontend supports:
 
 This is a bounded formula macro expander. It is not a general package or
 document execution engine.
+
+## Labels and Equation References
+
+The formula frontend supports:
+
+- `\label{name}` as unique formula metadata with no visible output;
+- `\eqref{name}` resolved from `ParseOptions.References`;
+- `\eqref` output as text-font `(<host text>)`;
+- multiple distinct labels, including labels inside groups and scripts.
+
+The host supplies the visible numbering or reference body. For example,
+`References: {"eq:a": "3"}` renders `\eqref{eq:a}` as `(3)`. Reference values
+are opaque displayed text and are never re-parsed as TeX.
+
+The first duplicate label is retained and later duplicates emit
+`duplicate-label`. An absent map entry emits `unresolved-reference`; malformed
+entries emit `invalid-value` or `limit-exceeded`. Each failed `\eqref` renders
+a visible placeholder while preserving surrounding content.
+
+Untie does not maintain document state. A formula's labels do not populate its
+references, and references cannot resolve from another formula, a global
+counter, a bibliography, or a citation database.
 
 ## Equation Tags
 
@@ -122,7 +145,7 @@ diagnostics rather than being promoted silently:
 - more than one manual formula-level tag;
 - promotion of a tag from a script, fraction argument, root index, or similar
   syntactic argument;
-- automatic document counters and references.
+- automatic document counters and hidden cross-formula reference resolution.
 
 Constrained tagged display output intentionally does not wrap to multiple
 lines. See [Rendering the display list](rendering.md) for the tag-box drawing
@@ -142,7 +165,7 @@ The following capabilities are not treated as silently ignorable TeX:
 | `\nobreak`                                                                                                | Unsupported because suppression-only break policy is not represented.  |
 | Inline math delimiters nested in math mode: `\(`, `\)`, `\]`                                              | Parse diagnostic.                                                      |
 | Math commands in text mode, such as `\sqrt` inside `\text`                                                | `unsupported` diagnostic at the text-mode boundary.                    |
-| Document packages, counters, references, citations, file inclusion, and arbitrary conditionals            | Outside the formula frontend.                                          |
+| Document packages, automatic counters, citations, file inclusion, and arbitrary conditionals              | Outside the formula frontend.                                          |
 
 ## Recovery Is Part of the Contract
 

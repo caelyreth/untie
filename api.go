@@ -38,42 +38,68 @@ const (
 
 // Limits, diagnostics, and output types are aliases of their owning packages.
 type (
-	Limits           = source.Limits
-	Range            = source.Range
-	Diagnostic       = source.Diagnostic
-	Severity         = source.Severity
-	Box              = display.Box
-	LineBox          = display.LineBox
-	ItemRange        = display.ItemRange
-	HitRange         = display.HitRange
-	Alt              = display.Alt
-	Item             = display.Item
-	ItemKind         = display.ItemKind
-	Paint            = display.Paint
-	Role             = display.Role
-	RGBA             = display.RGBA
-	ColorPolicy      = display.ColorPolicy
-	ColorPolicyMode  = display.ColorPolicyMode
-	ColorRolePalette = display.ColorRolePalette
-	PixelGrid        = display.PixelGrid
-	SnapAxis         = display.SnapAxis
-	FontUsage        = display.FontUsage
-	FaceUse          = display.FaceUse
-	MissingFallback  = display.MissingFallback
-	Hit              = display.Hit
-	HitKind          = display.HitKind
-	Break            = display.Break
-	CaretStop        = display.CaretStop
-	TagBox           = display.TagBox
-	BreakKind        = display.BreakKind
-	Align            = display.Align
-	FontFace         = font.FontFace
-	FontSetConfig    = font.FontSetConfig
-	FontSet          = font.FontSet
-	FontOption       = font.FontOption
-	Formula          = ir.Formula
-	EquationTag      = ir.EquationTag
-	NodeID           = ir.NodeID
+	Limits              = source.Limits
+	Range               = source.Range
+	Diagnostic          = source.Diagnostic
+	Severity            = source.Severity
+	Box                 = display.Box
+	LineBox             = display.LineBox
+	ItemRange           = display.ItemRange
+	HitRange            = display.HitRange
+	Alt                 = display.Alt
+	AltDescription      = display.AltDescription
+	AltNode             = display.AltNode
+	AltNodeKind         = display.AltNodeKind
+	AltPart             = display.AltPart
+	AltPartRole         = display.AltPartRole
+	AltRow              = display.AltRow
+	AltColumn           = display.AltColumn
+	AltColumnAlign      = display.AltColumnAlign
+	AltTag              = display.AltTag
+	AltVariant          = display.AltVariant
+	AltFractionRole     = display.AltFractionRole
+	AltFractionStyle    = display.AltFractionStyle
+	AltScriptRole       = display.AltScriptRole
+	AltTableRole        = display.AltTableRole
+	AltCancelRole       = display.AltCancelRole
+	AltPosition         = display.AltPosition
+	AltSpaceKind        = display.AltSpaceKind
+	AltSpaceWidth       = display.AltSpaceWidth
+	AltBreakKind        = display.AltBreakKind
+	AltSizingKind       = display.AltSizingKind
+	AltMathSize         = display.AltMathSize
+	AltOverlayAlignment = display.AltOverlayAlignment
+	AltRaiseDirection   = display.AltRaiseDirection
+	AltFontSize         = display.AltFontSize
+	AltFlag             = display.AltFlag
+	Item                = display.Item
+	ItemKind            = display.ItemKind
+	Paint               = display.Paint
+	Role                = display.Role
+	RGBA                = display.RGBA
+	ColorPolicy         = display.ColorPolicy
+	ColorPolicyMode     = display.ColorPolicyMode
+	ColorRolePalette    = display.ColorRolePalette
+	PixelGrid           = display.PixelGrid
+	SnapAxis            = display.SnapAxis
+	FontUsage           = display.FontUsage
+	FaceUse             = display.FaceUse
+	MissingFallback     = display.MissingFallback
+	Hit                 = display.Hit
+	HitKind             = display.HitKind
+	Break               = display.Break
+	CaretStop           = display.CaretStop
+	TagBox              = display.TagBox
+	BreakKind           = display.BreakKind
+	Align               = display.Align
+	FontFace            = font.FontFace
+	FontSetConfig       = font.FontSetConfig
+	FontSet             = font.FontSet
+	FontOption          = font.FontOption
+	Formula             = ir.Formula
+	EquationTag         = ir.EquationTag
+	EquationLabel       = ir.EquationLabel
+	NodeID              = ir.NodeID
 
 	Point   = geometry.Point
 	Rect    = geometry.Rect
@@ -142,6 +168,150 @@ const (
 	AlignEnd    = display.AlignEnd
 
 	FormulaTagLine = display.FormulaTagLine
+
+	AltDescriptionVersion = display.AltDescriptionVersion
+
+	AltKindRow            = display.AltKindRow
+	AltKindGlyph          = display.AltKindGlyph
+	AltKindText           = display.AltKindText
+	AltKindOperator       = display.AltKindOperator
+	AltKindSpace          = display.AltKindSpace
+	AltKindFraction       = display.AltKindFraction
+	AltKindRadical        = display.AltKindRadical
+	AltKindScripts        = display.AltKindScripts
+	AltKindFenced         = display.AltKindFenced
+	AltKindSizedDelimiter = display.AltKindSizedDelimiter
+	AltKindAccent         = display.AltKindAccent
+	AltKindLine           = display.AltKindLine
+	AltKindCancel         = display.AltKindCancel
+	AltKindTable          = display.AltKindTable
+	AltKindMultiline      = display.AltKindMultiline
+	AltKindStyle          = display.AltKindStyle
+	AltKindOverlay        = display.AltKindOverlay
+	AltKindRaise          = display.AltKindRaise
+	AltKindColor          = display.AltKindColor
+	AltKindBox            = display.AltKindBox
+	AltKindPhantom        = display.AltKindPhantom
+	AltKindError          = display.AltKindError
+	AltKindPlaceholder    = display.AltKindPlaceholder
+	AltKindBreak          = display.AltKindBreak
+	AltKindAlignMarker    = display.AltKindAlignMarker
+
+	AltPartItem        = display.AltPartItem
+	AltPartBody        = display.AltPartBody
+	AltPartNumerator   = display.AltPartNumerator
+	AltPartDenominator = display.AltPartDenominator
+	AltPartRadicand    = display.AltPartRadicand
+	AltPartIndex       = display.AltPartIndex
+	AltPartBase        = display.AltPartBase
+	AltPartTop         = display.AltPartTop
+	AltPartBottom      = display.AltPartBottom
+	AltPartTopLeft     = display.AltPartTopLeft
+	AltPartBottomLeft  = display.AltPartBottomLeft
+	AltPartTopRight    = display.AltPartTopRight
+	AltPartBottomRight = display.AltPartBottomRight
+	AltPartOpen        = display.AltPartOpen
+	AltPartClose       = display.AltPartClose
+	AltPartContent     = display.AltPartContent
+	AltPartAccent      = display.AltPartAccent
+
+	AltVariantNormal       = display.AltVariantNormal
+	AltVariantItalic       = display.AltVariantItalic
+	AltVariantBold         = display.AltVariantBold
+	AltVariantBoldItalic   = display.AltVariantBoldItalic
+	AltVariantDoubleStruck = display.AltVariantDoubleStruck
+	AltVariantScript       = display.AltVariantScript
+	AltVariantBoldScript   = display.AltVariantBoldScript
+	AltVariantFraktur      = display.AltVariantFraktur
+	AltVariantBoldFraktur  = display.AltVariantBoldFraktur
+	AltVariantSans         = display.AltVariantSans
+	AltVariantBoldSans     = display.AltVariantBoldSans
+	AltVariantMonospace    = display.AltVariantMonospace
+
+	AltFractionOrdinary = display.AltFractionOrdinary
+	AltFractionBinomial = display.AltFractionBinomial
+	AltFractionStacked  = display.AltFractionStacked
+
+	AltFractionVertical   = display.AltFractionVertical
+	AltFractionNoBar      = display.AltFractionNoBar
+	AltFractionSkewed     = display.AltFractionSkewed
+	AltFractionHorizontal = display.AltFractionHorizontal
+
+	AltScriptOrdinary   = display.AltScriptOrdinary
+	AltScriptLimits     = display.AltScriptLimits
+	AltScriptOverlay    = display.AltScriptOverlay
+	AltScriptBraceLabel = display.AltScriptBraceLabel
+
+	AltTableMatrix = display.AltTableMatrix
+	AltTableArray  = display.AltTableArray
+	AltTableCases  = display.AltTableCases
+	AltTableVector = display.AltTableVector
+
+	AltCancelStrike   = display.AltCancelStrike
+	AltCancelNegation = display.AltCancelNegation
+
+	AltPositionAbove = display.AltPositionAbove
+	AltPositionBelow = display.AltPositionBelow
+
+	AltSpaceExplicit  = display.AltSpaceExplicit
+	AltSpaceInterword = display.AltSpaceInterword
+	AltSpaceIgnored   = display.AltSpaceIgnored
+
+	AltSpaceWidthZero           = display.AltSpaceWidthZero
+	AltSpaceWidthThin           = display.AltSpaceWidthThin
+	AltSpaceWidthMedium         = display.AltSpaceWidthMedium
+	AltSpaceWidthThick          = display.AltSpaceWidthThick
+	AltSpaceWidthEn             = display.AltSpaceWidthEn
+	AltSpaceWidthQuad           = display.AltSpaceWidthQuad
+	AltSpaceWidthDoubleQuad     = display.AltSpaceWidthDoubleQuad
+	AltSpaceWidthNegativeThin   = display.AltSpaceWidthNegativeThin
+	AltSpaceWidthNegativeMedium = display.AltSpaceWidthNegativeMedium
+	AltSpaceWidthNegativeThick  = display.AltSpaceWidthNegativeThick
+	AltSpaceWidthCustom         = display.AltSpaceWidthCustom
+
+	AltBreakRelation = display.AltBreakRelation
+	AltBreakBinary   = display.AltBreakBinary
+	AltBreakExplicit = display.AltBreakExplicit
+
+	AltSizingContent  = display.AltSizingContent
+	AltSizingRelative = display.AltSizingRelative
+	AltSizingAbsolute = display.AltSizingAbsolute
+
+	AltColumnCenter = display.AltColumnCenter
+	AltColumnLeft   = display.AltColumnLeft
+	AltColumnRight  = display.AltColumnRight
+
+	AltSizeInherit      = display.AltSizeInherit
+	AltSizeDisplay      = display.AltSizeDisplay
+	AltSizeText         = display.AltSizeText
+	AltSizeScript       = display.AltSizeScript
+	AltSizeScriptScript = display.AltSizeScriptScript
+
+	AltOverlayStart  = display.AltOverlayStart
+	AltOverlayCenter = display.AltOverlayCenter
+	AltOverlayEnd    = display.AltOverlayEnd
+
+	AltRaiseUp   = display.AltRaiseUp
+	AltRaiseDown = display.AltRaiseDown
+	AltRaiseZero = display.AltRaiseZero
+
+	AltFlagBalanced        = display.AltFlagBalanced
+	AltFlagBar             = display.AltFlagBar
+	AltFlagWeak            = display.AltFlagWeak
+	AltFlagStretchy        = display.AltFlagStretchy
+	AltFlagNaturalFit      = display.AltFlagNaturalFit
+	AltFlagDotless         = display.AltFlagDotless
+	AltFlagExactFrameWidth = display.AltFlagExactFrameWidth
+	AltFlagCross           = display.AltFlagCross
+	AltFlagInverted        = display.AltFlagInverted
+	AltFlagCentered        = display.AltFlagCentered
+	AltFlagCramped         = display.AltFlagCramped
+	AltFlagUncramped       = display.AltFlagUncramped
+	AltFlagFill            = display.AltFlagFill
+	AltFlagBorder          = display.AltFlagBorder
+	AltFlagPhantomWidth    = display.AltFlagPhantomWidth
+	AltFlagPhantomHeight   = display.AltFlagPhantomHeight
+	AltFlagPhantomDepth    = display.AltFlagPhantomDepth
 )
 
 // Macro is a host-provided TeX macro.
@@ -150,12 +320,15 @@ type Macro struct {
 	Args int
 }
 
-// ParseOptions configure parsing. TeX macros are ignored by the Typst
-// frontend. Typst preamble/code definitions are intentionally unsupported;
-// hosts must expand them before calling Parse.
+// ParseOptions configure parsing. TeX macros and references are ignored by the
+// Typst frontend. References maps decoded formula label names to host-supplied
+// visible text used by TeX \eqref; values are not parsed as math. Typst
+// preamble/code definitions are intentionally unsupported; hosts must expand
+// them before calling Parse.
 type ParseOptions struct {
-	Macros map[string]Macro
-	Limits Limits
+	Macros     map[string]Macro
+	References map[string]string
+	Limits     Limits
 }
 
 // Expr is an immutable parsed formula.
@@ -188,8 +361,9 @@ var (
 // destination is discarded, and a warning is reported only after the link
 // arguments validate. TeX URL groups preserve raw URL characters and balanced
 // braces; Typst link destinations are limited to non-empty strings in the
-// bounded evaluator. Labels, references, and document-level link resolution are
-// outside this API.
+// bounded evaluator. TeX \label commands become formula-scoped metadata and
+// \eqref resolves only through ParseOptions.References; there is no global
+// document state, automatic numbering, or cross-formula lookup.
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr {
 	expr, _ := ParseContext(context.Background(), src, dialect, mode, opts)
 	return expr
@@ -224,8 +398,18 @@ func ParseContext(
 			for name, macro := range opts.Macros {
 				macros[name] = tex.Macro{Body: macro.Body, Args: macro.Args}
 			}
-			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
-			return frontendResult{root: result.Root, tags: result.Tags, diagnostics: result.Diagnostics, arena: result.Arena}
+			result := tex.Parse(src, mode, tex.Options{
+				Macros:     macros,
+				References: opts.References,
+				Limits:     limits,
+			})
+			return frontendResult{
+				root:        result.Root,
+				tags:        result.Tags,
+				labels:      result.Labels,
+				diagnostics: result.Diagnostics,
+				arena:       result.Arena,
+			}
 		case Typst:
 			result := typst.Parse(src, mode, typst.Options{Limits: limits})
 			return frontendResult{root: result.Root, diagnostics: result.Diagnostics, arena: result.Arena}
@@ -250,21 +434,31 @@ func ParseContext(
 
 func snapshotParseOptions(opts ParseOptions) ParseOptions {
 	opts.Limits = opts.Limits.WithDefaults()
-	if len(opts.Macros) == 0 {
+	if len(opts.Macros) > 0 {
+		macros := make(map[string]Macro, len(opts.Macros))
+		for name, macro := range opts.Macros {
+			macros[name] = macro
+		}
+		opts.Macros = macros
+	} else {
 		opts.Macros = nil
-		return opts
 	}
-	macros := make(map[string]Macro, len(opts.Macros))
-	for name, macro := range opts.Macros {
-		macros[name] = macro
+	if len(opts.References) > 0 {
+		references := make(map[string]string, len(opts.References))
+		for name, text := range opts.References {
+			references[name] = text
+		}
+		opts.References = references
+	} else {
+		opts.References = nil
 	}
-	opts.Macros = macros
 	return opts
 }
 
 type frontendResult struct {
 	root        ir.Node
 	tags        []ir.EquationTag
+	labels      []ir.EquationLabel
 	diagnostics []source.Diagnostic
 	arena       *irarena.Arena
 }
@@ -308,7 +502,7 @@ func parseRecovered(
 		})
 	} else {
 		result := parser(limits)
-		candidate := &ir.Formula{Root: result.root, Tags: result.tags}
+		candidate := &ir.Formula{Root: result.root, Tags: result.tags, Labels: result.labels}
 		if result.root == nil {
 			diagnostics = append(diagnostics, result.diagnostics...)
 			diagnostics = append(diagnostics, source.Diagnostic{
@@ -413,6 +607,15 @@ func (e *Expr) RootSnapshot() (*ir.Formula, error) {
 	return ir.CloneFormula(e.root, e.limits)
 }
 
+// Labels returns an independent copy of formula-scoped label metadata in
+// source order.
+func (e *Expr) Labels() []ir.EquationLabel {
+	if e == nil || e.root == nil {
+		return nil
+	}
+	return append([]ir.EquationLabel(nil), e.root.Labels...)
+}
+
 // rootForLayout exposes the owned tree to the in-package layout orchestration.
 // The tree must be treated as immutable for the duration of layout.
 func (e *Expr) rootForLayout() *ir.Formula {
@@ -449,9 +652,9 @@ func (e *Expr) HasErrors() bool {
 	return false
 }
 
-// Alt returns deterministic plain text and speech derived from the neutral IR.
-// If generation cannot complete, it returns a bounded, validated fallback. Use
-// AltContext to observe the error.
+// Alt returns deterministic plain text, speech, and a structured localization
+// tree derived from the neutral IR. If generation cannot complete, it returns
+// a bounded, validated fallback. Use AltContext to observe the error.
 func (e *Expr) Alt() Alt {
 	if e == nil {
 		return Alt{}
@@ -460,7 +663,8 @@ func (e *Expr) Alt() Alt {
 	return out
 }
 
-// AltContext returns alternative text with cooperative cancellation.
+// AltContext returns alternative text and its structured accessibility
+// description with cooperative cancellation.
 //
 // Nil contexts and cancellation return a zero Alt. Non-context failures return
 // a bounded, validated visible fallback together with an error. Unsupported
@@ -602,6 +806,15 @@ func computeKey(e *Expr, limits source.Limits, opts ParseOptions) uint64 {
 			writeString(name)
 			writeString(macro.Body)
 			writeInt(int64(macro.Args))
+		}
+		references := make([]string, 0, len(opts.References))
+		for name := range opts.References {
+			references = append(references, name)
+		}
+		sort.Strings(references)
+		for _, name := range references {
+			writeString(name)
+			writeString(opts.References[name])
 		}
 	}
 	sum := h.Sum(nil)

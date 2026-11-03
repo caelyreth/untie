@@ -1,10 +1,10 @@
 # Migrating To 0.4
 
-Untie 0.4 adds core output policy, shaped-text provenance, and the complete
-MyGo editor integration surface, editor geometry, and high-value TeX layout
-constructs, plus a bounded chemistry frontend. The runtime version is
-`0.4.0+layout.5`, and the process-wide
-Engine cache schema is `5`.
+Untie 0.4 adds core output policy, shaped-text provenance, the complete MyGo
+editor integration surface, editor geometry, structured accessibility
+descriptions, Presentation MathML interchange, formula labels and references,
+bounded chemistry, and high-value TeX layout constructs. The runtime version is
+`0.4.0+layout.7`, and the process-wide Engine cache schema is `7`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -96,9 +96,19 @@ policy without re-inferring geometry.
 
 Standalone MyGo elements now request semantic alternative text and expose:
 
-- `Alt.Speech` as the label, with `Alt.Text` and source as fallbacks;
+- `Alt.Description` as a versioned localization tree;
+- `Alt.Speech` as the English label, with `Alt.Text` and source as fallbacks;
 - exact TeX or Typst source as the value;
 - a stable non-empty name for empty formulas.
+
+`Options.LocalizeLabel` can turn the structured description into a host-owned
+accessible label. `FormulaSemantics.Description` exposes the same tree to
+applications that manage their own accessibility model. The existing strings
+remain valid compatibility fallbacks.
+
+The structured schema is now version `2`. It covers `Style.SetFontSize` and
+`Style.FontSize`, `Overlay` alignment, `Raise` direction, and formula- or
+row-scoped tags. Existing accessibility strings remain unchanged.
 
 Set `Options.Accessibility = untiemygo.AccessibilityDisabled` to retain
 source-only labels without the alternative-text traversal. Use
@@ -125,9 +135,9 @@ Found hit events also include `Caret` and `HasCaret`, so click-to-edit can enter
 the editor at a proven source boundary without recomputing pointer affinity.
 
 `FormulaClipboardData` and the context-menu option expose plain text and custom
-TeX/Typst source MIME formats. The standalone `mathml` package now provides
-explicit Presentation MathML conversion; it does not silently add a MathML
-clipboard MIME type to the MyGo adapter.
+TeX/Typst source MIME formats. Set `ClipboardOptions.MathML` to add
+`application/mathml+xml` through `Renderer.MarshalMathML`, which uses the same
+dialect, macros, labels, and reference map as rendering.
 
 ## Caret Stops
 
@@ -237,18 +247,51 @@ while keeping the multiline formula block as one unbreakable line.
 Nested environments, tags in ordinary groups or syntactic arguments, inline
 tags, and automatic document counters remain outside the contract.
 
+## Formula Labels and Host References
+
+TeX `\label{name}` now produces immutable, unique formula metadata in
+`ir.Formula.Labels`, also available through `Expr.Labels()`. Labels have no
+visible output and may appear in groups or scripts.
+
+TeX `\eqref{name}` resolves only from the parse-time
+`ParseOptions.References` map:
+
+```go
+expr := untie.ParseTeX(`a=\eqref{eq:a}`, untie.Inline, untie.ParseOptions{
+	References: map[string]string{"eq:a": "3"},
+})
+```
+
+The map value is opaque display text; `\eqref` wraps it as `(<value>)` in a
+text-font IR leaf. The map is copied before parsing. Formula labels never
+populate or override the map, and there is no global state, automatic counter,
+citation resolution, or cross-formula lookup.
+
+Duplicate labels retain the first occurrence and report `duplicate-label`.
+Missing entries report `unresolved-reference`; malformed or oversized values
+report `invalid-value` or `limit-exceeded`. Each `\eqref` failure renders a
+visible placeholder without discarding the surrounding formula.
+
+Expression keys and the renderer's bounded expression cache include TeX
+reference map contents. Typst ignores references, matching its existing macro
+behavior.
+
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
+- `display.Alt` gained the versioned `Description` tree, with stable semantic
+  kinds, roles, parts, flags, tags, and canonical JSON;
 - `display.Item` gained `Snap`;
 - `display.Box` gained `CaretStops`;
 - `display.Box` gained `Tags` for source-row tags;
 - `display.Item` and `display.Hit` gained `NodeID`;
 - canonical IR gained `Style.FontSize`, `Overlay`, and `Raise`;
+- canonical IR gained formula-scoped `EquationLabel` metadata;
 - canonical box JSON may include `fontUsage`, `snap`, `carets`, `tags`, and
   node IDs;
+- expression and renderer parse-cache identity includes TeX references;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.5`;
-- the Engine cache schema is now `5`.
+- `untie.Version()` is now `0.4.0+layout.7`;
+- the Engine cache schema is now `7`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.

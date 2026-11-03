@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.4.0` with layout revision `5`. This page defines
+Untie is currently version `0.4.0` with layout revision `7`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -34,8 +34,9 @@ Primary surface:
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `CaretStop`, `Break`, `NodeID`,
-  `LineBox`, `TagBox`, `Alt`, `ColorPolicy`, `PixelGrid`, `FontUsage`,
-  `Box.Carets`, `Box.CaretAt`, `Box.Split`, and `Box.Diagnostics`;
+  `LineBox`, `TagBox`, `Alt`, `AltDescription`, semantic `AltNode` kinds and
+  roles, `ColorPolicy`, `PixelGrid`, `FontUsage`, `Box.Carets`,
+  `Box.CaretAt`, `Box.Split`, and `Box.Diagnostics`;
 - public error sentinels and diagnostic severities/codes.
 
 Tier 1 is the recommended integration surface. Breaking changes are allowed
@@ -92,7 +93,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.4.0+layout.5
+0.4.0+layout.7
 ```
 
 The package-level engine cache includes that whole string. A layout behavior
@@ -108,7 +109,7 @@ Expression identity is convenience-only:
 
 - `Expr.Key()` is 64-bit;
 - it includes source, dialect, mode, version, parse-affecting limits, and TeX
-  macros;
+  macros and reference text;
 - it is not cryptographic.
 
 ## Diagnostic Codes

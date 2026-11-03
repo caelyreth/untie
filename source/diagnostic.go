@@ -29,6 +29,8 @@ const (
 	CodeInvalidValue        Code = "invalid-value"
 	CodeInvalidEnvironment  Code = "invalid-environment"
 	CodeUnknownVariable     Code = "unknown-variable"
+	CodeDuplicateLabel      Code = "duplicate-label"
+	CodeUnresolvedReference Code = "unresolved-reference"
 	CodeMissingGlyph        Code = "missing-glyph"
 	CodeInsufficientStretch Code = "insufficient-stretch"
 	CodeTextUnsupported     Code = "text-unsupported"

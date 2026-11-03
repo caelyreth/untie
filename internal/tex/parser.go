@@ -16,12 +16,14 @@ type parser struct {
 	mode             ir.Mode
 	exp              *expander
 	limits           source.Limits
+	references       map[string]string
 	diagnostics      []source.Diagnostic
 	depth            int
 	iterations       int
 	limitHit         bool
 	leftDepth        int
 	tags             []astEquationTag
+	labels           []astEquationLabel
 	multilineTags    []multilineTagScope
 	metadataDepth    int
 	parsedTableCells int
@@ -89,7 +91,7 @@ func arenaHint(length int, limits source.Limits) int {
 	return length
 }
 
-func (p *parser) parse() (ir.Node, []ir.EquationTag, *irarena.Arena) {
+func (p *parser) parse() (ir.Node, []ir.EquationTag, []ir.EquationLabel, *irarena.Arena) {
 	defer p.exp.release()
 	parsedRoot := p.parseSequence(stopEOF)
 	arena := irarena.New(arenaHint(len(p.src), p.limits))
@@ -107,7 +109,7 @@ func (p *parser) parse() (ir.Node, []ir.EquationTag, *irarena.Arena) {
 	} else {
 		node.NodeBase().Size = ir.SizeText
 	}
-	return node, lower.lowerTags(p.tags), arena
+	return node, lower.lowerTags(p.tags), lower.lowerLabels(p.labels), arena
 }
 
 func (p *parser) parseSequence(stop stopMode) astNode {
@@ -934,17 +936,33 @@ func (p *parser) consumeRawGroupText() string {
 	return text
 }
 
+type rawGroupText struct {
+	text    string
+	content source.Range
+	open    source.Range
+	close   source.Range
+	present bool
+	closed  bool
+}
+
 func (p *parser) consumeRawGroupTextRange() (string, source.Range, source.Range, bool) {
+	group := p.consumeRawGroupTextValue()
+	return group.text, group.content, group.open, group.present
+}
+
+func (p *parser) consumeRawGroupTextValue() rawGroupText {
 	p.exp.consumeSpaces()
 	open := p.exp.popRaw()
 	if !open.is(tokBeginGroup) {
 		p.exp.push(open)
-		return "", source.Detached(), source.Detached(), false
+		return rawGroupText{}
 	}
 	var b strings.Builder
 	depth := 1
 	start := open.span.End
 	end := start
+	close := source.Detached()
+	closed := false
 	for {
 		t := p.exp.popRaw()
 		if t.isEOF() {
@@ -962,6 +980,8 @@ func (p *parser) consumeRawGroupTextRange() (string, source.Range, source.Range,
 			depth--
 			if depth == 0 {
 				end = t.span.Start
+				close = t.span
+				closed = true
 				break
 			}
 			b.WriteString("}")
@@ -969,7 +989,14 @@ func (p *parser) consumeRawGroupTextRange() (string, source.Range, source.Range,
 		}
 		b.WriteString(t.text)
 	}
-	return b.String(), source.NewRange(start, end), open.span, true
+	return rawGroupText{
+		text:    b.String(),
+		content: source.NewRange(start, end),
+		open:    open.span,
+		close:   close,
+		present: true,
+		closed:  closed,
+	}
 }
 
 func (p *parser) newGlyphAST(span source.Range, text string, class ir.MathClass) *astGlyphNode {

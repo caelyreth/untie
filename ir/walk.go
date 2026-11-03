@@ -143,8 +143,9 @@ func VisitChildren(n Node, visit func(Node)) {
 }
 
 // WalkFormula visits the formula root followed by every equation tag body in
-// source order. Traversal budgets and cycle checks are shared across all
-// entries, so tags cannot bypass the formula's node or nesting limits.
+// source order. Formula labels consume the shared metadata budget but have no
+// child nodes to visit. Traversal budgets and cycle checks are shared across
+// all entries, so metadata cannot bypass the formula's node or nesting limits.
 func WalkFormula(f *Formula, limits source.Limits, fn func(Node) bool) error {
 	if f == nil {
 		return fmt.Errorf("%w: nil formula", ErrInvalidIR)
@@ -161,6 +162,12 @@ func WalkFormula(f *Formula, limits source.Limits, fn func(Node) bool) error {
 	}
 	if err := state.visit(f.Root, 0, fn); err != nil {
 		return err
+	}
+	for i := range f.Labels {
+		state.count++
+		if state.count > state.limits.MaxNodes {
+			return fmt.Errorf("%w: %w: label %d metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, i)
+		}
 	}
 	for i, tag := range f.Tags {
 		state.count++

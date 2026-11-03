@@ -20,7 +20,9 @@ glyph paths, rules, source hits, and accessibility text.
 - OpenType MATH metrics, glyph outlines, variants, and assemblies;
 - reusable rendering with bounded caches;
 - inline and display layout, line breaking, equation tags, and overflow bounds;
-- deterministic text and speech alternatives for accessibility;
+- formula-scoped labels and host-resolved equation references;
+- deterministic text, speech, and structured localization alternatives for
+  accessibility;
 - deterministic Presentation MathML export and a bounded strict importer;
 - bounded `mhchem`-style `\ce` and `\pu` support without a chemistry database;
 - optional SVG and PNG output.

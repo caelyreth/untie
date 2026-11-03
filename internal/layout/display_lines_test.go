@@ -51,7 +51,7 @@ func TestDisplayLinesWrapAtNeutralBreaks(t *testing.T) {
 	if err := box.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
-	if box.Alt != unwrapped.Alt {
+	if !box.Alt.Equal(unwrapped.Alt) {
 		t.Fatalf("parent Alt = %+v, want %+v", box.Alt, unwrapped.Alt)
 	}
 

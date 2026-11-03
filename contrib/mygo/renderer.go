@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/caelyreth/untie"
+	"github.com/caelyreth/untie/mathml"
 	"github.com/caelyreth/untie/render"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -62,10 +64,18 @@ type Options struct {
 	DisplaySize  float32
 	CacheEntries int
 	Limits       untie.Limits
+	// ParseOptions supplies TeX macros and host-owned equation reference text.
+	// Its resource limits are intersected with Limits.
+	ParseOptions untie.ParseOptions
 	Draw         DrawOptions
 	// Accessibility controls semantic alternative-text generation for
 	// standalone elements. The zero value requests it.
 	Accessibility AccessibilityMode
+	// LocalizeLabel optionally maps the structured Alt.Description to a
+	// host-localized accessible label. It is called for standalone elements
+	// after layout. An empty result falls back to Alt.Speech, then Alt.Text, then
+	// source. The callback must not mutate or retain the description.
+	LocalizeLabel func(description *untie.AltDescription) string
 	// Inline controls Markdown inline-object baseline metrics.
 	Inline InlineOptions
 }
@@ -81,7 +91,9 @@ type Renderer struct {
 	displaySize float32
 	draw        DrawOptions
 	access      AccessibilityMode
+	localize    func(description *untie.AltDescription) string
 	inline      InlineOptions
+	parse       untie.ParseOptions
 	cache       *layoutCache
 }
 
@@ -132,6 +144,8 @@ func New(fonts *untie.FontSet, opts Options) (*Renderer, error) {
 	if err := validateDrawOptions(opts.Draw); err != nil {
 		return nil, err
 	}
+	parseOptions := cloneParseOptions(opts.ParseOptions)
+	parseOptions.Limits = stricterLimits(opts.Limits, parseOptions.Limits)
 	renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
 		Limits:         opts.Limits,
 		DefaultDialect: opts.Dialect,
@@ -147,7 +161,9 @@ func New(fonts *untie.FontSet, opts Options) (*Renderer, error) {
 		displaySize: displaySize,
 		draw:        opts.Draw,
 		access:      opts.Accessibility,
+		localize:    opts.LocalizeLabel,
 		inline:      opts.Inline,
+		parse:       parseOptions,
 		cache:       newLayoutCache(cacheEntries),
 	}, nil
 }
@@ -196,6 +212,7 @@ func (r *Renderer) Render(
 		Dialect: r.dialect,
 		Mode:    mode,
 		Style:   style,
+		Parse:   r.parse,
 	})
 	if err != nil {
 		return result, err
@@ -245,8 +262,9 @@ func (r *Renderer) InlineMath(source string, size float32) (markdown.InlineObjec
 //
 // Rendering reuses the adapter cache. The element carries source as its
 // accessibility value and semantic alternative text as its label when enabled.
-// If parsing or layout fails, it shows the source as selectable danger-colored
-// text instead of disappearing.
+// Options.LocalizeLabel can replace the English label using the structured
+// description. If parsing or layout fails, it shows the source as selectable
+// danger-colored text instead of disappearing.
 func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Element {
 	return r.ElementWithOptions(c, source, mode, ElementOptions{})
 }
@@ -448,11 +466,12 @@ func (r *Renderer) formulaElement(
 ) ui.Element {
 	box := result.Box
 	semantics := DescribeFormula(source, result.Alt)
+	label := accessibleLabel(semantics, r.localize)
 	element := ui.Box(c).
 		Width(width).
 		Height(height).
 		Role(ui.RoleImage).
-		Label(semantics.Label).
+		Label(label).
 		Value(semantics.Value).
 		Draw(func(painter *ui.Painter, rect ui.Rect) {
 			_ = DrawBox(painter, box, rect, draw)
@@ -491,9 +510,113 @@ func (r *Renderer) formulaElement(
 		element = element.Cursor(ui.CursorPointer)
 	}
 	if options.Clipboard.Enabled {
-		element = addClipboardMenu(element, c, source, result.Alt, r.dialect)
+		element = addClipboardMenu(
+			element,
+			c,
+			source,
+			result.Alt,
+			r.dialect,
+			func() ([]byte, error) {
+				return r.MarshalMathML(context.Background(), source, mode)
+			},
+			options.Clipboard,
+		)
 	}
 	return element
+}
+
+// MarshalMathML exports source as Presentation MathML using the adapter's
+// dialect and ParseOptions.
+func (r *Renderer) MarshalMathML(
+	ctx context.Context,
+	source string,
+	mode untie.Mode,
+) ([]byte, error) {
+	if r == nil || r.renderer == nil {
+		return nil, ErrInvalidOptions
+	}
+	if ctx == nil {
+		return nil, untie.ErrInvalidContext
+	}
+	if mode != untie.Inline && mode != untie.Display {
+		return nil, fmt.Errorf("%w: unknown mode %d", ErrInvalidOptions, mode)
+	}
+	expr, err := untie.ParseContext(ctx, source, r.dialect, mode, r.parse)
+	if err != nil {
+		return nil, err
+	}
+	formula, err := expr.RootSnapshot()
+	if err != nil {
+		return nil, err
+	}
+	return mathml.Marshal(ctx, formula, mode, mathml.Options{Limits: r.parse.Limits})
+}
+
+func cloneParseOptions(options untie.ParseOptions) untie.ParseOptions {
+	options.Limits = options.Limits.WithDefaults()
+	if len(options.Macros) > 0 {
+		macros := make(map[string]untie.Macro, len(options.Macros))
+		for name, macro := range options.Macros {
+			macros[name] = macro
+		}
+		options.Macros = macros
+	} else {
+		options.Macros = nil
+	}
+	if len(options.References) > 0 {
+		references := make(map[string]string, len(options.References))
+		for name, value := range options.References {
+			references[name] = value
+		}
+		options.References = references
+	} else {
+		options.References = nil
+	}
+	return options
+}
+
+func stricterLimits(left, right untie.Limits) untie.Limits {
+	left = left.WithDefaults()
+	right = right.WithDefaults()
+	minInt := func(a, b int) int {
+		if a < b {
+			return a
+		}
+		return b
+	}
+	minDimension := func(a, b int64) int64 {
+		if a < b {
+			return a
+		}
+		return b
+	}
+	return untie.Limits{
+		MaxSourceBytes:     minInt(left.MaxSourceBytes, right.MaxSourceBytes),
+		MaxTokens:          minInt(left.MaxTokens, right.MaxTokens),
+		MaxNesting:         minInt(left.MaxNesting, right.MaxNesting),
+		MaxNodes:           minInt(left.MaxNodes, right.MaxNodes),
+		MaxMacroExpansions: minInt(left.MaxMacroExpansions, right.MaxMacroExpansions),
+		MaxExpandedTokens:  minInt(left.MaxExpandedTokens, right.MaxExpandedTokens),
+		MaxCallDepth:       minInt(left.MaxCallDepth, right.MaxCallDepth),
+		MaxTableCells:      minInt(left.MaxTableCells, right.MaxTableCells),
+		MaxAssemblyRepeats: minInt(left.MaxAssemblyRepeats, right.MaxAssemblyRepeats),
+		MaxTextBytes:       minInt(left.MaxTextBytes, right.MaxTextBytes),
+		MaxOutputItems:     minInt(left.MaxOutputItems, right.MaxOutputItems),
+		MaxPathSegments:    minInt(left.MaxPathSegments, right.MaxPathSegments),
+		MaxDimension:       minDimension(left.MaxDimension, right.MaxDimension),
+	}
+}
+
+func accessibleLabel(
+	semantics FormulaSemantics,
+	localize func(description *untie.AltDescription) string,
+) string {
+	if localize != nil && semantics.Description != nil {
+		if label := strings.TrimSpace(localize(semantics.Description)); label != "" {
+			return label
+		}
+	}
+	return semantics.Label
 }
 
 func fallbackElement(

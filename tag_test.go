@@ -77,7 +77,7 @@ func TestEquationTagLayoutAndAltContract(t *testing.T) {
 	if !tagItemsAreAggregatedAtEnd(box) {
 		t.Fatal("parent Items do not contain the translated tag aggregate")
 	}
-	if box.Alt != expr.Alt() {
+	if !box.Alt.Equal(expr.Alt()) {
 		t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, expr.Alt())
 	}
 	if box.Alt.Text != "x equation (1)" || box.Alt.Speech != "x equation 1" {

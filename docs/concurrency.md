@@ -156,7 +156,7 @@ renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
 ```
 
 Entries are keyed by source, dialect, mode, effective parse limits, and relevant
-TeX macros. The cache is concurrency-safe and hard-bounded by entry count;
+TeX macros and reference text. The cache is concurrency-safe and hard-bounded by entry count;
 `CacheEntries <= 0` disables it. Every `Render` call still performs layout and
 returns a new `Box`.
 
@@ -177,16 +177,17 @@ fallback or text face changes the key.
 - mode;
 - source;
 - effective parse-affecting limits;
-- TeX host macro names, bodies, and arities.
+- TeX host macro names, bodies, and arities;
+- TeX reference names and replacement text.
 
-Layout-only limits and Typst-ignored TeX macros do not participate. The key is
-stable for equivalent maps independent of Go map iteration order. It is not a
-cryptographic content hash. Use the source and version directly if a host needs
-stronger identity.
+Layout-only limits and Typst-ignored TeX macros and references do not
+participate. The key is stable for equivalent maps independent of Go map
+iteration order. It is not a cryptographic content hash. Use the source and
+version directly if a host needs stronger identity.
 
 ### Version
 
-`untie.Version()` currently returns `0.4.0+layout.5`. The layout revision is
+`untie.Version()` currently returns `0.4.0+layout.7`. The layout revision is
 part of the engine-cache contract. Do not use a cached engine across an
 incompatible version without consulting `Version()`.
 
