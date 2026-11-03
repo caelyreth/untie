@@ -147,9 +147,9 @@ Properties:
 - an in-flight build when clearing does not insert its result afterward;
 - layout results are never cached.
 
-This cache is for convenience and small applications. Prefer `NewEngine` when
-the application has explicit renderer lifecycle ownership, a request-scoped
-font set, or many simultaneous font configurations.
+This cache is for convenience and small applications. Prefer `NewRenderer` for
+the standard parse-and-layout lifecycle. Use `NewEngine` when the host needs
+the lower-level engine boundary or direct canonical-IR layout.
 
 `ClearLayoutEngineCache` does not affect engines retained from `NewEngine`.
 
@@ -194,7 +194,7 @@ stronger identity.
 
 ### Version
 
-`untie.Version()` currently returns `0.1.0+layout.1`. The layout revision is
+`untie.Version()` currently returns `0.2.0+layout.1`. The layout revision is
 part of the engine-cache contract. Do not use a cached engine across an
 incompatible version without consulting `Version()`.
 

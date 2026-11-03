@@ -5,14 +5,15 @@ out with a host-supplied OpenType MATH font. The result is a UI-independent
 display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
-These docs describe the public API at library version `0.1.0` and layout
+These docs describe the public API at library version `0.2.0` and layout
 revision `1`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here
 
 - [Getting started](getting-started.md) shows the complete
-  `LoadMathFont` -> `NewEngine` -> `Parse` -> `Layout` -> draw flow.
+  `LoadMathFont` -> `NewRenderer` -> `Render` -> draw flow, with the lower-level
+  engine path documented separately.
 - [Core concepts and ownership](concepts.md) explains the pipeline, the
   lifetime of each value, and the inline/display boundary.
 - [Rendering the display list](rendering.md) defines coordinates, items,
@@ -48,6 +49,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   commands that verify parser, layout, font, and corpus contracts.
 - [Performance](performance.md) explains the tracked corpus benchmarks,
   cache strategies, allocation metrics, and profiling commands.
+- [Migrating to 0.2](migration.md) maps the removed low-level font and drawing
+  conveniences to the current host facade, render helpers, and output adapters.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a

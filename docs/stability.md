@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.1.0` with layout revision `1`. This page defines
+Untie is currently version `0.2.0` with layout revision `1`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -12,15 +12,19 @@ Primary packages:
 - the host-facing types in `github.com/caelyreth/untie/display`
 - `github.com/caelyreth/untie/font` for `FontFace`, `FontSetConfig`, and `FontSet`
 - `github.com/caelyreth/untie/fontsource` for `io/fs` loading helpers
+- `github.com/caelyreth/untie/render` for framework-neutral drawing, path
+  resolution, and viewport fitting
 - `github.com/caelyreth/untie/contrib/mygo` as an optional nested module for
   MyGo Markdown math and painter integration
 
 Primary surface:
 
 - `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`, `NewEngine`,
-  `NewEngine` results, `Engine.Layout`, `Engine.LayoutContext`;
+  `Engine.Layout`, `Engine.LayoutContext`;
 - `NewRenderer`, `RendererOptions`, `RenderRequest`, `RenderResult`,
   `Renderer.Render`;
+- `render.Walk`, `render.Command`, `render.ResolvePath`, `render.Fit`,
+  `render.FitOptions`, and `render.Transform`;
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`;
@@ -37,7 +41,6 @@ Packages:
 - `github.com/caelyreth/untie/ir`
 - `github.com/caelyreth/untie/source`
 - `github.com/caelyreth/untie/geometry`
-- `github.com/caelyreth/untie/render`
 - `github.com/caelyreth/untie/encode/raster`
 - `github.com/caelyreth/untie/encode/svg`
 - low-level introspection in `github.com/caelyreth/untie/font`
@@ -48,8 +51,7 @@ This tier supports:
 - `RootSnapshot`, `ValidateSource`, `CloneFormula`, `WalkFormula`;
 - `Engine.LayoutFormulaContext`;
 - source ranges, diagnostic codes, and resource limits;
-- framework-neutral command walking, viewport fitting, and optional SVG or PNG
-  output;
+- optional SVG or PNG output;
 - exact glyph metadata, feature tags, MATH tables, and font identity.
 
 These are public and intended to be usable, but they expose more of the data
@@ -104,7 +106,7 @@ framework dependencies. Importing the root module never imports MyGo.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.1.0+layout.1
+0.2.0+layout.1
 ```
 
 The package-level engine cache includes that whole string. A layout behavior

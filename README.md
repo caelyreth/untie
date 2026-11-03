@@ -29,6 +29,13 @@ parsing, accessibility, and compatibility guidance.
 ### Use
 
 ```go
+import (
+	"context"
+	"os"
+
+	"github.com/caelyreth/untie"
+)
+
 fontBytes, err := os.ReadFile("NewCMMath-Book.otf")
 if err != nil {
 	return err
@@ -37,18 +44,27 @@ fonts, err := untie.LoadMathFont(fontBytes)
 if err != nil {
 	return err
 }
-engine, err := untie.NewEngine(fonts, untie.Limits{})
+renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
+	DefaultStyle: untie.Style{Size: 16},
+	CacheEntries: 128,
+})
 if err != nil {
 	return err
 }
 
-expr := untie.ParseTeX(`x^2+\frac{1}{2}`, untie.Display, untie.ParseOptions{})
-box, err := engine.Layout(expr, untie.Style{Size: 16})
+result, err := renderer.Render(context.Background(), `x^2+\frac{1}{2}`, untie.RenderRequest{
+	Mode: untie.Display,
+})
 if err != nil {
 	return err
 }
-// Draw box.Items as filled paths/rules and use box.Hits for source mapping.
+// Draw result.Box through render.Walk or result.Box.Items.
 ```
+
+`NewRenderer` is the recommended parse-and-layout facade. It prepares one
+`Engine`, applies bounded parsed-expression caching when requested, and never
+caches returned display boxes. Use `NewEngine` directly when the host needs the
+lower-level lifecycle boundary.
 
 Display layout with a positive `Style.MaxWidth` returns `box.Lines` inside a
 `MaxWidth`-wide alignment frame. `box.Items` and `box.Hits` are the single
@@ -56,9 +72,8 @@ drawable storage; each line carries ranges into them plus baseline, alignment,
 and overflow metadata. `Style.Align` positions each line in the frame with
 start, center, or end alignment. Inline layout ignores `MaxWidth` and `Align`.
 
-`NewEngine` is the caller-owned lifecycle API for repeated layouts. The
-package-level `Layout` and `LayoutContext` helpers use a bounded process-wide
-engine cache that can be released with `ClearLayoutEngineCache`.
+The package-level `Layout` and `LayoutContext` helpers use a bounded
+process-wide engine cache that can be released with `ClearLayoutEngineCache`.
 
 ### Development
 

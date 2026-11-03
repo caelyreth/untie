@@ -11,11 +11,11 @@ Use this file as the short entry point for code assistants. Read
 
 - Import the host facade as `github.com/caelyreth/untie`.
 - A primary math face with OpenType MATH data is required.
-- Call `untie.LoadMathFont` or `untie.LoadFontSet`, then `untie.NewEngine`, once
-  for a font configuration.
-- `untie.NewRenderer` prepares and reuses an engine with dialect/style
-  defaults, one-call parse/layout, and an optional bounded parsed-expression
-  cache.
+- Call `untie.LoadMathFont` or `untie.LoadFontSet`, then `untie.NewRenderer`,
+  once for a font configuration.
+- `untie.NewRenderer` is the recommended host facade. It prepares and reuses
+  an engine with dialect/style defaults, one-call parse/layout, and an optional
+  bounded parsed-expression cache.
 - `Parse` returns diagnostics plus a valid recovery tree; it does not return a
   Go error for malformed source.
 - `ParseContext` adds boundary cancellation; parser work remains bounded by
@@ -52,18 +52,22 @@ if err != nil {
 	return err
 }
 
-engine, err := untie.NewEngine(fonts, untie.Limits{})
+renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
+	DefaultStyle: untie.Style{Size: 24},
+	CacheEntries: 128,
+})
 if err != nil {
 	return err
 }
 
-expr := untie.ParseTeX(`x^2+\frac{1}{2}`, untie.Display, untie.ParseOptions{})
-box, err := engine.Layout(expr, untie.Style{Size: 24})
+result, err := renderer.Render(ctx, `x^2+\frac{1}{2}`, untie.RenderRequest{
+	Mode: untie.Display,
+})
 if err != nil {
 	return err
 }
 
-draw(box.Items)
+draw(result.Box.Items)
 ```
 
 ## Task Router
@@ -120,20 +124,34 @@ func (e *Engine) Layout(expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutContext(ctx context.Context, expr *Expr, style Style) (*Box, error)
 func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mode Mode, style Style) (*Box, error)
 
-func Walk(box *display.Box, visit func(render.Command) error) error
-func ResolvePath(command render.Command) (geometry.Path, error)
-func Fit(box *display.Box, viewport geometry.Rect, options render.FitOptions) (render.Transform, error)
-func Encode(box *display.Box, options *raster.Options) (*image.RGBA, error)
-func EncodePNG(w io.Writer, box *display.Box, options *raster.Options) error
-func Marshal(box *display.Box, options *svg.Options) ([]byte, error)
-func Write(writer io.Writer, box *display.Box, options *svg.Options) error
-
 type LayoutErrorKind string
 type LayoutError struct {
 	Kind  LayoutErrorKind
 	Range source.Range
 	Err   error
 }
+```
+
+`render` package:
+
+```go
+func Walk(box *display.Box, visit func(Command) error) error
+func ResolvePath(command Command) (geometry.Path, error)
+func Fit(box *display.Box, viewport geometry.Rect, options FitOptions) (Transform, error)
+```
+
+`encode/raster` package:
+
+```go
+func Encode(box *display.Box, options *Options) (*image.RGBA, error)
+func EncodePNG(w io.Writer, box *display.Box, options *Options) error
+```
+
+`encode/svg` package:
+
+```go
+func Marshal(box *display.Box, options *Options) ([]byte, error)
+func Write(writer io.Writer, box *display.Box, options *Options) error
 ```
 
 ## Display Contract

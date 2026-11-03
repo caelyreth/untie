@@ -1,7 +1,9 @@
 # Getting Started
 
-This guide uses only the root `untie` package. The root package re-exports the
-public display, font, source, and geometry types needed by a host.
+The primary pipeline uses only the root `untie` package. Optional drawing and
+output helpers live in `render`, `encode/svg`, and `encode/raster`. The root
+package re-exports the public display, font, source, and geometry types needed
+by a host.
 
 ## Requirements
 
@@ -13,12 +15,13 @@ public display, font, source, and geometry types needed by a host.
 Untie validates and copies the supplied font bytes during `LoadMathFont` or
 `LoadFontSet`. The caller may release or reuse its byte slices after that call.
 
-## Load, Parse, and Lay Out
+## Load and Render
 
 ```go
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,7 +29,7 @@ import (
 	"github.com/caelyreth/untie"
 )
 
-func renderFormula() (*untie.Box, []untie.Diagnostic, error) {
+func renderFormula(ctx context.Context, source string) (*untie.Box, []untie.Diagnostic, error) {
 	fontBytes, err := os.ReadFile("NewCMMath-Book.otf")
 	if err != nil {
 		return nil, nil, err
@@ -37,22 +40,24 @@ func renderFormula() (*untie.Box, []untie.Diagnostic, error) {
 		return nil, nil, err
 	}
 
-	engine, err := untie.NewEngine(fonts, untie.Limits{})
+	renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
+		DefaultStyle: untie.Style{Size: 24},
+		CacheEntries: 128,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	expr := untie.ParseTeX(
-		`x^2 + \frac{1}{2}`,
-		untie.Display,
-		untie.ParseOptions{},
-	)
-
-	box, err := engine.Layout(expr, untie.Style{Size: 24})
+	result, err := renderer.Render(ctx, source, untie.RenderRequest{
+		Mode: untie.Display,
+	})
 	if err != nil {
-		return nil, expr.Diagnostics(), err
+		if result != nil {
+			return nil, result.Diagnostics, err
+		}
+		return nil, nil, err
 	}
-	return box, expr.Diagnostics(), nil
+	return result.Box, result.Diagnostics, nil
 }
 
 func classifyLayoutError(err error) string {
@@ -74,15 +79,15 @@ func classifyLayoutError(err error) string {
 The order is intentional:
 
 1. Load and validate fonts once.
-2. Prepare an `Engine` once for repeated layouts with that font set.
-3. Parse each source string into an immutable `Expr`.
-4. Lay out the expression with a positive `Style.Size`.
-5. Draw the returned `Box.Items`.
+2. Prepare a `Renderer` once for repeated renders with that font set.
+3. Render each source string with the required dialect, mode, and style.
+4. Draw the returned `Box` through `render.Walk` or `Box.Items`.
 
-## High-Level Renderer
+## Renderer Behavior
 
-Applications that want one reusable parse-and-layout entry point can prepare
-the engine internally with `NewRenderer`:
+`NewRenderer` is the recommended host entry point. It retains a prepared
+engine and combines parsing, layout, diagnostics, and optional alternative-text
+generation:
 
 ```go
 renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
@@ -132,9 +137,11 @@ reported in `expr.Diagnostics()`, and the expression still contains a validated,
 drawable recovery tree. See [Parsing, diagnostics, and
 recovery](parsing.md).
 
-## Which Layout Function?
+## Rendering Entry Points
 
-For an application, prefer an explicitly owned `Engine`:
+For most applications, use `NewRenderer`. The lower-level `Engine` remains
+available when the host needs explicit layout lifecycle or direct canonical-IR
+layout:
 
 ```go
 engine, err := untie.NewEngine(fonts, untie.Limits{})
@@ -154,8 +161,9 @@ The package-level convenience API keeps a bounded process-wide engine cache:
 box, err := untie.LayoutContext(ctx, expr, fonts, untie.Style{Size: 20})
 ```
 
-It caches prepared engines, not layout results. Use `NewEngine` when the host
-needs explicit lifecycle control. See [Concurrency, lifecycle, and
+It caches prepared engines, not layout results. Use `NewRenderer` for the
+standard parse-and-layout lifecycle and `NewEngine` only when the host needs
+its lower-level boundary. See [Concurrency, lifecycle, and
 caching](concurrency.md).
 
 ## Draw the Result
