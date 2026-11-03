@@ -328,6 +328,11 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 	case "\\tag", "\\tag*":
 		p.parseEquationTag(t)
 		return nil
+	case "\\label":
+		p.parseEquationLabel(t)
+		return nil
+	case "\\eqref":
+		return p.parseEquationReference(t)
 	case "\\nobreak":
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(t.span),

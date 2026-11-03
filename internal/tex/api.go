@@ -18,16 +18,20 @@ type Macro struct {
 }
 
 // Options configure TeX parsing. Map keys in Macros may be supplied with or
-// without the leading backslash.
+// without the leading backslash. References maps decoded \label names to host-
+// supplied visible reference text. Values are inserted verbatim inside the
+// parentheses emitted by \eqref; they are not parsed as TeX.
 type Options struct {
-	Macros map[string]Macro
-	Limits source.Limits
+	Macros     map[string]Macro
+	References map[string]string
+	Limits     source.Limits
 }
 
 // Result is a recoverable parse result.
 type Result struct {
 	Root        ir.Node
 	Tags        []ir.EquationTag
+	Labels      []ir.EquationLabel
 	Diagnostics []source.Diagnostic
 	Arena       *irarena.Arena
 }
@@ -62,10 +66,12 @@ func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	}
 
 	p := newParser(src, mode, opts.Macros, limits)
-	root, tags, arena := p.parse()
+	p.references = opts.References
+	root, tags, labels, arena := p.parse()
 	return Result{
 		Root:        root,
 		Tags:        tags,
+		Labels:      labels,
 		Diagnostics: source.NormalizeDiagnostics(p.diagnostics),
 		Arena:       arena,
 	}

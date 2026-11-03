@@ -12,7 +12,7 @@ const (
 	layoutEngineCacheCapacity = 8
 	// Increment when the cached Engine implementation changes behavior without
 	// a corresponding layout revision bump.
-	layoutEngineCacheSchema = 6
+	layoutEngineCacheSchema = 7
 )
 
 // layoutEngineCacheKey identifies an engine's immutable construction inputs.

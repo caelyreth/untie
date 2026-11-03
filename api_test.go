@@ -18,7 +18,7 @@ import (
 func TestVersionIncludesOutputPolicyLayoutRevision(t *testing.T) {
 	t.Parallel()
 
-	if got, want := Version(), "0.4.0+layout.6"; got != want {
+	if got, want := Version(), "0.4.0+layout.7"; got != want {
 		t.Fatalf("Version() = %q, want %q", got, want)
 	}
 }

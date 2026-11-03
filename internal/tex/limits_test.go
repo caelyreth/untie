@@ -173,7 +173,7 @@ func TestTableCellLimitBoundsParsingWork(t *testing.T) {
 	limits := source.DefaultLimits()
 	limits.MaxTableCells = maxCells
 	p := newParser(src.String(), ir.Display, nil, limits)
-	root, _, _ := p.parse()
+	root, _, _, _ := p.parse()
 
 	if p.parsedTableCells != maxCells {
 		t.Fatalf("parsed cells = %d, want %d", p.parsedTableCells, maxCells)
@@ -215,7 +215,7 @@ func TestSubstackLimitBoundsParsingWork(t *testing.T) {
 	limits := source.DefaultLimits()
 	limits.MaxTableCells = 1
 	p := newParser(src.String(), ir.Display, nil, limits)
-	root, _, _ := p.parse()
+	root, _, _, _ := p.parse()
 
 	if p.parsedTableCells != limits.MaxTableCells {
 		t.Fatalf("parsed cells = %d, want %d", p.parsedTableCells, limits.MaxTableCells)

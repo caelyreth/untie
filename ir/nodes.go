@@ -6,11 +6,24 @@ import "github.com/caelyreth/untie/source"
 // than one source row.
 const FormulaTagLine = -1
 
-// Formula is the validated root returned by a frontend lowering pass. Tags are
-// formula metadata rather than synthetic root children.
+// Formula is the validated root returned by a frontend lowering pass. Tags and
+// Labels are formula metadata rather than synthetic root children.
 type Formula struct {
-	Root Node
-	Tags []EquationTag
+	Root   Node
+	Tags   []EquationTag
+	Labels []EquationLabel
+}
+
+// EquationLabel is one unique formula-scoped label emitted by a frontend.
+//
+// Name is the decoded host-facing key. Span covers the complete source
+// construct that produced the label. Origin records its invocation site when
+// macro expansion separates the two. Labels have no visible output and never
+// resolve references implicitly.
+type EquationLabel struct {
+	Name   string
+	Span   source.Range
+	Origin source.Range
 }
 
 // EquationTag is one formula- or row-scoped tag or numbering-suppression event.
