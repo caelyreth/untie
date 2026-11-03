@@ -363,6 +363,42 @@ func TestRenderReportsEachRepeatedMissingTextCluster(t *testing.T) {
 	}
 }
 
+func TestRenderMissingGlyphRecoveryAcrossStructures(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	sources := []string{
+		`\frac{x}{\text{中}}`,
+		`x^{\text{中}}`,
+		`\sqrt{\text{中}}`,
+		`\begin{matrix}\text{中}&x\\y&z\end{matrix}`,
+		`\begin{aligned}x&=1\\y&=\text{中}\end{aligned}`,
+	}
+	for _, sourceText := range sources {
+		sourceText := sourceText
+		t.Run(sourceText, func(t *testing.T) {
+			t.Parallel()
+			result, err := renderer.Render(
+				context.Background(),
+				sourceText,
+				RenderRequest{Style: display.Style{Size: 16}},
+			)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+			if result.Box == nil || len(result.Box.Items) == 0 {
+				t.Fatal("recovered formula has no drawable items")
+			}
+			if !hasCode(result.Box.Diagnostics, source.CodeMissingGlyph) {
+				t.Fatalf("diagnostics = %+v, want missing-glyph", result.Box.Diagnostics)
+			}
+		})
+	}
+}
+
 func hasCode(diagnostics []source.Diagnostic, code source.Code) bool {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
