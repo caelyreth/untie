@@ -366,13 +366,21 @@ func withClass(f *Fragment, class ir.MathClass) *Fragment {
 	return f
 }
 
-func (f *Fragment) kernAtHeight(corner KernCorner, height geometry.Em) geometry.Em {
+func (f *Fragment) kernAtHeight(corner KernCorner, height geometry.Em) (geometry.Em, error) {
 	if f == nil {
-		return 0
+		return 0, nil
 	}
 	table := f.Kerns.at(corner)
 	if table == nil || len(table.Kerns) == 0 {
-		return 0
+		return 0, nil
+	}
+	factor := f.Scale
+	if factor != 0 && factor != geometry.Em(geometry.EmScale) {
+		var err error
+		height, err = unscale(height, factor)
+		if err != nil {
+			return 0, err
+		}
 	}
 	index := 0
 	for index < len(table.Heights) && height >= table.Heights[index] {
@@ -381,5 +389,8 @@ func (f *Fragment) kernAtHeight(corner KernCorner, height geometry.Em) geometry.
 	if index >= len(table.Kerns) {
 		index = len(table.Kerns) - 1
 	}
-	return table.Kerns[index]
+	if factor != 0 && factor != geometry.Em(geometry.EmScale) {
+		return scale(table.Kerns[index], factor)
+	}
+	return table.Kerns[index], nil
 }

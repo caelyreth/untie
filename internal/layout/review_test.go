@@ -222,19 +222,30 @@ func TestMathKernInfoSelectionAndScaling(t *testing.T) {
 		Heights: []geometry.Em{em(2, 10)},
 		Kerns:   []geometry.Em{em(-3, 10), em(-4, 10)},
 	}
-	if got, want := mathKern(base, script, em(4, 10), KernTopRight), em(-4, 10); got < want-2 || got > want+2 {
+	gotKern, err := mathKern(base, script, em(4, 10), KernTopRight)
+	if err != nil {
+		t.Fatalf("mathKern() error = %v", err)
+	}
+	if got, want := gotKern, em(-4, 10); got < want-2 || got > want+2 {
 		t.Fatalf("mathKern() = %d, want %d (+/-2)", got, want)
 	}
 	if KernTopRight.inverse() != KernBottomLeft || KernTopLeft.inverse() != KernBottomRight {
 		t.Fatal("kern corner inverse mapping is incorrect")
 	}
 
-	scaled, err := scaleKernInfo(base.Kerns, em(8, 10))
-	if err != nil {
-		t.Fatalf("scaleKernInfo() error = %v", err)
+	base.Scale = em(8, 10)
+	if got, err := base.kernAtHeight(KernTopRight, em(3, 10)); err != nil {
+		t.Fatalf("kernAtHeight() error = %v", err)
+	} else if got != em(-16, 100) {
+		t.Fatalf("lazy scaled kern = %v, want %v", got, em(-16, 100))
 	}
-	if scaled.TopRight == nil || scaled.TopRight.Kerns[1] != em(-16, 100) {
-		t.Fatalf("scaled kern = %+v", scaled.TopRight)
+
+	malformed := MathKernInfo{TopLeft: &MathKern{
+		Heights: []geometry.Em{em(1, 10)},
+		Kerns:   []geometry.Em{em(1, 10)},
+	}}
+	if err := validateKernInfo(malformed); err == nil {
+		t.Fatal("validateKernInfo() accepted a malformed table")
 	}
 }
 
