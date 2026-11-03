@@ -32,6 +32,8 @@ Packages:
 - `github.com/caelyreth/untie/ir`
 - `github.com/caelyreth/untie/source`
 - `github.com/caelyreth/untie/geometry`
+- `github.com/caelyreth/untie/render`
+- `github.com/caelyreth/untie/encode/svg`
 - low-level introspection in `github.com/caelyreth/untie/font`
 
 This tier supports:
@@ -41,10 +43,11 @@ This tier supports:
 - `Engine.LayoutFormulaContext`;
 - source ranges, diagnostic codes, and resource limits;
 - exact glyph metadata, feature tags, MATH tables, and font identity.
+- framework-neutral drawing traversal, fitting, and optional SVG output.
 
 These are public and intended to be usable, but they expose more of the data
 model. Changes are more likely to require host code changes than a Tier 1
-drawing integration.
+drawing integration. SVG output is explicitly not a stable wire protocol.
 
 ## Tier 3: Diagnostic and Test Serialization
 

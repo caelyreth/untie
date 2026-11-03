@@ -81,6 +81,29 @@ returns a uniform `Transform` that fits `box.Bounds()` after padding, including
 certified overflow; it centers vertically and supports start, center, or end
 horizontal alignment.
 
+## SVG Output
+
+`github.com/caelyreth/untie/encode/svg` is an optional pure-Go output adapter:
+
+```go
+document, err := svg.Marshal(box, &svg.Options{
+	Padding:     8,
+	Precision:   3,
+	Background:  &color.NRGBA{R: 255, G: 255, B: 255, A: 255},
+	Title:       "Mass-energy relation",
+	Description: "E equals m c squared",
+})
+```
+
+The encoder walks the same visible commands as a host, resolves
+`At + point*Em`, emits rules as rectangles, and uses nonzero path filling. Its
+nonnegative `viewBox` is sized from `Box.Bounds()` plus `Options.Padding`, so
+certified overflow is included. `Palette` maps semantic roles to colors;
+an explicit `display.RGBA` always wins. A nil `Background` remains transparent.
+
+SVG is an optional interchange format, not a stable wire protocol. Persisted
+output should carry an application-owned format version.
+
 ## Drawing Items
 
 `Item` is already positioned. Draw it at the host's chosen box origin; do not
