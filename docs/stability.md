@@ -52,6 +52,7 @@ Packages:
 - `github.com/caelyreth/untie/geometry`
 - `github.com/caelyreth/untie/encode/raster`
 - `github.com/caelyreth/untie/encode/svg`
+- `github.com/caelyreth/untie/mathml`
 - low-level introspection in `github.com/caelyreth/untie/font`
 
 This tier supports:
@@ -61,6 +62,8 @@ This tier supports:
 - `Engine.LayoutFormulaContext`;
 - source ranges, diagnostic codes, and resource limits;
 - optional SVG or PNG output;
+- deterministic Presentation MathML export and the documented strict import
+  subset;
 - exact glyph metadata, feature tags, MATH tables, and font identity.
 
 These are public and intended to be usable, but they expose more of the data

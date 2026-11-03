@@ -218,7 +218,8 @@ MyGo internals:
   `DiagnosticOptions.Paint` and `Format` are clean drawing and localization
   hooks;
 - `FormulaClipboardData` and the context-menu option provide plain text and
-  dialect-specific source without inventing a MathML representation;
+  dialect-specific source; explicit MathML conversion belongs to the standalone
+  `mathml` boundary;
 - `InlineIgnoreOverflow` reports nominal inline baseline metrics while keeping
   certified overflow drawable through the host text clip.
 

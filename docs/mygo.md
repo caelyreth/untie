@@ -125,8 +125,9 @@ are the adapter-side extension points for custom drawing and localized text.
 
 `FormulaClipboardData` and related helpers offer plain text plus
 `text/x-tex`/`text/x-typst` source. The context-menu option writes those formats
-directly. Inline Markdown math already copies as source. Untie has no MathML
-serializer, so the adapter intentionally exposes no MathML clipboard format.
+directly. Inline Markdown math already copies as source. Presentation MathML
+conversion is available through the standalone `mathml` package, but the MyGo
+adapter intentionally exposes no MathML clipboard MIME type.
 
 For baseline-stable inline math, set:
 

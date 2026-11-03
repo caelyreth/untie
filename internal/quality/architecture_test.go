@@ -152,6 +152,18 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{modulePath + "/font"},
 		Tests:      []string{modulePath + "/fontsource"},
 	},
+	modulePath + "/mathml": {
+		Production: []string{
+			modulePath + "/internal/alt",
+			modulePath + "/ir",
+			modulePath + "/source",
+		},
+		Tests: []string{
+			modulePath,
+			modulePath + "/identity",
+			modulePath + "/mathml",
+		},
+	},
 	modulePath + "/examples/svg": {
 		Production: []string{
 			modulePath + "/encode/svg",
@@ -162,6 +174,12 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{
 			modulePath + "/encode/raster",
 			modulePath + "/examples/internal/example",
+		},
+	},
+	modulePath + "/examples/mathml": {
+		Production: []string{
+			modulePath,
+			modulePath + "/mathml",
 		},
 	},
 	modulePath + "/examples/internal/example": {
