@@ -22,8 +22,8 @@ func (s *layoutState) layoutCancel(node *ir.Cancel, env environment, depth int) 
 	if err != nil {
 		return nil, err
 	}
-	drawCount := 2
-	if node.Inverted {
+	drawCount := 1
+	if node.Cross {
 		drawCount++
 	}
 	fragment.reserveDraws(drawCount)
@@ -49,7 +49,6 @@ func (s *layoutState) layoutCancel(node *ir.Cancel, env environment, depth int) 
 }
 
 func (s *layoutState) addCancelLine(fragment, body *Fragment, thickness geometry.Em, inverted bool, paint ir.Paint) error {
-	halfWidth := body.Width / 2
 	height, err := body.Height()
 	if err != nil {
 		return err
@@ -68,8 +67,8 @@ func (s *layoutState) addCancelLine(fragment, body *Fragment, thickness geometry
 	if err != nil {
 		return err
 	}
-	start := Point{X: halfWidth, Y: bottom}
-	end := Point{X: body.Width - halfWidth, Y: top}
+	start := Point{X: 0, Y: bottom}
+	end := Point{X: body.Width, Y: top}
 	if inverted {
 		start.Y, end.Y = end.Y, start.Y
 	}

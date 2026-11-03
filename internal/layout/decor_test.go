@@ -2,7 +2,6 @@ package layout
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 
 	"github.com/caelyreth/untie/display"
@@ -162,6 +161,14 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 		len(pathSegmentsForTest(box, box.Items[1])) != 5 {
 		t.Fatalf("cancel stroke = %+v", box.Items[1])
 	}
+	start, end := cancelCenterLineForTest(t, box, box.Items[1])
+	scale := box.Items[1].Em
+	if start.X >= end.X || start.X*scale > 0.5 || end.X*scale < box.Width-0.5 {
+		t.Fatalf("cancel stroke x extent = %v..%v em, want 0..%v", start.X, end.X, box.Width/scale)
+	}
+	if start.Y <= end.Y {
+		t.Fatalf("default cancel stroke y direction = %v..%v, want bottom-left to top-right", start.Y, end.Y)
+	}
 	if !closeHost(box.Width, 8) || !closeHost(box.Ascent, 10.9279785) || !closeHost(box.Descent, 0) {
 		t.Fatalf("cancel metrics = %v/%v/%v", box.Width, box.Ascent, box.Descent)
 	}
@@ -172,11 +179,9 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Layout(inverted cancel) error = %v", err)
 	}
-	if reflect.DeepEqual(
-		pathSegmentsForTest(box, box.Items[1]),
-		pathSegmentsForTest(invertedBox, invertedBox.Items[1]),
-	) {
-		t.Fatal("inverted cancel did not reverse the stroke")
+	invertedStart, invertedEnd := cancelCenterLineForTest(t, invertedBox, invertedBox.Items[1])
+	if invertedStart.X >= invertedEnd.X || invertedStart.Y >= invertedEnd.Y {
+		t.Fatalf("inverted cancel stroke = %v..%v, want top-left to bottom-right", invertedStart, invertedEnd)
 	}
 
 	crossed := ir.NewCancel(source.NewRange(0, 2), glyph("x", ir.ClassNormal))
@@ -188,11 +193,41 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 	if len(crossedBox.Items) != 3 {
 		t.Fatalf("crossed items = %d, want two strokes", len(crossedBox.Items))
 	}
+	firstStart, firstEnd := cancelCenterLineForTest(t, crossedBox, crossedBox.Items[1])
+	secondStart, secondEnd := cancelCenterLineForTest(t, crossedBox, crossedBox.Items[2])
+	if firstStart.Y <= firstEnd.Y || secondStart.Y >= secondEnd.Y {
+		t.Fatalf("crossed strokes = %v..%v and %v..%v, want opposite slopes",
+			firstStart, firstEnd, secondStart, secondEnd)
+	}
 
 	bad := ir.NewCancel(source.NewRange(0, 2), glyph("x", ir.ClassNormal))
 	bad.Thickness = irEm(-0.05)
 	if _, err := renderer.Layout(bad, ir.Inline, testStyle(16)); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("negative cancel thickness error = %v", err)
+	}
+}
+
+func cancelCenterLineForTest(t *testing.T, box *display.Box, item display.Item) (geometry.Point, geometry.Point) {
+	t.Helper()
+	path := pathSegmentsForTest(box, item)
+	if len(path) != 5 ||
+		path[0].Op != geometry.SegMoveTo ||
+		path[1].Op != geometry.SegLineTo ||
+		path[2].Op != geometry.SegLineTo ||
+		path[3].Op != geometry.SegLineTo ||
+		path[4].Op != geometry.SegClose {
+		t.Fatalf("cancel path shape = %#v, want closed quad", path)
+	}
+	startA := path[0].Points[0]
+	startB := path[3].Points[0]
+	endA := path[1].Points[0]
+	endB := path[2].Points[0]
+	return geometry.Point{
+		X: (startA.X + startB.X) / 2,
+		Y: (startA.Y + startB.Y) / 2,
+	}, geometry.Point{
+		X: (endA.X + endB.X) / 2,
+		Y: (endA.Y + endB.Y) / 2,
 	}
 }
 
