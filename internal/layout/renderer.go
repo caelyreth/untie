@@ -24,8 +24,9 @@ type Options struct {
 // Renderer is an immutable layout engine. It is safe for concurrent use if its
 // supplied font ports are safe for concurrent use.
 type Renderer struct {
-	fonts  Fonts
-	limits source.Limits
+	fonts       Fonts
+	limits      source.Limits
+	scratchPool *layoutScratchPool
 }
 
 // New validates the required font ports and constructs a renderer.
@@ -37,8 +38,9 @@ func New(fonts Fonts, options Options) (*Renderer, error) {
 		return nil, fmt.Errorf("%w: nil style font", ErrInvalidInput)
 	}
 	return &Renderer{
-		fonts:  fonts,
-		limits: options.Limits.WithDefaults(),
+		fonts:       fonts,
+		limits:      options.Limits.WithDefaults(),
+		scratchPool: defaultLayoutScratchPool,
 	}, nil
 }
 
@@ -110,16 +112,23 @@ func (r *Renderer) layoutFormulaContext(
 		return nil, err
 	}
 	metrics := r.fonts.Metrics.MathMetrics(rootStyle, ir.VariantAuto).normalized()
+	scratch := r.scratchPool.acquire()
 	state := &layoutState{
-		ctx:       ctx,
-		renderer:  r,
-		request:   style,
-		mode:      mode,
-		rootStyle: rootStyle,
-		metrics:   metrics,
-		hostSize:  hostSize,
-		limits:    r.limits,
+		ctx:         ctx,
+		renderer:    r,
+		request:     style,
+		mode:        mode,
+		rootStyle:   rootStyle,
+		metrics:     metrics,
+		hostSize:    hostSize,
+		limits:      r.limits,
+		scratchPool: r.scratchPool,
+		scratch:     scratch,
+		fragments:   scratch.fragments,
+		glyphs:      scratch.glyphs,
+		pathCache:   scratch.pathCache,
 	}
+	defer state.releaseScratch()
 	if preparedStats != nil {
 		hint := boundedCapacity(preparedStats.GlyphCapacity, r.limits.MaxOutputItems)
 		state.glyphs.reserve(min(hint, transientReserveLimit))
@@ -189,6 +198,20 @@ type layoutState struct {
 	fragments     fragmentArena
 	glyphs        glyphArena
 	pathCache     flattenPathCache
+	scratchPool   *layoutScratchPool
+	scratch       *layoutScratch
+}
+
+func (s *layoutState) releaseScratch() {
+	if s == nil || s.scratch == nil {
+		return
+	}
+	scratch := s.scratch
+	scratch.fragments = s.fragments
+	scratch.glyphs = s.glyphs
+	scratch.pathCache = s.pathCache
+	s.scratch = nil
+	s.scratchPool.release(scratch)
 }
 
 type environment struct {

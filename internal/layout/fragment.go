@@ -122,10 +122,11 @@ const (
 )
 
 // fragmentArena owns the layout-created fragments for one layout pass. Chunks
-// are never reused or moved, so returned pointers remain valid until the
-// layoutState itself is collected.
+// are never moved during a layout, so fragment pointers remain stable until
+// the returned display.Box has been fully flattened.
 type fragmentArena struct {
 	chunks [][]Fragment
+	chunk  int
 	used   int
 }
 
@@ -136,6 +137,7 @@ const (
 
 type glyphArena struct {
 	chunks [][]GlyphFragment
+	chunk  int
 	used   int
 }
 
@@ -147,34 +149,44 @@ func (a *glyphArena) reserve(count int) {
 }
 
 func (a *glyphArena) allocate() *GlyphFragment {
-	last := len(a.chunks) - 1
-	if last < 0 || a.used == len(a.chunks[last]) {
-		size := firstGlyphChunk
-		if last >= 0 {
-			size = min(len(a.chunks[last])*2, maxGlyphChunk)
+	for a.chunk < len(a.chunks) {
+		if a.used < len(a.chunks[a.chunk]) {
+			glyph := &a.chunks[a.chunk][a.used]
+			a.used++
+			return glyph
 		}
-		a.chunks = append(a.chunks, make([]GlyphFragment, size))
-		last++
+		a.chunk++
 		a.used = 0
 	}
-	glyph := &a.chunks[last][a.used]
-	a.used++
+	size := firstGlyphChunk
+	if last := len(a.chunks) - 1; last >= 0 {
+		size = min(len(a.chunks[last])*2, maxGlyphChunk)
+	}
+	a.chunks = append(a.chunks, make([]GlyphFragment, size))
+	a.chunk = len(a.chunks) - 1
+	a.used = 1
+	glyph := &a.chunks[a.chunk][0]
 	return glyph
 }
 
 func (a *fragmentArena) allocate() *Fragment {
-	last := len(a.chunks) - 1
-	if last < 0 || a.used == len(a.chunks[last]) {
-		size := firstFragmentChunk
-		if last >= 0 {
-			size = min(len(a.chunks[last])*2, maxFragmentChunk)
+	for a.chunk < len(a.chunks) {
+		if a.used < len(a.chunks[a.chunk]) {
+			fragment := &a.chunks[a.chunk][a.used]
+			a.used++
+			return fragment
 		}
-		a.chunks = append(a.chunks, make([]Fragment, size))
-		last++
+		a.chunk++
 		a.used = 0
 	}
-	fragment := &a.chunks[last][a.used]
-	a.used++
+	size := firstFragmentChunk
+	if last := len(a.chunks) - 1; last >= 0 {
+		size = min(len(a.chunks[last])*2, maxFragmentChunk)
+	}
+	a.chunks = append(a.chunks, make([]Fragment, size))
+	a.chunk = len(a.chunks) - 1
+	a.used = 1
+	fragment := &a.chunks[a.chunk][0]
 	return fragment
 }
 
