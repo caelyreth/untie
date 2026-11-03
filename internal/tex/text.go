@@ -422,10 +422,55 @@ func textRow(items []astNode) astNode {
 }
 
 func astLiteralText(t token, text string) *astTextNode {
-	return &astTextNode{
+	node := &astTextNode{
 		astBase: newASTBaseAt(astText, normalizeRange(t.span), tokenOrigin(t)),
 		text:    text,
 		variant: ir.VariantAuto,
+	}
+	if text != "" {
+		node.clusters = []ir.TextClusterSource{{
+			TextStart: 0,
+			TextEnd:   len(text),
+			Source:    tokenOrigin(t),
+		}}
+	}
+	return node
+}
+
+func newASTTextNode(span, origin source.Range, text string, variant ir.Variant) *astTextNode {
+	node := &astTextNode{
+		astBase: newASTBaseAt(astText, span, origin),
+		text:    text,
+		variant: variant,
+	}
+	if text != "" {
+		node.clusters = []ir.TextClusterSource{{
+			TextStart: 0,
+			TextEnd:   len(text),
+			Source:    origin,
+		}}
+	}
+	return node
+}
+
+func appendASTText(dst, src *astTextNode) {
+	if dst == nil || src == nil {
+		return
+	}
+	offset := len(dst.text)
+	dst.text += src.text
+	dst.span = source.Merge(dst.span, src.span)
+	dst.origin = source.Merge(dst.origin, src.origin)
+	if dst.clusters == nil || src.clusters == nil {
+		dst.clusters = nil
+		return
+	}
+	for _, cluster := range src.clusters {
+		dst.clusters = append(dst.clusters, ir.TextClusterSource{
+			TextStart: cluster.TextStart + offset,
+			TextEnd:   cluster.TextEnd + offset,
+			Source:    cluster.Source,
+		})
 	}
 }
 

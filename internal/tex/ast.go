@@ -114,8 +114,9 @@ type astGlyphNode struct {
 
 type astTextNode struct {
 	astBase
-	text    string
-	variant ir.Variant
+	text     string
+	variant  ir.Variant
+	clusters []ir.TextClusterSource
 }
 
 type astOperatorNode struct {

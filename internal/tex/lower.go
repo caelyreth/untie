@@ -105,9 +105,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 					if !nextOK || next.variant != text.variant {
 						break
 					}
-					combined.text += next.text
-					combined.span = source.Merge(combined.span, next.span)
-					combined.origin = source.Merge(combined.origin, next.origin)
+					appendASTText(&combined, next)
 					i++
 				}
 				item = &combined
@@ -135,6 +133,7 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		return out
 	case *astTextNode:
 		out := l.arena.NewText(n.span, n.text)
+		out.Clusters = ir.NormalizeTextClusters(n.text, n.clusters)
 		out.Variant = n.variant
 		if out.Variant == ir.VariantAuto {
 			out.Variant = ctx.variant
