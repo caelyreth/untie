@@ -16,9 +16,9 @@
     "lint": "oxlint"
   },
   "dependencies": {
-    "@comark/svelte": "^0.6.2",
+    "@comark/svelte": "^0.8.1",
     "@lucide/svelte": "^1.67.0",
-    "comark": "^0.6.2",
+    "comark": "^0.8.1",
     "rangi": "^2.2.0"
   },
   "devDependencies": {
@@ -27,12 +27,12 @@
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
-    "oxfmt": "^0.72.0",
+    "oxfmt": "^0.76.0",
     "oxlint": "^1.87.0",
     "oxlint-tsgolint": "^7.0.2004",
     "svelte": "^5.57.1",
     "svelte-check": "^4.6.0",
-    "typescript": "npm:typescript-native-bridge@6.0.3-bridge.18.tsgo.7.0.2",
+    "typescript": "npm:typescript-native-bridge@6.0.3-bridge.19.tsgo.7.0.2",
     "vite": "^8.3.0"
   },
   "overrides": {
