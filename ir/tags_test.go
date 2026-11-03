@@ -95,6 +95,49 @@ func TestFormulaTagsRejectMalformedMetadata(t *testing.T) {
 	}
 }
 
+func TestRowTagsRequireOrderedIndependentEventsAndNoFormulaMix(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 4)
+	body := NewGlyph(source.NewRange(1, 2), "1")
+	root := NewMultiline(
+		span,
+		[]Node{NewGlyph(source.NewRange(0, 1), "x")},
+		[]Node{NewGlyph(source.NewRange(2, 3), "y")},
+	)
+	valid := &Formula{Root: root, Tags: []EquationTag{
+		{Body: body, Span: span, Origin: span, Manual: true, Line: 0},
+		{Span: span, Origin: span, Suppressed: true, Line: 1},
+	}}
+	if err := Validate(valid, source.Limits{}); err != nil {
+		t.Fatalf("Validate(valid row tags) error = %v", err)
+	}
+
+	tests := map[string][]EquationTag{
+		"descending": {
+			{Body: body, Span: span, Origin: span, Manual: true, Line: 1},
+			{Body: body, Span: span, Origin: span, Manual: true, Line: 0},
+		},
+		"duplicate row": {
+			{Body: body, Span: span, Origin: span, Manual: true, Line: 0},
+			{Span: span, Origin: span, Suppressed: true, Line: 0},
+		},
+		"formula and row mix": {
+			{Body: body, Span: span, Origin: span, Manual: true, Line: FormulaTagLine},
+			{Body: body, Span: span, Origin: span, Manual: true, Line: 0},
+		},
+	}
+	for name, tags := range tests {
+		tags := tags
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if err := Validate(&Formula{Root: root, Tags: tags}, source.Limits{}); err == nil {
+				t.Fatal("Validate() accepted ambiguous row-tag metadata")
+			}
+		})
+	}
+}
+
 func TestFormulaTagsShareNodeAndSourceLimits(t *testing.T) {
 	t.Parallel()
 

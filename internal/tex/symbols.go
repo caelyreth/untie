@@ -46,6 +46,7 @@ var (
 	fontCommands           = map[string]ir.Variant{}
 	infixCommands          = map[string]fractionInfix{}
 	sizingCommands         = map[string]uint8{}
+	sizingFontSizes        = map[string]ir.Length{}
 )
 
 type fractionInfix struct {
@@ -741,15 +742,30 @@ func addFonts() {
 }
 
 func addSizing() {
-	// KaTeX size indices in src/functions/sizing.ts. The neutral IR currently
-	// has no font-size-index field, so these are recognized but cannot be
-	// lowered without an explicit diagnostic.
-	for i, name := range []string{
-		"tiny", "sixptsize", "scriptsize", "footnotesize", "small",
-		"normalsize", "large", "Large", "LARGE", "huge", "Huge",
-	} {
+	for i, name := range sizingNames {
 		sizingCommands["\\"+name] = uint8(i + 1)
+		sizingFontSizes["\\"+name] = ir.RawLength(ir.LengthPercent, katexSizePercents[i])
 	}
+}
+
+var sizingNames = []string{
+	"tiny", "sixptsize", "scriptsize", "footnotesize", "small",
+	"normalsize", "large", "Large", "LARGE", "huge", "Huge",
+}
+
+// KaTeX Options.ts sizeMultipliers, expressed in millionths of a percent.
+var katexSizePercents = [...]int64{
+	50_000_000,
+	60_000_000,
+	70_000_000,
+	80_000_000,
+	90_000_000,
+	100_000_000,
+	120_000_000,
+	144_000_000,
+	172_800_000,
+	207_400_000,
+	248_800_000,
 }
 
 func addInfixes() {

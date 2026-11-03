@@ -97,8 +97,13 @@ func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 		return Stats{}, err
 	}
 	var manualLines map[int]bool
+	var rowLines map[int]bool
+	previousRowLine := -1
+	hasFormulaTag := false
+	hasRowTag := false
 	if len(f.Tags) > 0 {
 		manualLines = make(map[int]bool)
+		rowLines = make(map[int]bool)
 	}
 	for i, tag := range f.Tags {
 		state.path.reset()
@@ -115,6 +120,25 @@ func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 		}
 		if tag.Line < -1 {
 			return Stats{}, fmt.Errorf("%w: %s: invalid line %d", ErrInvalidIR, &state.path, tag.Line)
+		}
+		if tag.Line == FormulaTagLine {
+			if hasRowTag {
+				return Stats{}, fmt.Errorf("%w: %s: formula and row tags cannot be mixed", ErrInvalidIR, &state.path)
+			}
+			hasFormulaTag = true
+		} else {
+			if hasFormulaTag {
+				return Stats{}, fmt.Errorf("%w: %s: formula and row tags cannot be mixed", ErrInvalidIR, &state.path)
+			}
+			if tag.Line <= previousRowLine {
+				return Stats{}, fmt.Errorf("%w: %s: row tags must be in strictly increasing line order", ErrInvalidIR, &state.path)
+			}
+			if rowLines[tag.Line] {
+				return Stats{}, fmt.Errorf("%w: %s: multiple tag events for row %d", ErrInvalidIR, &state.path, tag.Line)
+			}
+			rowLines[tag.Line] = true
+			previousRowLine = tag.Line
+			hasRowTag = true
 		}
 		if tag.Starred && !tag.Manual {
 			return Stats{}, fmt.Errorf("%w: %s: starred tag must be manual", ErrInvalidIR, &state.path)
@@ -337,6 +361,10 @@ func (s *validationState) visitChildren(n Node, depth int) error {
 		return nil
 	case *Style:
 		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Overlay:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
+	case *Raise:
+		return s.visitChild(n.Kind(), n.Body, 0, depth)
 	case *Color:
 		return s.visitChild(n.Kind(), n.Body, 0, depth)
 	case *Box:
@@ -513,6 +541,37 @@ func validateNode(n Node, s *validationState) error {
 		}
 		if !n.SetCramped && n.Cramped {
 			return fmt.Errorf("%w: %s: cramped value set without SetCramped", ErrInvalidIR, &s.path)
+		}
+		if !n.SetFontSize && !n.FontSize.IsZero() {
+			return fmt.Errorf("%w: %s: font size set without SetFontSize", ErrInvalidIR, &s.path)
+		}
+		if n.SetFontSize {
+			if n.FontSize.Unit != LengthPercent {
+				return fmt.Errorf("%w: %s: font size must be a positive percentage", ErrInvalidIR, &s.path)
+			}
+			if err := n.FontSize.ValidateWithLimit(limits.MaxDimension); err != nil {
+				return fmt.Errorf("%w: %s: font size: %v", ErrInvalidIR, &s.path, err)
+			}
+			if n.FontSize.Value <= 0 {
+				return fmt.Errorf("%w: %s: font size must be positive", ErrInvalidIR, &s.path)
+			}
+		}
+	case *Overlay:
+		if n.Body == nil {
+			return fmt.Errorf("%w: %s: missing overlay body", ErrInvalidIR, &s.path)
+		}
+		if n.Alignment > OverlayEnd {
+			return fmt.Errorf("%w: %s: invalid overlay alignment", ErrInvalidIR, &s.path)
+		}
+	case *Raise:
+		if n.Body == nil {
+			return fmt.Errorf("%w: %s: missing raise body", ErrInvalidIR, &s.path)
+		}
+		if n.Amount.Unit == LengthPercent {
+			return fmt.Errorf("%w: %s: raise amount cannot be percentage-based", ErrInvalidIR, &s.path)
+		}
+		if err := n.Amount.ValidateWithLimit(limits.MaxDimension); err != nil {
+			return fmt.Errorf("%w: %s: raise amount: %v", ErrInvalidIR, &s.path, err)
 		}
 	case *Color:
 		if n.Body == nil {
@@ -899,6 +958,10 @@ func kindForNode(n Node) (NodeKind, bool) {
 		return KindMultiline, true
 	case *Style:
 		return KindStyle, true
+	case *Overlay:
+		return KindOverlay, true
+	case *Raise:
+		return KindRaise, true
 	case *Color:
 		return KindColor, true
 	case *Box:
@@ -944,6 +1007,8 @@ func kindName(kind NodeKind) string {
 		"break",
 		"align-marker",
 		"sized-delimiter",
+		"overlay",
+		"raise",
 	}
 	if int(kind) >= len(names) {
 		return "unknown"

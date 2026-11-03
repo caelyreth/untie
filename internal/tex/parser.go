@@ -22,9 +22,15 @@ type parser struct {
 	limitHit         bool
 	leftDepth        int
 	tags             []astEquationTag
+	multilineTags    []multilineTagScope
 	metadataDepth    int
 	parsedTableCells int
 	arena            astArena
+}
+
+type multilineTagScope struct {
+	name string
+	line int
 }
 
 type stopMode uint8
@@ -512,6 +518,8 @@ func hasBraceDecoration(node astNode) bool {
 		return hasBraceDecoration(n.body)
 	case *astVariantNode:
 		return hasBraceDecoration(n.body)
+	case *astStyleNode:
+		return hasBraceDecoration(n.body)
 	case *astAccentNode:
 		glyph, ok := n.mark.(*astGlyphNode)
 		return ok && strings.ContainsAny(glyph.text, "⏞⏟⎴⎵⏜⏝⏠⏡")
@@ -525,6 +533,8 @@ func hasLimitScriptBase(node astNode) bool {
 	case *astClassNode:
 		return n.class == ir.ClassLarge || containsIntegral(n.body)
 	case *astVariantNode:
+		return hasLimitScriptBase(n.body)
+	case *astStyleNode:
 		return hasLimitScriptBase(n.body)
 	case *astOperatorNode:
 		return n.semanticLimits || containsIntegralText(n.text)
@@ -547,6 +557,8 @@ func containsIntegral(node astNode) bool {
 				return true
 			}
 		}
+	case *astStyleNode:
+		return containsIntegral(n.body)
 	}
 	return false
 }

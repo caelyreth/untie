@@ -425,6 +425,13 @@ func appendTableStroke(lines []ir.TableLine, line ir.TableLine) []ir.TableLine {
 }
 
 func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan source.Range) *astMultilineNode {
+	// Tags are row-scoped only for the outermost supported multiline
+	// environment. Nested environments keep the explicit unsupported boundary
+	// because their row indices are not coordinates of the formula root.
+	if p.metadataDepth == 1 {
+		p.multilineTags = append(p.multilineTags, multilineTagScope{name: name})
+		defer func() { p.multilineTags = p.multilineTags[:len(p.multilineTags)-1] }()
+	}
 	var logicalRows [][]astNode
 	var row []astNode
 	span := source.Merge(command.span, nameSpan)
@@ -438,6 +445,9 @@ func (p *parser) parseMultilineEnvironment(name string, command token, nameSpan 
 		row = nil
 	}
 	for {
+		if len(p.multilineTags) == 1 && p.metadataDepth == 1 {
+			p.multilineTags[0].line = len(logicalRows)
+		}
 		cell := p.parseSequence(stopCell)
 		row = append(row, cell)
 		span = source.Merge(span, cell.base().span)

@@ -29,19 +29,20 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 }
 
 type canonicalBoxSnapshot struct {
-	Width      float32          `json:"width"`
-	Ascent     float32          `json:"ascent"`
-	Descent    float32          `json:"descent"`
-	Italic     float32          `json:"italic"`
-	AxisHeight float32          `json:"axisHeight"`
-	Overflow   float32          `json:"overflow"`
-	Items      []canonicalItem  `json:"items"`
-	Paths      []canonicalPath  `json:"paths,omitempty"`
-	Hits       []canonicalHit   `json:"hits,omitempty"`
-	Breaks     []canonicalBreak `json:"breaks,omitempty"`
-	Alt        *canonicalAlt    `json:"alt,omitempty"`
-	Tag        *canonicalTagBox `json:"tag,omitempty"`
-	Lines      []canonicalLine  `json:"lines,omitempty"`
+	Width      float32           `json:"width"`
+	Ascent     float32           `json:"ascent"`
+	Descent    float32           `json:"descent"`
+	Italic     float32           `json:"italic"`
+	AxisHeight float32           `json:"axisHeight"`
+	Overflow   float32           `json:"overflow"`
+	Items      []canonicalItem   `json:"items"`
+	Paths      []canonicalPath   `json:"paths,omitempty"`
+	Hits       []canonicalHit    `json:"hits,omitempty"`
+	Breaks     []canonicalBreak  `json:"breaks,omitempty"`
+	Alt        *canonicalAlt     `json:"alt,omitempty"`
+	Tag        *canonicalTagBox  `json:"tag,omitempty"`
+	Tags       []canonicalTagBox `json:"tags,omitempty"`
+	Lines      []canonicalLine   `json:"lines,omitempty"`
 }
 
 type canonicalLine struct {
@@ -112,6 +113,12 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 	if b.Tag != nil {
 		tag := canonicalTag(b.Tag)
 		out.Tag = &tag
+	}
+	if len(b.Tags) > 0 {
+		out.Tags = make([]canonicalTagBox, len(b.Tags))
+		for i := range b.Tags {
+			out.Tags[i] = canonicalTag(&b.Tags[i])
+		}
 	}
 	if includeLines && len(b.Lines) > 0 {
 		out.Lines = make([]canonicalLine, len(b.Lines))

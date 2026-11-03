@@ -28,6 +28,12 @@ func (s *Stats) observe(node Node) {
 		s.GlyphCapacity = saturatedAddInt(s.GlyphCapacity, len(value.Text))
 	case *Space:
 		s.observeLength(value.Amount)
+	case *Style:
+		if value.SetFontSize {
+			s.observeLength(value.FontSize)
+		}
+	case *Raise:
+		s.observeLength(value.Amount)
 	case *Fraction:
 		s.observeLength(value.Padding)
 	case *Line:

@@ -38,6 +38,8 @@ const (
 	KindBreak
 	KindAlignMarker
 	KindSizedDelimiter
+	KindOverlay
+	KindRaise
 )
 
 // MathClass controls automatic spacing and operator behavior.
@@ -143,6 +145,20 @@ type Position uint8
 const (
 	PositionAbove Position = iota
 	PositionBelow
+)
+
+// OverlayAlignment positions zero-width content relative to its insertion
+// point. It controls horizontal placement only; overlay content preserves its
+// own vertical metrics and ink.
+type OverlayAlignment uint8
+
+const (
+	// OverlayStart places the body's left edge at the insertion point.
+	OverlayStart OverlayAlignment = iota
+	// OverlayCenter centers the body on the insertion point.
+	OverlayCenter
+	// OverlayEnd places the body's right edge at the insertion point.
+	OverlayEnd
 )
 
 // Variant is a logical math alphabet. Concrete faces and glyph choices are font

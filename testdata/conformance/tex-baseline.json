@@ -45,9 +45,9 @@
   },
   "summary": {
     "total": 1111,
-    "pass": 1045,
+    "pass": 1064,
     "diagnostic": 26,
-    "unsupported": 40,
+    "unsupported": 21,
     "bug": 0,
     "unexplained": 0
   },
@@ -8792,28 +8792,13 @@
       "id": "line:000307",
       "corpus": "ratex-core",
       "index": 307,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\footnotesize"
       ],
       "commands": [
         "\\footnotesize"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 13,
-          "message": "math font-size declaration '\\footnotesize' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000308",
@@ -9683,55 +9668,25 @@
       "id": "line:000367",
       "corpus": "ratex-core",
       "index": 367,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\huge"
       ],
       "commands": [
         "\\huge"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "math font-size declaration '\\huge' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000368",
       "corpus": "ratex-core",
       "index": 368,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\Huge"
       ],
       "commands": [
         "\\Huge"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "math font-size declaration '\\Huge' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000369",
@@ -10262,82 +10217,37 @@
       "id": "line:000410",
       "corpus": "ratex-core",
       "index": 410,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\large"
       ],
       "commands": [
         "\\large"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "math font-size declaration '\\large' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000411",
       "corpus": "ratex-core",
       "index": 411,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\Large"
       ],
       "commands": [
         "\\Large"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "math font-size declaration '\\Large' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000412",
       "corpus": "ratex-core",
       "index": 412,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\LARGE"
       ],
       "commands": [
         "\\LARGE"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "math font-size declaration '\\LARGE' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000413",
@@ -10832,9 +10742,7 @@
       "id": "line:000453",
       "corpus": "ratex-core",
       "index": 453,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet.",
+      "status": "pass",
       "families": [
         "command:\\,",
         "command:\\llap",
@@ -10843,20 +10751,7 @@
       "commands": [
         "\\,",
         "\\llap"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 3,
-          "end": 8,
-          "message": "overlapping boxes are not represented in the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000454",
@@ -11397,9 +11292,7 @@
       "id": "line:000497",
       "corpus": "ratex-core",
       "index": 497,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet.",
+      "status": "pass",
       "families": [
         "command:\\le",
         "command:\\mathclap",
@@ -11411,20 +11304,7 @@
         "\\le",
         "\\mathclap",
         "\\sum"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 6,
-          "end": 15,
-          "message": "overlapping boxes are not represented in the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000498",
@@ -11497,9 +11377,7 @@
       "id": "line:000503",
       "corpus": "ratex-core",
       "index": 503,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet.",
+      "status": "pass",
       "families": [
         "command:\\,",
         "command:\\mathllap",
@@ -11508,20 +11386,7 @@
       "commands": [
         "\\,",
         "\\mathllap"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 3,
-          "end": 12,
-          "message": "overlapping boxes are not represented in the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000504",
@@ -12141,28 +12006,13 @@
       "id": "line:000552",
       "corpus": "ratex-core",
       "index": 552,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\normalsize"
       ],
       "commands": [
         "\\normalsize"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 11,
-          "message": "math font-size declaration '\\normalsize' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000553",
@@ -13530,29 +13380,14 @@
       "id": "line:000656",
       "corpus": "ratex-core",
       "index": 656,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet.",
+      "status": "pass",
       "families": [
         "command:\\raisebox",
         "feature:group"
       ],
       "commands": [
         "\\raisebox"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 1,
-          "end": 10,
-          "message": "vertical raises are not represented in the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000657",
@@ -13980,9 +13815,7 @@
       "id": "line:000690",
       "corpus": "ratex-core",
       "index": 690,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet.",
+      "status": "pass",
       "families": [
         "command:\\,",
         "command:\\rlap",
@@ -13991,20 +13824,7 @@
       "commands": [
         "\\,",
         "\\rlap"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "overlapping boxes are not represented in the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000691",
@@ -14184,28 +14004,13 @@
       "id": "line:000704",
       "corpus": "ratex-core",
       "index": 704,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\scriptsize"
       ],
       "commands": [
         "\\scriptsize"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 11,
-          "message": "math font-size declaration '\\scriptsize' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000705",
@@ -14461,28 +14266,13 @@
       "id": "line:000725",
       "corpus": "ratex-core",
       "index": 725,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\sixptsize"
       ],
       "commands": [
         "\\sixptsize"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 10,
-          "message": "math font-size declaration '\\sixptsize' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000726",
@@ -14500,28 +14290,13 @@
       "id": "line:000727",
       "corpus": "ratex-core",
       "index": 727,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\small"
       ],
       "commands": [
         "\\small"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 6,
-          "message": "math font-size declaration '\\small' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000728",
@@ -15367,28 +15142,13 @@
       "id": "line:000791",
       "corpus": "ratex-core",
       "index": 791,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Math font-size declarations require a neutral KaTeX-compatible size index that is not yet represented in the IR.",
+      "status": "pass",
       "families": [
         "command:\\tiny"
       ],
       "commands": [
         "\\tiny"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 5,
-          "message": "math font-size declaration '\\tiny' requires a neutral font-size field"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000792",
@@ -18509,9 +18269,7 @@
       "id": "line:000983",
       "corpus": "ratex-core",
       "index": 983,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Overlap, manual raise, and smash geometry have no lossless neutral IR representation yet.",
+      "status": "pass",
       "families": [
         "command:\\displaystyle",
         "command:\\le",
@@ -18525,20 +18283,7 @@
         "\\le",
         "\\mathclap",
         "\\sum"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 19,
-          "end": 28,
-          "message": "overlapping boxes are not represented in the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000984",
@@ -18724,9 +18469,7 @@
       "id": "line:000994",
       "corpus": "ratex-core",
       "index": 994,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Row-scoped \\nonumber events inside alignment environments are deferred until multiline equation-tag metadata is implemented.",
+      "status": "pass",
       "families": [
         "command:\\\\",
         "command:\\begin",
@@ -18745,28 +18488,13 @@
       ],
       "environments": [
         "align"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 21,
-          "end": 30,
-          "message": "\\nonumber inside a nested group or environment is deferred"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000995",
       "corpus": "ratex-core",
       "index": 995,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Row-scoped \\tag values inside alignment environments are deferred until multiline equation-tag metadata is implemented.",
+      "status": "pass",
       "families": [
         "command:\\\\",
         "command:\\begin",
@@ -18785,20 +18513,7 @@
       ],
       "environments": [
         "align"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 21,
-          "end": 33,
-          "message": "equation tags inside a nested group or environment are deferred"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000996",

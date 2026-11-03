@@ -164,6 +164,20 @@ func (a *Arena) NewStyle(span source.Range, body ir.Node) *ir.Style {
 	return &ir.Style{Base: ir.NewBase(ir.KindStyle, span), Body: body}
 }
 
+// NewOverlay constructs zero-width horizontally positioned content.
+func (a *Arena) NewOverlay(span source.Range, body ir.Node, alignment ir.OverlayAlignment) *ir.Overlay {
+	return &ir.Overlay{
+		Base:      ir.NewBase(ir.KindOverlay, span),
+		Body:      body,
+		Alignment: alignment,
+	}
+}
+
+// NewRaise constructs vertically shifted content.
+func (a *Arena) NewRaise(span source.Range, body ir.Node, amount ir.Length) *ir.Raise {
+	return &ir.Raise{Base: ir.NewBase(ir.KindRaise, span), Body: body, Amount: amount}
+}
+
 // NewColor constructs a color wrapper.
 func (a *Arena) NewColor(span source.Range, body ir.Node, paint ir.Paint) *ir.Color {
 	return &ir.Color{Base: ir.NewBase(ir.KindColor, span), Body: body, Paint: paint}

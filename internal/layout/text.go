@@ -332,9 +332,31 @@ func (s *layoutState) layoutStyle(node *ir.Style, env environment, depth int) (*
 	if node.SetCramped {
 		child.Style.Cramped = node.Cramped
 	}
+	if node.SetFontSize {
+		scale, err := fontScale(node.FontSize)
+		if err != nil {
+			return nil, err
+		}
+		child.Style.SizeScale = scale
+	}
 	fragment, err := s.layoutNode(node.Body, child, depth)
 	if err != nil {
 		return nil, err
 	}
 	return withClass(fragment, node.Class), nil
+}
+
+func fontScale(value ir.Length) (geometry.Em, error) {
+	if value.Unit != ir.LengthPercent || value.Value <= 0 {
+		return 0, fmt.Errorf("%w: invalid font size %+v", ErrInvalidInput, value)
+	}
+	const percentScale int64 = 100 * 1_000_000
+	scale, err := geometry.EmFromParts(value.Value, percentScale)
+	if err != nil {
+		return 0, fmt.Errorf("%w: font size: %w", ErrInvalidInput, err)
+	}
+	if scale <= 0 {
+		return 0, fmt.Errorf("%w: font size rounds to zero", ErrInvalidInput)
+	}
+	return scale, nil
 }

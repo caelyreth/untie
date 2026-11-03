@@ -77,10 +77,11 @@ type (
 // MaxWidth emits Box.Lines in a MaxWidth-wide alignment frame. Align positions
 // each line within that frame. Box.Items and Box.Hits are the sole drawable
 // storage; LineBox and TagBox ranges select parent-frame records and must not
-// be translated again. Single-line display tags populate Box.Tag and the
-// associated LineBox.Tag. Constrained alignment reserves the tag width before
-// positioning the line. Inline layout ignores both MaxWidth and Align and
-// rejects manual tags.
+// be translated again. A formula-level display tag populates Box.Tag and the
+// associated LineBox.Tag. Source-row tags populate Box.Tags and use
+// TagBox.Line instead. Constrained alignment reserves the applicable tag column
+// before positioning the line. Inline layout ignores both MaxWidth and Align
+// and rejects manual tags.
 type Style = display.Style
 
 const (

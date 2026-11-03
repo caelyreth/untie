@@ -40,6 +40,9 @@ type Fragment struct {
 	TextLike     bool
 	// StretchableHorizontal mirrors the base glyph's MATH construction.
 	StretchableHorizontal bool
+	// rows records source-row baselines for multiline fragments. It is empty
+	// for every other node family.
+	rows []fragmentRow
 
 	lastAtomClass       ir.MathClass
 	hasAtomClass        bool
@@ -60,6 +63,12 @@ type Fragment struct {
 	ownHit   int
 
 	breaks []fragmentBreak
+}
+
+type fragmentRow struct {
+	baseline geometry.Em
+	ascent   geometry.Em
+	descent  geometry.Em
 }
 
 type fragmentBreak struct {

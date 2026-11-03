@@ -153,11 +153,13 @@ func TestTagFailurePaths(t *testing.T) {
 	t.Run("environment tag", func(t *testing.T) {
 		t.Parallel()
 		result := parseTest(t, `\begin{aligned}x&=1\tag{2}\end{aligned}`, Options{})
-		if len(result.Tags) != 0 {
-			t.Fatalf("environment tags = %+v, want none", result.Tags)
+		if len(result.Tags) != 1 || result.Tags[0].Line != 0 {
+			t.Fatalf("environment tags = %+v, want one row tag", result.Tags)
 		}
-		if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-			t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Severity == source.SeverityError {
+				t.Fatalf("environment tag diagnostics = %v", result.Diagnostics)
+			}
 		}
 	})
 
@@ -173,6 +175,56 @@ func TestTagFailurePaths(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestMultilineEnvironmentTagsCarrySourceRow(t *testing.T) {
+	t.Parallel()
+
+	result := parseTest(t, `\begin{align}x&=1\tag{A}\\y&=2\tag*{B}\\z&=3\nonumber\end{align}`, Options{})
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Severity == source.SeverityError {
+			t.Fatalf("multiline tag diagnostics = %v", result.Diagnostics)
+		}
+	}
+	if len(result.Tags) != 3 {
+		t.Fatalf("tags = %+v, want two manual and one suppression", result.Tags)
+	}
+	if result.Tags[0].Line != 0 || !result.Tags[0].Manual || result.Tags[0].Starred {
+		t.Fatalf("row 0 tag = %+v", result.Tags[0])
+	}
+	if result.Tags[1].Line != 1 || !result.Tags[1].Manual || !result.Tags[1].Starred {
+		t.Fatalf("row 1 tag = %+v", result.Tags[1])
+	}
+	if result.Tags[2].Line != 2 || !result.Tags[2].Suppressed {
+		t.Fatalf("row 2 suppression = %+v", result.Tags[2])
+	}
+}
+
+func TestMultilineTagConflictsStayRowLocal(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{
+		`\begin{align}x&=1\tag{A}\tag{B}\\y&=2\end{align}`,
+		`\begin{align}x&=1\tag{A}\nonumber\\y&=2\end{align}`,
+	}
+	for _, src := range tests {
+		result := parseTest(t, src, Options{})
+		if !hasDiagnostic(result.Diagnostics, source.CodeInvalidValue) {
+			t.Errorf("%s diagnostics = %v, want invalid-value", src, diagnosticCodes(result.Diagnostics))
+		}
+	}
+}
+
+func TestNestedMultilineTagsRemainExplicitlyUnsupported(t *testing.T) {
+	t.Parallel()
+
+	result := parseTest(t, `\begin{equation}\begin{aligned}x&=1\tag{A}\end{aligned}\end{equation}`, Options{})
+	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
+		t.Fatalf("diagnostics = %v, want unsupported nested row tag", diagnosticCodes(result.Diagnostics))
+	}
+	if len(result.Tags) != 0 {
+		t.Fatalf("nested tags = %+v, want none", result.Tags)
+	}
 }
 
 func TestTagsCannotBePromotedFromSyntacticArguments(t *testing.T) {
