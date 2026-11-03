@@ -152,11 +152,13 @@ type svgEncoder struct {
 	height  float32
 	err     error
 
-	pathFirst bool
-	pathOp    byte
+	pathFirst  bool
+	pathOp     byte
+	pathPrefix uint64
 }
 
 func (e *svgEncoder) encode(box *display.Box, usedPaths []bool) {
+	e.pathPrefix = pathPrefix(box, usedPaths)
 	e.writeString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
 	e.writeString("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"")
 	e.writeNumber(e.width)
@@ -208,8 +210,8 @@ func (e *svgEncoder) writeDefinitions(box *display.Box, used []bool) {
 			e.writeString("<defs>\n")
 			wrote = true
 		}
-		e.writeString("<path id=\"p")
-		e.writeUint(uint64(i))
+		e.writeString("<path id=\"")
+		e.writePathID(i)
 		e.writeString("\" d=\"")
 		e.pathFirst = true
 		e.pathOp = 0
@@ -237,8 +239,8 @@ func (e *svgEncoder) writeMetadata(element, text string) {
 }
 
 func (e *svgEncoder) writePathUse(item display.Item) {
-	e.writeString("<use href=\"#p")
-	e.writeUint(uint64(item.PathIndex))
+	e.writeString("<use href=\"#")
+	e.writePathID(item.PathIndex)
 	e.writeString("\" transform=\"translate(")
 	e.writeNumber(item.At.X + e.offset.X)
 	e.writeByte(' ')
@@ -249,6 +251,40 @@ func (e *svgEncoder) writePathUse(item display.Item) {
 	e.writeByte('"')
 	e.writeFill(item.Paint)
 	e.writeString("/>\n")
+}
+
+func (e *svgEncoder) writePathID(index int) {
+	e.writeByte('u')
+	e.dst = strconv.AppendUint(e.dst, e.pathPrefix, 16)
+	e.writeByte('p')
+	e.writeUint(uint64(index))
+}
+
+func pathPrefix(box *display.Box, used []bool) uint64 {
+	const (
+		offset = 14695981039346656037
+		prime  = 1099511628211
+	)
+	hash := uint64(offset)
+	mix := func(value uint64) {
+		hash ^= value
+		hash *= prime
+	}
+	for index, path := range box.Paths {
+		if !used[index] {
+			continue
+		}
+		mix(uint64(index))
+		mix(uint64(len(path.Segments)))
+		for _, segment := range path.Segments {
+			mix(uint64(segment.Op))
+			for _, point := range segment.Points {
+				mix(uint64(math.Float32bits(point.X)))
+				mix(uint64(math.Float32bits(point.Y)))
+			}
+		}
+	}
+	return hash
 }
 
 func (e *svgEncoder) writeRule(item display.Item) {

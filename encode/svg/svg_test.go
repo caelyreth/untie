@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -108,6 +109,54 @@ func TestMarshalIsDeterministicAndXMLValid(t *testing.T) {
 	if document.Desc != `A < B & C` {
 		t.Fatalf("description = %q", document.Desc)
 	}
+}
+
+func TestMarshalUsesDocumentLocalPathIDs(t *testing.T) {
+	t.Parallel()
+
+	firstBox := mixedBox()
+	secondBox := mixedBox()
+	secondBox.Paths[0].Segments[1].Points[0].X += 0.01
+
+	first, err := svg.Marshal(firstBox, mixedOptions())
+	if err != nil {
+		t.Fatalf("Marshal(first) error = %v", err)
+	}
+	second, err := svg.Marshal(secondBox, mixedOptions())
+	if err != nil {
+		t.Fatalf("Marshal(second) error = %v", err)
+	}
+	firstIDs, firstRefs := pathReferences(t, first)
+	secondIDs, secondRefs := pathReferences(t, second)
+	for id := range firstIDs {
+		if secondIDs[id] {
+			t.Fatalf("path ID %q is reused by another document", id)
+		}
+	}
+	for ref := range firstRefs {
+		if !firstIDs[ref] {
+			t.Fatalf("first document references missing path %q", ref)
+		}
+	}
+	for ref := range secondRefs {
+		if !secondIDs[ref] {
+			t.Fatalf("second document references missing path %q", ref)
+		}
+	}
+}
+
+func pathReferences(t *testing.T, document []byte) (map[string]bool, map[string]bool) {
+	t.Helper()
+
+	ids := make(map[string]bool)
+	refs := make(map[string]bool)
+	for _, match := range regexp.MustCompile(`id="([^"]+)"`).FindAllSubmatch(document, -1) {
+		ids[string(match[1])] = true
+	}
+	for _, match := range regexp.MustCompile(`href="#([^"]+)"`).FindAllSubmatch(document, -1) {
+		refs[string(match[1])] = true
+	}
+	return ids, refs
 }
 
 func TestMarshalUsesPaletteAndExplicitPaint(t *testing.T) {
