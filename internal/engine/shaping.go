@@ -123,6 +123,7 @@ func (a *adapter) shapeTextRun(
 
 	var pen geometry.Em
 	lastCluster := -1
+	lastVisibleCluster := -1
 	pathSegments := 0
 	renderedMissing := make(map[int]bool)
 	for i, positioned := range shaped.Glyphs {
@@ -133,13 +134,18 @@ func (a *adapter) shapeTextRun(
 			return layout.TextRun{}, fmt.Errorf("%w: invalid text cluster index %d", layout.ErrInvalidInput, positioned.Cluster)
 		}
 		if positioned.Cluster != lastCluster {
-			if lastCluster >= 0 {
+			lastCluster = positioned.Cluster
+			run.Clusters[positioned.Cluster].X = pen
+		}
+		visible := !positioned.Invisible || run.Clusters[positioned.Cluster].Missing
+		if visible && positioned.Cluster != lastVisibleCluster {
+			if lastVisibleCluster >= 0 {
 				pen, err = pen.Add(tracking)
 				if err != nil {
 					return layout.TextRun{}, err
 				}
 			}
-			lastCluster = positioned.Cluster
+			lastVisibleCluster = positioned.Cluster
 			run.Clusters[positioned.Cluster].X = pen
 		}
 		if run.Clusters[positioned.Cluster].Missing {

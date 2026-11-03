@@ -23,8 +23,15 @@ normalized diagnostic in `RenderResult.Diagnostics`.
 ## General Text Uses Real Shaping
 
 Text-mode runs now use pure-Go OpenType shaping through
-`github.com/go-text/typesetting`, including bidi ordering, script segmentation,
-kerning, ligatures, mark positioning, and per-cluster fallback.
+`github.com/go-text/typesetting`, including script segmentation, kerning,
+ligatures, mark positioning, and per-cluster fallback. Unicode bidirectional
+ordering uses the conformance-tested `github.com/go-typeset/bidi` implementation
+before each script run is shaped.
+
+Default-ignorable controls and line/paragraph separators are retained in source
+order as zero-width, non-drawing clusters. Visible format characters such as
+U+0600 and U+06DD still require glyph coverage and participate in missing-glyph
+recovery normally.
 
 Math symbols and named operators remain on the OpenType MATH/GSUB path. The new
 shaping behavior can change text metrics and glyph choices even when the source

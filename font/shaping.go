@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/go-text/typesetting/bidi"
 	"github.com/go-text/typesetting/di"
 	tsfont "github.com/go-text/typesetting/font"
 	ot "github.com/go-text/typesetting/font/opentype"
+	"github.com/go-text/typesetting/harfbuzz"
 	"github.com/go-text/typesetting/language"
 	"github.com/go-text/typesetting/segmenter"
 	"github.com/go-text/typesetting/shaping"
+	"github.com/go-typeset/bidi"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -91,7 +91,6 @@ type textShaper struct {
 	paragraphSegment shaping.Segmenter
 	graphemeSegment  segmenter.Segmenter
 	shaper           shaping.HarfbuzzShaper
-	bidiParagraph    bidi.Paragraph
 }
 
 type singleFaceMap struct {
@@ -143,77 +142,130 @@ func (s *textShaper) reset() {
 	// references before returning the shaper to the pool.
 	s.paragraphSegment.Split(shaping.Input{}, singleFaceMap{})
 	s.graphemeSegment.Init(nil)
-	s.bidiParagraph.Segment(nil, bidi.Neutral)
 }
 
-func visualBidiOrder(
-	parts []shaping.Input,
-	text []rune,
+func bidiParagraphRanges(text []rune) [][2]int {
+	if len(text) == 0 {
+		return nil
+	}
+	paragraphs := bidi.Paragraphs(text)
+	ranges := make([][2]int, 0, len(paragraphs))
+	start := 0
+	for _, paragraph := range paragraphs {
+		end := start + len(paragraph)
+		ranges = append(ranges, [2]int{start, end})
+		start = end
+	}
+	return ranges
+}
+
+func hasSimpleLTRBidi(text []rune) bool {
+	for _, r := range text {
+		switch bidi.ClassOf(r) {
+		case bidi.L, bidi.EN, bidi.ES, bidi.ET, bidi.CS, bidi.NSM, bidi.BN, bidi.S, bidi.WS, bidi.ON:
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// segmentParagraph splits one bidi paragraph into visually ordered,
+// single-direction script runs. Segmenting each exact embedding-level run
+// independently matters: shaping.Segmenter's transitive bidi splitter only
+// retains direction parity, which is insufficient for nested levels.
+func (s *textShaper) segmentParagraph(
+	ctx context.Context,
+	input shaping.Input,
 	defaultDirection bidi.Direction,
-	paragraph *bidi.Paragraph,
-) []shaping.Input {
-	runs := paragraph.Segment(text, defaultDirection)
-	if runs.NumRuns() == 0 {
-		return parts
+) ([]shaping.Input, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
-	levels := make([]bidi.Level, len(text))
-	maxLevel := bidi.Level(0)
-	for i := 0; i < runs.NumRuns(); i++ {
-		run := runs.Run(i)
-		if run.Start < 0 || run.End <= run.Start || run.End > len(levels) {
-			return parts
-		}
-		if run.Level > maxLevel {
-			maxLevel = run.Level
-		}
-		for j := run.Start; j < run.End; j++ {
-			levels[j] = run.Level
-		}
+	text := input.Text[input.RunStart:input.RunEnd]
+	if len(text) == 0 {
+		return nil, nil
 	}
-	if maxLevel == 0 {
-		return parts
+	levels := bidi.ResolveLevels(text, defaultDirection)
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
-	visual := make([]int, len(text))
-	for i := range visual {
-		visual[i] = i
+	visual := bidi.ReorderWithMarks(text, levels)
+	if len(visual) != len(text) {
+		return nil, fmt.Errorf("%w: incomplete bidi ordering", ErrInvalidText)
 	}
-	for level := maxLevel; level > 0; level-- {
-		for start := 0; start < len(visual); {
-			if levels[visual[start]] < level {
-				start++
-				continue
-			}
-			end := start + 1
-			for end < len(visual) && levels[visual[end]] >= level {
-				end++
-			}
-			for left, right := start, end-1; left < right; left, right = left+1, right-1 {
-				visual[left], visual[right] = visual[right], visual[left]
-			}
-			start = end
-		}
-	}
-	position := make([]int, len(text))
-	for i, runeIndex := range visual {
-		position[runeIndex] = i
-	}
-	ordered := append([]shaping.Input(nil), parts...)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		return visualStart(ordered[i], position) < visualStart(ordered[j], position)
-	})
-	return ordered
-}
 
-func visualStart(part shaping.Input, position []int) int {
-	start := int(^uint(0) >> 1)
-	if part.RunStart < 0 || part.RunStart >= len(position) {
-		return start
+	runOf := make([]int, len(text))
+	runCount := 0
+	for start := 0; start < len(levels); {
+		end := start + 1
+		for end < len(levels) && levels[end] == levels[start] {
+			end++
+		}
+		for i := start; i < end; i++ {
+			runOf[i] = runCount
+		}
+		runCount++
+		start = end
 	}
-	end := min(part.RunEnd, len(position))
-	for i := part.RunStart; i < end; i++ {
-		start = min(start, position[i])
+	visualRuns := make([]int, 0, runCount)
+	seenRuns := make([]bool, runCount)
+	for _, runeIndex := range visual {
+		if runeIndex < 0 || runeIndex >= len(runOf) {
+			return nil, fmt.Errorf("%w: invalid bidi ordering index %d", ErrInvalidText, runeIndex)
+		}
+		run := runOf[runeIndex]
+		if seenRuns[run] {
+			continue
+		}
+		seenRuns[run] = true
+		visualRuns = append(visualRuns, run)
 	}
-	return start
+	if len(visualRuns) != runCount {
+		return nil, fmt.Errorf("%w: incomplete bidi level runs", ErrInvalidText)
+	}
+
+	runs := make([][2]int, runCount)
+	runLevels := make([]bidi.Level, runCount)
+	for start := 0; start < len(levels); {
+		end := start + 1
+		for end < len(levels) && levels[end] == levels[start] {
+			end++
+		}
+		run := runOf[start]
+		runs[run] = [2]int{
+			input.RunStart + start,
+			input.RunStart + end,
+		}
+		runLevels[run] = levels[start]
+		start = end
+	}
+
+	parts := make([]shaping.Input, 0, len(visualRuns))
+	for _, run := range visualRuns {
+		runInput := input
+		runInput.RunStart = runs[run][0]
+		runInput.RunEnd = runs[run][1]
+		runInput.Direction = di.DirectionLTR
+		rtl := runLevels[run]%2 != 0
+		if rtl {
+			runInput.Direction = di.DirectionRTL
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		runParts := s.paragraphSegment.Split(runInput, singleFaceMap{face: runInput.Face})
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if rtl {
+			for left, right := 0, len(runParts)-1; left < right; left, right = left+1, right-1 {
+				runParts[left], runParts[right] = runParts[right], runParts[left]
+			}
+		}
+		parts = append(parts, runParts...)
+	}
+	return parts, nil
 }
 
 // ShapeText shapes one text run using the supplied ordered face list.
@@ -272,22 +324,47 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 		return ShapedText{}, nil
 	}
 	byteOffsets := runeByteOffsets(text)
-	direction := di.DirectionLTR
 	baseDirection := bidi.LeftToRight
 	if req.Direction == TextDirectionRTL {
-		direction = di.DirectionRTL
 		baseDirection = bidi.RightToLeft
 	}
-	input := shaping.Input{
-		Text:      text,
-		RunStart:  0,
-		RunEnd:    len(text),
-		Direction: direction,
-		Language:  language.NewLanguage(req.Language),
-		Face:      faces[0].face,
+	inputDirection := di.DirectionLTR
+	if req.Direction == TextDirectionRTL {
+		inputDirection = di.DirectionRTL
 	}
-	paragraphs := shaper.paragraphSegment.Split(input, singleFaceMap{face: faces[0].face})
-	paragraphs = visualBidiOrder(paragraphs, text, baseDirection, &shaper.bidiParagraph)
+	var paragraphs []shaping.Input
+	if req.Direction == TextDirectionLTR && hasSimpleLTRBidi(text) {
+		input := shaping.Input{
+			Text:      text,
+			RunStart:  0,
+			RunEnd:    len(text),
+			Direction: inputDirection,
+			Language:  language.NewLanguage(req.Language),
+			Face:      faces[0].face,
+		}
+		paragraphs = shaper.paragraphSegment.Split(input, singleFaceMap{face: faces[0].face})
+		if err := req.Context.Err(); err != nil {
+			return ShapedText{}, err
+		}
+	} else {
+		paragraphRanges := bidiParagraphRanges(text)
+		paragraphs = make([]shaping.Input, 0, len(paragraphRanges))
+		for _, current := range paragraphRanges {
+			input := shaping.Input{
+				Text:      text,
+				RunStart:  current[0],
+				RunEnd:    current[1],
+				Direction: inputDirection,
+				Language:  language.NewLanguage(req.Language),
+				Face:      faces[0].face,
+			}
+			parts, err := shaper.segmentParagraph(req.Context, input, baseDirection)
+			if err != nil {
+				return ShapedText{}, err
+			}
+			paragraphs = append(paragraphs, parts...)
+		}
+	}
 	faceIndex, missingRune, err := segmentClusterFaces(
 		req.Context,
 		text,
@@ -301,6 +378,7 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 	}
 	result := ShapedText{}
 	clusterIndexes := make(map[[2]int]int)
+	clusterSignificance := make(map[[2]int]bool)
 	for _, part := range paragraphs {
 		if err := req.Context.Err(); err != nil {
 			return ShapedText{}, err
@@ -332,7 +410,13 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 			run.Face = faces[selected].face
 			run.Size = fixed.I(int(faces[selected].face.Upem()))
 			run.FontFeatures = features
+			if err := req.Context.Err(); err != nil {
+				return ShapedText{}, err
+			}
 			output := shaper.shaper.Shape(run)
+			if err := req.Context.Err(); err != nil {
+				return ShapedText{}, err
+			}
 			bestFace := selected
 			bestOutput := output
 			if runNeedsShapingProbe(text[start:end], part.Script) ||
@@ -343,10 +427,16 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 					if candidateIndex == selected {
 						continue
 					}
+					if err := req.Context.Err(); err != nil {
+						return ShapedText{}, err
+					}
 					candidateRun := run
 					candidateRun.Face = candidate.face
 					candidateRun.Size = fixed.I(int(candidate.face.Upem()))
 					candidateOutput := shaper.shaper.Shape(candidateRun)
+					if err := req.Context.Err(); err != nil {
+						return ShapedText{}, err
+					}
 					candidateMissing := missingGlyphCount(candidateOutput.Glyphs)
 					candidateGlyphs := len(candidateOutput.Glyphs)
 					if candidateMissing < bestMissing ||
@@ -362,11 +452,8 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 				for i := start; i < end; i++ {
 					faceIndex[i] = selected
 				}
-				required, covered := faceCoverage(f, faces[selected], text[start:end])
-				for i := start; i < end; i++ {
-					missingRune[i] = required != covered
-				}
 			}
+			markMissingRunes(f, faces[selected], text, start, end, missingRune)
 			if err := appendShapedOutput(
 				req.Context,
 				&result,
@@ -376,6 +463,7 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 				byteOffsets,
 				missingRune,
 				clusterIndexes,
+				clusterSignificance,
 				req.MaxGlyphs,
 			); err != nil {
 				return ShapedText{}, err
@@ -425,6 +513,7 @@ func appendShapedOutput(
 	byteOffsets []int,
 	missingRune []bool,
 	clusterIndexes map[[2]int]int,
+	clusterSignificance map[[2]int]bool,
 	maxGlyphs int,
 ) error {
 	for i, glyph := range output.Glyphs {
@@ -439,11 +528,18 @@ func appendShapedOutput(
 			return fmt.Errorf("%w: invalid cluster [%d,%d)", ErrInvalidText, start, end)
 		}
 		key := [2]int{start, end}
+		significant, significantKnown := clusterSignificance[key]
+		if !significantKnown {
+			for i := start; i < end; i++ {
+				significant = significant || significantTextRune(text[i])
+			}
+			clusterSignificance[key] = significant
+		}
 		clusterIndex, ok := clusterIndexes[key]
 		if !ok {
 			clusterIndex = len(result.Clusters)
 			clusterIndexes[key] = clusterIndex
-			missing := glyph.GlyphID == 0
+			missing := false
 			for i := start; i < end; i++ {
 				missing = missing || missingRune[i]
 			}
@@ -456,7 +552,7 @@ func appendShapedOutput(
 				Missing:   missing,
 			})
 		}
-		if glyph.GlyphID == 0 {
+		if significant && glyph.GlyphID == 0 {
 			result.Clusters[clusterIndex].Missing = true
 		}
 		if maxGlyphs > 0 && len(result.Glyphs) >= maxGlyphs {
@@ -474,6 +570,11 @@ func appendShapedOutput(
 		if err != nil {
 			return err
 		}
+		if !significant {
+			advance = 0
+			xOffset = 0
+			yOffset = 0
+		}
 		shaped := ShapedGlyph{
 			Glyph:   Glyph{Face: face},
 			Advance: advance,
@@ -482,7 +583,7 @@ func appendShapedOutput(
 			Cluster: clusterIndex,
 		}
 		switch {
-		case glyph.GlyphID == tsfont.EmptyGlyph:
+		case !significant || glyph.GlyphID == tsfont.EmptyGlyph:
 			shaped.Invisible = true
 		case uint32(glyph.GlyphID) > uint32(^uint16(0)):
 			return fmt.Errorf("%w: glyph id %d", ErrInvalidText, glyph.GlyphID)
@@ -628,6 +729,29 @@ func faceCoverage(set *FontSet, candidate indexedFace, run []rune) (required, co
 	return required, covered
 }
 
+func markMissingRunes(
+	set *FontSet,
+	candidate indexedFace,
+	text []rune,
+	start, end int,
+	missing []bool,
+) {
+	for i := start; i < end; i++ {
+		missing[i] = false
+		if !significantTextRune(text[i]) {
+			continue
+		}
+		if i+1 < end && isVariationSelectorRune(text[i+1]) {
+			_, covered := set.MapVariation(candidate.ref, text[i], text[i+1])
+			missing[i] = !covered
+			i++
+			continue
+		}
+		_, covered := candidate.face.NominalGlyph(text[i])
+		missing[i] = !covered
+	}
+}
+
 func isVariationSelectorRune(r rune) bool {
 	return r >= 0xFE00 && r <= 0xFE0F || r >= 0xE0100 && r <= 0xE01EF
 }
@@ -640,9 +764,11 @@ func significantTextRune(r rune) bool {
 		return false
 	case r == '\u200C' || r == '\u200D' || r == '\uFEFF':
 		return false
-	case unicode.Is(unicode.Cc, r), unicode.Is(unicode.Cf, r):
+	case unicode.Is(unicode.Cc, r), unicode.Is(unicode.Cs, r):
 		return false
 	case unicode.Is(unicode.Zl, r), unicode.Is(unicode.Zp, r):
+		return false
+	case harfbuzz.IsDefaultIgnorable(r):
 		return false
 	default:
 		return true

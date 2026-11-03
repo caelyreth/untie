@@ -5,6 +5,7 @@ released Go code.
 
 | Module | License |
 | ------ | ------- |
+| `github.com/go-typeset/bidi` | `BSD-3-Clause` |
 | `github.com/go-text/typesetting` | `Unlicense OR BSD-3-Clause` |
 | `golang.org/x/image` | `BSD-3-Clause` plus Go patent grant |
 | `golang.org/x/sys` | `BSD-3-Clause` |

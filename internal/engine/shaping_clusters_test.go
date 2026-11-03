@@ -99,6 +99,33 @@ func TestShapeTextTracksShapingClusters(t *testing.T) {
 	}
 }
 
+func TestShapeTextTrackingSkipsInvisibleClusters(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	shape := func(text string, tracking geometry.Em) layout.TextRun {
+		t.Helper()
+		run, err := adapter.ShapeText(layout.TextRequest{
+			Context:  context.Background(),
+			Text:     text,
+			Style:    layout.Style{Size: layout.Text},
+			Variant:  ir.VariantAuto,
+			Font:     ir.FontText,
+			Tracking: tracking,
+		})
+		if err != nil {
+			t.Fatalf("ShapeText(%q): %v", text, err)
+		}
+		return run
+	}
+	tracking := geometry.Em(geometry.EmScale / 10)
+	plain := shape("AB", tracking)
+	withControl := shape("A\u2067B", tracking)
+	if withControl.Width != plain.Width {
+		t.Fatalf("width with invisible bidi control = %d, want %d", withControl.Width, plain.Width)
+	}
+}
+
 func TestShapeTextKeepsRTLRunsInVisualOrder(t *testing.T) {
 	t.Parallel()
 

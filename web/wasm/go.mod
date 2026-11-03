@@ -6,6 +6,7 @@ require github.com/caelyreth/untie v0.3.0
 
 require (
 	github.com/go-text/typesetting v0.3.5 // indirect
+	github.com/go-typeset/bidi v0.3.1 // indirect
 	golang.org/x/image v0.47.0 // indirect
 )
 
