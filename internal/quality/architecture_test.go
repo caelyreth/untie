@@ -99,7 +99,6 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/display",
 			modulePath + "/font",
 			modulePath + "/geometry",
-			modulePath + "/identity",
 			modulePath + "/internal/alt",
 			modulePath + "/internal/engine",
 			modulePath + "/internal/irarena",
