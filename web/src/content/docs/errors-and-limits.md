@@ -8,22 +8,22 @@ misreporting a font/configuration problem as a syntax error.
 
 Layout functions return Go errors. Use `errors.Is`:
 
-| Error | Meaning |
-| --- | --- |
-| `ErrInvalidInput` | Nil formula/root or other malformed layout input. |
-| `ErrMissingGlyph` | The selected faces do not cover a required glyph. |
-| `ErrUnsupported` | A recognized construct has no supported representation in this release. |
-| `ErrInsufficientStretch` | The font cannot stretch a delimiter or accent enough. |
-| `ErrLimit` | A resource limit was exceeded during layout or output construction. |
-| `ErrInvalidStyle` | `Style` failed validation. |
-| `ErrInvalidFonts` | Font preparation failed in `LoadFontSet` or `LoadMathFont`, or `NewEngine` received an unusable font set. |
-| `ErrInvalidEngine` | A nil or unusable engine was called. |
-| `ErrInvalidRenderer` | A renderer was nil, could not be constructed, or had an invalid default dialect. |
-| `ErrInvalidContext` | A nil context was supplied. |
-| `ErrInvalidExpr` | A nil expression was supplied. |
-| `ErrAltInvalidRoot` | Alternative-text generation received malformed input. |
-| `ErrAltLimitExceeded` | Alternative-text traversal/output exceeded a limit. |
-| `ErrAltUnsupportedNode` | Alternative text cannot explain an IR node. |
+| Error                    | Meaning                                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `ErrInvalidInput`        | Nil formula/root or other malformed layout input.                                                         |
+| `ErrMissingGlyph`        | The selected faces do not cover a required glyph.                                                         |
+| `ErrUnsupported`         | A recognized construct has no supported representation in this release.                                   |
+| `ErrInsufficientStretch` | The font cannot stretch a delimiter or accent enough.                                                     |
+| `ErrLimit`               | A resource limit was exceeded during layout or output construction.                                       |
+| `ErrInvalidStyle`        | `Style` failed validation.                                                                                |
+| `ErrInvalidFonts`        | Font preparation failed in `LoadFontSet` or `LoadMathFont`, or `NewEngine` received an unusable font set. |
+| `ErrInvalidEngine`       | A nil or unusable engine was called.                                                                      |
+| `ErrInvalidRenderer`     | A renderer was nil, could not be constructed, or had an invalid default dialect.                          |
+| `ErrInvalidContext`      | A nil context was supplied.                                                                               |
+| `ErrInvalidExpr`         | A nil expression was supplied.                                                                            |
+| `ErrAltInvalidRoot`      | Alternative-text generation received malformed input.                                                     |
+| `ErrAltLimitExceeded`    | Alternative-text traversal/output exceeded a limit.                                                       |
+| `ErrAltUnsupportedNode`  | Alternative text cannot explain an IR node.                                                               |
 
 Layout failures that carry one of the five layout sentinels are also returned
 as `*untie.LayoutError`:
@@ -39,13 +39,13 @@ type LayoutError struct {
 `Kind` (also available through `Code()`) is the stable machine-readable
 classification:
 
-| Kind | Sentinel |
-| --- | --- |
-| `LayoutErrorInvalidInput` | `ErrInvalidInput` |
-| `LayoutErrorMissingGlyph` | `ErrMissingGlyph` |
-| `LayoutErrorUnsupported` | `ErrUnsupported` |
+| Kind                             | Sentinel                 |
+| -------------------------------- | ------------------------ |
+| `LayoutErrorInvalidInput`        | `ErrInvalidInput`        |
+| `LayoutErrorMissingGlyph`        | `ErrMissingGlyph`        |
+| `LayoutErrorUnsupported`         | `ErrUnsupported`         |
 | `LayoutErrorInsufficientStretch` | `ErrInsufficientStretch` |
-| `LayoutErrorLimit` | `ErrLimit` |
+| `LayoutErrorLimit`               | `ErrLimit`               |
 
 `LayoutError.Unwrap` returns the underlying failure, so both `errors.Is` and
 `errors.As` continue to work through host wrapping:
@@ -117,21 +117,21 @@ failure.
 `Limits{}` is not unlimited. `WithDefaults` replaces zero and negative fields
 with these values:
 
-| Limit | Default | Primary enforcement |
-| --- | ---: | --- |
-| `MaxSourceBytes` | 1,048,576 | Parse boundary and IR validation |
-| `MaxTokens` | 250,000 | TeX/Typst lexers and parsers |
-| `MaxNesting` | 256 | Parser, IR traversal, and layout |
-| `MaxNodes` | 100,000 | Parser boundary, IR validation, and layout |
-| `MaxMacroExpansions` | 100,000 | TeX macro expander |
-| `MaxExpandedTokens` | 1,000,000 | TeX macro expander |
-| `MaxCallDepth` | 80 | Typst restricted evaluator and TeX call paths |
-| `MaxTableCells` | 10,000 | TeX/Typst table parsing and layout checks |
-| `MaxAssemblyRepeats` | 1,024 | Font assembly adapter |
-| `MaxTextBytes` | 100,000 | IR validation, layout text, and Alt |
-| `MaxOutputItems` | 250,000 | Display-list flattening |
-| `MaxPathSegments` | 2,000,000 | Glyph/path flattening |
-| `MaxDimension` | 1,099,511,627,776 | Geometry and length validation |
+| Limit                |           Default | Primary enforcement                           |
+| -------------------- | ----------------: | --------------------------------------------- |
+| `MaxSourceBytes`     |         1,048,576 | Parse boundary and IR validation              |
+| `MaxTokens`          |           250,000 | TeX/Typst lexers and parsers                  |
+| `MaxNesting`         |               256 | Parser, IR traversal, and layout              |
+| `MaxNodes`           |           100,000 | Parser boundary, IR validation, and layout    |
+| `MaxMacroExpansions` |           100,000 | TeX macro expander                            |
+| `MaxExpandedTokens`  |         1,000,000 | TeX macro expander                            |
+| `MaxCallDepth`       |                80 | Typst restricted evaluator and TeX call paths |
+| `MaxTableCells`      |            10,000 | TeX/Typst table parsing and layout checks     |
+| `MaxAssemblyRepeats` |             1,024 | Font assembly adapter                         |
+| `MaxTextBytes`       |           100,000 | IR validation, layout text, and Alt           |
+| `MaxOutputItems`     |           250,000 | Display-list flattening                       |
+| `MaxPathSegments`    |         2,000,000 | Glyph/path flattening                         |
+| `MaxDimension`       | 1,099,511,627,776 | Geometry and length validation                |
 
 `MaxSourceBytes`, `MaxTextBytes`, and `MaxDimension` are byte/dimension values;
 the others are counts.

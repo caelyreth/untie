@@ -104,17 +104,17 @@ public box contract.
 
 ## Ownership Rules
 
-| Value | Owner after the call | Important rule |
-| --- | --- | --- |
-| Font bytes passed to `LoadMathFont` or `LoadFontSet` | Caller | The loader copies them; later caller mutation has no effect. |
-| `*FontSet` | Caller | Immutable and safe for concurrent readers. |
-| `*Renderer` | Caller | Reusable and concurrency-safe; returned boxes remain caller-owned. |
-| `*Engine` | Caller | Reusable and concurrency-safe; GC-managed. |
-| `ParseOptions.Macros` | Caller | Copied into the expression's parse calculation. |
-| `Style.Features` | Caller | Snapshot per layout call. |
-| `*Expr` | Caller | Immutable; create independent IR snapshots for mutation. |
-| `*Box` | Caller | Independent per layout; do not mutate while sharing. |
-| `*Formula` passed to `LayoutFormulaContext` | Caller | Must stay immutable for the duration of the call. |
+| Value                                                | Owner after the call | Important rule                                                     |
+| ---------------------------------------------------- | -------------------- | ------------------------------------------------------------------ |
+| Font bytes passed to `LoadMathFont` or `LoadFontSet` | Caller               | The loader copies them; later caller mutation has no effect.       |
+| `*FontSet`                                           | Caller               | Immutable and safe for concurrent readers.                         |
+| `*Renderer`                                          | Caller               | Reusable and concurrency-safe; returned boxes remain caller-owned. |
+| `*Engine`                                            | Caller               | Reusable and concurrency-safe; GC-managed.                         |
+| `ParseOptions.Macros`                                | Caller               | Copied into the expression's parse calculation.                    |
+| `Style.Features`                                     | Caller               | Snapshot per layout call.                                          |
+| `*Expr`                                              | Caller               | Immutable; create independent IR snapshots for mutation.           |
+| `*Box`                                               | Caller               | Independent per layout; do not mutate while sharing.               |
+| `*Formula` passed to `LayoutFormulaContext`          | Caller               | Must stay immutable for the duration of the call.                  |
 
 The public fields on IR nodes and display items are intentionally inspectable.
 That does not make shared values safe for concurrent mutation. Treat parsed

@@ -7,10 +7,10 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
+    { self
+    , nixpkgs
+    , flake-utils
+    ,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -24,6 +24,8 @@
             gotools
             golangci-lint
             gopls
+            bun
+            binaryen
             nixpkgs-fmt
             jq
             ast-grep

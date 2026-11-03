@@ -95,31 +95,31 @@ ordinary inter-atom gap.
 
 ## Node Families
 
-| Node | Purpose |
-| --- | --- |
-| `Row` | Horizontal sequence and the common container. |
-| `Glyph` | One semantic symbol or grapheme cluster. |
-| `Text` | Shaped text-mode run, with optional font role and tracking. |
-| `Operator` | Named mathematical operator. |
-| `Space` | Explicit, interword, or ignored space. |
-| `Fraction` | Vertical, horizontal, skewed, or barless fraction; also binomial/stack roles. |
-| `Radical` | Square or indexed root. |
-| `Scripts` | Base plus top/bottom/corner attachments with a semantic role. |
-| `Fenced` | Optional opening/closing delimiters around a body. |
-| `SizedDelimiter` | One delimiter with an explicit sizing policy. |
-| `Accent` | Above/below accent with stretch and natural-fit controls. |
-| `Line` | Overline or underline. |
-| `Cancel` | Strike or negation overlay. |
-| `Table` | Matrix, array, cases, vector, or aligned grid. |
-| `Multiline` | Source-ordered rows without a table grid. |
-| `Style` | Explicit math size/cramping wrapper. |
-| `Color` | Paint wrapper. |
-| `Box` | Padding, fill, border, and radius decoration. |
-| `Phantom` | Hidden width/height/depth while preserving selected extents. |
-| `ErrorNode` | Visible recoverable source fragment. |
-| `Placeholder` | Visible missing-content marker. |
-| `Break` | Explicit legal line-break opportunity. |
-| `AlignMarker` | Alignment point inside multiline/table content. |
+| Node             | Purpose                                                                       |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `Row`            | Horizontal sequence and the common container.                                 |
+| `Glyph`          | One semantic symbol or grapheme cluster.                                      |
+| `Text`           | Shaped text-mode run, with optional font role and tracking.                   |
+| `Operator`       | Named mathematical operator.                                                  |
+| `Space`          | Explicit, interword, or ignored space.                                        |
+| `Fraction`       | Vertical, horizontal, skewed, or barless fraction; also binomial/stack roles. |
+| `Radical`        | Square or indexed root.                                                       |
+| `Scripts`        | Base plus top/bottom/corner attachments with a semantic role.                 |
+| `Fenced`         | Optional opening/closing delimiters around a body.                            |
+| `SizedDelimiter` | One delimiter with an explicit sizing policy.                                 |
+| `Accent`         | Above/below accent with stretch and natural-fit controls.                     |
+| `Line`           | Overline or underline.                                                        |
+| `Cancel`         | Strike or negation overlay.                                                   |
+| `Table`          | Matrix, array, cases, vector, or aligned grid.                                |
+| `Multiline`      | Source-ordered rows without a table grid.                                     |
+| `Style`          | Explicit math size/cramping wrapper.                                          |
+| `Color`          | Paint wrapper.                                                                |
+| `Box`            | Padding, fill, border, and radius decoration.                                 |
+| `Phantom`        | Hidden width/height/depth while preserving selected extents.                  |
+| `ErrorNode`      | Visible recoverable source fragment.                                          |
+| `Placeholder`    | Visible missing-content marker.                                               |
+| `Break`          | Explicit legal line-break opportunity.                                        |
+| `AlignMarker`    | Alignment point inside multiline/table content.                               |
 
 The frontends lower dialect syntax into these families. TeX `pmatrix` and
 Typst `mat` can both become a `Table`; TeX `aligned` and Typst alignment rows

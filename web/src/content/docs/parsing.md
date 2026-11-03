@@ -69,24 +69,24 @@ Severities are:
 
 Codes currently include:
 
-| Code | Meaning |
-| --- | --- |
-| `syntax` | General syntax error. |
-| `unknown-command` | Unrecognized TeX control sequence. |
-| `unknown-symbol` | A referenced symbol cannot be resolved. |
-| `missing-argument` | A construct requires an argument that is absent. |
-| `unclosed-group` | A group, fence, or environment is not closed. |
-| `unexpected-token` | A token is not legal at that position. |
-| `unsupported` | Recognized syntax is outside the current renderer. |
-| `invalid-value` | An argument is present but invalid. |
-| `invalid-environment` | Unknown or mismatched environment. |
-| `unknown-variable` | Typst name is not defined in the restricted evaluator. |
-| `missing-glyph` | A parse-stage glyph requirement is absent. |
-| `text-unsupported` | Text syntax is outside the supported text subset. |
-| `limit-exceeded` | A configured resource limit was reached. |
-| `canceled` | Work was canceled. |
-| `internal` | A parser invariant or implementation failure. |
-| `deprecated` | Reserved for a recognized deprecated spelling. |
+| Code                  | Meaning                                                |
+| --------------------- | ------------------------------------------------------ |
+| `syntax`              | General syntax error.                                  |
+| `unknown-command`     | Unrecognized TeX control sequence.                     |
+| `unknown-symbol`      | A referenced symbol cannot be resolved.                |
+| `missing-argument`    | A construct requires an argument that is absent.       |
+| `unclosed-group`      | A group, fence, or environment is not closed.          |
+| `unexpected-token`    | A token is not legal at that position.                 |
+| `unsupported`         | Recognized syntax is outside the current renderer.     |
+| `invalid-value`       | An argument is present but invalid.                    |
+| `invalid-environment` | Unknown or mismatched environment.                     |
+| `unknown-variable`    | Typst name is not defined in the restricted evaluator. |
+| `missing-glyph`       | A parse-stage glyph requirement is absent.             |
+| `text-unsupported`    | Text syntax is outside the supported text subset.      |
+| `limit-exceeded`      | A configured resource limit was reached.               |
+| `canceled`            | Work was canceled.                                     |
+| `internal`            | A parser invariant or implementation failure.          |
+| `deprecated`          | Reserved for a recognized deprecated spelling.         |
 
 The project treats existing code meanings as stable identifiers, while allowing
 new codes in future releases.

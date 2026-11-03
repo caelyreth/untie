@@ -101,3 +101,29 @@ jobs:
           CGO_ENABLED: "0"
         run: go build ./...
 
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.27.3
+          cache: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install WebAssembly optimizer
+        run: sudo apt-get update && sudo apt-get install -y binaryen
+      - name: Install dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Check
+        working-directory: web
+        run: bun run check
+      - name: Lint
+        working-directory: web
+        run: bun run lint
+      - name: Build site and Wasm
+        working-directory: web
+        run: bun run build
+

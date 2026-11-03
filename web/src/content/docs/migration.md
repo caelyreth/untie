@@ -35,12 +35,12 @@ the `Engine.LayoutFormulaContext` advanced boundary.
 The root `FontData`, `Fonts`, and `LoadFonts` aliases and the `font.FontData`,
 `font.Fonts`, and `font.Load` types and function are removed.
 
-| Removed surface | Replacement |
-| --- | --- |
-| One math-font byte slice passed through `Fonts` | `LoadMathFont` with `WithFontID` and `WithFontIndex` options |
-| Separate math, text, and fallback byte containers | `LoadFontSet(FontSetConfig{...})` with `font.FontFace` values |
-| Reading files separately and assembling host-specific structures | `fontsource` helpers over an `io/fs.FS` |
-| Inspecting the old mutable font container | `FontSet.Config()` for immutable copied configuration |
+| Removed surface                                                  | Replacement                                                   |
+| ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| One math-font byte slice passed through `Fonts`                  | `LoadMathFont` with `WithFontID` and `WithFontIndex` options  |
+| Separate math, text, and fallback byte containers                | `LoadFontSet(FontSetConfig{...})` with `font.FontFace` values |
+| Reading files separately and assembling host-specific structures | `fontsource` helpers over an `io/fs.FS`                       |
+| Inspecting the old mutable font container                        | `FontSet.Config()` for immutable copied configuration         |
 
 Example:
 
@@ -63,13 +63,13 @@ may reuse its input slices after the call.
 The display-box contract is unchanged. The new `render` package removes common
 per-host path placement code:
 
-| Previous host responsibility | Current helper |
-| --- | --- |
-| Iterate items and skip glyph-reference metadata | `render.Walk` |
-| Materialize `At + point*Em` into a new path | `render.ResolvePath` |
-| Place paths while drawing without allocation | Resolve each borrowed `render.Command` segment at paint time |
-| Compute a viewport transform from `Box.Bounds()` | `render.Fit` |
-| Apply translation and scale to points or rectangles | `render.Transform.Apply` and `Transform.ApplyRect` |
+| Previous host responsibility                        | Current helper                                               |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| Iterate items and skip glyph-reference metadata     | `render.Walk`                                                |
+| Materialize `At + point*Em` into a new path         | `render.ResolvePath`                                         |
+| Place paths while drawing without allocation        | Resolve each borrowed `render.Command` segment at paint time |
+| Compute a viewport transform from `Box.Bounds()`    | `render.Fit`                                                 |
+| Apply translation and scale to points or rectangles | `render.Transform.Apply` and `Transform.ApplyRect`           |
 
 `render.Walk` preserves visible item order. For path commands it borrows the
 box's path template; the callback must not mutate or retain that template.

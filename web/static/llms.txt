@@ -5,7 +5,7 @@
 > MATH font, and returns a UI-independent display list.
 
 Use this file as the short entry point for code assistants. Read
-[README.md](README.md) next, then the page that matches the task.
+[README.md](/docs) next, then the page that matches the task.
 
 ## Essential Facts
 
@@ -75,39 +75,39 @@ draw(result.Box.Items)
 ## Task Router
 
 - First integration:
-  [getting-started.md](getting-started.md)
+  [getting-started.md](/docs/getting-started)
 - Pipeline and ownership:
-  [concepts.md](concepts.md)
+  [concepts.md](/docs/concepts)
 - Canvas, dots/em/coordinate, lines, tags, hits, overflow:
-  [rendering.md](rendering.md)
+  [rendering.md](/docs/rendering)
 - PNG export, padding, device scale, and palette colors:
-  [`encode/raster`](../encode/raster/doc.go)
+  [`encode/raster`](https://github.com/caelyreth/untie/blob/main/encode/raster/doc.go)
 - SVG export, viewport sizing, roles, and metadata:
-  [`encode/svg`](../encode/svg/doc.go)
+  [`encode/svg`](https://github.com/caelyreth/untie/blob/main/encode/svg/doc.go)
 - MyGo elements, Markdown math, existing-box drawing, and cache ownership:
-  [mygo.md](mygo.md)
+  [mygo.md](/docs/mygo)
 - Font roles, IDs, TTC, fallback, missing glyphs:
-  [fonts.md](fonts.md)
+  [fonts.md](/docs/fonts)
 - Diagnostics and recoverable parse output:
-  [parsing.md](parsing.md)
+  [parsing.md](/docs/parsing)
 - Error sentinels and resource limits:
-  [errors-and-limits.md](errors-and-limits.md)
+  [errors-and-limits.md](/docs/errors-and-limits)
 - IR inspection, `RootSnapshot`, `LayoutFormulaContext`:
-  [canonical-ir.md](canonical-ir.md)
+  [canonical-ir.md](/docs/canonical-ir)
 - Engine reuse, cancellation, and caches:
-  [concurrency.md](concurrency.md)
+  [concurrency.md](/docs/concurrency)
 - Text/speech alternative output:
-  [accessibility.md](accessibility.md)
+  [accessibility.md](/docs/accessibility)
 - TeX syntax subset and exclusions:
-  [tex-support.md](tex-support.md)
+  [tex-support.md](/docs/tex-support)
 - Typst restricted frontend and exclusions:
-  [typst-support.md](typst-support.md)
+  [typst-support.md](/docs/typst-support)
 - Public API tiers and serialization caveats:
-  [stability.md](stability.md)
+  [stability.md](/docs/stability)
 - Tracked corpora and verification:
-  [quality.md](quality.md)
+  [quality.md](/docs/quality)
 - Tracked performance benchmarks and metric semantics:
-  [performance.md](performance.md)
+  [performance.md](/docs/performance)
 
 ## Key API
 
@@ -233,9 +233,9 @@ directly and is never wrapped in `LayoutError`.
 
 Do not describe Untie as full TeX, full LaTeX, or full Typst. Use:
 
-- [tex-support.md](tex-support.md) for TeX capabilities and exclusions;
-- [typst-support.md](typst-support.md) for the restricted Typst math subset;
-- [quality.md](quality.md) for exact tracked evidence and reviewed-gap counts.
+- [tex-support.md](/docs/tex-support) for TeX capabilities and exclusions;
+- [typst-support.md](/docs/typst-support) for the restricted Typst math subset;
+- [quality.md](/docs/quality) for exact tracked evidence and reviewed-gap counts.
 
 Known limitations must be reported as diagnostics, layout errors, or explicit
 fallback behavior. Do not invent a workaround that leaks dialect syntax into
@@ -243,12 +243,12 @@ layout or lets a host import internals.
 
 ## Core Source Files
 
-- Public facade and types: [`api.go`](../api.go), [`layout.go`](../layout.go)
-- Display contract: [`display/types.go`](../display/types.go)
-- Drawing protocol: [`render/walk.go`](../render/walk.go),
-  [`render/fit.go`](../render/fit.go)
-- Optional SVG output: [`encode/svg/svg.go`](../encode/svg/svg.go)
-- Optional raster/PNG output: [`encode/raster/raster.go`](../encode/raster/raster.go)
-- Canonical IR: [`ir/nodes.go`](../ir/nodes.go)
-- Font substrate: [`font/README.md`](../font/README.md)
-- Acceptance corpora: [`testdata/README.md`](../testdata/README.md)
+- Public facade and types: [`api.go`](https://github.com/caelyreth/untie/blob/main/api.go), [`layout.go`](https://github.com/caelyreth/untie/blob/main/layout.go)
+- Display contract: [`display/types.go`](https://github.com/caelyreth/untie/blob/main/display/types.go)
+- Drawing protocol: [`render/walk.go`](https://github.com/caelyreth/untie/blob/main/render/walk.go),
+  [`render/fit.go`](https://github.com/caelyreth/untie/blob/main/render/fit.go)
+- Optional SVG output: [`encode/svg/svg.go`](https://github.com/caelyreth/untie/blob/main/encode/svg/svg.go)
+- Optional raster/PNG output: [`encode/raster/raster.go`](https://github.com/caelyreth/untie/blob/main/encode/raster/raster.go)
+- Canonical IR: [`ir/nodes.go`](https://github.com/caelyreth/untie/blob/main/ir/nodes.go)
+- Font substrate: [`font/README.md`](https://github.com/caelyreth/untie/blob/main/font/README.md)
+- Acceptance corpora: [`testdata/README.md`](https://github.com/caelyreth/untie/blob/main/testdata/README.md)

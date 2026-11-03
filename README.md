@@ -92,8 +92,9 @@ expr := untie.ParseTeX(`\sum_{i=1}^{n} i^2`, untie.Display, untie.ParseOptions{}
 box, err := engine.Layout(expr, untie.Style{Size: 24})
 ```
 
-See [Getting Started](docs/getting-started.md) for the complete integration
-pipeline and [Rendering](docs/rendering.md) for the drawing contract.
+See [Getting Started](web/src/content/docs/getting-started.md) for the complete
+integration pipeline and [Rendering](web/src/content/docs/rendering.md) for the
+drawing contract.
 
 ### MyGo
 
@@ -115,22 +116,24 @@ ui.Column(c).Children(func() {
 ```
 
 `BindMarkdown` adds `$...$`, `$$...$$`, `\(...\)`, and `\[...\]` support to a
-MyGo Markdown view. See the [MyGo integration guide](docs/mygo.md) for direct
-elements, Markdown binding, and existing-box drawing.
+MyGo Markdown view. See the
+[MyGo integration guide](web/src/content/docs/mygo.md) for direct elements,
+Markdown binding, and existing-box drawing.
 
 ### Documentation
 
 - [Runnable Examples](examples/README.md)
-- [Getting Started](docs/getting-started.md)
-- [Core Concepts](docs/concepts.md)
-- [Rendering](docs/rendering.md)
-- [Fonts](docs/fonts.md)
-- [Parsing](docs/parsing.md)
-- [MyGo Integration](docs/mygo.md)
-- [Supported TeX](docs/tex-support.md)
-- [Supported Typst](docs/typst-support.md)
-- [API Stability](docs/stability.md)
-- [Full Documentation Index](docs/README.md)
+- [Website and Documentation Project](web/README.md)
+- [Getting Started](web/src/content/docs/getting-started.md)
+- [Core Concepts](web/src/content/docs/concepts.md)
+- [Rendering](web/src/content/docs/rendering.md)
+- [Fonts](web/src/content/docs/fonts.md)
+- [Parsing](web/src/content/docs/parsing.md)
+- [MyGo Integration](web/src/content/docs/mygo.md)
+- [Supported TeX](web/src/content/docs/tex-support.md)
+- [Supported Typst](web/src/content/docs/typst-support.md)
+- [API Stability](web/src/content/docs/stability.md)
+- [Full Documentation Index](web/src/content/docs/README.md)
 
 ### License
 

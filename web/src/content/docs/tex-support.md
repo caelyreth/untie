@@ -120,18 +120,18 @@ contract.
 
 The following capabilities are not treated as silently ignorable TeX:
 
-| Input family | Current behavior |
-| --- | --- |
-| Chemistry and units: `\ce`, `\pu` | Error diagnostic; visible unsupported placeholder. |
-| External images: `\includegraphics` | Error diagnostic; visible unsupported placeholder. |
-| Raw HTML/DOM hooks: `\htmlClass`, `\htmlData`, `\htmlId`, `\htmlStyle` | Unsupported or discarded metadata with diagnostics; no DOM. |
-| Commutative diagrams: `CD` environment | Unsupported diagnostic; bounded environment skip. |
-| Manual overlap/raise/centering: `\llap`, `\rlap`, `\clap`, `\mathclap`, `\raisebox`, `\vcenter`, `\phase` | Unsupported; neutral IR cannot represent the geometry losslessly. |
-| KaTeX size declarations: `\tiny`, `\small`, `\large`, and peers | Unsupported because the neutral IR does not expose a KaTeX size index. |
-| `\nobreak` | Unsupported because suppression-only break policy is not represented. |
-| Inline math delimiters nested in math mode: `\(`, `\)`, `\]` | Parse diagnostic. |
-| Math commands in text mode, such as `\sqrt` inside `\text` | `unsupported` diagnostic at the text-mode boundary. |
-| Document packages, counters, references, citations, file inclusion, and arbitrary conditionals | Outside the formula frontend. |
+| Input family                                                                                              | Current behavior                                                       |
+| --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Chemistry and units: `\ce`, `\pu`                                                                         | Error diagnostic; visible unsupported placeholder.                     |
+| External images: `\includegraphics`                                                                       | Error diagnostic; visible unsupported placeholder.                     |
+| Raw HTML/DOM hooks: `\htmlClass`, `\htmlData`, `\htmlId`, `\htmlStyle`                                    | Unsupported or discarded metadata with diagnostics; no DOM.            |
+| Commutative diagrams: `CD` environment                                                                    | Unsupported diagnostic; bounded environment skip.                      |
+| Manual overlap/raise/centering: `\llap`, `\rlap`, `\clap`, `\mathclap`, `\raisebox`, `\vcenter`, `\phase` | Unsupported; neutral IR cannot represent the geometry losslessly.      |
+| KaTeX size declarations: `\tiny`, `\small`, `\large`, and peers                                           | Unsupported because the neutral IR does not expose a KaTeX size index. |
+| `\nobreak`                                                                                                | Unsupported because suppression-only break policy is not represented.  |
+| Inline math delimiters nested in math mode: `\(`, `\)`, `\]`                                              | Parse diagnostic.                                                      |
+| Math commands in text mode, such as `\sqrt` inside `\text`                                                | `unsupported` diagnostic at the text-mode boundary.                    |
+| Document packages, counters, references, citations, file inclusion, and arbitrary conditionals            | Outside the formula frontend.                                          |
 
 ## Recovery Is Part of the Contract
 

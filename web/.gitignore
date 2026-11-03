@@ -1,0 +1,5 @@
+node_modules
+.svelte-kit
+build
+wasm/wasm
+.DS_Store

@@ -6,17 +6,17 @@ and keep per-call inputs immutable for the duration of a call.
 
 ## Concurrency Summary
 
-| Value or call | Concurrent use |
-| --- | --- |
-| `*FontSet` | Safe for concurrent readers. |
-| `*Engine` | Safe for concurrent `Layout`/`LayoutContext` calls. |
-| `*Renderer` | Safe for concurrent `Render` calls. |
-| MyGo `*untiemygo.Renderer` | Safe for concurrent adapter use when callers treat returned boxes as immutable. |
-| `*Expr` | Immutable and safe to share for reads. |
-| `Style.Features` | Caller-owned; snapshotted per layout. |
-| `*Box` | Independent per successful layout; not safe for concurrent mutation. |
-| `*Formula` passed to `LayoutFormulaContext` | Safe to share only if every caller treats it as immutable for the call. |
-| Package-level layout cache | Concurrency-safe, bounded LRU with shared in-flight builds. |
+| Value or call                               | Concurrent use                                                                  |
+| ------------------------------------------- | ------------------------------------------------------------------------------- |
+| `*FontSet`                                  | Safe for concurrent readers.                                                    |
+| `*Engine`                                   | Safe for concurrent `Layout`/`LayoutContext` calls.                             |
+| `*Renderer`                                 | Safe for concurrent `Render` calls.                                             |
+| MyGo `*untiemygo.Renderer`                  | Safe for concurrent adapter use when callers treat returned boxes as immutable. |
+| `*Expr`                                     | Immutable and safe to share for reads.                                          |
+| `Style.Features`                            | Caller-owned; snapshotted per layout.                                           |
+| `*Box`                                      | Independent per successful layout; not safe for concurrent mutation.            |
+| `*Formula` passed to `LayoutFormulaContext` | Safe to share only if every caller treats it as immutable for the call.         |
+| Package-level layout cache                  | Concurrency-safe, bounded LRU with shared in-flight builds.                     |
 
 ## No Close Lifecycle
 

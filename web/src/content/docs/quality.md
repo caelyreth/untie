@@ -30,13 +30,13 @@ The reviewed TeX baseline covers:
 
 Current outcomes:
 
-| Outcome | Cases |
-| --- | ---: |
-| Pass | 1,045 |
-| Diagnostic | 26 |
-| Unsupported | 40 |
-| Bug | 0 |
-| Unexplained | 0 |
+| Outcome     | Cases |
+| ----------- | ----: |
+| Pass        | 1,045 |
+| Diagnostic  |    26 |
+| Unsupported |    40 |
+| Bug         |     0 |
+| Unexplained |     0 |
 
 Unsupported entries have explicit reviewed classifications. They are not
 crashes or silently skipped inputs.
@@ -46,13 +46,13 @@ crashes or silently skipped inputs.
 The reviewed Typst baseline contains 171 cases from selected Typlet corpora and
 fixtures:
 
-| Outcome | Cases |
-| --- | ---: |
-| Pass | 156 |
-| Diagnostic | 3 |
-| Unsupported | 4 |
-| Reviewed known issue | 8 |
-| Unexplained | 0 |
+| Outcome              | Cases |
+| -------------------- | ----: |
+| Pass                 |   156 |
+| Diagnostic           |     3 |
+| Unsupported          |     4 |
+| Reviewed known issue |     8 |
+| Unexplained          |     0 |
 
 The eight reviewed known issues have a fixed ID set. New issues cannot appear
 without an explicit compatibility update.
