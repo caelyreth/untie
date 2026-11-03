@@ -122,6 +122,37 @@ func TestHostMacros(t *testing.T) {
 	}
 }
 
+func TestExpanderAllocatesScopeMapsOnDemand(t *testing.T) {
+	t.Parallel()
+
+	e := newExpander("x", source.DefaultLimits(), nil, func(source.Diagnostic) {})
+	if e.rootScope.defs != nil {
+		t.Fatal("root scope allocated an empty definition map")
+	}
+
+	e.beginScope()
+	if e.scopes[0].defs != nil {
+		t.Fatal("nested scope allocated an empty definition map")
+	}
+	if !e.define(`\local`, &macroDef{body: []token{{kind: tokChar, text: "x"}}}, false) {
+		t.Fatal("local definition was rejected")
+	}
+	if e.lookup(`\local`) == nil || e.rootScope.defs != nil {
+		t.Fatal("local definition did not remain confined to its scope")
+	}
+
+	e.endScope()
+	if e.lookup(`\local`) != nil {
+		t.Fatal("local definition escaped its scope")
+	}
+	if !e.define(`\global`, &macroDef{body: []token{{kind: tokChar, text: "y"}}}, true) {
+		t.Fatal("global definition was rejected")
+	}
+	if e.lookup(`\global`) == nil || e.rootScope.defs == nil {
+		t.Fatal("global definition was not installed in the root scope")
+	}
+}
+
 func TestHostMacroRejectsInvalidArity(t *testing.T) {
 	t.Parallel()
 

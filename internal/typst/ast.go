@@ -61,6 +61,37 @@ type astNode struct {
 	bottomRight *astNode
 }
 
+const (
+	astArenaMinBlock = 4
+	astArenaMaxBlock = 256
+)
+
+// astArena allocates parser nodes in stable blocks. Growing the arena never
+// moves earlier nodes, so pointers into it remain valid for lowering.
+type astArena struct {
+	current []astNode
+}
+
+func newASTArena(hint int) astArena {
+	capacity := min(max(hint, astArenaMinBlock), astArenaMaxBlock)
+	return astArena{current: make([]astNode, 0, capacity)}
+}
+
+func (a *astArena) alloc(kind astKind, span source.Range) *astNode {
+	if len(a.current) == cap(a.current) {
+		capacity := max(cap(a.current)*2, astArenaMinBlock)
+		capacity = min(capacity, astArenaMaxBlock)
+		a.current = make([]astNode, 0, capacity)
+	}
+	a.current = append(a.current, astNode{
+		kind:      kind,
+		span:      span,
+		openSpan:  source.Detached(),
+		closeSpan: source.Detached(),
+	})
+	return &a.current[len(a.current)-1]
+}
+
 type argKind uint8
 
 const (

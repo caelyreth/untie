@@ -15,9 +15,14 @@ type macroDef struct {
 	compiled bool
 }
 
+type macroScope struct {
+	defs map[string]*macroDef
+}
+
 type expander struct {
 	tokens             []token
-	scopes             []map[string]*macroDef
+	rootScope          macroScope
+	scopes             []macroScope
 	diagnostic         func(source.Diagnostic)
 	limits             source.Limits
 	expansionCount     int
@@ -28,16 +33,18 @@ type expander struct {
 
 func newExpander(src string, limits source.Limits, macros map[string]Macro, diagnostic func(source.Diagnostic)) *expander {
 	lex := newLexer(src, limits, false, diagnostic)
-	capacity := min(len(src)+1, limits.MaxTokens+1)
+	capacity := tokenCapacityHint(src, limits.MaxTokens)
 	e := &expander{
 		tokens:     make([]token, 0, capacity),
-		scopes:     []map[string]*macroDef{{}},
 		diagnostic: diagnostic,
 		limits:     limits,
 	}
 	e.tokens = lex.appendAll(e.tokens)
 	slices.Reverse(e.tokens)
 
+	if len(macros) == 0 {
+		return e
+	}
 	names := make([]string, 0, len(macros))
 	for rawName := range macros {
 		names = append(names, rawName)
@@ -69,7 +76,10 @@ func newExpander(src string, limits source.Limits, macros map[string]Macro, diag
 			continue
 		}
 		seen[name] = true
-		e.scopes[0][name] = &macroDef{
+		if e.rootScope.defs == nil {
+			e.rootScope.defs = make(map[string]*macroDef, len(names))
+		}
+		e.rootScope.defs[name] = &macroDef{
 			args:     macro.Args,
 			hostBody: macro.Body,
 		}
@@ -211,20 +221,34 @@ func (e *expander) consumeArgument() ([]token, source.Range, bool) {
 }
 
 func (e *expander) beginScope() {
-	e.scopes = append(e.scopes, map[string]*macroDef{})
+	if e.scopes == nil {
+		capacity := 8
+		if e.limits.MaxNesting < capacity {
+			capacity = e.limits.MaxNesting
+		}
+		e.scopes = make([]macroScope, 0, max(capacity, 1))
+	}
+	e.scopes = append(e.scopes, macroScope{})
 }
 
 func (e *expander) endScope() {
-	if len(e.scopes) > 1 {
+	if len(e.scopes) > 0 {
 		e.scopes = e.scopes[:len(e.scopes)-1]
 	}
 }
 
 func (e *expander) lookup(name string) *macroDef {
 	for i := len(e.scopes) - 1; i >= 0; i-- {
-		if m, ok := e.scopes[i][name]; ok {
+		defs := e.scopes[i].defs
+		if defs == nil {
+			continue
+		}
+		if m, ok := defs[name]; ok {
 			return m
 		}
+	}
+	if m, ok := e.rootScope.defs[name]; ok {
+		return m
 	}
 	return nil
 }
@@ -235,11 +259,14 @@ func (e *expander) define(name string, m *macroDef, global bool) bool {
 	}
 	copy := *m
 	copy.body = append([]token(nil), m.body...)
-	if global {
-		e.scopes[0][name] = &copy
-		return true
+	scope := &e.rootScope
+	if !global && len(e.scopes) > 0 {
+		scope = &e.scopes[len(e.scopes)-1]
 	}
-	e.scopes[len(e.scopes)-1][name] = &copy
+	if scope.defs == nil {
+		scope.defs = make(map[string]*macroDef)
+	}
+	scope.defs[name] = &copy
 	return true
 }
 

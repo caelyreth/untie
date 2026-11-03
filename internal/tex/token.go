@@ -68,9 +68,52 @@ func newLexer(src string, limits source.Limits, detached bool, diagnostic func(s
 }
 
 func (l *lexer) all() []token {
-	capacity := min(len(l.src)+1, l.limits.MaxTokens+1)
+	capacity := tokenCapacityHint(l.src, l.limits.MaxTokens)
 	out := make([]token, 0, capacity)
 	return l.appendAll(out)
+}
+
+// tokenCapacityHint computes a cheap upper bound for the number of tokens
+// produced by src. It collapses the only multi-byte token forms (control words,
+// whitespace runs, and comments) without duplicating the lexer's value logic.
+func tokenCapacityHint(src string, maxTokens int) int {
+	capacity := 1 // EOF
+	for i := 0; i < len(src) && capacity < maxTokens+1; {
+		switch {
+		case isTeXSpace(src[i]):
+			capacity++
+			for i < len(src) && isTeXSpace(src[i]) {
+				i++
+			}
+		case src[i] == '%':
+			i++
+			for i < len(src) && src[i] != '\n' {
+				i++
+			}
+			if i < len(src) {
+				i++
+			}
+		case src[i] == '\\':
+			capacity++
+			i++
+			if i < len(src) && (isASCIILetter(src[i]) || src[i] == '@') {
+				for i < len(src) && (isASCIILetter(src[i]) || src[i] == '@') {
+					i++
+				}
+				for i < len(src) && isTeXSpace(src[i]) {
+					i++
+				}
+			} else if i < len(src) {
+				_, size := utf8.DecodeRuneInString(src[i:])
+				i += size
+			}
+		default:
+			capacity++
+			_, size := utf8.DecodeRuneInString(src[i:])
+			i += size
+		}
+	}
+	return min(capacity, maxTokens+1)
 }
 
 func (l *lexer) appendAll(out []token) []token {
