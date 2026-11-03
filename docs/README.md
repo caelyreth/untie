@@ -46,6 +46,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   commands that verify parser, layout, font, and corpus contracts.
 - [Performance](performance.md) explains the tracked corpus benchmarks,
   cache strategies, allocation metrics, and profiling commands.
+- [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
+  through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a
   deterministic antialiased RGBA image or PNG without cgo or a UI dependency.
 

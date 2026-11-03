@@ -214,6 +214,7 @@ layout or lets a host import internals.
 - Drawing protocol: [`render/walk.go`](../render/walk.go),
   [`render/fit.go`](../render/fit.go)
 - Optional SVG output: [`encode/svg/svg.go`](../encode/svg/svg.go)
+- Optional raster/PNG output: [`encode/raster/raster.go`](../encode/raster/raster.go)
 - Canonical IR: [`ir/nodes.go`](../ir/nodes.go)
 - Font substrate: [`font/README.md`](../font/README.md)
 - Frontends: [`internal/tex`](../internal/tex), [`internal/typst`](../internal/typst)

@@ -46,8 +46,8 @@ This tier supports:
 - `RootSnapshot`, `ValidateSource`, `CloneFormula`, `WalkFormula`;
 - `Engine.LayoutFormulaContext`;
 - source ranges, diagnostic codes, and resource limits;
-- framework-neutral command walking, viewport fitting, and optional PNG export;
-- framework-neutral drawing traversal, fitting, and optional SVG output.
+- framework-neutral command walking, viewport fitting, and optional SVG or PNG
+  output;
 - exact glyph metadata, feature tags, MATH tables, and font identity.
 
 These are public and intended to be usable, but they expose more of the data

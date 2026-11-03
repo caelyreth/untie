@@ -144,6 +144,7 @@ use the root facade and the public support packages:
 - `github.com/caelyreth/untie/ir`
 - `github.com/caelyreth/untie/render`
 - `github.com/caelyreth/untie/encode/svg`
+- `github.com/caelyreth/untie/encode/raster`
 - `github.com/caelyreth/untie/source`
 
 The repository's architecture test enforces the import direction and rejects
