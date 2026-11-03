@@ -102,6 +102,8 @@ The new options-bearing element methods add:
 `HitAt` exposes the inverse draw transform for applications that do not use
 MyGo input callbacks. `Options.Inline.Metrics` can report nominal baseline
 metrics with overflow ink kept drawable through the surrounding text clip.
+Found hit events also include `Caret` and `HasCaret`, so click-to-edit can enter
+the editor at a proven source boundary without recomputing pointer affinity.
 
 `FormulaClipboardData` and the context-menu option expose plain text and custom
 TeX/Typst source MIME formats. MathML is not offered until Untie has a real
@@ -119,6 +121,8 @@ caret, ok := box.CaretAt(sourceByteOffset)
 
 `Carets` returns an independent sorted snapshot. `CaretAt` prefers an exact
 proven source boundary and otherwise chooses the nearest boundary.
+`Box.NearestCaret(point)` resolves a pointer position to the vertically nearest
+line and then the horizontally nearest proven boundary.
 
 The stops are in final box coordinates, including constrained display line
 baselines and alignment offsets. Editors should not recover caret positions by

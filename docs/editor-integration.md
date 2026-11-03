@@ -93,7 +93,9 @@ Every stop contains the absolute source byte offset, horizontal position,
 vertical top and bottom, and an optional `NodeID`.
 
 `Box.CaretAt(offset)` prefers an exact proven boundary and otherwise returns the
-nearest stop. Shaped text exposes cluster boundaries rather than inventing
+nearest stop. `Box.NearestCaret(point)` resolves a pointer to the nearest line
+and then the nearest horizontal boundary on that line. Shaped text exposes
+cluster boundaries rather than inventing
 interior positions for a ligature or grapheme cluster. RTL clusters map source
 start and end to the correct visual edges, and bidi mixed text remains sorted by
 source even when hits are stored in visual paint order.
