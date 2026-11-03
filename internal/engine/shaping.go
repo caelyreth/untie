@@ -92,11 +92,20 @@ func (a *adapter) shapeTextRun(
 				return layout.TextRun{}, fmt.Errorf("%w: text cluster has no source mapping", layout.ErrInvalidInput)
 			}
 		}
+		info, ok := a.fonts.Face(cluster.Face)
+		if !ok {
+			return layout.TextRun{}, fmt.Errorf("%w: face %d", layout.ErrMissingGlyph, cluster.Face)
+		}
 		run.Clusters[i] = layout.TextCluster{
 			RuneStart: start,
 			RuneEnd:   end,
 			Source:    sourceRange,
+			FaceID:    info.ID,
+			Fallback:  cluster.Face != faces[0],
 			Missing:   cluster.Missing,
+		}
+		if cluster.Missing && run.MissingFaces == nil {
+			run.MissingFaces = a.faceIDs(faces)
 		}
 	}
 
@@ -284,6 +293,18 @@ func (a *adapter) shapeTextRun(
 	}
 	run.Width = pen
 	return run, nil
+}
+
+func (a *adapter) faceIDs(faces []font.FaceRef) []string {
+	ids := make([]string, 0, len(faces))
+	for _, ref := range faces {
+		info, ok := a.fonts.Face(ref)
+		if !ok {
+			continue
+		}
+		ids = append(ids, info.ID)
+	}
+	return ids
 }
 
 func mappedTextSourceRange(clusters []ir.TextClusterSource, start, end int) (source.Range, bool) {

@@ -55,6 +55,9 @@ func (b *Box) Validate() error {
 	if err := b.Alt.Validate(); err != nil {
 		return fmt.Errorf("%w: alt: %v", ErrInvalidBox, err)
 	}
+	if err := b.FontUsage.Validate(); err != nil {
+		return fmt.Errorf("%w: font usage: %v", ErrInvalidBox, err)
+	}
 	if b.Tag != nil {
 		if err := validateTagBox(b.Tag, len(b.Items), len(b.Hits)); err != nil {
 			return fmt.Errorf("%w: tag: %v", ErrInvalidBox, err)

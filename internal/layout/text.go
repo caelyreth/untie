@@ -37,6 +37,7 @@ func (s *layoutState) layoutText(node *ir.Text, env environment, depth int) (*Fr
 	if err != nil {
 		return nil, err
 	}
+	s.recordTextFontUsage(run, node)
 	runes := []rune(node.Text)
 	for _, cluster := range run.Clusters {
 		if !cluster.Missing {

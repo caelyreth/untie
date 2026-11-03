@@ -90,6 +90,29 @@ an error-painted placeholder box, records a `missing-glyph` diagnostic on both
 the box and high-level render result, and continues with the surrounding row.
 Use `RecoveryStrict` when a complete font match is required.
 
+## Structured Face Usage
+
+Layout records text-shaping provenance separately from diagnostics:
+
+```go
+box.FontUsage.Faces   // source span, resolved face ID, fallback marker
+box.FontUsage.Missing // source span, missing text, ordered tried face IDs
+```
+
+`Faces` is sorted and merged in source order. Adjacent clusters that use the
+same face and state share one `FaceUse`. `Fallback` means the selected face was
+not the first face requested for that text role; the optional text face and
+primary math face are therefore not automatically labelled fallback.
+
+`Missing` is deduplicated and merges adjacent clusters that tried the same faces
+in the same order. Its `Text` and `TriedFaces` fields tell a host what coverage
+is still needed without parsing diagnostic messages. This is reporting data,
+not a second error channel: `CodeMissingGlyph` diagnostics remain authoritative
+for editor ranges and visible recovery.
+
+The report covers shaped text clusters, not math atoms selected directly through
+OpenType MATH tables. It is empty when a formula has no shaped text.
+
 Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.3
 outline-only font and display contract. When such coverage is required, load a
 monochrome outline font or let the missing cluster use visible recovery.

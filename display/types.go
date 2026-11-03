@@ -211,6 +211,10 @@ type Box struct {
 	// glyphs rendered as visible placeholders. Parse diagnostics remain on the
 	// high-level RenderResult.
 	Diagnostics []source.Diagnostic
+	// FontUsage reports resolved face selection and missing fallback needs for
+	// shaped text clusters. It is separate from Diagnostics and remains empty
+	// when a formula contains no shaped text.
+	FontUsage FontUsage
 	// Tag is a single-line display equation tag in parent coordinates. Its
 	// Items and Hits ranges identify its records in this Box. It is excluded
 	// from formula-root breaks.
@@ -254,6 +258,7 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 			out.Diagnostics[i] = diagnostic.Clone()
 		}
 	}
+	out.FontUsage = b.FontUsage.Clone()
 	var canonicalTag *TagBox
 	if b.Tag != nil {
 		tag := *b.Tag

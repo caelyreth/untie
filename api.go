@@ -57,6 +57,9 @@ type (
 	ColorRolePalette = display.ColorRolePalette
 	PixelGrid        = display.PixelGrid
 	SnapAxis         = display.SnapAxis
+	FontUsage        = display.FontUsage
+	FaceUse          = display.FaceUse
+	MissingFallback  = display.MissingFallback
 	Hit              = display.Hit
 	HitKind          = display.HitKind
 	Break            = display.Break

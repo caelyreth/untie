@@ -64,6 +64,12 @@ source range). Bidirectional runs therefore expose hits in visual order while
 the canonical IR map remains ordered in logical text order. Text without a
 parser-authored map keeps the existing whole-node hit fallback.
 
+`Box.FontUsage` separately reports the resolved face and fallback state for
+text clusters in source order. Hosts can detect an already-used fallback with
+`UsesFallback()` and collect missing coverage requirements with
+`NeedsFallback()` without scraping diagnostics. The report merges adjacent
+equivalent spans and remains UI- and font-loader-independent.
+
 The 0.3 display contract is outline-only. Monochrome outline emoji can be
 shaped and drawn; fonts that expose only bitmap or COLR color emoji are outside
 the current font loader and display-item model. An unsupported color cluster

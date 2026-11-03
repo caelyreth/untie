@@ -217,6 +217,7 @@ func (r *Renderer) layoutFormulaContext(
 			return nil, err
 		}
 	}
+	box.FontUsage = finalizeFontUsage(state.fontUsage)
 	if err := box.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
@@ -244,6 +245,7 @@ type layoutState struct {
 	recoverMissingGlyph bool
 	diagnostics         []source.Diagnostic
 	missingGlyphKeys    map[missingGlyphDiagnosticKey]struct{}
+	fontUsage           display.FontUsage
 }
 
 type missingGlyphDiagnosticKey struct {

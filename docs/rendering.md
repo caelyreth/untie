@@ -45,6 +45,7 @@ type Box struct {
 	Breaks []Break
 	Alt    Alt
 	Diagnostics []source.Diagnostic
+	FontUsage   FontUsage
 	Tag    *TagBox
 	Lines  []LineBox
 }
@@ -57,6 +58,11 @@ box storage.
 glyphs rendered as visible placeholders. Parse diagnostics remain on
 `RenderResult.Diagnostics`; the high-level renderer returns a normalized union
 of both.
+
+`Box.FontUsage` is deterministic shaped-text provenance, not a diagnostic list.
+It reports source-merged `FaceUse` spans and deduplicated `MissingFallback`
+requirements. An empty value means the formula had no shaped text or all such
+text was handled without needing a report.
 
 ## Streaming Drawing Protocol
 

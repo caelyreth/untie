@@ -34,7 +34,7 @@ Primary surface:
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`,
-  and `Box.Diagnostics`;
+  `ColorPolicy`, `PixelGrid`, `FontUsage`, and `Box.Diagnostics`;
 - public error sentinels and diagnostic severities/codes.
 
 Tier 1 is the recommended integration surface. Breaking changes are allowed
