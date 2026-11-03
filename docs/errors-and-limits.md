@@ -169,6 +169,15 @@ under the per-field stricter intersection of engine and expression limits.
 This means an engine can reduce an expression's text budget even when the
 geometry itself is valid. `Expr.Alt()` remains available independently.
 
+### Formula Metadata
+
+Each equation tag, tag body, and equation label consumes the shared
+`MaxNodes` metadata budget during validation, canonical serialization, and
+`WalkFormula`. Label names are additionally bounded by `MaxTextBytes`.
+Resolved `\eqref` text must fit `MaxTextBytes` including its two parentheses;
+otherwise the expression gets a `limit-exceeded` diagnostic and a visible
+placeholder.
+
 ## Parser and Frontend Limits
 
 The TeX frontend has hard checks for:

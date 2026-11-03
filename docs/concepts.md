@@ -111,6 +111,7 @@ public box contract.
 | `*Renderer`                                          | Caller               | Reusable and concurrency-safe; returned boxes remain caller-owned. |
 | `*Engine`                                            | Caller               | Reusable and concurrency-safe; GC-managed.                         |
 | `ParseOptions.Macros`                                | Caller               | Copied into the expression's parse calculation.                    |
+| `ParseOptions.References`                            | Caller               | Copied before parsing; values are opaque displayed text.           |
 | `Style.Features`                                     | Caller               | Snapshot per layout call.                                          |
 | `*Expr`                                              | Caller               | Immutable; create independent IR snapshots for mutation.           |
 | `*Box`                                               | Caller               | Independent per layout; do not mutate while sharing.               |
@@ -164,8 +165,9 @@ adapters. MyGo applications can use the [MyGo adapter](mygo.md) for direct
 Two identities are exposed for different jobs:
 
 - `Expr.Key()` is a stable 64-bit convenience key over library version,
-  dialect, mode, source, parse-affecting limits, and TeX host macros. It is
-  suitable for host caches, not for cryptographic identity.
+  dialect, mode, source, parse-affecting limits, and TeX host macros and
+  reference text. It is suitable for host caches, not for cryptographic
+  identity.
 - `FontSet.KeySHA256()` is the collision-resistant identity of the complete
   font set, including face IDs and selected file indexes. `FontSet.Key()` is
   the first 64 bits for simpler host maps.
@@ -179,7 +181,7 @@ limits, and `Version()`. It never caches a rendered `Box`.
 - Theme colors. The host resolves `RoleInk`, `RoleError`, and
   `RolePlaceholder`, or honors an explicit `RGBA`.
 - Paragraph layout for inline formulas
-- Document counters, references, or bibliography resolution
+- Automatic document counters or hidden cross-formula reference resolution
 - Screen-reader behavior beyond deterministic alternative text
 - GPU tessellation or glyph-atlas ownership
 - Validation of the upstream license terms of host-supplied fonts

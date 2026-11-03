@@ -5,12 +5,13 @@ and the layout engine. Most hosts should parse an expression and pass the
 `*Expr` directly to layout. This page is for hosts that inspect, store, or
 produce validated canonical IR.
 
-## Formula and Tags
+## Formula, Tags, and Labels
 
 ```go
 type Formula struct {
-	Root Node
-	Tags []EquationTag
+	Root   Node
+	Tags   []EquationTag
+	Labels []EquationLabel
 }
 ```
 
@@ -43,6 +44,26 @@ For the current contract:
 The TeX frontend exposes formula tags and direct tags in supported multiline
 environments. Typst tags, nested-environment tags, and automatic counters are
 outside the metadata contract.
+
+`Labels` is unique, source-ordered TeX `\label` metadata:
+
+```go
+type EquationLabel struct {
+	Name   string
+	Span   source.Range
+	Origin source.Range
+}
+```
+
+Labels have no child nodes and no visible output. `Name` is the decoded key
+after TeX escapes such as `\_` are removed. `Span` covers the complete label
+construct; `Origin` records the invocation when macro expansion separates the
+label command from its call site. Duplicate names are invalid, so the TeX
+frontend retains the first occurrence and reports the later duplicate.
+
+Labels do not resolve references. `\eqref` is resolved from the host-supplied
+`ParseOptions.References` snapshot into a visible `Text` leaf and is then
+ordinary immutable IR.
 
 ## The Node Interface
 
@@ -223,7 +244,8 @@ err := ir.WalkFormula(formula, limits, func(node ir.Node) bool {
 - `ir.Walk` is the best-effort convenience walker.
 - `ir.WalkWithLimits` returns cycle and traversal errors.
 - `ir.WalkFormula` traverses the root and every tag body under one shared
-  node/nesting budget.
+  node/nesting budget; labels consume that metadata budget without emitting
+  child visits.
 - `ir.CloneFormula` validates and returns a deep copy.
 
 Validation catches cycles, typed nils, node/kind mismatch, invalid ranges,
@@ -233,8 +255,9 @@ inside the provided source string.
 
 `ir.ValidateWithStats` and `ir.ValidateSourceWithStats` return an immutable
 `ir.Stats` resource envelope alongside the validation result. The envelope
-records node/tag counts, maximum depth and text size, the largest dimension
-value, table-cell count, and a conservative glyph-materialization hint.
+records node, tag, and label counts; maximum depth and text size; the largest
+dimension value; table-cell count; and a conservative glyph-materialization
+hint.
 `Stats.WithinLimits` can prove that a formula satisfies a stricter limit set
 without another traversal; `false` means the caller must run the diagnostic
 validation path. Stats describe the validated tree and become stale if the
@@ -333,6 +356,7 @@ Manual construction is an advanced API. You are responsible for:
 - valid length units and dimensions;
 - valid table/multiline structure;
 - tag metadata consistency;
+- unique, valid label metadata and source ranges;
 - preserving immutability after sharing.
 
 Do not create unvalidated nodes and pass them directly to layout in a

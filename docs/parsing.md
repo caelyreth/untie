@@ -23,12 +23,15 @@ arbitrary points. A canceled call returns no expression and `ctx.Err()`.
 
 ```go
 type ParseOptions struct {
-	Macros map[string]untie.Macro
-	Limits untie.Limits
+	Macros     map[string]untie.Macro
+	References map[string]string
+	Limits     untie.Limits
 }
 ```
 
-The TeX frontend consumes macros. The Typst frontend ignores the macro map.
+The TeX frontend consumes macros and references. The Typst frontend ignores
+both maps. `References` values are opaque, host-supplied reference text: they
+are not parsed as TeX or Typst and cannot introduce commands, macros, or labels.
 
 ## What Parsing Produces
 
@@ -81,6 +84,8 @@ Codes currently include:
 | `invalid-value`       | An argument is present but invalid.                    |
 | `invalid-environment` | Unknown or mismatched environment.                     |
 | `unknown-variable`    | Typst name is not defined in the restricted evaluator. |
+| `duplicate-label`     | A formula-scoped label name was repeated.              |
+| `unresolved-reference` | No host reference entry matched a `\eqref` name.      |
 | `missing-glyph`       | A parse-stage glyph requirement is absent.             |
 | `text-unsupported`    | Text syntax is outside the supported text subset.      |
 | `limit-exceeded`      | A configured resource limit was reached.               |
@@ -169,10 +174,54 @@ preserve a link's visible body and discard its destination:
   `unsupported` warning. An omitted Typst body renders the destination text.
 
 Malformed link arguments produce their own `missing-argument`, `invalid-value`,
-or `syntax` diagnostics. Labels, cross-references, and document-level link
-resolution are outside this API.
+or `syntax` diagnostics. Formula labels and references use the explicit
+contract below; document-level link resolution remains outside this API.
 
 Do not assume a link warning means the body was discarded. It was not.
+
+## Formula Labels and References
+
+TeX `\label{name}` is formula metadata, not visible IR. `Expr.Labels()` and
+`ir.Formula.Labels` expose the decoded, unique, source-ordered names:
+
+```go
+type EquationLabel struct {
+	Name   string
+	Span   source.Range
+	Origin source.Range
+}
+```
+
+The first occurrence of a duplicate name is retained and later occurrences
+emit `duplicate-label`. Labels inside groups or scripts remain formula-scoped.
+For macro-expanded labels, `Origin` and usually `Span` point to the invocation
+site rather than joining definition and call-site bytes.
+
+TeX `\eqref{name}` resolves only from the `ParseOptions.References` snapshot:
+
+```go
+expr := untie.ParseTeX(`a=\eqref{eq:a}`, untie.Inline, untie.ParseOptions{
+	References: map[string]string{"eq:a": "3"},
+})
+```
+
+The resolved output is the text-font leaf `(3)`. The map value must already be
+display-ready text without parentheses; Untie does not parse it as math.
+Missing entries emit `unresolved-reference`, while empty, invalid UTF-8,
+control-containing, or oversized values emit `invalid-value` or
+`limit-exceeded`. Those failures render a visible placeholder and preserve the
+surrounding formula.
+
+Resolution precedence is deliberately small:
+
+1. Label names are decoded from TeX escapes such as `\_` and `\%`.
+2. Map lookup is an exact match against that decoded name.
+3. A formula's own `Labels` never populate or override `References`.
+4. There is no global registry, automatic numbering, citation lookup, or
+   lookup across another formula or parse call.
+
+Both maps are copied when parsing begins. Mutating the caller's map afterward
+cannot change the expression, its metadata, its key, or a cached render.
 
 ## Parser Limits
 
