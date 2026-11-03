@@ -243,6 +243,325 @@ func TestDrawUsesThemeRoleColors(t *testing.T) {
 	}
 }
 
+func TestDrawBoxPaintPolicies(t *testing.T) {
+	explicit := untie.Paint{
+		HasExplicit: true,
+		Explicit:    untie.RGBA{R: 10, G: 20, B: 30, A: 255},
+	}
+	box := &untie.Box{
+		Width:   40,
+		Ascent:  20,
+		Descent: 0,
+		Items: []untie.Item{
+			{
+				Kind:  untie.ItemRule,
+				Paint: untie.Paint{Role: untie.RoleInk},
+				Rect:  untie.Rect{X: 0, Y: -20, Width: 20, Height: 20},
+			},
+			{
+				Kind:  untie.ItemRule,
+				Paint: explicit,
+				Rect:  untie.Rect{X: 20, Y: -20, Width: 20, Height: 20},
+			},
+		},
+	}
+
+	t.Run("default theme resolver preserves explicit colors", func(t *testing.T) {
+		tester := ui.NewTester(func(c *ui.Context) {
+			ui.Box(c).Size(40, 20).Draw(func(painter *ui.Painter, rect ui.Rect) {
+				if err := DrawBox(painter, box, rect, DrawOptions{Scale: ScaleNatural}); err != nil {
+					t.Errorf("DrawBox: %v", err)
+				}
+			})
+		}, 40, 20)
+		lightSemantic := tester.Image().RGBAAt(10, 10)
+		lightExplicit := tester.Image().RGBAAt(30, 10)
+		if lightExplicit.R != 10 || lightExplicit.G != 20 || lightExplicit.B != 30 {
+			t.Fatalf("light explicit pixel = %#v", lightExplicit)
+		}
+
+		tester.SetDark(true)
+		darkSemantic := tester.Image().RGBAAt(10, 10)
+		darkExplicit := tester.Image().RGBAAt(30, 10)
+		if darkSemantic == lightSemantic {
+			t.Fatalf("semantic role did not follow theme: light %#v dark %#v",
+				lightSemantic, darkSemantic)
+		}
+		if darkExplicit != lightExplicit {
+			t.Fatalf("explicit color changed with theme: light %#v dark %#v",
+				lightExplicit, darkExplicit)
+		}
+	})
+
+	t.Run("custom resolver can remap semantic and explicit paints", func(t *testing.T) {
+		var seen []untie.Paint
+		resolver := func(_ *ui.Painter, paint untie.Paint) ui.Color {
+			seen = append(seen, paint)
+			if paint.HasExplicit {
+				return ui.RGB(1, 2, 3)
+			}
+			return ui.RGB(4, 5, 6)
+		}
+		tester := ui.NewTester(func(c *ui.Context) {
+			ui.Box(c).Size(40, 20).Draw(func(painter *ui.Painter, rect ui.Rect) {
+				err := DrawBox(painter, box, rect, DrawOptions{
+					Scale: ScaleNatural,
+					Paint: resolver,
+				})
+				if err != nil {
+					t.Errorf("DrawBox: %v", err)
+				}
+			})
+		}, 40, 20)
+		semanticPixel := tester.Image().RGBAAt(10, 10)
+		explicitPixel := tester.Image().RGBAAt(30, 10)
+		if semanticPixel.R != 4 || semanticPixel.G != 5 || semanticPixel.B != 6 {
+			t.Fatalf("custom semantic pixel = %#v", semanticPixel)
+		}
+		if explicitPixel.R != 1 || explicitPixel.G != 2 || explicitPixel.B != 3 {
+			t.Fatalf("custom explicit pixel = %#v", explicitPixel)
+		}
+		seenSemantic, seenExplicit := false, false
+		for _, paint := range seen {
+			if paint.HasExplicit {
+				seenExplicit = paint.Explicit == explicit.Explicit
+				continue
+			}
+			seenSemantic = paint.Role == untie.RoleInk
+		}
+		if !seenSemantic || !seenExplicit {
+			t.Fatalf("resolver paints = %+v", seen)
+		}
+	})
+}
+
+func TestDrawBoxScaleModes(t *testing.T) {
+	box := &untie.Box{
+		Width:  100,
+		Ascent: 20,
+		Items: []untie.Item{{
+			Kind: untie.ItemRule,
+			Paint: untie.Paint{
+				HasExplicit: true,
+				Explicit:    untie.RGBA{R: 255, A: 255},
+			},
+			Rect: untie.Rect{X: 0, Y: -20, Width: 50, Height: 20},
+		}},
+	}
+	drawPixel := func(scale ScaleMode) uint8 {
+		t.Helper()
+		tester := ui.NewTester(func(c *ui.Context) {
+			ui.Box(c).Size(50, 20).Draw(func(painter *ui.Painter, rect ui.Rect) {
+				err := DrawBox(painter, box, rect, DrawOptions{
+					Align: render.AlignStart,
+					Scale: scale,
+				})
+				if err != nil {
+					t.Errorf("DrawBox: %v", err)
+				}
+			})
+		}, 80, 40)
+		background := tester.Image().RGBAAt(70, 30)
+		pixel := tester.Image().RGBAAt(40, 10)
+		if pixel == background {
+			return 0
+		}
+		return pixel.R
+	}
+	if got := drawPixel(ScaleFit); got != 0 {
+		t.Fatalf("ScaleFit painted scaled-down rule at x=40, red=%d", got)
+	}
+	if got := drawPixel(ScaleNatural); got == 0 {
+		t.Fatal("ScaleNatural did not preserve native rule width")
+	}
+}
+
+func TestDrawBoxDoesNotMutateCachedBox(t *testing.T) {
+	renderer := newTestRenderer(t, Options{CacheEntries: 4})
+	ctx := context.Background()
+	first, err := renderer.Render(ctx, `x^2+y`, untie.Display, untie.Style{Size: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := renderer.Render(ctx, `x^2+y`, untie.Display, untie.Style{Size: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Box != first.Box {
+		t.Fatal("cache hit returned a different box")
+	}
+	before, err := first.Box.MarshalCanonical()
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	tester := ui.NewTester(func(c *ui.Context) {
+		ui.Box(c).Size(160, 80).Draw(func(painter *ui.Painter, rect ui.Rect) {
+			err := DrawBox(painter, first.Box, rect, DrawOptions{
+				Paint: func(_ *ui.Painter, paint untie.Paint) ui.Color {
+					calls++
+					return PaintColor(ui.LightTheme(), paint)
+				},
+			})
+			if err != nil {
+				t.Errorf("DrawBox: %v", err)
+			}
+		})
+	}, 160, 80)
+	tester.Frame()
+	if calls == 0 {
+		t.Fatal("custom resolver was not called")
+	}
+	after, err := first.Box.MarshalCanonical()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("DrawBox mutated the cached box")
+	}
+}
+
+func TestDisplayMathWidthWrapsAtRequestedWidth(t *testing.T) {
+	const (
+		width   = 68
+		padding = 4
+		frame   = width - 2*padding
+		source  = `a+b+c+d`
+	)
+	renderer := newTestRenderer(t, Options{
+		DisplaySize: 24,
+		Draw: DrawOptions{
+			Padding: padding,
+			Align:   render.AlignCenter,
+		},
+	})
+	tester := ui.NewTester(func(c *ui.Context) {
+		renderer.DisplayMathWidth(c, source, width)
+	}, width, 400)
+	rect, ok := tester.Find(source)
+	if !ok {
+		t.Fatalf("width-aware element not found in %q", tester.Texts())
+	}
+	if rect.W != width {
+		t.Fatalf("element width = %v, want %v", rect.W, width)
+	}
+
+	stats := renderer.CacheStats()
+	result, err := renderer.Render(context.Background(), source, untie.Display, untie.Style{
+		Size:     24,
+		MaxWidth: frame,
+		Align:    untie.AlignCenter,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := renderer.CacheStats(); got.Hits <= stats.Hits {
+		t.Fatalf("width-aware element did not reuse constrained layout: before %+v after %+v",
+			stats, got)
+	}
+	box := result.Box
+	if box.Width != frame {
+		t.Fatalf("box frame = %v, want %v", box.Width, frame)
+	}
+	if len(box.Lines) < 2 {
+		t.Fatalf("wrapped lines = %d, want at least 2", len(box.Lines))
+	}
+	if rect.H != box.Bounds().Height+2*padding {
+		t.Fatalf("element height = %v, want %v", rect.H, box.Bounds().Height+2*padding)
+	}
+	centered := false
+	for _, line := range box.Lines {
+		if line.OffsetX > 0 {
+			centered = true
+			break
+		}
+	}
+	if !centered {
+		t.Fatalf("center-aligned wrapped lines have no horizontal offset: %+v", box.Lines)
+	}
+}
+
+func TestDisplayMathWidthWideContentAndFallback(t *testing.T) {
+	const (
+		width   = 300
+		padding = 4
+		frame   = width - 2*padding
+		source  = `a+b+c+d`
+	)
+	renderer := newTestRenderer(t, Options{
+		DisplaySize: 24,
+		Draw:        DrawOptions{Padding: padding},
+	})
+	tester := ui.NewTester(func(c *ui.Context) {
+		renderer.DisplayMathWidth(c, source, width)
+	}, width, 200)
+	rect, ok := tester.Find(source)
+	if !ok {
+		t.Fatalf("wide element not found in %q", tester.Texts())
+	}
+	if rect.W != width {
+		t.Fatalf("wide element width = %v, want %v", rect.W, width)
+	}
+	result, err := renderer.Render(context.Background(), source, untie.Display, untie.Style{
+		Size:     24,
+		MaxWidth: frame,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Box.Lines) != 1 {
+		t.Fatalf("wide content lines = %d, want 1", len(result.Box.Lines))
+	}
+
+	narrow := ui.NewTester(func(c *ui.Context) {
+		renderer.DisplayMathWidth(c, source, 1)
+	}, 120, 80)
+	if !narrow.HasText(source) {
+		t.Fatalf("invalid width did not fall back to source: %q", narrow.Texts())
+	}
+}
+
+func TestCacheSeparatesWidthAwareLayouts(t *testing.T) {
+	renderer := newTestRenderer(t, Options{DisplaySize: 24, CacheEntries: 4})
+	ctx := context.Background()
+	source := `a+b+c+d`
+	narrow, err := renderer.Render(ctx, source, untie.Display, untie.Style{
+		Size:     24,
+		MaxWidth: 60,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wide, err := renderer.Render(ctx, source, untie.Display, untie.Style{
+		Size:     24,
+		MaxWidth: 260,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if narrow.Box == wide.Box {
+		t.Fatal("different MaxWidth values shared one cached box")
+	}
+	if len(narrow.Box.Lines) < 2 || len(wide.Box.Lines) != 1 {
+		t.Fatalf("line counts = narrow %d, wide %d",
+			len(narrow.Box.Lines), len(wide.Box.Lines))
+	}
+	again, err := renderer.Render(ctx, source, untie.Display, untie.Style{
+		Size:     24,
+		MaxWidth: 60,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Box != narrow.Box {
+		t.Fatal("narrow layout was not reused from cache")
+	}
+	stats := renderer.CacheStats()
+	if stats.Hits != 1 || stats.Misses != 2 || stats.Entries != 2 {
+		t.Fatalf("cache stats = %+v, want 2 misses, 1 hit, 2 entries", stats)
+	}
+}
+
 func TestPaintColorRoles(t *testing.T) {
 	theme := ui.DarkTheme()
 	for paint, want := range map[untie.Paint]ui.Color{
@@ -297,5 +616,16 @@ func TestDrawValidation(t *testing.T) {
 	}
 	if err := renderer.Draw(&ui.Painter{}, nil, ui.Rect{W: 10, H: 10}); err != ErrInvalidBox {
 		t.Fatalf("nil box error = %v", err)
+	}
+	if err := DrawBox(nil, &untie.Box{}, ui.Rect{W: 10, H: 10}, DrawOptions{}); !strings.Contains(err.Error(), "painter") {
+		t.Fatalf("DrawBox nil painter error = %v", err)
+	}
+	if err := DrawBox(&ui.Painter{}, nil, ui.Rect{W: 10, H: 10}, DrawOptions{}); err != ErrInvalidBox {
+		t.Fatalf("DrawBox nil box error = %v", err)
+	}
+	if err := DrawBox(&ui.Painter{}, &untie.Box{}, ui.Rect{W: 10, H: 10}, DrawOptions{
+		Scale: ScaleMode(255),
+	}); !strings.Contains(err.Error(), "scale mode") {
+		t.Fatalf("DrawBox invalid scale error = %v", err)
 	}
 }
