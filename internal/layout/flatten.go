@@ -288,12 +288,16 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 				}
 				continue
 			}
+			glyphOriginY, err := add(itemY, glyph.Glyph.OriginY)
+			if err != nil {
+				return err
+			}
 			for _, part := range glyph.Glyph.Parts {
 				partX, err := add(itemX, part.At.X)
 				if err != nil {
 					return err
 				}
-				partY, err := add(itemY, part.At.Y)
+				partY, err := add(glyphOriginY, part.At.Y)
 				if err != nil {
 					return err
 				}
@@ -339,14 +343,6 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 		}
 	}
 	if exactRef && (f.layout.request.GlyphRefs || item.Kind == display.ItemGlyphRef) {
-		originY, err := add(y, glyph.Glyph.OriginY)
-		if err != nil {
-			return err
-		}
-		hostOriginY, err := f.layout.host(originY)
-		if err != nil {
-			return err
-		}
 		ref := display.Item{
 			Kind:      display.ItemGlyphRef,
 			Paint:     toDisplayPaint(glyph.Paint),
@@ -354,7 +350,7 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 			PathIndex: display.NoPath,
 			FontID:    glyph.Glyph.FontID,
 			Glyph:     glyph.Glyph.ID,
-			At:        geometry.Point{X: item.At.X, Y: hostOriginY},
+			At:        item.At,
 			Em:        item.Em,
 		}
 		if err := f.appendItem(ref); err != nil {
@@ -372,7 +368,11 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	if err != nil {
 		return display.Item{}, err
 	}
-	hostY, err := f.layout.host(y)
+	originY, err := add(y, glyph.Glyph.OriginY)
+	if err != nil {
+		return display.Item{}, err
+	}
+	hostOriginY, err := f.layout.host(originY)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -382,7 +382,7 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		PathIndex: display.NoPath,
 		FontID:    glyph.Glyph.FontID,
 		Glyph:     glyph.Glyph.ID,
-		At:        geometry.Point{X: hostX, Y: hostY},
+		At:        geometry.Point{X: hostX, Y: hostOriginY},
 	}
 	em, err := f.layout.host(glyph.Scale)
 	if err != nil {
@@ -404,7 +404,7 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		}
 		item.Bound = geometry.Rect{
 			X:      hostX,
-			Y:      hostY - ascent,
+			Y:      hostOriginY - ascent,
 			Width:  width,
 			Height: ascent + descent,
 		}

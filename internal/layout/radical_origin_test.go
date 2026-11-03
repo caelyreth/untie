@@ -67,4 +67,20 @@ func TestFlattenUsesCenteredGlyphOrigin(t *testing.T) {
 	if !closeHost(ref.At.Y, -1.6) {
 		t.Fatalf("glyph origin y = %v, want -1.6", ref.At.Y)
 	}
+	var path *display.Item
+	for i := range box.Items {
+		if box.Items[i].Kind == display.ItemGlyphPath && box.Items[i].Glyph == ref.Glyph {
+			path = &box.Items[i]
+			break
+		}
+	}
+	if path == nil {
+		t.Fatal("flatten emitted no glyph path")
+	}
+	if path.At != ref.At {
+		t.Fatalf("path origin %+v differs from ref origin %+v", path.At, ref.At)
+	}
+	if path.Bound != ref.Bound {
+		t.Fatalf("path bound %+v differs from ref bound %+v", path.Bound, ref.Bound)
+	}
 }

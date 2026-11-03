@@ -2,9 +2,11 @@ package engine
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/font"
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/internal/layout"
 	"github.com/caelyreth/untie/internal/tex"
@@ -46,6 +48,18 @@ func TestCenterOnAxisTracksGlyphOrigin(t *testing.T) {
 	}
 	if glyph.OriginY != -33 {
 		t.Fatalf("centered radical origin offset = %d, want -33", glyph.OriginY)
+	}
+	base, err := adapter.glyphFromFont(
+		font.Glyph{Face: font.MathFace, ID: font.GlyphID(glyph.ID)},
+		layout.Style{},
+		true,
+		"√",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(glyph.Outline, base.Outline) {
+		t.Fatal("centerOnAxis baked its origin shift into the font outline")
 	}
 }
 
@@ -95,6 +109,26 @@ func TestNestedRadicalGlyphOrigins(t *testing.T) {
 			t.Fatalf("ref[%d] origin = (%v,%v), want (%v,%v)",
 				i, refs[i].At.X, refs[i].At.Y, want[i].x, want[i].y)
 		}
+	}
+
+	paired := 0
+	for i := 0; i+1 < len(box.Items); i++ {
+		path := box.Items[i]
+		ref := box.Items[i+1]
+		if path.Kind != display.ItemGlyphPath || ref.Kind != display.ItemGlyphRef ||
+			path.Glyph != ref.Glyph || path.FontID != ref.FontID {
+			continue
+		}
+		paired++
+		if path.At != ref.At {
+			t.Fatalf("nested radical glyph %d path origin %+v differs from ref origin %+v", path.Glyph, path.At, ref.At)
+		}
+		if path.Bound != ref.Bound {
+			t.Fatalf("nested radical glyph %d path bound %+v differs from ref bound %+v", path.Glyph, path.Bound, ref.Bound)
+		}
+	}
+	if paired != len(want) {
+		t.Fatalf("path/ref origin pairs = %d, want %d", paired, len(want))
 	}
 }
 
