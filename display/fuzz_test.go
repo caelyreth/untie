@@ -74,7 +74,8 @@ func randomBox(data []byte) *Box {
 	itemCount := int(next() % 6)
 	for range itemCount {
 		item := Item{
-			Kind: ItemKind(next() % 3),
+			Kind:      ItemKind(next() % 3),
+			PathIndex: NoPath,
 			Paint: Paint{
 				Role:        Role(next() % 3),
 				Explicit:    RGBA{R: next(), G: next(), B: next(), A: next()},
@@ -87,14 +88,22 @@ func randomBox(data []byte) *Box {
 			At:     geometry.Point{X: number(), Y: number()},
 			Em:     fuzzAbsFloat(number()) + 0.25,
 		}
-		if item.Kind == ItemGlyphPath || next()%2 == 0 {
-			item.Path = make([]geometry.Segment, int(next()%4)+1)
-			for i := range item.Path {
-				item.Path[i].Op = geometry.SegOp(next() % 5)
-				for j := range item.Path[i].Points {
-					item.Path[i].Points[j] = geometry.Point{X: number(), Y: number()}
+		if item.Kind == ItemGlyphPath {
+			segments := make([]geometry.Segment, int(next()%4)+1)
+			var bound fuzzBounds
+			for i := range segments {
+				segments[i].Op = geometry.SegOp(next() % 5)
+				points, _ := segmentPointCount(segments[i].Op)
+				for j := 0; j < points; j++ {
+					segments[i].Points[j] = geometry.Point{X: number(), Y: number()}
+					bound.add(segments[i].Points[j])
 				}
 			}
+			item.PathIndex = len(box.Paths)
+			box.Paths = append(box.Paths, PathTemplate{
+				Segments: segments,
+				Bound:    bound.rect(),
+			})
 		}
 		box.Items = append(box.Items, item)
 	}
@@ -161,6 +170,39 @@ func randomBox(data []byte) *Box {
 		}
 	}
 	return box
+}
+
+type fuzzBounds struct {
+	minX float32
+	minY float32
+	maxX float32
+	maxY float32
+	have bool
+}
+
+func (b *fuzzBounds) add(point geometry.Point) {
+	if !b.have {
+		b.minX, b.maxX = point.X, point.X
+		b.minY, b.maxY = point.Y, point.Y
+		b.have = true
+		return
+	}
+	b.minX = minFloat(b.minX, point.X)
+	b.minY = minFloat(b.minY, point.Y)
+	b.maxX = maxFloat(b.maxX, point.X)
+	b.maxY = maxFloat(b.maxY, point.Y)
+}
+
+func (b fuzzBounds) rect() geometry.Rect {
+	if !b.have {
+		return geometry.Rect{}
+	}
+	return geometry.Rect{
+		X:      b.minX,
+		Y:      b.minY,
+		Width:  b.maxX - b.minX,
+		Height: b.maxY - b.minY,
+	}
 }
 
 func fuzzRect(number func() float32) geometry.Rect {

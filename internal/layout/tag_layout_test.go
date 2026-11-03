@@ -284,7 +284,9 @@ func TestEquationTagLimitsCountCanonicalStorageOnce(t *testing.T) {
 	}
 	pathSegments := 0
 	for _, item := range baseline.Items {
-		pathSegments += len(item.Path)
+		if item.Kind == display.ItemGlyphPath {
+			pathSegments += len(baseline.Paths[item.PathIndex].Segments)
+		}
 	}
 
 	tests := []struct {

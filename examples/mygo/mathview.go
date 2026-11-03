@@ -21,7 +21,8 @@ func drawMath(p *ui.Painter, r ui.Rect, box *untie.Box) {
 			color := itemColor(theme, item.Paint)
 			switch item.Kind {
 			case untie.ItemGlyphPath:
-				path := mathPath(item.Path, placement.originX, placement.originY, placement.scale)
+				template := box.Paths[item.PathIndex]
+				path := mathPath(template, item.At, item.Em, placement)
 				p.FillPath(&path, color)
 			case untie.ItemRule:
 				p.Fill(ui.Rect{
@@ -63,31 +64,30 @@ func fitMath(content ui.Rect, box *untie.Box) mathPlacement {
 	return mathPlacement{scale: scale, originX: originX, originY: originY}
 }
 
-func mathPath(path untie.Path, originX, originY, scale float32) ui.Path {
+func mathPath(template untie.PathTemplate, at untie.Point, em float32, placement mathPlacement) ui.Path {
 	var out ui.Path
-	for _, segment := range path {
+	transform := func(point untie.Point) (float32, float32) {
+		x := placement.originX + (at.X+point.X*em)*placement.scale
+		y := placement.originY + (at.Y+point.Y*em)*placement.scale
+		return x, y
+	}
+	for _, segment := range template.Segments {
 		switch segment.Op {
 		case untie.SegMoveTo:
-			out.MoveTo(
-				originX+segment.Points[0].X*scale,
-				originY+segment.Points[0].Y*scale,
-			)
+			x, y := transform(segment.Points[0])
+			out.MoveTo(x, y)
 		case untie.SegLineTo:
-			out.LineTo(
-				originX+segment.Points[0].X*scale,
-				originY+segment.Points[0].Y*scale,
-			)
+			x, y := transform(segment.Points[0])
+			out.LineTo(x, y)
 		case untie.SegQuadTo:
-			out.QuadTo(
-				originX+segment.Points[0].X*scale, originY+segment.Points[0].Y*scale,
-				originX+segment.Points[1].X*scale, originY+segment.Points[1].Y*scale,
-			)
+			x1, y1 := transform(segment.Points[0])
+			x2, y2 := transform(segment.Points[1])
+			out.QuadTo(x1, y1, x2, y2)
 		case untie.SegCubeTo:
-			out.CubeTo(
-				originX+segment.Points[0].X*scale, originY+segment.Points[0].Y*scale,
-				originX+segment.Points[1].X*scale, originY+segment.Points[1].Y*scale,
-				originX+segment.Points[2].X*scale, originY+segment.Points[2].Y*scale,
-			)
+			x1, y1 := transform(segment.Points[0])
+			x2, y2 := transform(segment.Points[1])
+			x3, y3 := transform(segment.Points[2])
+			out.CubeTo(x1, y1, x2, y2, x3, y3)
 		case untie.SegClose:
 			out.Close()
 		}

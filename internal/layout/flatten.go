@@ -91,10 +91,16 @@ type flattenState struct {
 	layout     *layoutState
 	box        *display.Box
 	stack      map[*Fragment]struct{}
+	pathCache  map[pathTemplateKey]int
 	offsetX    float32
 	offsetY    float32
 	visits     int
 	operations int
+}
+
+type pathTemplateKey struct {
+	fontID  string
+	glyphID uint16
 }
 
 func newFlattenState(layout *layoutState, box *display.Box, offsetX, offsetY float32) flattenState {
@@ -169,18 +175,6 @@ func (s *layoutState) offsetItem(item display.Item, dx, dy float32) (display.Ite
 	item.At.Y, err = s.addHost(item.At.Y, dy)
 	if err != nil {
 		return display.Item{}, err
-	}
-	for i := range item.Path {
-		for j := range item.Path[i].Points {
-			item.Path[i].Points[j].X, err = s.addHost(item.Path[i].Points[j].X, dx)
-			if err != nil {
-				return display.Item{}, err
-			}
-			item.Path[i].Points[j].Y, err = s.addHost(item.Path[i].Points[j].Y, dy)
-			if err != nil {
-				return display.Item{}, err
-			}
-		}
 	}
 	return item, nil
 }
@@ -287,14 +281,23 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 		}
 	}
 	if exactRef && (f.layout.request.GlyphRefs || item.Kind == display.ItemGlyphRef) {
+		originY, err := add(y, glyph.Glyph.OriginY)
+		if err != nil {
+			return err
+		}
+		hostOriginY, err := f.layout.host(originY)
+		if err != nil {
+			return err
+		}
 		ref := display.Item{
-			Kind:   display.ItemGlyphRef,
-			Paint:  toDisplayPaint(glyph.Paint),
-			Bound:  item.Bound,
-			FontID: glyph.Glyph.FontID,
-			Glyph:  glyph.Glyph.ID,
-			At:     item.At,
-			Em:     item.Em,
+			Kind:      display.ItemGlyphRef,
+			Paint:     toDisplayPaint(glyph.Paint),
+			Bound:     item.Bound,
+			PathIndex: display.NoPath,
+			FontID:    glyph.Glyph.FontID,
+			Glyph:     glyph.Glyph.ID,
+			At:        geometry.Point{X: item.At.X, Y: hostOriginY},
+			Em:        item.Em,
 		}
 		if err := f.appendItem(ref); err != nil {
 			return err
@@ -315,20 +318,13 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	if err != nil {
 		return display.Item{}, err
 	}
-	originY, err := add(y, glyph.Glyph.OriginY)
-	if err != nil {
-		return display.Item{}, err
-	}
-	hostOriginY, err := f.layout.host(originY)
-	if err != nil {
-		return display.Item{}, err
-	}
 	item := display.Item{
-		Kind:   display.ItemGlyphRef,
-		Paint:  toDisplayPaint(glyph.Paint),
-		FontID: glyph.Glyph.FontID,
-		Glyph:  glyph.Glyph.ID,
-		At:     geometry.Point{X: hostX, Y: hostOriginY},
+		Kind:      display.ItemGlyphRef,
+		Paint:     toDisplayPaint(glyph.Paint),
+		PathIndex: display.NoPath,
+		FontID:    glyph.Glyph.FontID,
+		Glyph:     glyph.Glyph.ID,
+		At:        geometry.Point{X: hostX, Y: hostY},
 	}
 	em, err := f.layout.host(glyph.Scale)
 	if err != nil {
@@ -357,54 +353,21 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		return item, nil
 	}
 
-	path := make([]geometry.Segment, len(glyph.Glyph.Outline))
-	var minX, minY, maxX, maxY float32
-	havePoint := false
-	for i, segment := range glyph.Glyph.Outline {
-		if err := f.tick(); err != nil {
-			return display.Item{}, err
-		}
-		pointCount, ok := segmentPointCount(segment.Op)
-		if !ok {
-			return display.Item{}, fmt.Errorf("%w: invalid path operation %d", ErrInvalidInput, segment.Op)
-		}
-		path[i].Op = segment.Op
-		for j := 0; j < pointCount; j++ {
-			point := segment.Points[j]
-			px, err := add(x, point.X)
-			if err != nil {
-				return display.Item{}, err
-			}
-			py, err := add(y, point.Y)
-			if err != nil {
-				return display.Item{}, err
-			}
-			hostX, err := f.layout.host(px)
-			if err != nil {
-				return display.Item{}, err
-			}
-			hostY, err := f.layout.host(py)
-			if err != nil {
-				return display.Item{}, err
-			}
-			path[i].Points[j] = geometry.Point{X: hostX, Y: hostY}
-			if !havePoint {
-				minX, maxX = hostX, hostX
-				minY, maxY = hostY, hostY
-				havePoint = true
-			} else {
-				minX = minFloat(minX, hostX)
-				maxX = maxFloat(maxX, hostX)
-				minY = minFloat(minY, hostY)
-				maxY = maxFloat(maxY, hostY)
-			}
-		}
+	var key *pathTemplateKey
+	if glyph.Glyph.FontID != "" && glyph.Glyph.ID != 0 {
+		key = &pathTemplateKey{fontID: glyph.Glyph.FontID, glyphID: glyph.Glyph.ID}
+	}
+	pathIndex, err := f.pathTemplate(key, glyph.Glyph.Outline)
+	if err != nil {
+		return display.Item{}, err
+	}
+	bound, err := f.layout.placedPathBound(f.box.Paths[pathIndex].Bound, item.At, item.Em)
+	if err != nil {
+		return display.Item{}, err
 	}
 	item.Kind = display.ItemGlyphPath
-	item.Path = path
-	if havePoint {
-		item.Bound = geometry.Rect{X: minX, Y: minY, Width: maxX - minX, Height: maxY - minY}
-	}
+	item.PathIndex = pathIndex
+	item.Bound = bound
 	return item, nil
 }
 
@@ -426,57 +389,99 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	if err != nil {
 		return display.Item{}, err
 	}
-	segments := make([]geometry.Segment, len(path.path))
+	pathIndex, err := f.pathTemplate(nil, path.path)
+	if err != nil {
+		return display.Item{}, err
+	}
+	em, err := f.layout.host(geometry.Em(geometry.EmScale))
+	if err != nil {
+		return display.Item{}, err
+	}
+	at := geometry.Point{X: hostX, Y: hostY}
+	bound, err := f.layout.placedPathBound(f.box.Paths[pathIndex].Bound, at, em)
+	if err != nil {
+		return display.Item{}, err
+	}
+	return display.Item{
+		Kind:      display.ItemGlyphPath,
+		Paint:     toDisplayPaint(path.paint),
+		Bound:     bound,
+		PathIndex: pathIndex,
+		At:        at,
+		Em:        em,
+	}, nil
+}
+
+func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error) {
+	if key != nil && f.pathCache != nil {
+		if index, ok := f.pathCache[*key]; ok {
+			return index, nil
+		}
+	}
+	template := display.PathTemplate{
+		Segments: make([]geometry.Segment, len(path)),
+	}
 	var minX, minY, maxX, maxY float32
 	havePoint := false
-	for i, segment := range path.path {
+	for i, segment := range path {
 		if err := f.tick(); err != nil {
-			return display.Item{}, err
+			return 0, err
 		}
 		pointCount, ok := segmentPointCount(segment.Op)
 		if !ok {
-			return display.Item{}, fmt.Errorf("%w: invalid path operation %d", ErrInvalidInput, segment.Op)
+			return 0, fmt.Errorf("%w: invalid path operation %d", ErrInvalidInput, segment.Op)
 		}
-		segments[i].Op = segment.Op
+		template.Segments[i].Op = segment.Op
 		for j := 0; j < pointCount; j++ {
 			point := segment.Points[j]
-			px, err := add(x, point.X)
-			if err != nil {
-				return display.Item{}, err
-			}
-			py, err := add(y, point.Y)
-			if err != nil {
-				return display.Item{}, err
-			}
-			hx, err := f.layout.host(px)
-			if err != nil {
-				return display.Item{}, err
-			}
-			hy, err := f.layout.host(py)
-			if err != nil {
-				return display.Item{}, err
-			}
-			segments[i].Points[j] = geometry.Point{X: hx, Y: hy}
+			x := float32(point.X.Float())
+			y := float32(point.Y.Float())
+			template.Segments[i].Points[j] = geometry.Point{X: x, Y: y}
 			if !havePoint {
-				minX, maxX, minY, maxY = hx, hx, hy, hy
+				minX, maxX, minY, maxY = x, x, y, y
 				havePoint = true
-			} else {
-				minX = minFloat(minX, hx)
-				maxX = maxFloat(maxX, hx)
-				minY = minFloat(minY, hy)
-				maxY = maxFloat(maxY, hy)
+				continue
 			}
+			minX = minFloat(minX, x)
+			maxX = maxFloat(maxX, x)
+			minY = minFloat(minY, y)
+			maxY = maxFloat(maxY, y)
 		}
 	}
-	bound := geometry.Rect{X: hostX, Y: hostY}
 	if havePoint {
-		bound = geometry.Rect{X: minX, Y: minY, Width: maxX - minX, Height: maxY - minY}
+		template.Bound = geometry.Rect{
+			X:      minX,
+			Y:      minY,
+			Width:  maxX - minX,
+			Height: maxY - minY,
+		}
 	}
-	return display.Item{
-		Kind:  display.ItemGlyphPath,
-		Paint: toDisplayPaint(path.paint),
-		Bound: bound,
-		Path:  segments,
+	index := len(f.box.Paths)
+	f.box.Paths = append(f.box.Paths, template)
+	if key != nil {
+		if f.pathCache == nil {
+			f.pathCache = make(map[pathTemplateKey]int)
+		}
+		f.pathCache[*key] = index
+	}
+	return index, nil
+}
+
+func (s *layoutState) placedPathBound(local geometry.Rect, at geometry.Point, em float32) (geometry.Rect, error) {
+	x := float64(at.X) + float64(local.X)*float64(em)
+	y := float64(at.Y) + float64(local.Y)*float64(em)
+	width := float64(local.Width) * float64(em)
+	height := float64(local.Height) * float64(em)
+	for _, value := range []float64{x, y, width, height} {
+		if math.IsNaN(value) || math.IsInf(value, 0) || math.Abs(value) > float64(s.limits.MaxDimension) {
+			return geometry.Rect{}, fmt.Errorf("%w: placed path bound", ErrLimit)
+		}
+	}
+	return geometry.Rect{
+		X:      float32(x),
+		Y:      float32(y),
+		Width:  float32(width),
+		Height: float32(height),
 	}, nil
 }
 
@@ -528,10 +533,11 @@ func (f *flattenState) ruleItem(x, y geometry.Em, rule *ruleDraw) (display.Item,
 		rect.Width, rect.Height = thickness, width
 	}
 	return display.Item{
-		Kind:  display.ItemRule,
-		Paint: toDisplayPaint(rule.paint),
-		Bound: rect,
-		Rect:  rect,
+		Kind:      display.ItemRule,
+		Paint:     toDisplayPaint(rule.paint),
+		Bound:     rect,
+		PathIndex: display.NoPath,
+		Rect:      rect,
 	}, nil
 }
 

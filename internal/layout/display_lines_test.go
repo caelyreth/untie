@@ -581,15 +581,17 @@ func TestDisplayParentOverflowIsGlobal(t *testing.T) {
 		{Box: &display.Box{
 			Width: 10, Ascent: 10, Overflow: 5,
 			Items: []display.Item{{
-				Kind:  display.ItemRule,
-				Bound: geometry.Rect{X: 8, Y: -10, Width: 7, Height: 10},
+				Kind:      display.ItemRule,
+				Bound:     geometry.Rect{X: 8, Y: -10, Width: 7, Height: 10},
+				PathIndex: display.NoPath,
 			}},
 		}},
 		{Box: &display.Box{
 			Width: 20, Ascent: 10,
 			Items: []display.Item{{
-				Kind:  display.ItemRule,
-				Bound: geometry.Rect{X: 0, Y: -10, Width: 20, Height: 10},
+				Kind:      display.ItemRule,
+				Bound:     geometry.Rect{X: 0, Y: -10, Width: 20, Height: 10},
+				PathIndex: display.NoPath,
 			}},
 		}},
 	}
@@ -716,7 +718,9 @@ func TestDisplayRangeLimitsCountCanonicalStorageOnce(t *testing.T) {
 	}
 	pathSegments := 0
 	for _, item := range baseline.Items {
-		pathSegments += len(item.Path)
+		if item.Kind == display.ItemGlyphPath {
+			pathSegments += len(baseline.Paths[item.PathIndex].Segments)
+		}
 	}
 
 	tests := []struct {

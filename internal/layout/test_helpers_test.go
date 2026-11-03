@@ -66,7 +66,17 @@ func assembleDisplayLinesForTest(
 			Tag:      input.Tag,
 		}
 		for _, item := range input.Box.Items {
-			translated, err := state.offsetItem(cloneDisplayItemForTest(item), offsetX, baseline)
+			local := cloneDisplayItemForTest(item)
+			if local.Kind == display.ItemGlyphPath {
+				if local.PathIndex < 0 || local.PathIndex >= len(input.Box.Paths) {
+					return nil, fmt.Errorf("%w: fixture path index", ErrInvalidInput)
+				}
+				template := input.Box.Paths[local.PathIndex]
+				template.Segments = append([]geometry.Segment(nil), template.Segments...)
+				local.PathIndex = len(parent.Paths)
+				parent.Paths = append(parent.Paths, template)
+			}
+			translated, err := state.offsetItem(local, offsetX, baseline)
 			if err != nil {
 				return nil, err
 			}
@@ -106,6 +116,7 @@ func lineBoxForTest(box *display.Box, line display.LineBox) *display.Box {
 		Descent:  line.Descent,
 		Overflow: line.Overflow,
 		Items:    make([]display.Item, line.Items.Count),
+		Paths:    box.Paths,
 		Hits:     make([]display.Hit, line.Hits.Count),
 	}
 	for i := range out.Items {
@@ -121,7 +132,6 @@ func lineBoxForTest(box *display.Box, line display.LineBox) *display.Box {
 }
 
 func cloneDisplayItemForTest(item display.Item) display.Item {
-	item.Path = append([]geometry.Segment(nil), item.Path...)
 	return item
 }
 
@@ -132,12 +142,6 @@ func translateItemForTest(item *display.Item, dx, dy float32) {
 	item.Rect.Y += dy
 	item.At.X += dx
 	item.At.Y += dy
-	for i := range item.Path {
-		for j := range item.Path[i].Points {
-			item.Path[i].Points[j].X += dx
-			item.Path[i].Points[j].Y += dy
-		}
-	}
 }
 
 type fakeGlyphSource struct {

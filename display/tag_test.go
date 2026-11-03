@@ -180,10 +180,11 @@ func constrainedTaggedRangeBox() *Box {
 
 func ruleItemAt(x, width float32) Item {
 	return Item{
-		Kind:  ItemRule,
-		Paint: Paint{Role: RoleInk},
-		Bound: geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
-		Rect:  geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
+		Kind:      ItemRule,
+		Paint:     Paint{Role: RoleInk},
+		Bound:     geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
+		PathIndex: NoPath,
+		Rect:      geometry.Rect{X: x, Y: -1, Width: width, Height: 1},
 	}
 }
 

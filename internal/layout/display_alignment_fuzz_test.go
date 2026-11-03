@@ -34,9 +34,10 @@ func FuzzDisplayLineAlignment(f *testing.F) {
 				Descent:  descent,
 				Overflow: overflow,
 				Items: []display.Item{{
-					Kind:  display.ItemRule,
-					Bound: geometry.Rect{X: localX, Y: -ascent, Width: width, Height: 1},
-					Rect:  geometry.Rect{X: localX, Y: -ascent, Width: width, Height: 1},
+					Kind:      display.ItemRule,
+					Bound:     geometry.Rect{X: localX, Y: -ascent, Width: width, Height: 1},
+					PathIndex: display.NoPath,
+					Rect:      geometry.Rect{X: localX, Y: -ascent, Width: width, Height: 1},
 				}},
 				Hits: []display.Hit{{
 					Source: source.NewRange(0, 1),

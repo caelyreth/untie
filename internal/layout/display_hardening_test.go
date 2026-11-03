@@ -54,9 +54,10 @@ func TestDisplayOverflowScanCancellation(t *testing.T) {
 	items := make([]display.Item, 300)
 	for i := range items {
 		items[i] = display.Item{
-			Kind:  display.ItemRule,
-			Bound: geometry.Rect{Width: 1, Height: 1},
-			Rect:  geometry.Rect{Width: 1, Height: 1},
+			Kind:      display.ItemRule,
+			Bound:     geometry.Rect{Width: 1, Height: 1},
+			PathIndex: display.NoPath,
+			Rect:      geometry.Rect{Width: 1, Height: 1},
 		}
 	}
 	_, err := state.displayItemsOverflow(items, 1, 1, 1)

@@ -79,22 +79,29 @@ func observeBoxStorage(box *untie.Box, stats *constrainedBenchStats) {
 	stats.parentItems += int64(len(box.Items))
 	stats.parentHits += int64(len(box.Hits))
 	for _, item := range box.Items {
-		stats.parentPathSegments += int64(len(item.Path))
+		stats.parentPathSegments += int64(itemPathSegmentCount(box, item))
 	}
 	for _, line := range box.Lines {
 		stats.lineRangeItems += int64(line.Items.Count)
 		stats.lineRangeHits += int64(line.Hits.Count)
 		for _, item := range box.Items[line.Items.Start:line.Items.End()] {
-			stats.lineRangePaths += int64(len(item.Path))
+			stats.lineRangePaths += int64(itemPathSegmentCount(box, item))
 		}
 	}
 	if box.Tag != nil {
 		stats.tagRangeItems += int64(box.Tag.Items.Count)
 		stats.tagRangeHits += int64(box.Tag.Hits.Count)
 		for _, item := range box.Items[box.Tag.Items.Start:box.Tag.Items.End()] {
-			stats.tagRangePaths += int64(len(item.Path))
+			stats.tagRangePaths += int64(itemPathSegmentCount(box, item))
 		}
 	}
+}
+
+func itemPathSegmentCount(box *untie.Box, item untie.Item) int {
+	if item.Kind != untie.ItemGlyphPath {
+		return 0
+	}
+	return len(box.Paths[item.PathIndex].Segments)
 }
 
 func reportConstrainedBenchmarkMetrics(b *testing.B, stats constrainedBenchStats) {

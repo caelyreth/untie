@@ -149,7 +149,7 @@ func runCorpusBenchmark(
 			observed.items += int64(len(box.Items))
 			observed.hits += int64(len(box.Hits))
 			for _, item := range box.Items {
-				observed.pathSegments += int64(len(item.Path))
+				observed.pathSegments += int64(itemPathSegmentCount(box, item))
 			}
 		}
 	}

@@ -126,7 +126,8 @@ caching](concurrency.md).
 The baseline origin is `(0, 0)`. Coordinates increase to the right and down.
 For every item:
 
-- `ItemGlyphPath`: fill `item.Path` with `item.Paint`.
+- `ItemGlyphPath`: fill `box.Paths[item.PathIndex]` with `item.Paint` after
+  placing each template point as `item.At + point*item.Em`.
 - `ItemRule`: fill `item.Rect` with `item.Paint`.
 - `ItemGlyphRef`: optional host-cache metadata for the same placed glyph. It is
   not an additional visible shape. Ignore it when drawing the path list.
@@ -136,7 +137,8 @@ func paint(painter Painter, box *untie.Box, colorFor func(untie.Paint) Color) {
 	for _, item := range box.Items {
 		switch item.Kind {
 		case untie.ItemGlyphPath:
-			painter.FillPath(item.Path, colorFor(item.Paint))
+			template := box.Paths[item.PathIndex]
+			painter.FillPath(placePath(template, item.At, item.Em), colorFor(item.Paint))
 		case untie.ItemRule:
 			painter.FillRect(item.Rect, colorFor(item.Paint))
 		case untie.ItemGlyphRef:
@@ -147,7 +149,7 @@ func paint(painter Painter, box *untie.Box, colorFor func(untie.Paint) Color) {
 }
 ```
 
-`Painter`, `Color`, and `FillPath` above are placeholders for the host's
+`Painter`, `Color`, `FillPath`, and `placePath` above are placeholders for the host's
 graphics API. The real MyGo implementation is in
 [`examples/mygo/mathview.go`](../examples/mygo/mathview.go).
 
@@ -204,8 +206,9 @@ text under the engine's effective limits.
 
 ## Common First Integration Mistakes
 
-- Drawing `item.Path` in device pixels without applying the host's chosen
-  placement or scale. The path is in the layout's host units.
+- Drawing a path template without applying `item.At + point*item.Em`, or
+  applying the host viewport transform twice. Templates are in local em units;
+  `item.Bound` is already in box coordinates.
 - Treating a parse diagnostic as a reason not to draw. Recoverable parse
   results are intended to remain drawable.
 - Treating a nil/zero `Box` as a successful layout. Layout errors return no

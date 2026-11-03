@@ -25,9 +25,12 @@ func TestCloneIndependent(t *testing.T) {
 	box := &Box{
 		Width: 10,
 		Items: []Item{
-			{Kind: ItemGlyphPath, Path: geometry.Path{{Op: geometry.SegMoveTo}}},
-			{Kind: ItemRule, Rect: geometry.Rect{Width: 1}},
+			{Kind: ItemGlyphPath, PathIndex: 0, At: geometry.Point{}, Em: 1},
+			{Kind: ItemRule, PathIndex: NoPath, Rect: geometry.Rect{Width: 1}},
 		},
+		Paths: []PathTemplate{{
+			Segments: []geometry.Segment{{Op: geometry.SegMoveTo}},
+		}},
 		Hits: []Hit{
 			{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: 1, Height: 1}},
 			{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: 1, Height: 1}},
@@ -46,12 +49,12 @@ func TestCloneIndependent(t *testing.T) {
 		}},
 	}
 	got := box.Clone()
-	got.Items[0].Path[0].Op = geometry.SegClose
+	got.Paths[0].Segments[0].Op = geometry.SegClose
 	got.Hits[0].Area.Width = 2
 	got.Breaks[0].X = 2
 	got.Lines[0].Items.Count = 0
 	got.Lines[0].Tag.Width = 3
-	if box.Items[0].Path[0].Op != geometry.SegMoveTo {
+	if box.Paths[0].Segments[0].Op != geometry.SegMoveTo {
 		t.Fatal("Clone shared path storage")
 	}
 	if box.Hits[0].Area.Width != 1 {
@@ -78,10 +81,11 @@ func TestMarshalCanonical(t *testing.T) {
 	t.Parallel()
 
 	item := Item{
-		Kind:  ItemRule,
-		Paint: Paint{Role: RoleInk},
-		Bound: geometry.Rect{Y: -0.1, Width: 1, Height: 0.1},
-		Rect:  geometry.Rect{Y: -0.1, Width: 1, Height: 0.1},
+		Kind:      ItemRule,
+		Paint:     Paint{Role: RoleInk},
+		Bound:     geometry.Rect{Y: -0.1, Width: 1, Height: 0.1},
+		PathIndex: NoPath,
+		Rect:      geometry.Rect{Y: -0.1, Width: 1, Height: 0.1},
 	}
 	hit := Hit{
 		Source: source.NewRange(0, 1),
@@ -196,16 +200,25 @@ func TestValidateBox(t *testing.T) {
 
 	box := &Box{
 		Width: 10,
+		Paths: []PathTemplate{{
+			Segments: []geometry.Segment{{
+				Op:     geometry.SegMoveTo,
+				Points: [3]geometry.Point{{X: 1, Y: 2}},
+			}},
+			Bound: geometry.Rect{X: 1, Y: 2},
+		}},
 		Items: []Item{{
-			Kind:  ItemGlyphPath,
-			Bound: geometry.Rect{Width: 1, Height: 1},
-			Path:  geometry.Path{{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: 1, Y: 2}}}},
+			Kind:      ItemGlyphPath,
+			Bound:     geometry.Rect{X: 1, Y: 2},
+			PathIndex: 0,
+			At:        geometry.Point{},
+			Em:        1,
 		}},
 	}
 	if err := box.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
-	box.Items[0].Path[0].Op = geometry.SegOp(99)
+	box.Paths[0].Segments[0].Op = geometry.SegOp(99)
 	if err := box.Validate(); err == nil {
 		t.Fatal("Validate() error = nil for invalid path")
 	}
@@ -258,9 +271,10 @@ func TestValidateBoxRejectsUnknownAndAmbiguousPaint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			box := &Box{Items: []Item{{
-				Kind:  ItemRule,
-				Paint: tc.paint,
-				Rect:  geometry.Rect{Width: 1},
+				Kind:      ItemRule,
+				Paint:     tc.paint,
+				PathIndex: NoPath,
+				Rect:      geometry.Rect{Width: 1},
 			}}}
 			if err := box.Validate(); err == nil {
 				t.Fatal("Validate() error = nil")
@@ -272,7 +286,8 @@ func TestValidateBoxRejectsUnknownAndAmbiguousPaint(t *testing.T) {
 	}
 
 	box := &Box{Items: []Item{{
-		Kind: ItemRule,
+		Kind:      ItemRule,
+		PathIndex: NoPath,
 		Paint: Paint{
 			Role:        RoleInk,
 			Explicit:    RGBA{R: 1, G: 2, B: 3, A: 4},
@@ -342,7 +357,10 @@ func TestBoxCoveringSortsAndMerges(t *testing.T) {
 func TestValidateBoxRejectsInvalidHitsBreaksAndLineRanges(t *testing.T) {
 	t.Parallel()
 
-	item := Item{Kind: ItemRule, Paint: Paint{Role: RoleInk}, Rect: geometry.Rect{Width: 1}}
+	item := Item{
+		Kind: ItemRule, Paint: Paint{Role: RoleInk}, PathIndex: NoPath,
+		Rect: geometry.Rect{Width: 1},
+	}
 	hit := Hit{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: 1, Height: 1}, Kind: HitAtom}
 	line := LineBox{Width: 1, Ascent: 1, Items: ItemRange{Count: 1}, Hits: HitRange{Count: 1}}
 	valid := &Box{Width: 1, Ascent: 1, Items: []Item{item}, Hits: []Hit{hit}, Lines: []LineBox{line}}
@@ -412,10 +430,11 @@ func TestValidateWrappedOverflowCertification(t *testing.T) {
 	t.Parallel()
 
 	rule := Item{
-		Kind:  ItemRule,
-		Paint: Paint{Role: RoleInk},
-		Bound: geometry.Rect{Y: -1, Width: 4, Height: 1},
-		Rect:  geometry.Rect{Y: -1, Width: 4, Height: 1},
+		Kind:      ItemRule,
+		Paint:     Paint{Role: RoleInk},
+		Bound:     geometry.Rect{Y: -1, Width: 4, Height: 1},
+		PathIndex: NoPath,
+		Rect:      geometry.Rect{Y: -1, Width: 4, Height: 1},
 	}
 	hit := Hit{Source: source.NewRange(0, 1), Area: geometry.Rect{Y: -1, Width: 4, Height: 2}, Kind: HitAtom}
 
@@ -459,18 +478,24 @@ func TestValidateWrappedOverflowCertification(t *testing.T) {
 		Area:   geometry.Rect{Y: -1, Width: 6, Height: 2},
 		Kind:   HitAtom,
 	}}
-	path := geometry.Path{
+	path := []geometry.Segment{
 		{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: 0, Y: -1}}},
 		{Op: geometry.SegLineTo, Points: [3]geometry.Point{{X: 6, Y: -1}}},
 	}
 	pathItem := Item{
-		Kind:  ItemGlyphPath,
-		Paint: Paint{Role: RoleInk},
-		Bound: geometry.Rect{Y: -1, Width: 4, Height: 1},
-		Path:  path,
+		Kind:      ItemGlyphPath,
+		Paint:     Paint{Role: RoleInk},
+		Bound:     geometry.Rect{Y: -1, Width: 6, Height: 1},
+		PathIndex: 0,
+		Em:        1,
 	}
 	linePath := wrapRangeBox(&Box{
-		Width: 4, Ascent: 1, Overflow: 2, Items: []Item{pathItem}, Hits: pathHits,
+		Width: 4, Ascent: 1, Overflow: 2,
+		Paths: []PathTemplate{{
+			Bound:    geometry.Rect{Y: -1, Width: 6, Height: 1},
+			Segments: path,
+		}},
+		Items: []Item{pathItem}, Hits: pathHits,
 	}, func(line *LineBox) { line.Overflow = 2 })
 	linePath.Overflow = 2
 	if err := linePath.Validate(); err != nil {

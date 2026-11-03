@@ -533,10 +533,11 @@ func TestCompareOutputsComparesRulesPathsAndPaint(t *testing.T) {
 	base := &display.Box{
 		Width: 10, Ascent: 8, Descent: 2,
 		Items: []display.Item{{
-			Kind:  display.ItemRule,
-			Paint: display.Paint{Role: display.RoleInk},
-			Bound: geometry.Rect{X: 1, Y: 2, Width: 8, Height: 1},
-			Rect:  geometry.Rect{X: 1, Y: 2, Width: 8, Height: 1},
+			Kind:      display.ItemRule,
+			Paint:     display.Paint{Role: display.RoleInk},
+			Bound:     geometry.Rect{X: 1, Y: 2, Width: 8, Height: 1},
+			PathIndex: display.NoPath,
+			Rect:      geometry.Rect{X: 1, Y: 2, Width: 8, Height: 1},
 		}},
 	}
 	changedRule := base.Clone()
@@ -553,20 +554,25 @@ func TestCompareOutputsComparesRulesPathsAndPaint(t *testing.T) {
 
 	path := &display.Box{
 		Width: 10, Ascent: 8, Descent: 2,
-		Items: []display.Item{{
-			Kind:  display.ItemGlyphPath,
-			Paint: display.Paint{Role: display.RoleInk},
+		Paths: []display.PathTemplate{{
 			Bound: geometry.Rect{Width: 10, Height: 10},
-			Path: geometry.Path{{
+			Segments: []geometry.Segment{{
 				Op: geometry.SegLineTo,
 				Points: [3]geometry.Point{
 					{X: 10, Y: 2},
 				},
 			}},
 		}},
+		Items: []display.Item{{
+			Kind:      display.ItemGlyphPath,
+			Paint:     display.Paint{Role: display.RoleInk},
+			Bound:     geometry.Rect{Width: 10, Height: 10},
+			PathIndex: 0,
+			Em:        1,
+		}},
 	}
 	changedPath := path.Clone()
-	changedPath.Items[0].Path[0].Points[0].X = 9
+	changedPath.Paths[0].Segments[0].Points[0].X = 9
 	if difference := CompareOutputs(changedPath, path); difference == "" {
 		t.Fatal("CompareOutputs() ignored a path geometry difference")
 	}
@@ -585,16 +591,21 @@ func TestFixtureComparisonIgnoresOptionalAndNonGlyphFields(t *testing.T) {
 	box := &display.Box{
 		Width: 10, Ascent: 4, Descent: 1,
 		AxisHeight: 3.6,
-		Items: []display.Item{{
-			Kind:  display.ItemGlyphPath,
-			Paint: display.Paint{Role: display.RoleInk},
+		Paths: []display.PathTemplate{{
 			Bound: geometry.Rect{Width: 1, Height: 1},
-			Path: geometry.Path{{
+			Segments: []geometry.Segment{{
 				Op: geometry.SegMoveTo,
 				Points: [3]geometry.Point{
 					{X: 1, Y: 1},
 				},
 			}},
+		}},
+		Items: []display.Item{{
+			Kind:      display.ItemGlyphPath,
+			Paint:     display.Paint{Role: display.RoleInk},
+			Bound:     geometry.Rect{Width: 1, Height: 1},
+			PathIndex: 0,
+			Em:        1,
 		}},
 	}
 	if difference := CompareOutputToFixture(box, frame); difference != "" {

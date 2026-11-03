@@ -105,13 +105,19 @@ func TestTeXEquationTagGeometryMatchesPinnedRelativeLayout(t *testing.T) {
 	if absFloat64(float64(box.Width-(untagged.Width+box.Tag.Width))) > toleranceDIP {
 		t.Fatalf("tagged width = %v, want additive %v", box.Width, untagged.Width+box.Tag.Width)
 	}
-	if box.Tag.Items.Count != 3 {
-		t.Fatalf("tag items = %d, want non-starred parentheses and body", box.Tag.Items.Count)
+	var tagItems []untie.Item
+	for _, item := range box.Items[box.Tag.Items.Start:box.Tag.Items.End()] {
+		if item.Kind != untie.ItemGlyphRef {
+			tagItems = append(tagItems, item)
+		}
+	}
+	if len(tagItems) != 3 {
+		t.Fatalf("visible tag items = %d, want non-starred parentheses and body", len(tagItems))
 	}
 	pinnedTagLeft := 68.132
 	pinnedTagWidth := 82.19 - pinnedTagLeft
 	for i, want := range []float64{0, (72.411 - pinnedTagLeft) / pinnedTagWidth, (77.911 - pinnedTagLeft) / pinnedTagWidth} {
-		item := box.Items[box.Tag.Items.Start+i]
+		item := tagItems[i]
 		got := float64(item.At.X-box.Tag.X) / float64(box.Tag.Width)
 		if absFloat64(got-want) > 0.002 {
 			t.Fatalf("tag item %d relative x = %v, want pinned ratio %v", i, got, want)

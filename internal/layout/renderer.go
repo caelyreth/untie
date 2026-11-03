@@ -179,7 +179,6 @@ type layoutState struct {
 	nodes         int
 	pathSegments  int
 	plannedOutput int
-	scaledPaths   map[scaledPathKey]Path
 }
 
 type environment struct {

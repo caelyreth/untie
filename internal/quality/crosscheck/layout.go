@@ -40,7 +40,7 @@ func (h *layoutHarness) layout(ctx context.Context, root ir.Node, mode ir.Mode, 
 }
 
 func (h *layoutHarness) layoutFormula(ctx context.Context, formula *ir.Formula, mode ir.Mode, size float64) (*display.Box, error) {
-	return h.engine.LayoutFormula(ctx, formula, mode, display.Style{Size: float32(size)})
+	return h.engine.LayoutFormula(ctx, formula, mode, display.Style{Size: float32(size), GlyphRefs: true})
 }
 
 type glyphView struct {
@@ -49,6 +49,11 @@ type glyphView struct {
 	X    float64
 	Y    float64
 	Size float64
+}
+
+type glyphKey struct {
+	font string
+	id   uint16
 }
 
 type layoutView struct {
@@ -105,11 +110,27 @@ func outputView(box *display.Box) layoutView {
 		Italic: float64(box.Italic), Axis: float64(box.AxisHeight), Overflow: float64(box.Overflow),
 		TopHeight: float64(box.Ascent + box.Descent),
 	}
+	refs := make(map[glyphKey]int)
 	for _, item := range box.Items {
-		view.Items = append(view.Items, itemToView(item))
-		isGlyph := item.Kind == display.ItemGlyphRef ||
-			(item.Kind == display.ItemGlyphPath && item.FontID != "" && item.Glyph != 0)
-		if !isGlyph {
+		if item.Kind == display.ItemGlyphRef {
+			refs[glyphKey{font: item.FontID, id: item.Glyph}]++
+		}
+	}
+	for _, item := range box.Items {
+		view.Items = append(view.Items, itemToView(box, item))
+		key := glyphKey{font: item.FontID, id: item.Glyph}
+		switch item.Kind {
+		case display.ItemGlyphRef:
+		case display.ItemGlyphPath:
+			if item.FontID == "" || item.Glyph == 0 || refs[key] == 0 {
+				if item.FontID == "" || item.Glyph == 0 {
+					continue
+				}
+			} else {
+				refs[key]--
+				continue
+			}
+		default:
 			continue
 		}
 		view.Glyphs = append(view.Glyphs, glyphView{
@@ -120,7 +141,7 @@ func outputView(box *display.Box) layoutView {
 	return view
 }
 
-func itemToView(item display.Item) itemView {
+func itemToView(box *display.Box, item display.Item) itemView {
 	view := itemView{
 		Kind:  item.Kind,
 		Paint: paintToView(item.Paint),
@@ -131,11 +152,17 @@ func itemToView(item display.Item) itemView {
 	view.Glyph = item.Glyph
 	view.At = pointView{X: float64(item.At.X), Y: float64(item.At.Y)}
 	view.Em = float64(item.Em)
-	view.Path = make([]segmentView, len(item.Path))
-	for i, segment := range item.Path {
-		view.Path[i].Op = segment.Op
-		for j, point := range segment.Points {
-			view.Path[i].Points[j] = pointView{X: float64(point.X), Y: float64(point.Y)}
+	if item.Kind == display.ItemGlyphPath {
+		template := box.Paths[item.PathIndex]
+		view.Path = make([]segmentView, len(template.Segments))
+		for i, segment := range template.Segments {
+			view.Path[i].Op = segment.Op
+			for j, point := range segment.Points {
+				view.Path[i].Points[j] = pointView{
+					X: float64(item.At.X + point.X*item.Em),
+					Y: float64(item.At.Y + point.Y*item.Em),
+				}
+			}
 		}
 	}
 	return view

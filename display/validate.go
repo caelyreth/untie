@@ -32,8 +32,13 @@ func (b *Box) Validate() error {
 			return fmt.Errorf("%w: %s is %v", ErrInvalidBox, field.name, field.value)
 		}
 	}
+	for i, path := range b.Paths {
+		if err := validatePath(path); err != nil {
+			return fmt.Errorf("%w: path %d: %v", ErrInvalidBox, i, err)
+		}
+	}
 	for i, item := range b.Items {
-		if err := validateItem(item); err != nil {
+		if err := validateItem(item, b.Paths); err != nil {
 			return fmt.Errorf("%w: item %d: %v", ErrInvalidBox, i, err)
 		}
 	}
@@ -292,12 +297,6 @@ func inkExtentForItems(items []Item) inkExtent {
 	var extent inkExtent
 	for _, item := range items {
 		extent.addRect(item.Bound)
-		for _, segment := range item.Path {
-			points, _ := segmentPointCount(segment.Op)
-			for i := 0; i < points; i++ {
-				extent.addPoint(segment.Points[i])
-			}
-		}
 	}
 	return extent
 }
@@ -308,14 +307,6 @@ func inkExtentForRange(items []Item, itemRange ItemRange, dx, dy float32) (inkEx
 		item := items[i]
 		if err := extent.addTranslatedRect(item.Bound, dx, dy); err != nil {
 			return inkExtent{}, err
-		}
-		for _, segment := range item.Path {
-			points, _ := segmentPointCount(segment.Op)
-			for j := 0; j < points; j++ {
-				if err := extent.addTranslatedPoint(segment.Points[j], dx, dy); err != nil {
-					return inkExtent{}, err
-				}
-			}
 		}
 	}
 	return extent, nil
@@ -429,7 +420,7 @@ func validateBreak(breakPoint Break) error {
 	return nil
 }
 
-func validateItem(item Item) error {
+func validateItem(item Item, paths []PathTemplate) error {
 	if item.Kind > ItemGlyphRef {
 		return fmt.Errorf("unknown kind %d", item.Kind)
 	}
@@ -441,23 +432,34 @@ func validateItem(item Item) error {
 	}
 	switch item.Kind {
 	case ItemGlyphPath:
-		if len(item.Path) == 0 {
+		if item.PathIndex < 0 || item.PathIndex >= len(paths) {
+			return fmt.Errorf("path index %d exceeds path count %d", item.PathIndex, len(paths))
+		}
+		path := paths[item.PathIndex]
+		if len(path.Segments) == 0 {
 			return errors.New("empty glyph path")
 		}
-		for i, seg := range item.Path {
-			points, ok := segmentPointCount(seg.Op)
-			if !ok {
-				return fmt.Errorf("segment %d has unknown op %d", i, seg.Op)
-			}
-			for j := 0; j < points; j++ {
-				if !finite(seg.Points[j].X) || !finite(seg.Points[j].Y) {
-					return fmt.Errorf("segment %d has non-finite point", i)
-				}
-			}
+		if !finite(item.At.X) || !finite(item.At.Y) || !finite(item.Em) || item.Em <= 0 {
+			return errors.New("glyph path has invalid placement")
+		}
+		placed := geometry.Rect{
+			X:      item.At.X + path.Bound.X*item.Em,
+			Y:      item.At.Y + path.Bound.Y*item.Em,
+			Width:  path.Bound.Width * item.Em,
+			Height: path.Bound.Height * item.Em,
+		}
+		if !rectContains(item.Bound, placed) {
+			return errors.New("glyph path bound does not cover its placed template")
 		}
 	case ItemRule:
+		if item.PathIndex != NoPath {
+			return errors.New("rule has a path index")
+		}
 		return validateRect(item.Rect)
 	case ItemGlyphRef:
+		if item.PathIndex != NoPath {
+			return errors.New("glyph ref has a path index")
+		}
 		if item.FontID == "" {
 			return errors.New("glyph ref has empty font ID")
 		}
@@ -466,6 +468,44 @@ func validateItem(item Item) error {
 		}
 	}
 	return nil
+}
+
+func validatePath(path PathTemplate) error {
+	if len(path.Segments) == 0 {
+		return errors.New("empty path")
+	}
+	if err := validateRect(path.Bound); err != nil {
+		return fmt.Errorf("bound: %v", err)
+	}
+	for i, seg := range path.Segments {
+		points, ok := segmentPointCount(seg.Op)
+		if !ok {
+			return fmt.Errorf("segment %d has unknown op %d", i, seg.Op)
+		}
+		for j := 0; j < points; j++ {
+			if !finite(seg.Points[j].X) || !finite(seg.Points[j].Y) {
+				return fmt.Errorf("segment %d has non-finite point", i)
+			}
+			if !pointInRect(seg.Points[j], path.Bound) {
+				return fmt.Errorf("segment %d point %d exceeds bound", i, j)
+			}
+		}
+	}
+	return nil
+}
+
+func rectContains(outer, inner geometry.Rect) bool {
+	return inner.X >= outer.X-lineTolerance(inner.X) &&
+		inner.Y >= outer.Y-lineTolerance(inner.Y) &&
+		inner.X+inner.Width <= outer.X+outer.Width+lineTolerance(inner.X+inner.Width) &&
+		inner.Y+inner.Height <= outer.Y+outer.Height+lineTolerance(inner.Y+inner.Height)
+}
+
+func pointInRect(point geometry.Point, rect geometry.Rect) bool {
+	return point.X >= rect.X-lineTolerance(point.X) &&
+		point.Y >= rect.Y-lineTolerance(point.Y) &&
+		point.X <= rect.X+rect.Width+lineTolerance(point.X) &&
+		point.Y <= rect.Y+rect.Height+lineTolerance(point.Y)
 }
 
 func segmentPointCount(op geometry.SegOp) (int, bool) {

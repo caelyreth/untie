@@ -137,9 +137,9 @@ func TestDisplayAlignmentRealWrappedLines(t *testing.T) {
 					if got, want := box.Items[line.Items.Start+j].Bound.X, item.Bound.X+wantOffset; !closeHost(got, want) {
 						t.Fatalf("line %d item %d parent x = %v, want %v", i, j, got, want)
 					}
-					if len(item.Path) > 0 {
-						got := box.Items[line.Items.Start+j].Path[0].Points[0].X
-						want := item.Path[0].Points[0].X + wantOffset
+					if item.Kind == display.ItemGlyphPath {
+						got := resolvedPathPointX(box, box.Items[line.Items.Start+j], 0, 0)
+						want := resolvedPathPointX(local, item, 0, 0) + wantOffset
 						if !closeHost(got, want) {
 							t.Fatalf("line %d item %d path x = %v, want %v", i, j, got, want)
 						}
@@ -156,6 +156,11 @@ func TestDisplayAlignmentRealWrappedLines(t *testing.T) {
 			}
 		})
 	}
+}
+
+func resolvedPathPointX(box *display.Box, item display.Item, segment, point int) float32 {
+	template := box.Paths[item.PathIndex]
+	return item.At.X + template.Segments[segment].Points[point].X*item.Em
 }
 
 func TestDisplayAlignmentOneLineAndOverfullPolicy(t *testing.T) {
@@ -287,9 +292,10 @@ func alignmentLine(width, maxWidth float32) *display.Box {
 		Ascent:   1,
 		Overflow: overflow,
 		Items: []display.Item{{
-			Kind:  display.ItemRule,
-			Bound: geometry.Rect{Y: -1, Width: width, Height: 1},
-			Rect:  geometry.Rect{Y: -1, Width: width, Height: 1},
+			Kind:      display.ItemRule,
+			Bound:     geometry.Rect{Y: -1, Width: width, Height: 1},
+			PathIndex: display.NoPath,
+			Rect:      geometry.Rect{Y: -1, Width: width, Height: 1},
 		}},
 		Hits: []display.Hit{{
 			Source: source.NewRange(0, 1),

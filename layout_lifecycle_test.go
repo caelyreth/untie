@@ -50,8 +50,9 @@ func TestPublicEngineLifecycle(t *testing.T) {
 	if &first.Items[0] == &second.Items[0] {
 		t.Fatal("repeated layouts share Box item storage")
 	}
-	if len(first.Items[0].Path) > 0 && len(second.Items[0].Path) > 0 &&
-		&first.Items[0].Path[0] == &second.Items[0].Path[0] {
+	if len(first.Paths) > 0 && len(second.Paths) > 0 &&
+		len(first.Paths[0].Segments) > 0 && len(second.Paths[0].Segments) > 0 &&
+		&first.Paths[0].Segments[0] == &second.Paths[0].Segments[0] {
 		t.Fatal("repeated layouts share glyph path storage")
 	}
 	if got := style.Features; !equalStrings(got, features) {

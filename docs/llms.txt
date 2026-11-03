@@ -20,6 +20,8 @@ Use this file as the short entry point for code assistants. Read
   identifies the originating UTF-8 source bytes or is detached.
 - Box coordinates are y-down host units with the baseline origin at `(0, 0)`.
 - Draw `ItemGlyphPath` and `ItemRule`; `ItemGlyphRef` is optional cache metadata.
+- A path item resolves `Box.Paths[item.PathIndex]` as
+  `item.At + templatePoint*item.Em`; `item.Bound` is already placed.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
 - Draw `Box.Items` once; line/tag ranges select subsets of the same storage.
 - Use `Box.Bounds()` to include certified overflow.
@@ -110,6 +112,7 @@ type LayoutError struct {
 type Box struct {
 	Width, Ascent, Descent, Italic, AxisHeight, Overflow float32
 	Items  []Item
+	Paths  []PathTemplate
 	Hits   []Hit
 	Breaks []Break
 	Alt    Alt
@@ -122,6 +125,8 @@ type Box struct {
 - `Display` with positive `MaxWidth` always emits at least one `LineBox`.
 - Items and hits are always in parent-frame coordinates. Lines and tags carry
   ranges into `Box.Items`/`Box.Hits`, not nested drawable boxes.
+- Path templates are local-em geometry shared by one or more items. Items
+  reference them by `PathIndex`; `NoPath` marks items without path data.
 - `Overflow` is the certified allowance outside nominal geometry.
 - `Bounds()` returns the baseline-relative fit rectangle including overflow.
 - `Alt` is populated only when `Style.GenerateAlt` is true.

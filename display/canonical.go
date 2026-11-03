@@ -36,6 +36,7 @@ type canonicalBoxSnapshot struct {
 	AxisHeight float32          `json:"axisHeight"`
 	Overflow   float32          `json:"overflow"`
 	Items      []canonicalItem  `json:"items"`
+	Paths      []canonicalPath  `json:"paths,omitempty"`
 	Hits       []canonicalHit   `json:"hits,omitempty"`
 	Breaks     []canonicalBreak `json:"breaks,omitempty"`
 	Alt        *canonicalAlt    `json:"alt,omitempty"`
@@ -79,15 +80,15 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 	items := make([]canonicalItem, len(b.Items))
 	for i, item := range b.Items {
 		items[i] = canonicalItem{
-			Kind:   itemKindName(item.Kind),
-			Paint:  canonicalPaint(item.Paint),
-			Bound:  []float32{item.Bound.X, item.Bound.Y, item.Bound.Width, item.Bound.Height},
-			Path:   canonicalPath(item.Path),
-			Rect:   []float32{item.Rect.X, item.Rect.Y, item.Rect.Width, item.Rect.Height},
-			FontID: item.FontID,
-			Glyph:  item.Glyph,
-			At:     []float32{item.At.X, item.At.Y},
-			Em:     item.Em,
+			Kind:      itemKindName(item.Kind),
+			Paint:     canonicalPaint(item.Paint),
+			Bound:     []float32{item.Bound.X, item.Bound.Y, item.Bound.Width, item.Bound.Height},
+			PathIndex: canonicalPathIndex(item),
+			Rect:      []float32{item.Rect.X, item.Rect.Y, item.Rect.Width, item.Rect.Height},
+			FontID:    item.FontID,
+			Glyph:     item.Glyph,
+			At:        []float32{item.At.X, item.At.Y},
+			Em:        item.Em,
 		}
 	}
 	var alt *canonicalAlt
@@ -103,6 +104,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 		AxisHeight: b.AxisHeight,
 		Overflow:   b.Overflow,
 		Items:      items,
+		Paths:      canonicalPaths(b.Paths),
 		Hits:       canonicalHits(b.Hits),
 		Breaks:     canonicalBreaks(b.Breaks),
 		Alt:        alt,
@@ -210,21 +212,45 @@ func rectValues(rect geometry.Rect) []float32 {
 }
 
 type canonicalItem struct {
-	Kind   string    `json:"kind"`
-	Paint  []any     `json:"paint"`
-	Bound  []float32 `json:"bound"`
-	Path   [][]any   `json:"path,omitempty"`
-	Rect   []float32 `json:"rect,omitempty"`
-	FontID string    `json:"fontID,omitempty"`
-	Glyph  uint16    `json:"glyph,omitempty"`
-	At     []float32 `json:"at,omitempty"`
-	Em     float32   `json:"em,omitempty"`
+	Kind      string    `json:"kind"`
+	Paint     []any     `json:"paint"`
+	Bound     []float32 `json:"bound"`
+	PathIndex *int      `json:"pathIndex,omitempty"`
+	Rect      []float32 `json:"rect,omitempty"`
+	FontID    string    `json:"fontID,omitempty"`
+	Glyph     uint16    `json:"glyph,omitempty"`
+	At        []float32 `json:"at,omitempty"`
+	Em        float32   `json:"em,omitempty"`
 }
 
-func canonicalPath(path []geometry.Segment) [][]any {
-	if len(path) == 0 {
+type canonicalPath struct {
+	Bound    []float32 `json:"bound"`
+	Segments [][]any   `json:"segments"`
+}
+
+func canonicalPathIndex(item Item) *int {
+	if item.Kind != ItemGlyphPath {
 		return nil
 	}
+	index := item.PathIndex
+	return &index
+}
+
+func canonicalPaths(paths []PathTemplate) []canonicalPath {
+	if len(paths) == 0 {
+		return nil
+	}
+	out := make([]canonicalPath, len(paths))
+	for i, path := range paths {
+		out[i] = canonicalPath{
+			Bound:    rectValues(path.Bound),
+			Segments: canonicalSegments(path.Segments),
+		}
+	}
+	return out
+}
+
+func canonicalSegments(path []geometry.Segment) [][]any {
 	out := make([][]any, len(path))
 	for i, seg := range path {
 		row := make([]any, 0, 7)

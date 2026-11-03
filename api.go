@@ -67,6 +67,8 @@ type (
 	Rect    = geometry.Rect
 	Segment = geometry.Segment
 	Path    = geometry.Path
+
+	PathTemplate = display.PathTemplate
 )
 
 // Style is a display.Style layout request. Display layout with a positive

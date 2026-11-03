@@ -59,8 +59,18 @@ re-run TeX spacing, font shaping, or script placement in the host.
 
 ### `ItemGlyphPath`
 
-`item.Path` is a fillable path with `MoveTo`, `LineTo`, `QuadTo`, `CubeTo`, and
-`Close` segments. `item.Bound` is its conservative rectangular extent.
+`box.Paths[item.PathIndex]` is a shared fillable path template with `MoveTo`,
+`LineTo`, `QuadTo`, `CubeTo`, and `Close` segments. Template points are in
+local em units. Resolve each point in box coordinates as:
+
+```text
+x = item.At.X + point.X*item.Em
+y = item.At.Y + point.Y*item.Em
+```
+
+`item.Bound` is the already-placed conservative rectangular extent. Templates
+may be shared by many items, so do not mutate `box.Paths` or apply item
+placement to the template itself.
 
 The path may contain multiple contours. When a glyph uses a hole, the contours
 are wound so that either nonzero or even-odd filling produces the intended

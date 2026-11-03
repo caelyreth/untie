@@ -148,19 +148,33 @@ const (
 	ItemGlyphRef
 )
 
+// NoPath marks an item that does not reference Box.Paths.
+const NoPath = -1
+
+// PathTemplate is one immutable path template in local em coordinates. Items
+// place it in box coordinates with At and Em.
+type PathTemplate struct {
+	Segments []geometry.Segment
+	// Bound is the local control-point bounds before item placement.
+	Bound geometry.Rect
+}
+
 // Item is one already-positioned drawing instruction.
 type Item struct {
 	Kind  ItemKind
 	Paint Paint
 	Bound geometry.Rect
 
-	Path []geometry.Segment
-	Rect geometry.Rect
+	// PathIndex selects Box.Paths. It is NoPath for items without path data.
+	PathIndex int
+	Rect      geometry.Rect
 
 	FontID string
 	Glyph  uint16
-	At     geometry.Point
-	Em     float32
+	// At places Paths[PathIndex] for ItemGlyphPath and is the font glyph origin
+	// for ItemGlyphRef. Path points resolve as At + templatePoint*Em.
+	At geometry.Point
+	Em float32
 }
 
 // Box is a flattened formula relative to the start of its baseline.
@@ -176,7 +190,10 @@ type Box struct {
 	// for constrained display boxes, the largest logical line-width excess.
 	Overflow float32
 
-	Items  []Item
+	Items []Item
+	// Paths contains path templates shared by one or more items. A glyph-path
+	// item resolves a point as At + templatePoint*Em.
+	Paths  []PathTemplate
 	Hits   []Hit
 	Breaks []Break
 	Alt    Alt
@@ -214,6 +231,7 @@ func (b *Box) Clone() *Box {
 func cloneBox(b *Box, cloneNested bool) *Box {
 	out := *b
 	out.Items = cloneItems(b.Items)
+	out.Paths = clonePaths(b.Paths)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
 	var canonicalTag *TagBox
@@ -248,7 +266,18 @@ func cloneItems(items []Item) []Item {
 	out := make([]Item, len(items))
 	for i, item := range items {
 		out[i] = item
-		out[i].Path = append([]geometry.Segment(nil), item.Path...)
+	}
+	return out
+}
+
+func clonePaths(paths []PathTemplate) []PathTemplate {
+	if len(paths) == 0 {
+		return nil
+	}
+	out := make([]PathTemplate, len(paths))
+	for i, path := range paths {
+		out[i] = path
+		out[i].Segments = append([]geometry.Segment(nil), path.Segments...)
 	}
 	return out
 }

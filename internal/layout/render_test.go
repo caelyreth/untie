@@ -69,6 +69,40 @@ func TestRowAssemblyAndSpacing(t *testing.T) {
 	}
 }
 
+func TestGlyphPathTemplatesAreSharedAndPlacedPerItem(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	root := ir.NewRow(source.NewRange(0, 2),
+		glyph("x", ir.ClassNormal),
+		glyph("x", ir.ClassNormal),
+	)
+	box, err := renderer.Layout(root, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("Layout() error = %v", err)
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	if len(box.Items) != 2 || len(box.Paths) != 1 {
+		t.Fatalf("items = %d, paths = %d, want two items and one shared template", len(box.Items), len(box.Paths))
+	}
+	first, second := box.Items[0], box.Items[1]
+	if first.PathIndex != 0 || second.PathIndex != first.PathIndex {
+		t.Fatalf("path indexes = %d and %d, want shared index 0", first.PathIndex, second.PathIndex)
+	}
+	if !closeHost(first.At.X, 0) || !closeHost(second.At.X, 8) {
+		t.Fatalf("item origins = %v and %v, want 0 and 8", first.At.X, second.At.X)
+	}
+	template := box.Paths[first.PathIndex]
+	if !closeHost(template.Bound.Width, 0.5) || !closeHost(template.Bound.Height, 0.9) {
+		t.Fatalf("template bound = %+v, want local 0.5em by 0.9em", template.Bound)
+	}
+	if !closeHost(first.Bound.Width, 8) || !closeHost(first.Bound.Height, 14.4) {
+		t.Fatalf("placed bound = %+v, want host-scaled 8 by 14.4", first.Bound)
+	}
+}
+
 func TestExplicitSpaceDisablesAutomaticSpacing(t *testing.T) {
 	t.Parallel()
 
