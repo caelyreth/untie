@@ -22,8 +22,8 @@ func ExampleEngine_layoutAtTwoSizes() {
 	if err != nil {
 		panic(err)
 	}
-	fonts, err := untie.LoadFonts(untie.Fonts{
-		Math: untie.FontData{Bytes: fontBytes, ID: "NewCMMath-Book"},
+	fonts, err := untie.LoadFontSet(untie.FontSetConfig{
+		Math: untie.FontFace{Bytes: fontBytes, ID: "NewCMMath-Book"},
 	})
 	if err != nil {
 		panic(err)
@@ -69,8 +69,8 @@ func ExampleEngine_displayLines() {
 	if err != nil {
 		panic(err)
 	}
-	fonts, err := untie.LoadFonts(untie.Fonts{
-		Math: untie.FontData{Bytes: fontBytes, ID: "NewCMMath-Book"},
+	fonts, err := untie.LoadFontSet(untie.FontSetConfig{
+		Math: untie.FontFace{Bytes: fontBytes, ID: "NewCMMath-Book"},
 	})
 	if err != nil {
 		panic(err)

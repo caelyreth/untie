@@ -26,8 +26,8 @@ func loadSharedTestFont(t testing.TB) *FontSet {
 			testFontErr = err
 			return
 		}
-		testFontSet, testFontErr = Load(Fonts{
-			Math: FontData{Bytes: data, ID: "newcm-math-book", Index: 0},
+		testFontSet, testFontErr = LoadFontSet(FontSetConfig{
+			Math: FontFace{Bytes: data, ID: "newcm-math-book", Index: 0},
 		})
 	})
 	if testFontErr != nil {

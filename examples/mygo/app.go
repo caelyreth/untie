@@ -39,9 +39,7 @@ func newApp(fontBytes []byte) (*app, error) {
 	if len(fontBytes) == 0 {
 		return nil, errors.New("empty math font")
 	}
-	fonts, err := untie.LoadFonts(untie.Fonts{
-		Math: untie.FontData{Bytes: fontBytes, ID: "newcm-math"},
-	})
+	fonts, err := untie.LoadMathFont(fontBytes, untie.WithFontID("newcm-math"))
 	if err != nil {
 		return nil, err
 	}

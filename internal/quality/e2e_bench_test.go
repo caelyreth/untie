@@ -231,7 +231,7 @@ func loadDailyBenchmarkCorpus(b *testing.B) ([]corpusBenchCase, *untie.FontSet) 
 	if err := daily.ValidateCorpus(cases, manifest); err != nil {
 		b.Fatal(err)
 	}
-	fonts, err := daily.LoadFonts(filepath.Join(root, "testdata", "upstream", "fonts", "NewCMMath-Book.otf"))
+	fonts, err := daily.LoadFontSet(filepath.Join(root, "testdata", "upstream", "fonts", "NewCMMath-Book.otf"))
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -20,7 +20,7 @@ const (
 )
 
 type parsedFace struct {
-	data      FontData
+	data      FontFace
 	info      FaceInfo
 	glyphFont *tsfont.Font
 	opentype  *ot.Font
@@ -244,7 +244,7 @@ func align4(v uint64) uint64 {
 	return (v + 3) &^ 3
 }
 
-func parseSelectedFace(data FontData) (*parsedFace, error) {
+func parseSelectedFace(data FontFace) (*parsedFace, error) {
 	standalone, tables, err := openFace(data.Bytes, data.Index)
 	if err != nil {
 		return nil, fmt.Errorf("face %d (%q): %w", data.Index, data.ID, err)

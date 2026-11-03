@@ -46,41 +46,13 @@ func WithFontIndex(index int) FontOption {
 	}
 }
 
-// FontData is one face from a host-provided SFNT or TTC file.
-//
-// New integrations should use FontFace.
-type FontData struct {
-	Bytes []byte
-	Index int
-	ID    string
-}
-
-// Fonts are host-supplied faces. Fallback order is deterministic.
-//
-// New integrations should use FontSetConfig.
-type Fonts struct {
-	Math      FontData
-	Text      *FontData
-	Fallbacks []FontData
-}
-
 // FontSet is an immutable parsed font collection with a concurrency-safe glyph
 // outline cache.
 type FontSet struct {
-	fonts   Fonts
+	config  FontSetConfig
 	faces   []*parsedFace
 	hasText bool
 	key     [32]byte
-}
-
-// Load validates and prepares host fonts. It accepts SFNT and TTC data. The
-// primary math face must contain OpenType MATH constants. All font bytes are
-// copied before parsing, and every glyph outline is validated here so later
-// layout cannot fail because of a malformed glyph program.
-//
-// New integrations should use LoadFontSet or LoadMathFont.
-func Load(fonts Fonts) (set *FontSet, err error) {
-	return load(fonts, false)
 }
 
 // LoadMathFont prepares one math face. The face ID is derived when opts do not
@@ -99,27 +71,10 @@ func LoadMathFont(data []byte, opts ...FontOption) (*FontSet, error) {
 // Empty face IDs are derived deterministically. Explicit IDs must be nonblank
 // and unique. All font bytes are copied before parsing.
 func LoadFontSet(config FontSetConfig) (*FontSet, error) {
-	return load(config.toLegacy(), true)
+	return load(config)
 }
 
-func (config FontSetConfig) toLegacy() Fonts {
-	fonts := Fonts{Math: fontData(config.Math)}
-	if config.Text != nil {
-		text := fontData(*config.Text)
-		fonts.Text = &text
-	}
-	fonts.Fallbacks = make([]FontData, len(config.Fallbacks))
-	for i, face := range config.Fallbacks {
-		fonts.Fallbacks[i] = fontData(face)
-	}
-	return fonts
-}
-
-func fontData(face FontFace) FontData {
-	return FontData{Bytes: face.Bytes, Index: face.Index, ID: face.ID}
-}
-
-func load(fonts Fonts, deriveIDs bool) (set *FontSet, err error) {
+func load(config FontSetConfig) (set *FontSet, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			set = nil
@@ -127,27 +82,18 @@ func load(fonts Fonts, deriveIDs bool) (set *FontSet, err error) {
 		}
 	}()
 
-	if len(fonts.Math.Bytes) == 0 {
+	if len(config.Math.Bytes) == 0 {
 		return nil, errors.New("font: math face is required")
 	}
-	if len(fonts.Fallbacks) > maxFallbackFaces {
-		return nil, fmt.Errorf("font: %d fallback faces exceed limit %d", len(fonts.Fallbacks), maxFallbackFaces)
+	if len(config.Fallbacks) > maxFallbackFaces {
+		return nil, fmt.Errorf("font: %d fallback faces exceed limit %d", len(config.Fallbacks), maxFallbackFaces)
 	}
-	if err := validateExplicitFontIDs(fonts, deriveIDs); err != nil {
+	if err := validateFontIDs(config); err != nil {
 		return nil, err
 	}
 
-	owned := Fonts{Math: copyFontData(fonts.Math)}
-	hasText := fonts.Text != nil
-	if hasText {
-		text := copyFontData(*fonts.Text)
-		owned.Text = &text
-	}
-	owned.Fallbacks = make([]FontData, len(fonts.Fallbacks))
-	for i, face := range fonts.Fallbacks {
-		owned.Fallbacks[i] = copyFontData(face)
-	}
-
+	owned := copyFontSetConfig(config)
+	hasText := config.Text != nil
 	faces := make([]*parsedFace, 0, 1+len(owned.Fallbacks)+boolInt(hasText))
 	mathInput := owned.Math
 	mathFace, err := parseSelectedFace(labelFace(mathInput, "math"))
@@ -176,14 +122,12 @@ func load(fonts Fonts, deriveIDs bool) (set *FontSet, err error) {
 		restoreFaceID(face, data)
 		faces = append(faces, face)
 	}
-	if deriveIDs {
-		if err := resolveFontIDs(&owned, faces); err != nil {
-			return nil, err
-		}
+	if err := resolveFontIDs(&owned, faces); err != nil {
+		return nil, err
 	}
 
 	set = &FontSet{
-		fonts:   owned,
+		config:  owned,
 		faces:   faces,
 		hasText: hasText,
 	}
@@ -191,14 +135,11 @@ func load(fonts Fonts, deriveIDs bool) (set *FontSet, err error) {
 	return set, nil
 }
 
-func validateExplicitFontIDs(fonts Fonts, allowEmpty bool) error {
-	ids := make(map[string]struct{}, 1+len(fonts.Fallbacks)+boolInt(fonts.Text != nil))
-	check := func(role string, face FontData) error {
+func validateFontIDs(config FontSetConfig) error {
+	ids := make(map[string]struct{}, 1+len(config.Fallbacks)+boolInt(config.Text != nil))
+	check := func(role string, face FontFace) error {
 		if strings.TrimSpace(face.ID) == "" {
-			if allowEmpty {
-				return nil
-			}
-			return fmt.Errorf("font: %s face has empty ID", role)
+			return nil
 		}
 		if _, exists := ids[face.ID]; exists {
 			return fmt.Errorf("font: duplicate face ID %q", face.ID)
@@ -206,15 +147,15 @@ func validateExplicitFontIDs(fonts Fonts, allowEmpty bool) error {
 		ids[face.ID] = struct{}{}
 		return nil
 	}
-	if err := check("math", fonts.Math); err != nil {
+	if err := check("math", config.Math); err != nil {
 		return err
 	}
-	if fonts.Text != nil {
-		if err := check("text", *fonts.Text); err != nil {
+	if config.Text != nil {
+		if err := check("text", *config.Text); err != nil {
 			return err
 		}
 	}
-	for i, face := range fonts.Fallbacks {
+	for i, face := range config.Fallbacks {
 		if err := check(fmt.Sprintf("fallback %d", i), face); err != nil {
 			return err
 		}
@@ -222,11 +163,11 @@ func validateExplicitFontIDs(fonts Fonts, allowEmpty bool) error {
 	return nil
 }
 
-func resolveFontIDs(fonts *Fonts, faces []*parsedFace) error {
+func resolveFontIDs(config *FontSetConfig, faces []*parsedFace) error {
 	ids := make(map[string]struct{}, len(faces))
 	for i, face := range faces {
 		if strings.TrimSpace(face.data.ID) == "" {
-			role := faceRole(i, fonts.Text != nil)
+			role := faceRole(i, config.Text != nil)
 			face.data.ID = derivedFaceID(role, face)
 			face.info.ID = face.data.ID
 		}
@@ -235,17 +176,17 @@ func resolveFontIDs(fonts *Fonts, faces []*parsedFace) error {
 		}
 		ids[face.data.ID] = struct{}{}
 	}
-	fonts.Math = faces[0].data
-	if fonts.Text != nil {
+	config.Math = faces[0].data
+	if config.Text != nil {
 		text := faces[1].data
-		fonts.Text = &text
+		config.Text = &text
 	}
-	for i := range fonts.Fallbacks {
+	for i := range config.Fallbacks {
 		faceIndex := i + 1
-		if fonts.Text != nil {
+		if config.Text != nil {
 			faceIndex++
 		}
-		fonts.Fallbacks[i] = faces[faceIndex].data
+		config.Fallbacks[i] = faces[faceIndex].data
 	}
 	return nil
 }
@@ -312,14 +253,14 @@ func safeIDSegment(value string) string {
 	return strings.Trim(out.String(), "-")
 }
 
-func labelFace(face FontData, role string) FontData {
+func labelFace(face FontFace, role string) FontFace {
 	if strings.TrimSpace(face.ID) == "" {
 		face.ID = role
 	}
 	return face
 }
 
-func restoreFaceID(face *parsedFace, input FontData) {
+func restoreFaceID(face *parsedFace, input FontFace) {
 	face.data.ID = input.ID
 	face.info.ID = input.ID
 }
@@ -341,22 +282,12 @@ func (f *FontSet) KeySHA256() [32]byte {
 	return f.key
 }
 
-// Fonts returns an independent copy of the input font data.
-func (f *FontSet) Fonts() Fonts {
+// Config returns an independent copy of the input font configuration.
+func (f *FontSet) Config() FontSetConfig {
 	if f == nil {
-		return Fonts{}
+		return FontSetConfig{}
 	}
-	out := f.fonts
-	out.Math = copyFontData(f.fonts.Math)
-	if f.fonts.Text != nil {
-		text := copyFontData(*f.fonts.Text)
-		out.Text = &text
-	}
-	out.Fallbacks = make([]FontData, len(f.fonts.Fallbacks))
-	for i, face := range f.fonts.Fallbacks {
-		out.Fallbacks[i] = copyFontData(face)
-	}
-	return out
+	return copyFontSetConfig(f.config)
 }
 
 // Face returns immutable metadata for ref.
@@ -615,13 +546,13 @@ func (f *FontSet) face(ref FaceRef) *parsedFace {
 	return f.faces[index]
 }
 
-func canonicalFontKey(fonts Fonts) [32]byte {
+func canonicalFontKey(config FontSetConfig) [32]byte {
 	h := sha256.New()
 	_, _ = h.Write([]byte("untie-font-set\x00v1\x00"))
-	writeKeyFace(h, 1, fonts.Math)
-	writeKeyFace(h, boolByte(fonts.Text != nil), valueOrZero(fonts.Text))
-	writeUint32(h, uint32(len(fonts.Fallbacks)))
-	for _, face := range fonts.Fallbacks {
+	writeKeyFace(h, 1, config.Math)
+	writeKeyFace(h, boolByte(config.Text != nil), valueOrZero(config.Text))
+	writeUint32(h, uint32(len(config.Fallbacks)))
+	for _, face := range config.Fallbacks {
 		writeKeyFace(h, 2, face)
 	}
 	var out [32]byte
@@ -633,7 +564,7 @@ type hashWriter interface {
 	Write([]byte) (int, error)
 }
 
-func writeKeyFace(h hashWriter, role byte, face FontData) {
+func writeKeyFace(h hashWriter, role byte, face FontFace) {
 	_, _ = h.Write([]byte{role})
 	writeUint32(h, uint32(face.Index))
 	writeUint32(h, uint32(len(face.ID)))
@@ -648,15 +579,28 @@ func writeUint32(h hashWriter, v uint32) {
 	_, _ = h.Write(b[:])
 }
 
-func copyFontData(in FontData) FontData {
+func copyFontFace(in FontFace) FontFace {
 	out := in
 	out.Bytes = append([]byte(nil), in.Bytes...)
 	return out
 }
 
-func valueOrZero(v *FontData) FontData {
+func copyFontSetConfig(in FontSetConfig) FontSetConfig {
+	out := FontSetConfig{Math: copyFontFace(in.Math)}
+	if in.Text != nil {
+		text := copyFontFace(*in.Text)
+		out.Text = &text
+	}
+	out.Fallbacks = make([]FontFace, len(in.Fallbacks))
+	for i, face := range in.Fallbacks {
+		out.Fallbacks[i] = copyFontFace(face)
+	}
+	return out
+}
+
+func valueOrZero(v *FontFace) FontFace {
 	if v == nil {
-		return FontData{}
+		return FontFace{}
 	}
 	return *v
 }

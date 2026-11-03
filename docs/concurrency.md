@@ -26,7 +26,7 @@ root engine always uses its internal font adapter.
 There is no `Close` method on `FontSet` or `Engine`. Both are ordinary Go
 objects:
 
-1. `LoadFonts` copies and validates bytes.
+1. `LoadMathFont` or `LoadFontSet` copies and validates bytes.
 2. `NewEngine` prepares immutable layout state.
 3. Retain the engine for the configured font set's lifetime.
 4. Let Go's garbage collector release it.
@@ -38,9 +38,7 @@ that does not depend on the formula.
 
 ```go
 func NewMathRenderer(fontBytes []byte) (*untie.Renderer, error) {
-	fonts, err := untie.LoadFonts(untie.Fonts{
-		Math: untie.FontData{Bytes: fontBytes, ID: "host-math"},
-	})
+	fonts, err := untie.LoadMathFont(fontBytes, untie.WithFontID("host-math"))
 	if err != nil {
 		return nil, err
 	}

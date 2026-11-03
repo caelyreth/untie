@@ -229,20 +229,20 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 	}
 }
 
-func TestLoadFontsClassifiesPreparationFailures(t *testing.T) {
+func TestLoadFontSetClassifiesPreparationFailures(t *testing.T) {
 	t.Parallel()
 
-	if fonts, err := LoadFonts(Fonts{}); err == nil || fonts != nil {
-		t.Fatalf("LoadFonts(empty) = %v, %v", fonts, err)
+	if fonts, err := LoadFontSet(FontSetConfig{}); err == nil || fonts != nil {
+		t.Fatalf("LoadFontSet(empty) = %v, %v", fonts, err)
 	} else if !errors.Is(err, ErrInvalidFonts) {
-		t.Fatalf("LoadFonts(empty) error = %v, want ErrInvalidFonts", err)
+		t.Fatalf("LoadFontSet(empty) error = %v, want ErrInvalidFonts", err)
 	}
-	if fonts, err := LoadFonts(Fonts{
-		Math: FontData{Bytes: []byte("not a font"), ID: "bad"},
+	if fonts, err := LoadFontSet(FontSetConfig{
+		Math: FontFace{Bytes: []byte("not a font"), ID: "bad"},
 	}); err == nil || fonts != nil {
-		t.Fatalf("LoadFonts(malformed) = %v, %v", fonts, err)
+		t.Fatalf("LoadFontSet(malformed) = %v, %v", fonts, err)
 	} else if !errors.Is(err, ErrInvalidFonts) {
-		t.Fatalf("LoadFonts(malformed) error = %v, want ErrInvalidFonts", err)
+		t.Fatalf("LoadFontSet(malformed) error = %v, want ErrInvalidFonts", err)
 	}
 }
 
@@ -403,9 +403,9 @@ func TestLayoutAltRecognizesExactTeXSpaceLengths(t *testing.T) {
 func loadTestFonts(t testing.TB) *FontSet {
 	t.Helper()
 	data := testFontBytes(t)
-	fonts, err := LoadFonts(Fonts{Math: FontData{Bytes: data, ID: "NewCMMath-Book"}})
+	fonts, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "NewCMMath-Book"}})
 	if err != nil {
-		t.Fatalf("LoadFonts() error = %v", err)
+		t.Fatalf("LoadFontSet() error = %v", err)
 	}
 	return fonts
 }

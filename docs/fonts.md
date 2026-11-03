@@ -91,7 +91,7 @@ sequence to satisfy a source that requests it.
 `LoadFontSet` fails cleanly, without a partial `FontSet`, when:
 
 - the math face is absent or empty;
-- an explicit face ID is blank or duplicated, or a resolved ID collides;
+- duplicated explicit or resolved face IDs collide;
 - an SFNT/TTC face cannot be parsed;
 - the primary math face lacks usable MATH constants;
 - a face has invalid units per em, glyph count, metrics, or outlines;
@@ -108,8 +108,8 @@ fail because of a malformed glyph program.
 `LoadFontSet` and `LoadMathFont` copy every byte slice before parsing. Mutating
 the caller's `FontFace.Bytes` afterward cannot change the `FontSet` or its key.
 
-`FontSet.Fonts()` returns an independent copy of the input font data. Mutating
-the copy cannot affect the loaded set.
+`FontSet.Config()` returns an independent copy of the input font
+configuration. Mutating the copy cannot affect the loaded set.
 
 ## Identity and Caching
 
@@ -196,9 +196,8 @@ fonts, err := untie.LoadMathFont(mathBytes,
 )
 ```
 
-`untie.FontData`, `untie.Fonts`, and `untie.LoadFonts` remain available for
-compatibility. New integrations should use `FontFace`, `FontSetConfig`, and
-`LoadFontSet` or `LoadMathFont`.
+Use `FontFace`, `FontSetConfig`, and `LoadFontSet` or `LoadMathFont` for all
+font setup.
 
 ## Filesystem Helpers
 

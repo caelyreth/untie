@@ -20,7 +20,7 @@ func TestBreakMetadataEquivalentAcrossFrontends(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read font: %v", err)
 	}
-	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: bytes, ID: "NewCMMath-Book"}})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: font.FontFace{Bytes: bytes, ID: "NewCMMath-Book"}})
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -72,7 +72,7 @@ func TestTeXBreakMarkersAndGroups(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read font: %v", err)
 	}
-	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: bytes, ID: "NewCMMath-Book"}})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: font.FontFace{Bytes: bytes, ID: "NewCMMath-Book"}})
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}

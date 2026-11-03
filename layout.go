@@ -26,8 +26,8 @@ var (
 // caller. Reuse it for repeated layouts with the same FontSet and Limits.
 //
 // An Engine retains its FontSet and is GC-managed; neither value needs a Close
-// call. Use LoadFonts and NewEngine once during application setup, then retain
-// the Engine for the lifetime of the font configuration.
+// call. Use LoadMathFont or LoadFontSet and NewEngine once during application
+// setup, then retain the Engine for the lifetime of the font configuration.
 type Engine struct {
 	fonts  *FontSet
 	inner  *engine.Engine

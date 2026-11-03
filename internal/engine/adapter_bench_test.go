@@ -99,12 +99,12 @@ func benchmarkAdapter(b *testing.B, limits source.Limits, fallbackCount int) *ad
 	if err != nil {
 		b.Fatal(err)
 	}
-	face := font.FontData{Bytes: data, ID: "NewCMMath-Book"}
-	fallbacks := make([]font.FontData, fallbackCount)
+	face := font.FontFace{Bytes: data, ID: "NewCMMath-Book"}
+	fallbacks := make([]font.FontFace, fallbackCount)
 	for i := range fallbacks {
 		fallbacks[i] = face
 	}
-	set, err := font.Load(font.Fonts{Math: face, Fallbacks: fallbacks})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: face, Fallbacks: fallbacks})
 	if err != nil {
 		b.Fatal(err)
 	}

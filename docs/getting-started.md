@@ -252,7 +252,7 @@ text under the engine's effective limits.
   box.
 - Re-translating a `LineBox.Items` range by `OffsetX`/`Baseline`; range items
   are already in parent-frame coordinates.
-- Supplying a font without a valid OpenType MATH table as `Fonts.Math`.
+- Supplying a font without a valid OpenType MATH table as `FontSetConfig.Math`.
 
 ## Evidence
 

@@ -59,8 +59,6 @@ type (
 	BreakKind     = display.BreakKind
 	Align         = display.Align
 	FontFace      = font.FontFace
-	FontData      = font.FontData
-	Fonts         = font.Fonts
 	FontSetConfig = font.FontSetConfig
 	FontSet       = font.FontSet
 	FontOption    = font.FontOption
@@ -468,17 +466,6 @@ func (e *Expr) Key() uint64 {
 		return 0
 	}
 	return e.key
-}
-
-// LoadFonts prepares host-supplied font bytes for repeated layout.
-//
-// New integrations should use LoadFontSet or LoadMathFont.
-func LoadFonts(fonts Fonts) (*FontSet, error) {
-	prepared, err := font.Load(fonts)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInvalidFonts, err)
-	}
-	return prepared, nil
 }
 
 // LoadFontSet prepares one or more host-supplied faces for repeated layout.
