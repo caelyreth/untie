@@ -41,9 +41,24 @@ selectable danger-colored text.
 
 Standalone elements expose semantic accessibility text by default:
 
+- `Alt.Description` is available through `DescribeFormula`;
 - `Alt.Speech` (or `Alt.Text`/source as a fallback) is the accessible label;
 - the exact TeX or Typst source is the accessibility value;
 - an empty formula still has a stable accessible name.
+
+Hosts can replace the English label using the structured tree:
+
+```go
+math, err := untiemygo.New(fonts, untiemygo.Options{
+	LocalizeLabel: func(description *untie.AltDescription) string {
+		return catalog.Render(description)
+	},
+})
+```
+
+An empty callback result uses `Alt.Speech`. The callback receives a
+source-independent semantic tree and must not retain or mutate it. See
+[structured accessibility descriptions](../docs/accessibility-description.md).
 
 Use `Options.Accessibility` to skip alternative-text generation when an
 application does not need the richer spoken label. The source remains the

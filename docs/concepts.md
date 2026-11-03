@@ -180,6 +180,7 @@ limits, and `Version()`. It never caches a rendered `Box`.
   `RolePlaceholder`, or honors an explicit `RGBA`.
 - Paragraph layout for inline formulas
 - Document counters, references, or bibliography resolution
-- Screen-reader behavior beyond deterministic alternative text
+- Screen-reader behavior beyond deterministic alternative text and the
+  structured localization tree
 - GPU tessellation or glyph-atlas ownership
 - Validation of the upstream license terms of host-supplied fonts

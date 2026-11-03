@@ -40,10 +40,11 @@ other MyGo element. It starts at the formula's natural size and scales down
 when the available box is smaller. Set `DrawOptions.AllowUpscale` if a host
 wants formulas to grow into larger spaces.
 
-Standalone elements use `Alt.Speech` as their accessibility label, with
+Standalone elements use `Alt.Speech` as their English accessibility label, with
 `Alt.Text` and source as fallbacks, and the exact dialect source as their
-accessibility value. `Options.Accessibility` can disable the extra
-alternative-text traversal.
+accessibility value. `Options.LocalizeLabel` can render a host-localized label
+from the structured `Alt.Description`. `Options.Accessibility` can disable the
+extra alternative-text traversal.
 
 `untie.Inline` selects inline math size. A standalone inline element still
 participates in normal MyGo box layout; use `InlineMath` when baseline
