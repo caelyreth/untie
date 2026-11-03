@@ -206,14 +206,17 @@ func (l *lowerer) lowerTextBody(n *astNode) ir.Node {
 	case astString:
 		return l.textFromAST(n)
 	case astIdentifier, astField:
-		if def, ok := symbol(n.text); ok {
-			return l.text(n.span, def.text)
+		resolved := resolveIdent(n)
+		if resolved.unknownRoot == "" {
+			if def, ok := symbol(resolved.name); ok {
+				return l.text(n.span, def.text)
+			}
 		}
-		return l.text(n.span, n.text)
+		return l.textFromContentSyntax(n)
 	case astGlyph:
-		return l.text(n.span, n.text)
+		return l.textFromContentSyntax(n)
 	case astNumber:
-		return l.text(n.span, n.text)
+		return l.textFromContentSyntax(n)
 	case astCode:
 		if len(n.items) == 1 {
 			return l.lowerTextBody(n.items[0])
