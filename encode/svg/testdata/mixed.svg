@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12" viewBox="0 0 16 12">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12" viewBox="0 0 16 12" fill="#000000">
 <title>&lt;Formula &amp; &#34;quoted&#34;&gt;</title>
 <desc>A &lt; B &amp; C</desc>
 <rect x="0" y="0" width="16" height="12" fill="#f8fafc"/>
 <defs>
-<path id="p0" d="M 0.25 0.125 L 0.75 0.125 Q 0.25 0.75 0.75 0.75 C 0.125 0.25 0.875 0.25 0.5 0.625Z"/>
-<path id="p1" d="M 0.25 0.125 L 0.75 0.125 Q 0.25 0.75 0.75 0.75 C 0.125 0.25 0.875 0.25 0.5 0.625Z"/>
-<path id="p2" d="M 0.25 0.125 L 0.75 0.125 Q 0.25 0.75 0.75 0.75 C 0.125 0.25 0.875 0.25 0.5 0.625Z"/>
+<path id="p0" d="M.25 .125L.75 .125Q.25 .75 .75 .75C.125 .25 .875 .25 .5 .625Z"/>
+<path id="p1" d="M.25 .125L.75 .125Q.25 .75 .75 .75C.125 .25 .875 .25 .5 .625Z"/>
+<path id="p2" d="M.25 .125L.75 .125Q.25 .75 .75 .75C.125 .25 .875 .25 .5 .625Z"/>
 </defs>
-<use href="#p0" transform="translate(4 9) scale(2)" fill="#000000" fill-rule="nonzero"/>
-<rect x="7" y="4" width="5" height="0.5" fill="#b42318"/>
-<use href="#p1" transform="translate(6 7) scale(1)" fill="#667085" fill-rule="nonzero"/>
-<use href="#p2" transform="translate(8 8) scale(1)" fill="rgba(17,34,51,0.502)" fill-rule="nonzero"/>
+<use href="#p0" transform="translate(4 9)scale(2)"/>
+<rect x="7" y="4" width="5" height=".5" fill="#b42318"/>
+<use href="#p1" transform="translate(6 7)scale(1)" fill="#667085"/>
+<use href="#p2" transform="translate(8 8)scale(1)" fill="rgba(17,34,51,.502)"/>
 </svg>

@@ -128,8 +128,8 @@ func TestMarshalUsesPaletteAndExplicitPaint(t *testing.T) {
 		t.Fatalf("Marshal() error = %v", err)
 	}
 	want := []string{
-		"rgba(1,2,3,0.5)",
 		"#112233",
+		"rgba(1,2,3,0.5)",
 		"#445566",
 		"#778899",
 		"rgba(17,34,51,0.5)",

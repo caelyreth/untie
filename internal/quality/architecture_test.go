@@ -126,7 +126,6 @@ var allowedProjectImports = map[string]packageRules{
 		Production: []string{
 			modulePath + "/display",
 			modulePath + "/geometry",
-			modulePath + "/render",
 		},
 		Tests: []string{modulePath + "/encode/svg"},
 	},

@@ -153,6 +153,7 @@ type svgEncoder struct {
 	err     error
 
 	pathFirst bool
+	pathOp    byte
 }
 
 func (e *svgEncoder) encode(box *display.Box, usedPaths []bool) {
@@ -165,6 +166,8 @@ func (e *svgEncoder) encode(box *display.Box, usedPaths []bool) {
 	e.writeNumber(e.width)
 	e.writeByte(' ')
 	e.writeNumber(e.height)
+	e.writeString("\" fill=\"")
+	e.writeColor(e.options.Palette.Ink)
 	e.writeString("\">\n")
 	e.writeMetadata("title", e.options.Title)
 	e.writeMetadata("desc", e.options.Description)
@@ -209,6 +212,7 @@ func (e *svgEncoder) writeDefinitions(box *display.Box, used []bool) {
 		e.writeUint(uint64(i))
 		e.writeString("\" d=\"")
 		e.pathFirst = true
+		e.pathOp = 0
 		for _, segment := range path.Segments {
 			e.writeTemplateSegment(segment)
 		}
@@ -239,11 +243,12 @@ func (e *svgEncoder) writePathUse(item display.Item) {
 	e.writeNumber(item.At.X + e.offset.X)
 	e.writeByte(' ')
 	e.writeNumber(item.At.Y + e.offset.Y)
-	e.writeString(") scale(")
+	e.writeString(")scale(")
 	e.writeNumber(item.Em)
-	e.writeString(")\" fill=\"")
-	e.writePaint(item.Paint)
-	e.writeString("\" fill-rule=\"nonzero\"/>\n")
+	e.writeByte(')')
+	e.writeByte('"')
+	e.writeFill(item.Paint)
+	e.writeString("/>\n")
 }
 
 func (e *svgEncoder) writeRule(item display.Item) {
@@ -256,9 +261,18 @@ func (e *svgEncoder) writeRule(item display.Item) {
 	e.writeNumber(rect.Width)
 	e.writeString("\" height=\"")
 	e.writeNumber(rect.Height)
-	e.writeString("\" fill=\"")
-	e.writePaint(item.Paint)
-	e.writeString("\"/>\n")
+	e.writeByte('"')
+	e.writeFill(item.Paint)
+	e.writeString("/>\n")
+}
+
+func (e *svgEncoder) writeFill(paint display.Paint) {
+	if !paint.HasExplicit && paint.Role == display.RoleInk {
+		return
+	}
+	e.writeString(" fill=\"")
+	e.writePaint(paint)
+	e.writeByte('"')
 }
 
 func (e *svgEncoder) writeTemplateSegment(segment geometry.Segment) {
@@ -276,7 +290,7 @@ func (e *svgEncoder) writeTemplateSegment(segment geometry.Segment) {
 	case geometry.SegClose:
 		if !e.pathFirst {
 			e.writeString("Z")
-			e.pathFirst = false
+			e.pathOp = 0
 		}
 		return
 	default:
@@ -291,17 +305,23 @@ func (e *svgEncoder) writeTemplateSegment(segment geometry.Segment) {
 		}
 		return
 	}
-	if !e.pathFirst {
-		e.writeByte(' ')
+	wroteCommand := e.pathFirst || op != e.pathOp
+	if wroteCommand {
+		e.writeByte(op)
 	}
-	e.writeByte(op)
 	for i := 0; i < count; i++ {
-		e.writeByte(' ')
+		if (i > 0 || !wroteCommand) &&
+			(segment.Points[i].X == 0 || !math.Signbit(float64(segment.Points[i].X))) {
+			e.writeByte(' ')
+		}
 		e.writeNumber(segment.Points[i].X)
-		e.writeByte(' ')
+		if segment.Points[i].Y == 0 || !math.Signbit(float64(segment.Points[i].Y)) {
+			e.writeByte(' ')
+		}
 		e.writeNumber(segment.Points[i].Y)
 	}
 	e.pathFirst = false
+	e.pathOp = op
 }
 
 func (e *svgEncoder) writePaint(paint display.Paint) {
@@ -363,6 +383,12 @@ func (e *svgEncoder) writeNumber(value float32) {
 	if value == 0 {
 		value = 0
 	}
+	if e.options.Precision > 0 &&
+		e.options.Precision <= 6 &&
+		math.Abs(float64(value)) <= 1_000_000 {
+		e.dst = appendFixedFloat32(e.dst, value, e.options.Precision)
+		return
+	}
 	precision := -1
 	if e.options.Precision > 0 {
 		precision = e.options.Precision
@@ -383,7 +409,89 @@ func (e *svgEncoder) writeNumber(value float32) {
 }
 
 func (e *svgEncoder) writeUint(value uint64) {
-	e.dst = strconv.AppendUint(e.dst, value, 10)
+	e.dst = appendUint(e.dst, value)
+}
+
+var fixedScales = [...]uint64{
+	1,
+	10,
+	100,
+	1_000,
+	10_000,
+	100_000,
+	1_000_000,
+}
+
+func appendFixedFloat32(dst []byte, value float32, precision int) []byte {
+	negative := math.Signbit(float64(value))
+	if negative {
+		value = -value
+	}
+	if precision == 3 {
+		return appendFixed3(dst, value, negative)
+	}
+	scale := fixedScales[precision]
+	rounded := uint64(math.RoundToEven(float64(value) * float64(scale)))
+	if negative {
+		dst = append(dst, '-')
+	}
+	dst = appendUint(dst, rounded/scale)
+	fraction := rounded % scale
+	if fraction == 0 {
+		return dst
+	}
+	dst = append(dst, '.')
+	start := len(dst)
+	for divisor := scale / 10; divisor > 0; divisor /= 10 {
+		dst = append(dst, byte('0'+fraction/divisor))
+		fraction %= divisor
+	}
+	for len(dst) > start && dst[len(dst)-1] == '0' {
+		dst = dst[:len(dst)-1]
+	}
+	return dst
+}
+
+func appendFixed3(dst []byte, value float32, negative bool) []byte {
+	rounded := uint64(math.RoundToEven(float64(value) * 1_000))
+	if negative {
+		dst = append(dst, '-')
+	}
+	whole := rounded / 1_000
+	fraction := rounded % 1_000
+	if fraction == 0 {
+		return appendUint(dst, whole)
+	}
+	if whole != 0 {
+		dst = appendUint(dst, whole)
+	}
+	dst = append(dst,
+		'.',
+		byte('0'+fraction/100),
+		byte('0'+(fraction/10)%10),
+		byte('0'+fraction%10),
+	)
+	for dst[len(dst)-1] == '0' {
+		dst = dst[:len(dst)-1]
+	}
+	return dst
+}
+
+func appendUint(dst []byte, value uint64) []byte {
+	if value == 0 {
+		return append(dst, '0')
+	}
+	var digits [20]byte
+	index := len(digits)
+	for value >= 10 {
+		quotient := value / 10
+		index--
+		digits[index] = byte('0' + value - quotient*10)
+		value = quotient
+	}
+	index--
+	digits[index] = byte('0' + value)
+	return append(dst, digits[index:]...)
 }
 
 func (e *svgEncoder) writeByte(value byte) {
