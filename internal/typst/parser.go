@@ -28,6 +28,7 @@ type parser struct {
 	mode   ir.Mode
 	limits source.Limits
 	tokens []token
+	arena  astArena
 	pos    int
 	diags  []source.Diagnostic
 
@@ -53,6 +54,7 @@ func parseSource(src string, mode ir.Mode, limits source.Limits) (*astNode, []so
 		mode:   mode,
 		limits: limits,
 		tokens: tokens,
+		arena:  newASTArena(len(tokens) + 1),
 		diags:  lexDiags,
 	}
 	root := p.parseRow(stopNone)
@@ -125,7 +127,7 @@ func (p *parser) node(span source.Range, kind astKind) *astNode {
 		span = source.NewRange(span.Start, min(span.Start+1, span.End))
 		kind = astError
 	}
-	return newAST(kind, span)
+	return p.arena.alloc(kind, span)
 }
 
 func (p *parser) errorAt(span source.Range, code source.Code, format string, args ...any) {
