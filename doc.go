@@ -8,8 +8,9 @@
 // and LayoutContext use a bounded process-wide engine cache.
 //
 // Layout output is a flattened display.Box containing glyph outlines, rules,
-// source hits, and deterministic diagnostics. The render package provides a
-// framework-neutral drawing protocol and fitting helpers. The optional
+// source hits, caret stops, optional stable node identities, and deterministic
+// diagnostics. The render package provides a framework-neutral drawing
+// protocol and fitting helpers. The optional
 // encode/svg and encode/raster packages serialize the same display contract
 // without coupling the core to a UI framework.
 package untie

@@ -65,6 +65,7 @@ Every concrete node embeds `Base`:
 
 ```go
 type Base struct {
+	NodeID NodeID
 	Span   source.Range
 	Origin source.Range
 
@@ -92,6 +93,28 @@ policy. `Size` records an explicit math style, while `Cramped`, `Variant`, and
 `LeftSpacing` and `RightSpacing` carry explicit dialect-independent spacing
 overrides. `IgnoreAsSpace` preserves source atoms that should not create an
 ordinary inter-atom gap.
+
+### Stable Node Identity
+
+`NodeID` is opaque, host-assigned, and zero when unassigned. Untie never derives
+it from byte offsets or structural positions. A nonzero ID must be unique
+within a formula; reusing the same node pointer with the same ID does not
+violate uniqueness.
+
+The explicit stability rule is:
+
+1. `CloneFormula` preserves every assigned ID.
+2. Validation and canonical serialization preserve it.
+3. Layout copies it to every `Hit` and `Item` produced by that semantic node.
+4. A source edit does not automatically preserve identity. When a host rebuilds
+   or edits a tree, it must assign the prior ID to the semantically
+   corresponding node.
+
+Untie does not currently expose incremental parse/edit APIs, and it does not
+guess identity from spans or tree indexes. That restriction is deliberate:
+automatic IDs would appear stable while changing when siblings move or macros
+expand differently. Hosts that do not need editor identity can leave every ID
+zero.
 
 ## Node Families
 

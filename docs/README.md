@@ -5,8 +5,8 @@ out with a host-supplied OpenType MATH font. The result is a UI-independent
 display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
-These docs describe the public API at library version `0.3.0` and layout
-revision `2`. They focus on the behavior a host or code assistant can rely on
+These docs describe the public API at library version `0.4.0` and layout
+revision `3`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here
@@ -60,6 +60,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   conveniences to the current host facade, render helpers, and output adapters.
 - [Migrating to 0.3](migration-v0.3.md) records editor recovery, shaping,
   diagnostics, source maps, and MyGo drawing changes.
+- [Migrating to 0.4](migration-v0.4.md) records caret geometry, inline
+  splitting, and explicit stable node identities.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a
