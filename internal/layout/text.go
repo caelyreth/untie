@@ -72,6 +72,18 @@ func (s *layoutState) layoutTextRun(run TextRun, env environment, textLike bool)
 	if run.Width < 0 || run.Ascent < 0 || run.Descent < 0 {
 		return nil, fmt.Errorf("%w: run has negative metrics", ErrInvalidInput)
 	}
+	if len(run.Clusters) > 0 {
+		for i, cluster := range run.Clusters {
+			if cluster.RuneStart < 0 || cluster.RuneEnd < cluster.RuneStart || !cluster.Source.IsValid() {
+				return nil, fmt.Errorf("%w: invalid text cluster %d", ErrInvalidInput, i)
+			}
+		}
+		for i, positioned := range run.Glyphs {
+			if positioned.Cluster < 0 || positioned.Cluster >= len(run.Clusters) {
+				return nil, fmt.Errorf("%w: invalid text glyph cluster %d", ErrInvalidInput, i)
+			}
+		}
+	}
 	if len(run.Glyphs) == 0 {
 		return nil, fmt.Errorf("%w: empty shaped run", ErrMissingGlyph)
 	}
