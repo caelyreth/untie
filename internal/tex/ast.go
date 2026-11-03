@@ -323,6 +323,12 @@ type astEquationTag struct {
 	line       int
 }
 
+type astEquationLabel struct {
+	name   string
+	span   source.Range
+	origin source.Range
+}
+
 func newASTBase(kind astKind, span source.Range) astBase {
 	return astBase{kind: kind, span: span, origin: span}
 }

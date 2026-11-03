@@ -14,7 +14,11 @@ func parseTest(t *testing.T, src string, opts Options) Result {
 	if result.Root == nil {
 		t.Fatal("Parse returned a nil root")
 	}
-	if err := ir.Validate(&ir.Formula{Root: result.Root, Tags: result.Tags}, opts.Limits); err != nil {
+	if err := ir.Validate(&ir.Formula{
+		Root:   result.Root,
+		Tags:   result.Tags,
+		Labels: result.Labels,
+	}, opts.Limits); err != nil {
 		t.Fatalf("invalid IR for %q: %v", src, err)
 	}
 	return result

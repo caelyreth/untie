@@ -15,6 +15,7 @@ type renderExprCacheKey struct {
 	mode    Mode
 	limits  source.Limits
 	macros  string
+	refs    string
 }
 
 func makeRenderExprCacheKey(
@@ -29,6 +30,7 @@ func makeRenderExprCacheKey(
 		mode:    mode,
 		limits:  opts.Limits.WithDefaults(),
 		macros:  renderMacroKey(dialect, opts.Macros),
+		refs:    renderReferenceKey(dialect, opts.References),
 	}
 }
 
@@ -58,6 +60,33 @@ func renderMacroKey(dialect Dialect, macros map[string]Macro) string {
 		appendString(macro.Body)
 		binary.LittleEndian.PutUint64(scratch[:], uint64(macro.Args))
 		encoded = append(encoded, scratch[:]...)
+	}
+	return string(encoded)
+}
+
+func renderReferenceKey(dialect Dialect, references map[string]string) string {
+	if dialect != TeX || len(references) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(references))
+	for name := range references {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	size := 0
+	for _, name := range names {
+		size += 16 + len(name) + len(references[name])
+	}
+	encoded := make([]byte, 0, size)
+	var scratch [8]byte
+	appendString := func(value string) {
+		binary.LittleEndian.PutUint64(scratch[:], uint64(len(value)))
+		encoded = append(encoded, scratch[:]...)
+		encoded = append(encoded, value...)
+	}
+	for _, name := range names {
+		appendString(name)
+		appendString(references[name])
 	}
 	return string(encoded)
 }

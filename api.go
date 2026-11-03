@@ -73,6 +73,7 @@ type (
 	FontOption       = font.FontOption
 	Formula          = ir.Formula
 	EquationTag      = ir.EquationTag
+	EquationLabel    = ir.EquationLabel
 	NodeID           = ir.NodeID
 
 	Point   = geometry.Point
@@ -150,12 +151,15 @@ type Macro struct {
 	Args int
 }
 
-// ParseOptions configure parsing. TeX macros are ignored by the Typst
-// frontend. Typst preamble/code definitions are intentionally unsupported;
-// hosts must expand them before calling Parse.
+// ParseOptions configure parsing. TeX macros and references are ignored by the
+// Typst frontend. References maps decoded formula label names to host-supplied
+// visible text used by TeX \eqref; values are not parsed as math. Typst
+// preamble/code definitions are intentionally unsupported; hosts must expand
+// them before calling Parse.
 type ParseOptions struct {
-	Macros map[string]Macro
-	Limits Limits
+	Macros     map[string]Macro
+	References map[string]string
+	Limits     Limits
 }
 
 // Expr is an immutable parsed formula.
@@ -188,8 +192,9 @@ var (
 // destination is discarded, and a warning is reported only after the link
 // arguments validate. TeX URL groups preserve raw URL characters and balanced
 // braces; Typst link destinations are limited to non-empty strings in the
-// bounded evaluator. Labels, references, and document-level link resolution are
-// outside this API.
+// bounded evaluator. TeX \label commands become formula-scoped metadata and
+// \eqref resolves only through ParseOptions.References; there is no global
+// document state, automatic numbering, or cross-formula lookup.
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr {
 	expr, _ := ParseContext(context.Background(), src, dialect, mode, opts)
 	return expr
@@ -224,8 +229,18 @@ func ParseContext(
 			for name, macro := range opts.Macros {
 				macros[name] = tex.Macro{Body: macro.Body, Args: macro.Args}
 			}
-			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
-			return frontendResult{root: result.Root, tags: result.Tags, diagnostics: result.Diagnostics, arena: result.Arena}
+			result := tex.Parse(src, mode, tex.Options{
+				Macros:     macros,
+				References: opts.References,
+				Limits:     limits,
+			})
+			return frontendResult{
+				root:        result.Root,
+				tags:        result.Tags,
+				labels:      result.Labels,
+				diagnostics: result.Diagnostics,
+				arena:       result.Arena,
+			}
 		case Typst:
 			result := typst.Parse(src, mode, typst.Options{Limits: limits})
 			return frontendResult{root: result.Root, diagnostics: result.Diagnostics, arena: result.Arena}
@@ -250,21 +265,31 @@ func ParseContext(
 
 func snapshotParseOptions(opts ParseOptions) ParseOptions {
 	opts.Limits = opts.Limits.WithDefaults()
-	if len(opts.Macros) == 0 {
+	if len(opts.Macros) > 0 {
+		macros := make(map[string]Macro, len(opts.Macros))
+		for name, macro := range opts.Macros {
+			macros[name] = macro
+		}
+		opts.Macros = macros
+	} else {
 		opts.Macros = nil
-		return opts
 	}
-	macros := make(map[string]Macro, len(opts.Macros))
-	for name, macro := range opts.Macros {
-		macros[name] = macro
+	if len(opts.References) > 0 {
+		references := make(map[string]string, len(opts.References))
+		for name, text := range opts.References {
+			references[name] = text
+		}
+		opts.References = references
+	} else {
+		opts.References = nil
 	}
-	opts.Macros = macros
 	return opts
 }
 
 type frontendResult struct {
 	root        ir.Node
 	tags        []ir.EquationTag
+	labels      []ir.EquationLabel
 	diagnostics []source.Diagnostic
 	arena       *irarena.Arena
 }
@@ -308,7 +333,7 @@ func parseRecovered(
 		})
 	} else {
 		result := parser(limits)
-		candidate := &ir.Formula{Root: result.root, Tags: result.tags}
+		candidate := &ir.Formula{Root: result.root, Tags: result.tags, Labels: result.labels}
 		if result.root == nil {
 			diagnostics = append(diagnostics, result.diagnostics...)
 			diagnostics = append(diagnostics, source.Diagnostic{
@@ -411,6 +436,15 @@ func (e *Expr) RootSnapshot() (*ir.Formula, error) {
 		return nil, ErrInvalidExpr
 	}
 	return ir.CloneFormula(e.root, e.limits)
+}
+
+// Labels returns an independent copy of formula-scoped label metadata in
+// source order.
+func (e *Expr) Labels() []ir.EquationLabel {
+	if e == nil || e.root == nil {
+		return nil
+	}
+	return append([]ir.EquationLabel(nil), e.root.Labels...)
 }
 
 // rootForLayout exposes the owned tree to the in-package layout orchestration.
@@ -602,6 +636,15 @@ func computeKey(e *Expr, limits source.Limits, opts ParseOptions) uint64 {
 			writeString(name)
 			writeString(macro.Body)
 			writeInt(int64(macro.Args))
+		}
+		references := make([]string, 0, len(opts.References))
+		for name := range opts.References {
+			references = append(references, name)
+		}
+		sort.Strings(references)
+		for _, name := range references {
+			writeString(name)
+			writeString(opts.References[name])
 		}
 	}
 	sum := h.Sum(nil)
