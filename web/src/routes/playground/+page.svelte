@@ -332,7 +332,10 @@
     padding: clamp(24px, 4vw, 56px);
     overflow: auto;
     place-items: center;
-    background: var(--page);
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px), var(--page);
+    background-size: 36px 36px;
   }
 
   .formula {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths'
   import { page } from '$app/state'
-  import { BookOpen, FlaskConical } from '@lucide/svelte'
+  import { BookOpen, FlaskConical, LibraryBig } from '@lucide/svelte'
 
   import Wordmark from './wordmark.svelte'
 
@@ -11,6 +11,12 @@
       label: 'Docs',
       prefix: '/docs',
       icon: BookOpen,
+    },
+    {
+      href: resolve('/library'),
+      label: 'Library',
+      prefix: '/library',
+      icon: LibraryBig,
     },
     {
       href: resolve('/playground'),
@@ -33,6 +39,7 @@
     <a
       href={link.href}
       class="destination"
+      aria-label={link.label}
       aria-current={route.startsWith(link.prefix) ? 'page' : undefined}
     >
       <Icon size={14} strokeWidth={2} aria-hidden="true" />
@@ -140,6 +147,10 @@
 
     .destination {
       padding-inline: 10px;
+    }
+
+    .destination span {
+      display: none;
     }
   }
 </style>
