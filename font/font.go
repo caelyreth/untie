@@ -4,12 +4,51 @@ package font
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
 )
 
+// FontFace is one face from a host-provided SFNT or TTC file.
+//
+// ID is optional when the face is passed to LoadFontSet, LoadMathFont, or
+// another high-level source helper. Empty IDs are derived deterministically.
+type FontFace struct {
+	ID    string
+	Bytes []byte
+	Index int
+}
+
+// FontSetConfig configures a validated font collection. Math must contain
+// OpenType MATH constants. Fallback order is deterministic.
+type FontSetConfig struct {
+	Math      FontFace
+	Text      *FontFace
+	Fallbacks []FontFace
+}
+
+// FontOption configures one face passed to LoadMathFont.
+type FontOption func(*FontFace)
+
+// WithFontID sets an explicit stable face ID. A blank ID is treated like an
+// omitted ID and is derived by LoadMathFont.
+func WithFontID(id string) FontOption {
+	return func(face *FontFace) {
+		face.ID = id
+	}
+}
+
+// WithFontIndex selects a face in a TrueType/OpenType collection.
+func WithFontIndex(index int) FontOption {
+	return func(face *FontFace) {
+		face.Index = index
+	}
+}
+
 // FontData is one face from a host-provided SFNT or TTC file.
+//
+// New integrations should use FontFace.
 type FontData struct {
 	Bytes []byte
 	Index int
@@ -17,6 +56,8 @@ type FontData struct {
 }
 
 // Fonts are host-supplied faces. Fallback order is deterministic.
+//
+// New integrations should use FontSetConfig.
 type Fonts struct {
 	Math      FontData
 	Text      *FontData
@@ -36,7 +77,49 @@ type FontSet struct {
 // primary math face must contain OpenType MATH constants. All font bytes are
 // copied before parsing, and every glyph outline is validated here so later
 // layout cannot fail because of a malformed glyph program.
+//
+// New integrations should use LoadFontSet or LoadMathFont.
 func Load(fonts Fonts) (set *FontSet, err error) {
+	return load(fonts, false)
+}
+
+// LoadMathFont prepares one math face. The face ID is derived when opts do not
+// provide one. The face must contain OpenType MATH constants.
+func LoadMathFont(data []byte, opts ...FontOption) (*FontSet, error) {
+	face := FontFace{Bytes: data}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&face)
+		}
+	}
+	return LoadFontSet(FontSetConfig{Math: face})
+}
+
+// LoadFontSet validates and prepares host fonts. It accepts SFNT and TTC data.
+// Empty face IDs are derived deterministically. Explicit IDs must be nonblank
+// and unique. All font bytes are copied before parsing.
+func LoadFontSet(config FontSetConfig) (*FontSet, error) {
+	return load(config.toLegacy(), true)
+}
+
+func (config FontSetConfig) toLegacy() Fonts {
+	fonts := Fonts{Math: fontData(config.Math)}
+	if config.Text != nil {
+		text := fontData(*config.Text)
+		fonts.Text = &text
+	}
+	fonts.Fallbacks = make([]FontData, len(config.Fallbacks))
+	for i, face := range config.Fallbacks {
+		fonts.Fallbacks[i] = fontData(face)
+	}
+	return fonts
+}
+
+func fontData(face FontFace) FontData {
+	return FontData{Bytes: face.Bytes, Index: face.Index, ID: face.ID}
+}
+
+func load(fonts Fonts, deriveIDs bool) (set *FontSet, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			set = nil
@@ -50,7 +133,7 @@ func Load(fonts Fonts) (set *FontSet, err error) {
 	if len(fonts.Fallbacks) > maxFallbackFaces {
 		return nil, fmt.Errorf("font: %d fallback faces exceed limit %d", len(fonts.Fallbacks), maxFallbackFaces)
 	}
-	if err := validateFontIDs(fonts); err != nil {
+	if err := validateExplicitFontIDs(fonts, deriveIDs); err != nil {
 		return nil, err
 	}
 
@@ -66,27 +149,37 @@ func Load(fonts Fonts) (set *FontSet, err error) {
 	}
 
 	faces := make([]*parsedFace, 0, 1+len(owned.Fallbacks)+boolInt(hasText))
-	mathFace, err := parseSelectedFace(owned.Math)
+	mathInput := owned.Math
+	mathFace, err := parseSelectedFace(labelFace(mathInput, "math"))
 	if err != nil {
 		return nil, fmt.Errorf("font: math face: %w", err)
 	}
+	restoreFaceID(mathFace, mathInput)
 	if !mathFace.info.HasMath || !mathFace.math.hasConstants {
 		return nil, errors.New("font: primary math face has no OpenType MATH constants")
 	}
 	faces = append(faces, mathFace)
 	if hasText {
-		textFace, err := parseSelectedFace(*owned.Text)
+		textInput := *owned.Text
+		textFace, err := parseSelectedFace(labelFace(textInput, "text"))
 		if err != nil {
 			return nil, fmt.Errorf("font: text face: %w", err)
 		}
+		restoreFaceID(textFace, textInput)
 		faces = append(faces, textFace)
 	}
 	for i, data := range owned.Fallbacks {
-		face, err := parseSelectedFace(data)
+		face, err := parseSelectedFace(labelFace(data, fmt.Sprintf("fallback-%d", i)))
 		if err != nil {
 			return nil, fmt.Errorf("font: fallback face %d: %w", i, err)
 		}
+		restoreFaceID(face, data)
 		faces = append(faces, face)
+	}
+	if deriveIDs {
+		if err := resolveFontIDs(&owned, faces); err != nil {
+			return nil, err
+		}
 	}
 
 	set = &FontSet{
@@ -98,10 +191,13 @@ func Load(fonts Fonts) (set *FontSet, err error) {
 	return set, nil
 }
 
-func validateFontIDs(fonts Fonts) error {
+func validateExplicitFontIDs(fonts Fonts, allowEmpty bool) error {
 	ids := make(map[string]struct{}, 1+len(fonts.Fallbacks)+boolInt(fonts.Text != nil))
 	check := func(role string, face FontData) error {
 		if strings.TrimSpace(face.ID) == "" {
+			if allowEmpty {
+				return nil
+			}
 			return fmt.Errorf("font: %s face has empty ID", role)
 		}
 		if _, exists := ids[face.ID]; exists {
@@ -124,6 +220,108 @@ func validateFontIDs(fonts Fonts) error {
 		}
 	}
 	return nil
+}
+
+func resolveFontIDs(fonts *Fonts, faces []*parsedFace) error {
+	ids := make(map[string]struct{}, len(faces))
+	for i, face := range faces {
+		if strings.TrimSpace(face.data.ID) == "" {
+			role := faceRole(i, fonts.Text != nil)
+			face.data.ID = derivedFaceID(role, face)
+			face.info.ID = face.data.ID
+		}
+		if _, exists := ids[face.data.ID]; exists {
+			return fmt.Errorf("font: duplicate face ID %q", face.data.ID)
+		}
+		ids[face.data.ID] = struct{}{}
+	}
+	fonts.Math = faces[0].data
+	if fonts.Text != nil {
+		text := faces[1].data
+		fonts.Text = &text
+	}
+	for i := range fonts.Fallbacks {
+		faceIndex := i + 1
+		if fonts.Text != nil {
+			faceIndex++
+		}
+		fonts.Fallbacks[i] = faces[faceIndex].data
+	}
+	return nil
+}
+
+func faceRole(index int, hasText bool) string {
+	switch {
+	case index == 0:
+		return "math"
+	case index == 1 && hasText:
+		return "text"
+	}
+	if hasText {
+		index--
+	}
+	return fmt.Sprintf("fallback-%d", index-1)
+}
+
+func derivedFaceID(role string, face *parsedFace) string {
+	h := sha256.New()
+	_, _ = h.Write([]byte("untie-font-face-id\x00v1\x00"))
+	_, _ = h.Write([]byte(role))
+	_, _ = h.Write([]byte{0})
+	_, _ = h.Write([]byte(face.info.PostScriptName))
+	_, _ = h.Write([]byte{0})
+	var index [8]byte
+	binary.BigEndian.PutUint64(index[:], uint64(face.data.Index))
+	_, _ = h.Write(index[:])
+	_, _ = h.Write(face.data.Bytes)
+	sum := h.Sum(nil)
+
+	name := safeIDSegment(face.info.PostScriptName)
+	if name == "" {
+		name = "face"
+	}
+	return role + "-" + name + "-" + hex.EncodeToString(sum[:8])
+}
+
+func safeIDSegment(value string) string {
+	const maxLength = 32
+	var out strings.Builder
+	out.Grow(min(len(value), maxLength))
+	lastDash := false
+	for _, r := range value {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			r += 'a' - 'A'
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+		default:
+			if lastDash || out.Len() == 0 {
+				continue
+			}
+			r = '-'
+		}
+		if r == '-' {
+			lastDash = true
+		} else {
+			lastDash = false
+		}
+		if out.Len()+1 > maxLength {
+			break
+		}
+		out.WriteRune(r)
+	}
+	return strings.Trim(out.String(), "-")
+}
+
+func labelFace(face FontData, role string) FontData {
+	if strings.TrimSpace(face.ID) == "" {
+		face.ID = role
+	}
+	return face
+}
+
+func restoreFaceID(face *parsedFace, input FontData) {
+	face.data.ID = input.ID
+	face.info.ID = input.ID
 }
 
 // Key returns a stable 64-bit cache key. Use KeySHA256 when collision-resistant

@@ -38,31 +38,34 @@ const (
 
 // Limits, diagnostics, and output types are aliases of their owning packages.
 type (
-	Limits      = source.Limits
-	Range       = source.Range
-	Diagnostic  = source.Diagnostic
-	Severity    = source.Severity
-	Box         = display.Box
-	LineBox     = display.LineBox
-	ItemRange   = display.ItemRange
-	HitRange    = display.HitRange
-	Alt         = display.Alt
-	Item        = display.Item
-	ItemKind    = display.ItemKind
-	Paint       = display.Paint
-	Role        = display.Role
-	RGBA        = display.RGBA
-	Hit         = display.Hit
-	HitKind     = display.HitKind
-	Break       = display.Break
-	TagBox      = display.TagBox
-	BreakKind   = display.BreakKind
-	Align       = display.Align
-	FontData    = font.FontData
-	Fonts       = font.Fonts
-	FontSet     = font.FontSet
-	Formula     = ir.Formula
-	EquationTag = ir.EquationTag
+	Limits        = source.Limits
+	Range         = source.Range
+	Diagnostic    = source.Diagnostic
+	Severity      = source.Severity
+	Box           = display.Box
+	LineBox       = display.LineBox
+	ItemRange     = display.ItemRange
+	HitRange      = display.HitRange
+	Alt           = display.Alt
+	Item          = display.Item
+	ItemKind      = display.ItemKind
+	Paint         = display.Paint
+	Role          = display.Role
+	RGBA          = display.RGBA
+	Hit           = display.Hit
+	HitKind       = display.HitKind
+	Break         = display.Break
+	TagBox        = display.TagBox
+	BreakKind     = display.BreakKind
+	Align         = display.Align
+	FontFace      = font.FontFace
+	FontData      = font.FontData
+	Fonts         = font.Fonts
+	FontSetConfig = font.FontSetConfig
+	FontSet       = font.FontSet
+	FontOption    = font.FontOption
+	Formula       = ir.Formula
+	EquationTag   = ir.EquationTag
 
 	Point   = geometry.Point
 	Rect    = geometry.Rect
@@ -425,12 +428,44 @@ func (e *Expr) Key() uint64 {
 }
 
 // LoadFonts prepares host-supplied font bytes for repeated layout.
+//
+// New integrations should use LoadFontSet or LoadMathFont.
 func LoadFonts(fonts Fonts) (*FontSet, error) {
 	prepared, err := font.Load(fonts)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidFonts, err)
 	}
 	return prepared, nil
+}
+
+// LoadFontSet prepares one or more host-supplied faces for repeated layout.
+// Empty face IDs are derived deterministically.
+func LoadFontSet(config FontSetConfig) (*FontSet, error) {
+	prepared, err := font.LoadFontSet(config)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidFonts, err)
+	}
+	return prepared, nil
+}
+
+// LoadMathFont prepares one math face. Use WithFontID and WithFontIndex when
+// the host needs explicit identity or a TTC face index.
+func LoadMathFont(data []byte, opts ...FontOption) (*FontSet, error) {
+	prepared, err := font.LoadMathFont(data, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidFonts, err)
+	}
+	return prepared, nil
+}
+
+// WithFontID sets an explicit face ID for LoadMathFont.
+func WithFontID(id string) FontOption {
+	return font.WithFontID(id)
+}
+
+// WithFontIndex selects a TTC face for LoadMathFont.
+func WithFontIndex(index int) FontOption {
+	return font.WithFontIndex(index)
 }
 
 func fallbackFormula(src string, limits source.Limits) *ir.Formula {
