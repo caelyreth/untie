@@ -38,32 +38,40 @@ const (
 
 // Limits, diagnostics, and output types are aliases of their owning packages.
 type (
-	Limits        = source.Limits
-	Range         = source.Range
-	Diagnostic    = source.Diagnostic
-	Severity      = source.Severity
-	Box           = display.Box
-	LineBox       = display.LineBox
-	ItemRange     = display.ItemRange
-	HitRange      = display.HitRange
-	Alt           = display.Alt
-	Item          = display.Item
-	ItemKind      = display.ItemKind
-	Paint         = display.Paint
-	Role          = display.Role
-	RGBA          = display.RGBA
-	Hit           = display.Hit
-	HitKind       = display.HitKind
-	Break         = display.Break
-	TagBox        = display.TagBox
-	BreakKind     = display.BreakKind
-	Align         = display.Align
-	FontFace      = font.FontFace
-	FontSetConfig = font.FontSetConfig
-	FontSet       = font.FontSet
-	FontOption    = font.FontOption
-	Formula       = ir.Formula
-	EquationTag   = ir.EquationTag
+	Limits           = source.Limits
+	Range            = source.Range
+	Diagnostic       = source.Diagnostic
+	Severity         = source.Severity
+	Box              = display.Box
+	LineBox          = display.LineBox
+	ItemRange        = display.ItemRange
+	HitRange         = display.HitRange
+	Alt              = display.Alt
+	Item             = display.Item
+	ItemKind         = display.ItemKind
+	Paint            = display.Paint
+	Role             = display.Role
+	RGBA             = display.RGBA
+	ColorPolicy      = display.ColorPolicy
+	ColorPolicyMode  = display.ColorPolicyMode
+	ColorRolePalette = display.ColorRolePalette
+	PixelGrid        = display.PixelGrid
+	SnapAxis         = display.SnapAxis
+	FontUsage        = display.FontUsage
+	FaceUse          = display.FaceUse
+	MissingFallback  = display.MissingFallback
+	Hit              = display.Hit
+	HitKind          = display.HitKind
+	Break            = display.Break
+	TagBox           = display.TagBox
+	BreakKind        = display.BreakKind
+	Align            = display.Align
+	FontFace         = font.FontFace
+	FontSetConfig    = font.FontSetConfig
+	FontSet          = font.FontSet
+	FontOption       = font.FontOption
+	Formula          = ir.Formula
+	EquationTag      = ir.EquationTag
 
 	Point   = geometry.Point
 	Rect    = geometry.Rect
@@ -101,6 +109,15 @@ const (
 	RoleInk         = display.RoleInk
 	RoleError       = display.RoleError
 	RolePlaceholder = display.RolePlaceholder
+
+	ColorPreserve       = display.ColorPreserve
+	ColorMapToRoles     = display.ColorMapToRoles
+	ColorAdjustContrast = display.ColorAdjustContrast
+	DefaultMinContrast  = display.DefaultMinContrast
+
+	SnapNone = display.SnapNone
+	SnapX    = display.SnapX
+	SnapY    = display.SnapY
 
 	HitAtom                = display.HitAtom
 	HitGroup               = display.HitGroup

@@ -42,6 +42,9 @@ type Command struct {
 	Em   float32
 
 	Rect geometry.Rect
+	// Snap is non-none only for conservative thin-rule snapping candidates.
+	// Its presence does not imply Style.PixelGrid changed the geometry.
+	Snap display.SnapAxis
 }
 
 // Walk visits visible path and rule items in box item order.
@@ -80,6 +83,7 @@ func Walk(box *display.Box, visit func(Command) error) error {
 				Paint: item.Paint,
 				Bound: item.Bound,
 				Rect:  item.Rect,
+				Snap:  item.Snap,
 			}
 			if err := visit(command); err != nil {
 				return err

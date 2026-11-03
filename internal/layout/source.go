@@ -188,6 +188,8 @@ type TextCluster struct {
 	RuneStart int
 	RuneEnd   int
 	Source    source.Range
+	FaceID    string
+	Fallback  bool
 	Missing   bool
 	// X and Advance are the cluster's horizontal extent in local ems relative
 	// to the run origin. They are independent of per-glyph positioning offsets.
@@ -218,6 +220,9 @@ type TextRun struct {
 	// hit testing. It may be empty for non-text providers and synthetic runs.
 	Clusters []TextCluster
 	Glyphs   []PositionedGlyph
+	// MissingFaces is the ordered face ID list attempted for this run. It is
+	// populated only when at least one cluster is missing.
+	MissingFaces []string
 }
 
 // TextSource is an optional extension port for deterministic text shaping.

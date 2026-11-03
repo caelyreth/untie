@@ -27,6 +27,12 @@ func ValidateStyle(style display.Style) error {
 	if len(style.Features) > MaxStyleFeatures {
 		return fmt.Errorf("%w: too many style features: %d", ErrInvalidInput, len(style.Features))
 	}
+	if err := style.ColorPolicy.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	if err := style.PixelGrid.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
 	if _, err := textFeatures(style.Features); err != nil {
 		return err
 	}

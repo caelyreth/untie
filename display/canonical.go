@@ -29,19 +29,20 @@ func (b *Box) MarshalCanonical() ([]byte, error) {
 }
 
 type canonicalBoxSnapshot struct {
-	Width      float32          `json:"width"`
-	Ascent     float32          `json:"ascent"`
-	Descent    float32          `json:"descent"`
-	Italic     float32          `json:"italic"`
-	AxisHeight float32          `json:"axisHeight"`
-	Overflow   float32          `json:"overflow"`
-	Items      []canonicalItem  `json:"items"`
-	Paths      []canonicalPath  `json:"paths,omitempty"`
-	Hits       []canonicalHit   `json:"hits,omitempty"`
-	Breaks     []canonicalBreak `json:"breaks,omitempty"`
-	Alt        *canonicalAlt    `json:"alt,omitempty"`
-	Tag        *canonicalTagBox `json:"tag,omitempty"`
-	Lines      []canonicalLine  `json:"lines,omitempty"`
+	Width      float32             `json:"width"`
+	Ascent     float32             `json:"ascent"`
+	Descent    float32             `json:"descent"`
+	Italic     float32             `json:"italic"`
+	AxisHeight float32             `json:"axisHeight"`
+	Overflow   float32             `json:"overflow"`
+	Items      []canonicalItem     `json:"items"`
+	Paths      []canonicalPath     `json:"paths,omitempty"`
+	Hits       []canonicalHit      `json:"hits,omitempty"`
+	Breaks     []canonicalBreak    `json:"breaks,omitempty"`
+	Alt        *canonicalAlt       `json:"alt,omitempty"`
+	FontUsage  *canonicalFontUsage `json:"fontUsage,omitempty"`
+	Tag        *canonicalTagBox    `json:"tag,omitempty"`
+	Lines      []canonicalLine     `json:"lines,omitempty"`
 }
 
 type canonicalLine struct {
@@ -85,6 +86,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 			Bound:     []float32{item.Bound.X, item.Bound.Y, item.Bound.Width, item.Bound.Height},
 			PathIndex: canonicalPathIndex(item),
 			Rect:      []float32{item.Rect.X, item.Rect.Y, item.Rect.Width, item.Rect.Height},
+			Snap:      snapAxisName(item.Snap),
 			FontID:    item.FontID,
 			Glyph:     item.Glyph,
 			At:        []float32{item.At.X, item.At.Y},
@@ -95,6 +97,11 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 	if b.Alt != (Alt{}) {
 		snapshot := canonicalAlt(b.Alt)
 		alt = &snapshot
+	}
+	var fontUsage *canonicalFontUsage
+	if len(b.FontUsage.Faces) != 0 || len(b.FontUsage.Missing) != 0 {
+		snapshot := canonicalFontUsageValue(b.FontUsage)
+		fontUsage = &snapshot
 	}
 	out := canonicalBoxSnapshot{
 		Width:      b.Width,
@@ -108,6 +115,7 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 		Hits:       canonicalHits(b.Hits),
 		Breaks:     canonicalBreaks(b.Breaks),
 		Alt:        alt,
+		FontUsage:  fontUsage,
 	}
 	if b.Tag != nil {
 		tag := canonicalTag(b.Tag)
@@ -165,6 +173,50 @@ type canonicalAlt struct {
 	Text   string `json:"text"`
 }
 
+type canonicalFontUsage struct {
+	Faces   []canonicalFaceUse         `json:"faces,omitempty"`
+	Missing []canonicalMissingFallback `json:"missing,omitempty"`
+}
+
+type canonicalFaceUse struct {
+	Source   [2]int `json:"source"`
+	FaceID   string `json:"faceID"`
+	Fallback bool   `json:"fallback,omitempty"`
+	Missing  bool   `json:"missing,omitempty"`
+}
+
+type canonicalMissingFallback struct {
+	Source     [2]int   `json:"source"`
+	Text       string   `json:"text"`
+	TriedFaces []string `json:"triedFaces"`
+}
+
+func canonicalFontUsageValue(usage FontUsage) canonicalFontUsage {
+	out := canonicalFontUsage{}
+	if len(usage.Faces) > 0 {
+		out.Faces = make([]canonicalFaceUse, len(usage.Faces))
+		for i, face := range usage.Faces {
+			out.Faces[i] = canonicalFaceUse{
+				Source:   [2]int{face.Source.Start, face.Source.End},
+				FaceID:   face.FaceID,
+				Fallback: face.Fallback,
+				Missing:  face.Missing,
+			}
+		}
+	}
+	if len(usage.Missing) > 0 {
+		out.Missing = make([]canonicalMissingFallback, len(usage.Missing))
+		for i, missing := range usage.Missing {
+			out.Missing[i] = canonicalMissingFallback{
+				Source:     [2]int{missing.Source.Start, missing.Source.End},
+				Text:       missing.Text,
+				TriedFaces: append([]string(nil), missing.TriedFaces...),
+			}
+		}
+	}
+	return out
+}
+
 type canonicalHit struct {
 	Source [2]int    `json:"source"`
 	Area   []float32 `json:"area"`
@@ -217,6 +269,7 @@ type canonicalItem struct {
 	Bound     []float32 `json:"bound"`
 	PathIndex *int      `json:"pathIndex,omitempty"`
 	Rect      []float32 `json:"rect,omitempty"`
+	Snap      string    `json:"snap,omitempty"`
 	FontID    string    `json:"fontID,omitempty"`
 	Glyph     uint16    `json:"glyph,omitempty"`
 	At        []float32 `json:"at,omitempty"`
@@ -248,6 +301,17 @@ func canonicalPaths(paths []PathTemplate) []canonicalPath {
 		}
 	}
 	return out
+}
+
+func snapAxisName(axis SnapAxis) string {
+	switch axis {
+	case SnapX:
+		return "x"
+	case SnapY:
+		return "y"
+	default:
+		return ""
+	}
 }
 
 func canonicalSegments(path []geometry.Segment) [][]any {

@@ -37,6 +37,7 @@ func TestWalkStreamsVisibleItemsInOrder(t *testing.T) {
 				Bound:     geometry.Rect{X: 8, Y: 9, Width: 10, Height: 11},
 				PathIndex: display.NoPath,
 				Rect:      geometry.Rect{X: 8, Y: 9, Width: 10, Height: 11},
+				Snap:      display.SnapY,
 			},
 			{
 				Kind:      display.ItemGlyphPath,
@@ -89,7 +90,8 @@ func TestWalkStreamsVisibleItemsInOrder(t *testing.T) {
 		t.Fatalf("first path command = %+v", commands[0])
 	}
 	if commands[1].Paint.Role != display.RolePlaceholder ||
-		commands[1].Rect != (geometry.Rect{X: 8, Y: 9, Width: 10, Height: 11}) {
+		commands[1].Rect != (geometry.Rect{X: 8, Y: 9, Width: 10, Height: 11}) ||
+		commands[1].Snap != display.SnapY {
 		t.Fatalf("rule command = %+v", commands[1])
 	}
 	if commands[2].At != (geometry.Point{X: 12, Y: 13}) || commands[2].Em != 14 {

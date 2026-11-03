@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/caelyreth/untie/font"
@@ -63,6 +64,52 @@ func TestShapeTextPreservesClustersAndPerClusterFallback(t *testing.T) {
 		if i > 0 && positioned.At.X <= run.Glyphs[i-1].At.X {
 			t.Errorf("glyph positions are not visual-order increasing: %+v", run.Glyphs)
 		}
+	}
+	for i, cluster := range run.Clusters {
+		if cluster.FaceID != wantFonts[i] {
+			t.Errorf("cluster %d face = %q, want %q", i, cluster.FaceID, wantFonts[i])
+		}
+		if cluster.Fallback != (i == 1) {
+			t.Errorf("cluster %d fallback = %v, want %v", i, cluster.Fallback, i == 1)
+		}
+	}
+	if len(run.MissingFaces) != 0 {
+		t.Fatalf("complete run missing faces = %#v", run.MissingFaces)
+	}
+}
+
+func TestShapeTextReportsMissingFaceOrder(t *testing.T) {
+	t.Parallel()
+
+	adapter := newClusteredShapingAdapter(t, source.Limits{})
+	run, err := adapter.ShapeText(layout.TextRequest{
+		Context: context.Background(),
+		Text:    "A中B",
+		Style:   layout.Style{Size: layout.Text},
+		Variant: ir.VariantAuto,
+		Font:    ir.FontText,
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	foundMissing := false
+	for _, cluster := range run.Clusters {
+		foundMissing = foundMissing || cluster.Missing
+		if cluster.Missing && cluster.FaceID == "" {
+			t.Fatalf("missing cluster has empty face ID: %#v", cluster)
+		}
+	}
+	if !foundMissing {
+		t.Fatalf("clusters = %#v, want one missing CJK cluster", run.Clusters)
+	}
+	want := []string{
+		"NewCMMath-Book",
+		"NotoEmoji-ShapingSubset",
+		"NotoNaskhArabic-ShapingSubset",
+		"NotoSansDevanagari-ShapingSubset",
+	}
+	if !slices.Equal(run.MissingFaces, want) {
+		t.Fatalf("missing face order = %#v, want %#v", run.MissingFaces, want)
 	}
 }
 

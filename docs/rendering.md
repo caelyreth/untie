@@ -45,6 +45,7 @@ type Box struct {
 	Breaks []Break
 	Alt    Alt
 	Diagnostics []source.Diagnostic
+	FontUsage   FontUsage
 	Tag    *TagBox
 	Lines  []LineBox
 }
@@ -57,6 +58,11 @@ box storage.
 glyphs rendered as visible placeholders. Parse diagnostics remain on
 `RenderResult.Diagnostics`; the high-level renderer returns a normalized union
 of both.
+
+`Box.FontUsage` is deterministic shaped-text provenance, not a diagnostic list.
+It reports source-merged `FaceUse` spans and deduplicated `MissingFallback`
+requirements. An empty value means the formula had no shaped text or all such
+text was handled without needing a report.
 
 ## Streaming Drawing Protocol
 
@@ -176,7 +182,15 @@ hole.
 
 `item.Rect` is a filled rectangle in box coordinates. Rules are used for
 fraction bars, radicals, overlines, table boundaries, boxes, and other
-constructed geometry.
+constructed geometry. `item.Snap` identifies whether the rule is a conservative
+horizontal (`SnapY`) or vertical (`SnapX`) snapping candidate.
+
+`Style.PixelGrid` opts into deterministic snapping for rules whose minor
+thickness is between 0.25 and 3 physical pixels. `Scale` converts host units to
+output pixels and `PixelRatio` adds the device density. Only the rule's minor
+axis is adjusted; glyphs, paths, and thick rules are never moved. The zero-value
+grid is disabled, while `item.Snap` remains available to hosts that implement an
+equivalent draw-time policy.
 
 ### `ItemGlyphRef`
 
@@ -210,6 +224,11 @@ cache glyphs.
 Error and placeholder roles are intentional visible fallback states. Do not
 silently paint them as normal ink unless the host has a better accessibility
 policy.
+
+`Style.ColorPolicy` can resolve authored explicit colors during layout. The
+zero-value preserve policy is the default. Map-to-role and contrast-adjusted
+policies still produce only serializable `Paint` values; they never add a host
+callback or UI color type to `Box`.
 
 ## Inline Layout
 

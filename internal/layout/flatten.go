@@ -383,7 +383,7 @@ func (f *flattenState) appendGlyphItem(x, y geometry.Em, glyph *GlyphFragment, e
 	if exactRef && (f.layout.request.GlyphRefs || item.Kind == display.ItemGlyphRef) {
 		ref := display.Item{
 			Kind:      display.ItemGlyphRef,
-			Paint:     toDisplayPaint(glyph.Paint),
+			Paint:     f.paint(glyph.Paint),
 			Bound:     item.Bound,
 			PathIndex: display.NoPath,
 			FontID:    glyph.Glyph.FontID,
@@ -416,7 +416,7 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 	}
 	item := display.Item{
 		Kind:      display.ItemGlyphRef,
-		Paint:     toDisplayPaint(glyph.Paint),
+		Paint:     f.paint(glyph.Paint),
 		PathIndex: display.NoPath,
 		FontID:    glyph.Glyph.FontID,
 		Glyph:     glyph.Glyph.ID,
@@ -498,7 +498,7 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	}
 	return display.Item{
 		Kind:      display.ItemGlyphPath,
-		Paint:     toDisplayPaint(path.paint),
+		Paint:     f.paint(path.paint),
 		Bound:     bound,
 		PathIndex: pathIndex,
 		At:        at,
@@ -662,13 +662,27 @@ func (f *flattenState) ruleItem(x, y geometry.Em, rule *ruleDraw) (display.Item,
 	if rule.vertical {
 		rect.Width, rect.Height = thickness, width
 	}
+	axis := snapAxis(rect)
+	rect = f.layout.request.PixelGrid.SnapRect(rect, axis)
 	return display.Item{
 		Kind:      display.ItemRule,
-		Paint:     toDisplayPaint(rule.paint),
+		Paint:     f.paint(rule.paint),
 		Bound:     rect,
 		PathIndex: display.NoPath,
 		Rect:      rect,
+		Snap:      axis,
 	}, nil
+}
+
+func snapAxis(rect geometry.Rect) display.SnapAxis {
+	switch {
+	case rect.Width > rect.Height:
+		return display.SnapY
+	case rect.Height > rect.Width:
+		return display.SnapX
+	default:
+		return display.SnapNone
+	}
 }
 
 func (s *layoutState) host(value geometry.Em) (float32, error) {
@@ -735,6 +749,10 @@ func toDisplayPaint(paint ir.Paint) display.Paint {
 		role = display.RolePlaceholder
 	}
 	return display.Paint{Role: role}
+}
+
+func (f *flattenState) paint(paint ir.Paint) display.Paint {
+	return f.layout.request.ColorPolicy.Resolve(toDisplayPaint(paint))
 }
 
 func minFloat(a, b float32) float32 {

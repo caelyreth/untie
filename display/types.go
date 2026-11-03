@@ -35,6 +35,12 @@ type Style struct {
 	// GenerateAlt requests Box.Alt generation through the public Engine
 	// facade. Expr.Alt remains available independently for parsed expressions.
 	GenerateAlt bool
+	// ColorPolicy controls explicit-color resolution in the serializable
+	// display list. The zero value preserves authored colors.
+	ColorPolicy ColorPolicy
+	// PixelGrid enables conservative device-pixel snapping for thin rules and
+	// stems. The zero value is a no-op.
+	PixelGrid PixelGrid
 }
 
 // ItemRange identifies a contiguous range in Box.Items.
@@ -168,6 +174,10 @@ type Item struct {
 	// PathIndex selects Box.Paths. It is NoPath for items without path data.
 	PathIndex int
 	Rect      geometry.Rect
+	// Snap identifies a thin rule's minor axis. It is present even when
+	// Style.PixelGrid is disabled, allowing hosts to apply their own equivalent
+	// policy without inferring rule orientation again.
+	Snap SnapAxis
 
 	FontID string
 	Glyph  uint16
@@ -201,6 +211,10 @@ type Box struct {
 	// glyphs rendered as visible placeholders. Parse diagnostics remain on the
 	// high-level RenderResult.
 	Diagnostics []source.Diagnostic
+	// FontUsage reports resolved face selection and missing fallback needs for
+	// shaped text clusters. It is separate from Diagnostics and remains empty
+	// when a formula contains no shaped text.
+	FontUsage FontUsage
 	// Tag is a single-line display equation tag in parent coordinates. Its
 	// Items and Hits ranges identify its records in this Box. It is excluded
 	// from formula-root breaks.
@@ -244,6 +258,7 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 			out.Diagnostics[i] = diagnostic.Clone()
 		}
 	}
+	out.FontUsage = b.FontUsage.Clone()
 	var canonicalTag *TagBox
 	if b.Tag != nil {
 		tag := *b.Tag

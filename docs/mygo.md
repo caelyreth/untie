@@ -117,6 +117,12 @@ and glyph metrics at scale 1. A custom `PaintResolver` receives both semantic
 role and explicit source color, so a host can preserve, reject, or adapt either
 without changing cached geometry.
 
+Core `Style.ColorPolicy` and `Style.PixelGrid` participate in the adapter cache
+key. A resolved paint is still plain `untie.Paint`, so explicit colors,
+semantic roles, and the default `ThemePaintResolver` continue to work unchanged.
+`Box.FontUsage` remains available on cached boxes for fallback preflight and
+font diagnostics.
+
 ## Font Ownership
 
 Untie and MyGo intentionally own different font inputs:
@@ -148,3 +154,5 @@ cache users, concurrent workers, or draw callbacks.
 
 Paint roles remain semantic in the cache, so light and dark themes reuse the
 same geometry and resolve ink, error, and placeholder colors at draw time.
+The adapter layout key also includes authored-color policy and pixel-grid
+settings.

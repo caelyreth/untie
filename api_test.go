@@ -15,6 +15,14 @@ import (
 	"github.com/caelyreth/untie/source"
 )
 
+func TestVersionIncludesOutputPolicyLayoutRevision(t *testing.T) {
+	t.Parallel()
+
+	if got, want := Version(), "0.4.0+layout.3"; got != want {
+		t.Fatalf("Version() = %q, want %q", got, want)
+	}
+}
+
 func TestParseCopiesOptionsAndDiagnostics(t *testing.T) {
 	t.Parallel()
 
