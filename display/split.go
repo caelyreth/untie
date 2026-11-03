@@ -178,7 +178,7 @@ func splitCarets(
 ) []CaretStop {
 	var out []CaretStop
 	for _, caret := range carets {
-		include := caret.X >= x0 && caret.X <= x1
+		var include bool
 		if leftSide {
 			include = caret.X <= x1
 		} else {
