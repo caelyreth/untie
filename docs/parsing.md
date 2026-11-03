@@ -8,12 +8,16 @@ valid tree to highlight and display while the user is typing.
 
 ```go
 expr := untie.Parse(source, untie.TeX, untie.Inline, untie.ParseOptions{})
+expr, err := untie.ParseContext(ctx, source, untie.TeX, untie.Inline, untie.ParseOptions{})
 expr := untie.ParseTeX(source, untie.Display, untie.ParseOptions{})
 expr := untie.ParseTypst(source, untie.Inline, untie.ParseOptions{})
 ```
 
-All three share the same recovery and validation boundary. `ParseTeX` and
-`ParseTypst` are convenience wrappers.
+All of these share the same recovery and validation boundary. `ParseTeX` and
+`ParseTypst` are convenience wrappers. `ParseContext` checks cancellation
+before parser dispatch and again before returning; parser work that has already
+started is bounded by `ParseOptions.Limits` rather than interrupted at
+arbitrary points. A canceled call returns no expression and `ctx.Err()`.
 
 `ParseOptions` contains:
 

@@ -10,6 +10,7 @@ and keep per-call inputs immutable for the duration of a call.
 | --- | --- |
 | `*FontSet` | Safe for concurrent readers. |
 | `*Engine` | Safe for concurrent `Layout`/`LayoutContext` calls. |
+| `*Renderer` | Safe for concurrent `Render` calls. |
 | `*Expr` | Immutable and safe to share for reads. |
 | `Style.Features` | Caller-owned; snapshotted per layout. |
 | `*Box` | Independent per successful layout; not safe for concurrent mutation. |
@@ -36,33 +37,22 @@ that does not depend on the formula.
 ## Recommended Application Lifecycle
 
 ```go
-type Renderer struct {
-	fonts  *untie.FontSet
-	engine *untie.Engine
-}
-
-func NewRenderer(fontBytes []byte) (*Renderer, error) {
+func NewMathRenderer(fontBytes []byte) (*untie.Renderer, error) {
 	fonts, err := untie.LoadFonts(untie.Fonts{
 		Math: untie.FontData{Bytes: fontBytes, ID: "host-math"},
 	})
 	if err != nil {
 		return nil, err
 	}
-	engine, err := untie.NewEngine(fonts, untie.Limits{})
-	if err != nil {
-		return nil, err
-	}
-	return &Renderer{fonts: fonts, engine: engine}, nil
-}
-
-func (r *Renderer) Layout(ctx context.Context, expr *untie.Expr) (*untie.Box, error) {
-	return r.engine.LayoutContext(ctx, expr, untie.Style{Size: 24})
+	return untie.NewRenderer(fonts, untie.RendererOptions{
+		DefaultStyle: untie.Style{Size: 24},
+		CacheEntries: 128,
+	})
 }
 ```
 
-The same `Renderer` can serve many UI workers concurrently as long as each
-worker uses its own caller-owned request data and does not mutate a shared
-`Expr`, `Formula`, or `Box`.
+The same `untie.Renderer` can serve many UI workers concurrently as long as
+each worker uses its own request data and does not mutate a shared `Box`.
 
 An `Engine` retains immutable base-em design paths for glyphs it has shaped.
 That cache is safe for concurrent layouts, grows only with glyphs actually
@@ -90,8 +80,10 @@ The engine checks cancellation before work and at bounded intervals. A
 canceled call returns the context error and no box. Do not publish a partial
 box.
 
-Parse itself has no context parameter. Parser work is bounded by
-`ParseOptions.Limits` and is intended for interactive input sizes.
+Use `ParseContext` when the host needs cancellation around parsing. It checks
+the context before dispatch and before returning; parser work in progress is
+bounded by `ParseOptions.Limits`. `Renderer.Render` combines this boundary with
+the engine's cooperative layout cancellation.
 
 ## Style Snapshotting
 
@@ -162,6 +154,21 @@ the application has explicit renderer lifecycle ownership, a request-scoped
 font set, or many simultaneous font configurations.
 
 `ClearLayoutEngineCache` does not affect engines retained from `NewEngine`.
+
+## Renderer Parse Cache
+
+`NewRenderer` can retain a bounded LRU of immutable parsed expressions:
+
+```go
+renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
+	CacheEntries: 128,
+})
+```
+
+Entries are keyed by source, dialect, mode, effective parse limits, and relevant
+TeX macros. The cache is concurrency-safe and hard-bounded by entry count;
+`CacheEntries <= 0` disables it. Every `Render` call still performs layout and
+returns a new `Box`.
 
 ## Cache Keys
 

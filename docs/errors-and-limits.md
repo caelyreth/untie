@@ -18,6 +18,7 @@ Layout functions return Go errors. Use `errors.Is`:
 | `ErrInvalidStyle` | `Style` failed validation. |
 | `ErrInvalidFonts` | Font preparation failed in `LoadFonts`, or `NewEngine` received an unusable font set. |
 | `ErrInvalidEngine` | A nil or unusable engine was called. |
+| `ErrInvalidRenderer` | A renderer was nil, could not be constructed, or had an invalid default dialect. |
 | `ErrInvalidContext` | A nil context was supplied. |
 | `ErrInvalidExpr` | A nil expression was supplied. |
 | `ErrAltInvalidRoot` | Alternative-text generation received malformed input. |

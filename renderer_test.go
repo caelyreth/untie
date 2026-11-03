@@ -1,0 +1,465 @@
+package untie
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"testing"
+
+	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/source"
+)
+
+func TestNewRendererValidationAndDefaults(t *testing.T) {
+	t.Parallel()
+
+	if renderer, err := NewRenderer(nil, RendererOptions{}); renderer != nil ||
+		!errors.Is(err, ErrInvalidRenderer) || !errors.Is(err, ErrInvalidFonts) {
+		t.Fatalf("NewRenderer(nil) = %v, %v", renderer, err)
+	}
+	fonts := loadTestFonts(t)
+	if renderer, err := NewRenderer(fonts, RendererOptions{DefaultDialect: Dialect(255)}); renderer != nil ||
+		!errors.Is(err, ErrInvalidRenderer) {
+		t.Fatalf("NewRenderer(invalid dialect) = %v, %v", renderer, err)
+	}
+	if renderer, err := NewRenderer(fonts, RendererOptions{
+		DefaultStyle: display.Style{Size: -1},
+	}); renderer != nil || !errors.Is(err, ErrInvalidRenderer) || !errors.Is(err, ErrInvalidStyle) {
+		t.Fatalf("NewRenderer(invalid style) = %v, %v", renderer, err)
+	}
+
+	renderer, err := NewRenderer(fonts, RendererOptions{CacheEntries: -1})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	if renderer.cache != nil {
+		t.Fatal("negative CacheEntries enabled the parse cache")
+	}
+	if renderer.defaultDialect != TeX {
+		t.Fatalf("default dialect = %v, want TeX", renderer.defaultDialect)
+	}
+	if renderer.defaultStyle.Size != defaultRendererSize {
+		t.Fatalf("default size = %v, want %v", renderer.defaultStyle.Size, defaultRendererSize)
+	}
+	var nilRenderer *Renderer
+	if result, err := nilRenderer.Render(context.Background(), "x", RenderRequest{}); result != nil ||
+		!errors.Is(err, ErrInvalidRenderer) {
+		t.Fatalf("nil Renderer.Render() = %#v, %v", result, err)
+	}
+	//nolint:staticcheck // This assertion intentionally verifies nil-context handling.
+	if result, err := renderer.Render(nil, "x", RenderRequest{}); result != nil ||
+		!errors.Is(err, ErrInvalidContext) {
+		t.Fatalf("Render(nil context) = %#v, %v", result, err)
+	}
+}
+
+func TestRenderAppliesDialectModeSizeAndStyleDefaults(t *testing.T) {
+	t.Parallel()
+
+	features := []string{"dtls=1"}
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{
+		DefaultDialect: Typst,
+		DefaultStyle: display.Style{
+			Size:        24,
+			MaxWidth:    320,
+			Align:       display.AlignCenter,
+			Features:    features,
+			GenerateAlt: true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	features[0] = "changed"
+
+	result, err := renderer.Render(context.Background(), `frac(1, 2)`, RenderRequest{})
+	if err != nil {
+		t.Fatalf("Render(defaults) error = %v", err)
+	}
+	if result.Box == nil {
+		t.Fatal("Render(defaults) Box = nil")
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("Render(defaults) diagnostics = %+v", result.Diagnostics)
+	}
+	if result.Alt.Text == "" || result.Alt.Speech == "" || result.Alt != result.Box.Alt {
+		t.Fatalf("Render(defaults) Alt = %#v, Box.Alt = %#v", result.Alt, result.Box.Alt)
+	}
+	style, err := renderer.effectiveStyle(display.Style{})
+	if err != nil {
+		t.Fatalf("effectiveStyle() error = %v", err)
+	}
+	if style.Size != 24 || style.MaxWidth != 320 || style.Align != display.AlignCenter ||
+		style.ScriptLevel != 0 || len(style.Features) != 1 || style.Features[0] != "dtls=1" ||
+		!style.GenerateAlt {
+		t.Fatalf("effective default style = %+v", style)
+	}
+
+	explicit, err := renderer.engine.Layout(ParseTypst(`frac(1, 2)`, Inline, ParseOptions{}), style)
+	if err != nil {
+		t.Fatalf("explicit Layout() error = %v", err)
+	}
+	gotJSON, err := result.Box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("Render Box.MarshalCanonical() error = %v", err)
+	}
+	wantJSON, err := explicit.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("explicit MarshalCanonical() error = %v", err)
+	}
+	if string(gotJSON) != string(wantJSON) {
+		t.Fatalf("default render differs from explicit style\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+}
+
+func TestRenderDefaultSizeIsSixteenWithZeroOptions(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(context.Background(), `x+1`, RenderRequest{})
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	explicit, err := renderer.engine.Layout(
+		ParseTeX(`x+1`, Inline, ParseOptions{}),
+		display.Style{Size: defaultRendererSize},
+	)
+	if err != nil {
+		t.Fatalf("explicit Layout() error = %v", err)
+	}
+	gotJSON, err := result.Box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("Render Box.MarshalCanonical() error = %v", err)
+	}
+	wantJSON, err := explicit.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("explicit MarshalCanonical() error = %v", err)
+	}
+	if string(gotJSON) != string(wantJSON) {
+		t.Fatalf("default 16px render differs from explicit style\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+}
+
+func TestRenderPreservesRecoverableDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{CacheEntries: 2})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	request := RenderRequest{Style: display.Style{Size: 16}}
+	first, err := renderer.Render(context.Background(), `\frac{1}`, request)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if first.Box == nil {
+		t.Fatal("Render() Box = nil")
+	}
+	if len(first.Diagnostics) == 0 {
+		t.Fatal("Render() lost recoverable diagnostics")
+	}
+	first.Diagnostics[0].Message = "mutated"
+	second, err := renderer.Render(context.Background(), `\frac{1}`, request)
+	if err != nil {
+		t.Fatalf("Render(cached) error = %v", err)
+	}
+	if len(second.Diagnostics) == 0 {
+		t.Fatal("Render(cached) lost recoverable diagnostics")
+	}
+	if second.Diagnostics[0].Message == "mutated" {
+		t.Fatal("Render() results share diagnostic storage")
+	}
+	if err := second.Box.Validate(); err != nil {
+		t.Fatalf("Render(cached) Box invalid: %v", err)
+	}
+}
+
+func TestRenderIntersectsRendererAndRequestParseLimits(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{
+		Limits: Limits{MaxSourceBytes: 3},
+	})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		"abcdef",
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if result == nil {
+		t.Fatalf("Render() result = nil, error = %v", err)
+	}
+	if len(result.Diagnostics) == 0 || result.Diagnostics[0].Code != source.CodeLimitExceeded {
+		t.Fatalf("Render() diagnostics = %+v, want source limit", result.Diagnostics)
+	}
+}
+
+func TestRenderReturnsDiagnosticsWithLayoutError(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		`中\bad`,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if !errors.Is(err, ErrMissingGlyph) {
+		t.Fatalf("Render() error = %v, want ErrMissingGlyph", err)
+	}
+	if result == nil {
+		t.Fatal("Render(layout error) result = nil")
+	}
+	if result.Box != nil {
+		t.Fatal("Render(layout error) returned a box")
+	}
+	if result.Alt != (display.Alt{}) {
+		t.Fatalf("Render(layout error) Alt = %#v, want zero", result.Alt)
+	}
+	if len(result.Diagnostics) == 0 {
+		t.Fatal("Render(layout error) lost parse diagnostics")
+	}
+}
+
+func TestRenderAlternativeTextIsOptional(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	plain, err := renderer.Render(
+		context.Background(),
+		`x_i^2`,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render(plain) error = %v", err)
+	}
+	if plain.Alt != (display.Alt{}) || plain.Box.Alt != (display.Alt{}) {
+		t.Fatalf("Render(plain) Alt = %#v, Box.Alt = %#v", plain.Alt, plain.Box.Alt)
+	}
+	accessible, err := renderer.Render(
+		context.Background(),
+		`x_i^2`,
+		RenderRequest{Style: display.Style{Size: 16, GenerateAlt: true}},
+	)
+	if err != nil {
+		t.Fatalf("Render(accessible) error = %v", err)
+	}
+	if accessible.Alt.Text == "" || accessible.Alt.Speech == "" {
+		t.Fatalf("Render(accessible) Alt = %#v", accessible.Alt)
+	}
+	if accessible.Alt != accessible.Box.Alt {
+		t.Fatalf("Render(accessible) Alt = %#v, Box.Alt = %#v", accessible.Alt, accessible.Box.Alt)
+	}
+}
+
+func TestRenderContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if result, err := renderer.Render(ctx, "x", RenderRequest{}); result != nil ||
+		!errors.Is(err, context.Canceled) {
+		t.Fatalf("Render(canceled) = %#v, %v", result, err)
+	}
+}
+
+func TestRendererCacheHitEvictionAndEffectiveKey(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{
+		CacheEntries: 1,
+		Limits:       Limits{MaxNodes: 50},
+	})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	ctx := context.Background()
+	opts := renderer.effectiveParseOptions(ParseOptions{})
+	first, err := renderer.parse(ctx, "x", TeX, Inline, opts)
+	if err != nil {
+		t.Fatalf("parse(first) error = %v", err)
+	}
+	hit, err := renderer.parse(ctx, "x", TeX, Inline, opts)
+	if err != nil {
+		t.Fatalf("parse(hit) error = %v", err)
+	}
+	if first != hit {
+		t.Fatal("cache hit returned a different Expr")
+	}
+	if got := renderer.cache.length(); got != 1 {
+		t.Fatalf("cache length = %d, want 1", got)
+	}
+
+	_, err = renderer.parse(ctx, "y", TeX, Inline, opts)
+	if err != nil {
+		t.Fatalf("parse(second key) error = %v", err)
+	}
+	evicted, err := renderer.parse(ctx, "x", TeX, Inline, opts)
+	if err != nil {
+		t.Fatalf("parse(evicted) error = %v", err)
+	}
+	if evicted == first {
+		t.Fatal("LRU eviction retained the evicted Expr")
+	}
+	if got := renderer.cache.length(); got != 1 {
+		t.Fatalf("cache length after eviction = %d, want 1", got)
+	}
+
+	changedLimits := renderer.effectiveParseOptions(ParseOptions{Limits: Limits{MaxSourceBytes: 99}})
+	if makeRenderExprCacheKey("x", TeX, Inline, opts) ==
+		makeRenderExprCacheKey("x", TeX, Inline, changedLimits) {
+		t.Fatal("effective parse limits do not affect the cache key")
+	}
+	if makeRenderExprCacheKey("x", Typst, Inline, ParseOptions{
+		Macros: map[string]Macro{"a": {Body: "A"}},
+	}) != makeRenderExprCacheKey("x", Typst, Inline, ParseOptions{
+		Macros: map[string]Macro{"a": {Body: "B"}},
+	}) {
+		t.Fatal("Typst cache key includes ignored TeX macros")
+	}
+}
+
+func TestRenderReturnsIndependentBoxes(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{CacheEntries: 4})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	request := RenderRequest{Style: display.Style{Size: 18}}
+	first, err := renderer.Render(context.Background(), `x+1`, request)
+	if err != nil {
+		t.Fatalf("Render(first) error = %v", err)
+	}
+	second, err := renderer.Render(context.Background(), `x+1`, request)
+	if err != nil {
+		t.Fatalf("Render(second) error = %v", err)
+	}
+	if first.Box == second.Box {
+		t.Fatal("Render reused a mutable Box")
+	}
+	if len(first.Box.Items) == 0 || len(second.Box.Items) == 0 {
+		t.Fatal("Render produced no items")
+	}
+	before, err := second.Box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("second Box.MarshalCanonical() error = %v", err)
+	}
+	first.Box.Items[0].Paint.Role = display.RoleError
+	first.Box.Items[0].Bound.X += 10
+	after, err := second.Box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("second Box.MarshalCanonical() after mutation error = %v", err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("mutating the first Box changed the second Box")
+	}
+}
+
+func TestRenderCacheConcurrentUse(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{CacheEntries: 4})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	const workers = 32
+	results := make([][]byte, workers)
+	errs := make([]error, workers)
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			result, err := renderer.Render(
+				context.Background(),
+				`\frac{x}{2}+1`,
+				RenderRequest{Style: display.Style{Size: 16}},
+			)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			if err := result.Box.Validate(); err != nil {
+				errs[i] = err
+				return
+			}
+			results[i], errs[i] = result.Box.MarshalCanonical()
+		}()
+	}
+	wg.Wait()
+	for i := range workers {
+		if errs[i] != nil {
+			t.Fatalf("worker %d error = %v", i, errs[i])
+		}
+		if string(results[i]) != string(results[0]) {
+			t.Fatalf("worker %d output differs", i)
+		}
+	}
+	if got := renderer.cache.length(); got != 1 {
+		t.Fatalf("cache length = %d, want 1", got)
+	}
+}
+
+func TestRenderMacroCacheKeyIsStableAndComplete(t *testing.T) {
+	t.Parallel()
+
+	a := makeRenderExprCacheKey("x", TeX, Inline, ParseOptions{
+		Macros: map[string]Macro{
+			"a": {Body: "A", Args: 0},
+			"b": {Body: "B", Args: 1},
+		},
+	})
+	b := makeRenderExprCacheKey("x", TeX, Inline, ParseOptions{
+		Macros: map[string]Macro{
+			"b": {Body: "B", Args: 1},
+			"a": {Body: "A", Args: 0},
+		},
+	})
+	if a != b {
+		t.Fatal("macro cache key depends on map insertion order")
+	}
+	changed := makeRenderExprCacheKey("x", TeX, Inline, ParseOptions{
+		Macros: map[string]Macro{
+			"a": {Body: "A", Args: 1},
+			"b": {Body: "B", Args: 1},
+		},
+	})
+	if a == changed {
+		t.Fatal("macro cache key ignored argument count")
+	}
+	base := makeRenderExprCacheKey("x", TeX, Inline, ParseOptions{})
+	for name, candidate := range map[string]renderExprCacheKey{
+		"source":  makeRenderExprCacheKey("y", TeX, Inline, ParseOptions{}),
+		"dialect": makeRenderExprCacheKey("x", Typst, Inline, ParseOptions{}),
+		"mode":    makeRenderExprCacheKey("x", TeX, Display, ParseOptions{}),
+		"limits": makeRenderExprCacheKey("x", TeX, Inline, ParseOptions{
+			Limits: Limits{MaxNodes: 1},
+		}),
+	} {
+		if base == candidate {
+			t.Fatalf("cache key ignored %s", name)
+		}
+	}
+	if got := renderMacroKey(TeX, nil); got != "" {
+		t.Fatalf("renderMacroKey(empty) = %q", got)
+	}
+	if got := renderMacroKey(Typst, map[string]Macro{"a": {Body: fmt.Sprint(1)}}); got != "" {
+		t.Fatalf("renderMacroKey(Typst) = %q", got)
+	}
+}

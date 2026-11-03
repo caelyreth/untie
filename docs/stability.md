@@ -17,7 +17,9 @@ Primary surface:
 
 - `LoadFontSet`, `LoadMathFont`, `WithFontID`, `WithFontIndex`, `NewEngine`,
   `NewEngine` results, `Engine.Layout`, `Engine.LayoutContext`;
-- `Parse`, `ParseTeX`, `ParseTypst`, `Expr`;
+- `NewRenderer`, `RendererOptions`, `RenderRequest`, `RenderResult`,
+  `Renderer.Render`;
+- `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `Break`, `LineBox`, `TagBox`, `Alt`;
 - public error sentinels and diagnostic severities/codes.

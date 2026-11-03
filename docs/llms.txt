@@ -13,8 +13,13 @@ Use this file as the short entry point for code assistants. Read
 - A primary math face with OpenType MATH data is required.
 - Call `untie.LoadMathFont` or `untie.LoadFontSet`, then `untie.NewEngine`, once
   for a font configuration.
+- `untie.NewRenderer` prepares and reuses an engine with dialect/style
+  defaults, one-call parse/layout, and an optional bounded parsed-expression
+  cache.
 - `Parse` returns diagnostics plus a valid recovery tree; it does not return a
   Go error for malformed source.
+- `ParseContext` adds boundary cancellation; parser work remains bounded by
+  `ParseOptions.Limits`.
 - `Engine.Layout` returns a `display.Box`; layout errors are fatal and should
   be classified with `errors.Is` or `errors.As` on `*untie.LayoutError`.
 - `LayoutError.Kind` is a stable classification and `LayoutError.Range`
@@ -93,8 +98,11 @@ draw(box.Items)
 func LoadFontSet(config FontSetConfig) (*FontSet, error)
 func LoadMathFont(data []byte, opts ...FontOption) (*FontSet, error)
 func NewEngine(fonts *FontSet, limits Limits) (*Engine, error)
+func NewRenderer(fonts *FontSet, opts RendererOptions) (*Renderer, error)
+func (r *Renderer) Render(ctx context.Context, src string, request RenderRequest) (*RenderResult, error)
 
 func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr
+func ParseContext(ctx context.Context, src string, dialect Dialect, mode Mode, opts ParseOptions) (*Expr, error)
 func ParseTeX(src string, mode Mode, opts ParseOptions) *Expr
 func ParseTypst(src string, mode Mode, opts ParseOptions) *Expr
 func (e *Expr) HasErrors() bool

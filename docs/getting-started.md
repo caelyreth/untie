@@ -79,9 +79,51 @@ The order is intentional:
 4. Lay out the expression with a positive `Style.Size`.
 5. Draw the returned `Box.Items`.
 
+## High-Level Renderer
+
+Applications that want one reusable parse-and-layout entry point can prepare
+the engine internally with `NewRenderer`:
+
+```go
+renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
+	Limits:         untie.Limits{},
+	DefaultDialect: untie.TeX,
+	DefaultStyle:   untie.Style{Size: 24},
+	CacheEntries:   128,
+})
+if err != nil {
+	return err
+}
+
+result, err := renderer.Render(ctx, source, untie.RenderRequest{
+	Dialect: untie.Typst,
+	Mode:    untie.Display,
+	Style:   untie.Style{Size: 24, MaxWidth: 640},
+})
+if err != nil {
+	// result may still contain recoverable parse diagnostics.
+	return err
+}
+draw(result.Box)
+```
+
+A zero request dialect uses `DefaultDialect`; a zero dialect there means TeX.
+A zero mode means `Inline`. A zero style uses `DefaultStyle`, whose zero size
+is replaced with 16 host units. Request parse limits are intersected with
+`RendererOptions.Limits`, so a renderer can enforce an application-wide safety
+ceiling.
+
+`CacheEntries` bounds a concurrency-safe LRU of immutable parsed expressions.
+Zero or a negative value disables that cache. Display boxes are never cached:
+every successful `Render` performs layout and returns an independent box.
+When layout fails after parsing, `Render` returns a result containing the parse
+diagnostics together with the layout error.
+
 ## Which Parse Function?
 
 - `Parse(source, dialect, mode, options)` accepts a runtime `Dialect`.
+- `ParseContext(ctx, source, dialect, mode, options)` adds boundary
+  cancellation.
 - `ParseTeX(source, mode, options)` is the same path with `TeX` selected.
 - `ParseTypst(source, mode, options)` is the same path with `Typst` selected.
 
