@@ -122,6 +122,9 @@ func TestWalkPropagatesCallbackErrorAndStops(t *testing.T) {
 		visited++
 		return stop
 	})
+	if err != stop {
+		t.Fatalf("Walk() error = %v, want unchanged callback error %v", err, stop)
+	}
 	if !errors.Is(err, stop) {
 		t.Fatalf("Walk() error = %v, want %v", err, stop)
 	}
@@ -145,6 +148,13 @@ func TestWalkRejectsInvalidInput(t *testing.T) {
 	}}}
 	if err := render.Walk(invalidPath, func(render.Command) error { return nil }); !errors.Is(err, render.ErrInvalidBox) {
 		t.Fatalf("Walk(invalid path index) error = %v", err)
+	}
+	negativePath := &display.Box{Items: []display.Item{{
+		Kind:      display.ItemGlyphPath,
+		PathIndex: -1,
+	}}}
+	if err := render.Walk(negativePath, func(render.Command) error { return nil }); !errors.Is(err, render.ErrInvalidBox) {
+		t.Fatalf("Walk(negative path index) error = %v", err)
 	}
 	invalidKind := &display.Box{Items: []display.Item{{Kind: display.ItemKind(255)}}}
 	if err := render.Walk(invalidKind, func(render.Command) error { return nil }); !errors.Is(err, render.ErrInvalidBox) {
@@ -189,6 +199,13 @@ func TestResolvePathMaterializesEverySegmentOperation(t *testing.T) {
 	}
 	if &path[0] == &command.Path.Segments[0] {
 		t.Fatal("ResolvePath() returned borrowed storage")
+	}
+	resolvedAgain, err := render.ResolvePath(command)
+	if err != nil {
+		t.Fatalf("second ResolvePath() error = %v", err)
+	}
+	if &resolvedAgain[0] == &path[0] {
+		t.Fatal("ResolvePath() reused prior result storage")
 	}
 }
 
