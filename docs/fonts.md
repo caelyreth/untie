@@ -90,7 +90,7 @@ an error-painted placeholder box, records a `missing-glyph` diagnostic on both
 the box and high-level render result, and continues with the surrounding row.
 Use `RecoveryStrict` when a complete font match is required.
 
-Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.3
+Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.4
 outline-only font and display contract. When such coverage is required, load a
 monochrome outline font or let the missing cluster use visible recovery.
 
