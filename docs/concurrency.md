@@ -69,6 +69,12 @@ That cache is safe for concurrent layouts, grows only with glyphs actually
 encountered, and is released with the engine. It never shares final display
 paths between returned boxes.
 
+Layout also recycles transient fragment, glyph, and path-cache scratch storage
+through a process-wide hard-bounded pool. Every retained slot is cleared before
+reuse, and a returned `Box` never references pooled scratch. The pool holds at
+most 16 idle scratch sets, and oversized scratch is discarded rather than
+retained indefinitely.
+
 ## Context Cancellation
 
 Use `LayoutContext` and `AltContext` when input changes quickly:

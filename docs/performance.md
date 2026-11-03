@@ -101,6 +101,12 @@ construction. A speed improvement that moves work outside the timed operation
 or caches output across benchmark iterations is not comparable. Every corpus
 pass must construct fresh expressions and boxes.
 
+The engine legitimately caches immutable font-derived data and recycles cleared,
+bounded layout scratch between calls. It never reuses an expression or a
+returned `Box`. The package-cache warm/cold and no-cache rows make lifecycle
+and setup costs explicit; use the caller-engine row for steady-state engine
+performance.
+
 ## Profiling
 
 Generate CPU and allocation profiles around the caller-owned pipeline:
