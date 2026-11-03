@@ -12,6 +12,7 @@ import (
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/font"
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	internalalt "github.com/caelyreth/untie/internal/alt"
 	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/internal/tex"
@@ -64,6 +65,7 @@ type (
 	FontOption    = font.FontOption
 	Formula       = ir.Formula
 	EquationTag   = ir.EquationTag
+	NodeID        = identity.NodeID
 
 	Point   = geometry.Point
 	Rect    = geometry.Rect

@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/source"
 )
 
@@ -164,6 +165,9 @@ type Item struct {
 	Kind  ItemKind
 	Paint Paint
 	Bound geometry.Rect
+	// NodeID is the optional stable identity of the semantic source node that
+	// produced this item. Zero means the item has no assigned identity.
+	NodeID identity.NodeID
 
 	// PathIndex selects Box.Paths. It is NoPath for items without path data.
 	PathIndex int
@@ -312,6 +316,9 @@ type Hit struct {
 	Area   geometry.Rect
 	Depth  int
 	Kind   HitKind
+	// NodeID is the optional stable identity of the source node represented by
+	// this hit. Zero means unassigned.
+	NodeID identity.NodeID
 }
 
 // BreakKind describes why an inline break point is legal.

@@ -1,7 +1,10 @@
 // Package ir defines Untie's language-neutral math tree.
 package ir
 
-import "github.com/caelyreth/untie/source"
+import (
+	"github.com/caelyreth/untie/identity"
+	"github.com/caelyreth/untie/source"
+)
 
 // Mode selects inline/text style or display style at the root.
 type Mode uint8
@@ -281,6 +284,12 @@ const (
 // methods make Node a sealed public interface.
 type Base struct {
 	kind NodeKind
+
+	// NodeID is an optional, opaque host-assigned semantic identity. Zero means
+	// unassigned. Nonzero IDs must be unique within a formula. Untie preserves
+	// the ID through cloning and layout and never derives it from source
+	// offsets.
+	NodeID identity.NodeID
 
 	Span   source.Range
 	Origin source.Range

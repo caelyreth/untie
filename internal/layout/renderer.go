@@ -565,6 +565,9 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 			}
 		}
 		if err == nil && fragment != nil {
+			if base := n.NodeBase(); base != nil {
+				fragment.assignNodeID(base.NodeID)
+			}
 			if hitErr := s.attachNodeHit(fragment, n, depth); hitErr != nil {
 				fragment = nil
 				err = hitErr

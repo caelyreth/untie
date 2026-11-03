@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -22,6 +23,7 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 		return nil
 	}
 	base := node.NodeBase()
+	fragment.assignNodeID(base.NodeID)
 	span := base.Origin
 	if span.IsDetached() {
 		span = base.Span
@@ -46,6 +48,7 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 		height: height,
 		depth:  uint32(depth),
 		kind:   kind,
+		nodeID: base.NodeID,
 	})
 	fragment.ownHit = index
 	return nil
@@ -97,7 +100,12 @@ func nodeHitKind(node ir.Node) (display.HitKind, bool) {
 	}
 }
 
-func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x, y geometry.Em) error {
+func (s *layoutState) appendFragmentHits(
+	f *flattenState,
+	fragment *Fragment,
+	x, y geometry.Em,
+	fallbackID identity.NodeID,
+) error {
 	for i := 0; i < fragment.hitCount; i++ {
 		if err := f.tick(); err != nil {
 			return err
@@ -130,6 +138,10 @@ func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x,
 		if err != nil {
 			return err
 		}
+		nodeID := hit.nodeID
+		if !nodeID.Assigned() {
+			nodeID = fallbackID
+		}
 		if err := f.appendHit(display.Hit{
 			Source: hit.source,
 			Area: geometry.Rect{
@@ -138,8 +150,9 @@ func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x,
 				Width:  width,
 				Height: height,
 			},
-			Depth: int(hit.depth),
-			Kind:  hit.kind,
+			Depth:  int(hit.depth),
+			Kind:   hit.kind,
+			NodeID: nodeID,
 		}); err != nil {
 			return err
 		}

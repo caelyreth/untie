@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/caelyreth/untie/identity"
 	"github.com/caelyreth/untie/source"
 )
 
@@ -155,6 +156,7 @@ type validationState struct {
 	sourceLen int
 	count     int
 	active    []Node
+	nodeIDs   map[identity.NodeID]Node
 	stats     Stats
 	path      validationPath
 	// Common ancestor depths avoid allocating a map for cycle detection.
@@ -189,6 +191,15 @@ func (s *validationState) visit(n Node, depth int) error {
 	base := n.NodeBase()
 	if base == nil {
 		return fmt.Errorf("%w: %s: nil base", ErrInvalidIR, &s.path)
+	}
+	if base.NodeID.Assigned() {
+		if s.nodeIDs == nil {
+			s.nodeIDs = make(map[identity.NodeID]Node)
+		}
+		if existing, ok := s.nodeIDs[base.NodeID]; ok && existing != n {
+			return fmt.Errorf("%w: %s: duplicate node ID %d", ErrInvalidIR, &s.path, base.NodeID)
+		}
+		s.nodeIDs[base.NodeID] = n
 	}
 	expected, ok := kindForNode(n)
 	if !ok {
