@@ -10,8 +10,8 @@ public display, font, source, and geometry types needed by a host.
 - A positive layout size in host units. The bundled example uses DIP-like
   units.
 
-Untie validates and copies the supplied font bytes during `LoadFonts`. The
-caller may release or reuse its byte slices after that call.
+Untie validates and copies the supplied font bytes during `LoadMathFont` or
+`LoadFontSet`. The caller may release or reuse its byte slices after that call.
 
 ## Load, Parse, and Lay Out
 
@@ -32,12 +32,7 @@ func renderFormula() (*untie.Box, []untie.Diagnostic, error) {
 		return nil, nil, err
 	}
 
-	fonts, err := untie.LoadFonts(untie.Fonts{
-		Math: untie.FontData{
-			Bytes: fontBytes,
-			ID:    "newcm-math",
-		},
-	})
+	fonts, err := untie.LoadMathFont(fontBytes)
 	if err != nil {
 		return nil, nil, err
 	}

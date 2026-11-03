@@ -32,12 +32,13 @@ but the layout algorithm consumes only the neutral tree.
 
 ## The Main Values
 
-### `Fonts` and `FontSet`
+### `FontFace`, `FontSetConfig`, and `FontSet`
 
-`untie.Fonts` is an input value containing the primary math face, an optional
-text face, and an ordered fallback list. `untie.LoadFonts` copies the input
-bytes, validates every selected face and glyph outline, and returns an
-immutable `*FontSet`.
+`untie.FontSetConfig` contains a primary math `untie.FontFace`, an optional text
+face, and an ordered fallback list. Empty face IDs are derived from role,
+metadata, selected collection index, and bytes. `untie.LoadFontSet` copies the
+input bytes, validates every selected face and glyph outline, and returns an
+immutable `*FontSet`. `untie.LoadMathFont` is the one-face convenience path.
 
 The `FontSet` is safe for concurrent readers and is retained by an `Engine`.
 It has no `Close` method.
@@ -90,7 +91,7 @@ public box contract.
 
 | Value | Owner after the call | Important rule |
 | --- | --- | --- |
-| Font bytes passed to `LoadFonts` | Caller | `LoadFonts` copies them; later caller mutation has no effect. |
+| Font bytes passed to `LoadMathFont` or `LoadFontSet` | Caller | The loader copies them; later caller mutation has no effect. |
 | `*FontSet` | Caller | Immutable and safe for concurrent readers. |
 | `*Engine` | Caller | Reusable and concurrency-safe; GC-managed. |
 | `ParseOptions.Macros` | Caller | Copied into the expression's parse calculation. |

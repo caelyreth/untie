@@ -119,6 +119,10 @@ var allowedProjectImports = map[string]packageRules{
 			modulePath + "/geometry",
 		},
 	},
+	modulePath + "/fontsource": {
+		Production: []string{modulePath + "/font"},
+		Tests:      []string{modulePath + "/fontsource"},
+	},
 	modulePath + "/geometry": {},
 	modulePath + "/internal/engine": {
 		Production: []string{

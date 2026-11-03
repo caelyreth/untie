@@ -1,48 +1,52 @@
 # Fonts and Fallback
 
-Untie does not discover fonts. The host supplies validated OpenType bytes and a
-stable ID for every face in the set.
+Untie does not discover fonts. The host supplies validated OpenType bytes. Face
+IDs are optional; when omitted, Untie derives stable IDs from the face role,
+metadata, selected collection index, and bytes.
 
 ## Font Roles
 
 ```go
-type Fonts struct {
-	Math      FontData
-	Text      *FontData
-	Fallbacks []FontData
-}
-
-type FontData struct {
+type FontFace struct {
+	ID    string
 	Bytes []byte
 	Index int
-	ID    string
+}
+
+type FontSetConfig struct {
+	Math      FontFace
+	Text      *FontFace
+	Fallbacks []FontFace
 }
 ```
 
-`Fonts.Math` is required. It must contain valid OpenType MATH constants,
+`FontSetConfig.Math` is required. It must contain valid OpenType MATH constants,
 including axis height, and valid vertical metrics. The engine also requires at
 least one glyph in the primary math face.
 
-`Fonts.Text` is optional. It is tried first for text-role runs. If it is
+`FontSetConfig.Text` is optional. It is tried first for text-role runs. If it is
 absent, text-role runs begin with the math face.
 
-`Fonts.Fallbacks` are ordered. They are tried after the role-specific primary
-face or faces.
+`FontSetConfig.Fallbacks` are ordered. They are tried after the role-specific
+primary face or faces.
 
-`FontData.Index` selects a face in a TrueType/OpenType collection. A non-zero
+`FontFace.Index` selects a face in a TrueType/OpenType collection. A non-zero
 index is invalid for a single-face SFNT.
 
 ## Face IDs
 
-Every supplied face must have a nonblank, unique ID across math, text, and
-fallback roles. The ID becomes:
+Explicit IDs must be nonblank and unique across math, text, and fallback roles.
+An empty ID is derived deterministically as a safe `<role>-<font-name>-<hash>`
+identifier. The resolved ID becomes:
 
 - `font.FaceInfo.ID`;
 - the `FontID` on exact `ItemGlyphRef` records;
 - part of the font-set identity used by the engine cache.
 
-Use an ID that is stable for the host's glyph cache, for example a font name
-plus revision. Do not reuse one ID for different font bytes.
+Derived IDs require no host bookkeeping and remain stable for identical input
+bytes, selected index, and role. Supply an explicit ID when the host needs a
+name tied to its own asset revision. Do not reuse one explicit ID for different
+font bytes.
 
 ## Fallback Order
 
@@ -82,12 +86,12 @@ mapping when one is present. It also applies the font's supported math GSUB
 features before drawing. A fallback face must contain the needed variation
 sequence to satisfy a source that requests it.
 
-## What `LoadFonts` Validates
+## What `LoadFontSet` Validates
 
-`LoadFonts` fails cleanly, without a partial `FontSet`, when:
+`LoadFontSet` fails cleanly, without a partial `FontSet`, when:
 
 - the math face is absent or empty;
-- a face ID is blank or duplicated;
+- an explicit face ID is blank or duplicated, or a resolved ID collides;
 - an SFNT/TTC face cannot be parsed;
 - the primary math face lacks usable MATH constants;
 - a face has invalid units per em, glyph count, metrics, or outlines;
@@ -101,8 +105,8 @@ fail because of a malformed glyph program.
 
 ## Byte Ownership
 
-`LoadFonts` copies every byte slice before parsing. Mutating the caller's
-`FontData.Bytes` afterward cannot change the `FontSet` or its key.
+`LoadFontSet` and `LoadMathFont` copy every byte slice before parsing. Mutating
+the caller's `FontFace.Bytes` afterward cannot change the `FontSet` or its key.
 
 `FontSet.Fonts()` returns an independent copy of the input font data. Mutating
 the copy cannot affect the loaded set.
@@ -168,19 +172,12 @@ fallback boundary rather than pretending the font covers every script.
 ## Recommended Setup
 
 ```go
-text := untie.FontData{
-	Bytes: textBytes,
-	ID:    "host-text-v1",
-}
-
-fonts, err := untie.LoadFonts(untie.Fonts{
-	Math: untie.FontData{
-		Bytes: mathBytes,
-		ID:    "host-math-v1",
-	},
+text := untie.FontFace{Bytes: textBytes}
+fonts, err := untie.LoadFontSet(untie.FontSetConfig{
+	Math: untie.FontFace{Bytes: mathBytes},
 	Text: &text,
-	Fallbacks: []untie.FontData{
-		{Bytes: broadUnicodeBytes, ID: "host-fallback-v1"},
+	Fallbacks: []untie.FontFace{
+		{Bytes: broadUnicodeBytes},
 	},
 })
 if err != nil {
@@ -189,6 +186,32 @@ if err != nil {
 
 engine, err := untie.NewEngine(fonts, untie.Limits{})
 ```
+
+For one math face, the shorter form also accepts TTC selection:
+
+```go
+fonts, err := untie.LoadMathFont(mathBytes,
+	untie.WithFontID("host-math-v1"),
+	untie.WithFontIndex(0),
+)
+```
+
+`untie.FontData`, `untie.Fonts`, and `untie.LoadFonts` remain available for
+compatibility. New integrations should use `FontFace`, `FontSetConfig`, and
+`LoadFontSet` or `LoadMathFont`.
+
+## Filesystem Helpers
+
+The optional `github.com/caelyreth/untie/fontsource` package reads host-provided
+files through `io/fs`. It works with `os.DirFS`, `embed.FS`, and test
+filesystems; it performs no system-font discovery or network lookup.
+
+```go
+fonts, err := fontsource.LoadMath(os.DirFS("assets"), "NewCMMath-Book.otf")
+```
+
+Use `fontsource.LoadSet` for math, text, and ordered fallback files. Parsing and
+byte ownership still happen in `font.LoadFontSet`.
 
 Keep the font set and engine for the lifetime of the configured graphics
 environment. There is no font reload or close callback.
