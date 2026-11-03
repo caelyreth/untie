@@ -565,8 +565,8 @@
       "index": 75,
       "category": "extensions",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unsupported: chemistry markup is outside the neutral math IR",
-      "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
+      "detail": "root[1].amount: expected [\"mu\",3000000], got \u003cabsent\u003e",
+      "reason": "KaTeX mhchem inserts a stoichiometric thin space after the leading coefficient; the paired Typst source writes the equivalent hand-authored formula without that space."
     },
     {
       "id": "macros",

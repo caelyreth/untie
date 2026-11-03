@@ -161,12 +161,6 @@
   "exclusions": [
     {
       "corpus": "ratex-core",
-      "families": ["command:\\ce", "command:\\pu"],
-      "codes": ["unsupported"],
-      "reason": "Chemistry and unit markup are outside the neutral math IR and are explicitly rejected."
-    },
-    {
-      "corpus": "ratex-core",
       "families": [
         "command:\\includegraphics",
         "command:\\htmlClass",

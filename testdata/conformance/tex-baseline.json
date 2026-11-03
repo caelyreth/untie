@@ -45,9 +45,9 @@
   },
   "summary": {
     "total": 1111,
-    "pass": 1064,
+    "pass": 1066,
     "diagnostic": 26,
-    "unsupported": 21,
+    "unsupported": 19,
     "bug": 0,
     "unexplained": 0
   },
@@ -6823,29 +6823,14 @@
       "id": "line:000154",
       "corpus": "ratex-core",
       "index": 154,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Chemistry and unit markup are outside the neutral math IR and are explicitly rejected.",
+      "status": "pass",
       "families": [
         "command:\\ce",
         "feature:group"
       ],
       "commands": [
         "\\ce"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 3,
-          "message": "chemistry markup is outside the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000155",
@@ -13299,29 +13284,14 @@
       "id": "line:000651",
       "corpus": "ratex-core",
       "index": 651,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Chemistry and unit markup are outside the neutral math IR and are explicitly rejected.",
+      "status": "pass",
       "families": [
         "command:\\pu",
         "feature:group"
       ],
       "commands": [
         "\\pu"
-      ],
-      "codes": [
-        "unsupported"
-      ],
-      "diagnostics": [
-        {
-          "code": "unsupported",
-          "severity": 0,
-          "start": 0,
-          "end": 3,
-          "message": "chemistry markup is outside the neutral math IR"
-        }
-      ],
-      "detail": "frontend reports an unsupported construct"
+      ]
     },
     {
       "id": "line:000652",

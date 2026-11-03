@@ -157,7 +157,7 @@ The following capabilities are not treated as silently ignorable TeX:
 
 | Input family                                                                                              | Current behavior                                                       |
 | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Chemistry and units: `\ce`, `\pu`                                                                         | Error diagnostic; visible unsupported placeholder.                     |
+| Chemistry and units: `\ce`, `\pu`                                                                         | Bounded mhchem subset; see [TeX chemistry](chemistry.md).              |
 | External images: `\includegraphics`                                                                       | Error diagnostic; visible unsupported placeholder.                     |
 | Raw HTML/DOM hooks: `\htmlClass`, `\htmlData`, `\htmlId`, `\htmlStyle`                                    | Unsupported or discarded metadata with diagnostics; no DOM.            |
 | Commutative diagrams: `CD` environment                                                                    | Unsupported diagnostic; bounded environment skip.                      |
@@ -179,6 +179,18 @@ Common malformed inputs are tested:
 - excess input or parser work -> `limit-exceeded`.
 
 The preview remains drawable unless layout fails for a separate reason.
+
+## Chemistry And Physical Quantities
+
+`\ce` and `\pu` are supported through a bounded mhchem-compatible grammar
+that lowers to the existing neutral IR. It covers formulas, numeric
+coefficients, groups and multipliers, common bonds, charges, isotopes,
+reaction arrows with above/below annotations, state annotations, and common
+physical quantities. Unsupported chemistry syntax produces a visible error
+node and a structured diagnostic rather than disappearing.
+
+See [Bounded TeX chemistry](chemistry.md) for the accepted grammar,
+accessibility behavior, and exact exclusions.
 
 ## What "Supported" Means
 

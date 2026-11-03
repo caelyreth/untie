@@ -234,14 +234,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		})
 		return astErr(t.span, t.text, source.CodeUnexpectedToken)
 	case "\\ce", "\\pu":
-		_ = p.parseRequiredArgument(t)
-		p.report(source.Diagnostic{
-			Range:    normalizeRange(t.span),
-			Severity: source.SeverityError,
-			Code:     source.CodeUnsupported,
-			Message:  "chemistry markup is outside the neutral math IR",
-		})
-		return newPlaceholderAST(t.span, "unsupported chemistry markup")
+		return p.parseChemistryCommand(t)
 	case "\\includegraphics":
 		_, _, _ = p.consumeRawOptionalGroup()
 		_, _, _ = p.consumeRawGroupTextChecked(t)

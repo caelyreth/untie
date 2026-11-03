@@ -29,6 +29,10 @@ func TestPublicTeXParseIRLayout(t *testing.T) {
 		{"operator-limits", `\sum_{i=1}^n i`, ir.KindScripts},
 		{"structural-brace", `\overbrace{x+1}^{n}`, ir.KindScripts},
 		{"empty-genfrac-style", `\genfrac{}{}{}{}{a}{b}`, ir.KindFraction},
+		{"chemistry-group", `\ce{(NH4)2S}`, ir.KindScripts},
+		{"chemistry-isotope", `\ce{^{227}_{90}Th+}`, ir.KindScripts},
+		{"chemistry-arrow", `\ce{A ->[heat][cat] B}`, ir.KindScripts},
+		{"chemistry-quantity", `\pu{123 kJ//mol}`, ir.KindRow},
 	}
 	for _, test := range tests {
 		test := test

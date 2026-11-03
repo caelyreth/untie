@@ -42,7 +42,7 @@ func TestImplementedLayoutConstructsAreAccepted(t *testing.T) {
 func TestUnsupportedLayoutConstructsAreExplicit(t *testing.T) {
 	t.Parallel()
 
-	for _, src := range []string{`\vcenter{x}`, `\ce{H2O}`} {
+	for _, src := range []string{`\vcenter{x}`} {
 		result := parseTest(t, src, Options{})
 		if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
 			t.Errorf("%s diagnostics = %v, want unsupported", src, diagnosticCodes(result.Diagnostics))
