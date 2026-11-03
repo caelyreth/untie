@@ -289,6 +289,16 @@ func TestFormulaClipboardData(t *testing.T) {
 	if string(plain) != `x_i²` || string(sourceText) != `x_i^2` {
 		t.Fatalf("clipboard = plain %q source %q", plain, sourceText)
 	}
+	withMathML, ok := FormulaClipboardDataWithMathML(
+		`x_i^2`,
+		untie.Alt{Text: `x_i²`},
+		untie.TeX,
+		[]byte(`<math xmlns="http://www.w3.org/1998/Math/MathML"></math>`),
+	)
+	if !ok || len(withMathML.Formats()) != 3 ||
+		!containsFormat(withMathML.Formats(), FormatMathML) {
+		t.Fatalf("MathML clipboard formats = %v", withMathML.Formats())
+	}
 	if _, ok := SourceClipboardData("x", untie.Dialect(99)); ok {
 		t.Fatal("unknown dialect received a source format")
 	}
@@ -309,7 +319,7 @@ func TestElementClipboardMenu(t *testing.T) {
 	label := DescribeFormula(source, result.Alt).Label
 	tester := ui.NewTester(func(c *ui.Context) {
 		renderer.ElementWithOptions(c, source, untie.Display, ElementOptions{
-			Clipboard: ClipboardOptions{Enabled: true},
+			Clipboard: ClipboardOptions{Enabled: true, MathML: true},
 		})
 	}, 240, 120)
 	rect, ok := tester.Find(label)
@@ -326,6 +336,36 @@ func TestElementClipboardMenu(t *testing.T) {
 	}
 	if string(got) != source {
 		t.Fatalf("clipboard source = %q, want %q", got, source)
+	}
+	tester.RightClickAt(rect.X+rect.W/2, rect.Y+rect.H/2)
+	if err := tester.ChooseMenuItem("Copy MathML"); err != nil {
+		t.Fatalf("choose copy MathML: %v; menu = %v", err, tester.Menu())
+	}
+	mathML, err := tester.ClipboardData().Read(FormatMathML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(mathML), `xmlns="http://www.w3.org/1998/Math/MathML"`) {
+		t.Fatalf("MathML clipboard = %s", mathML)
+	}
+}
+
+func TestMarshalMathMLUsesParseOptions(t *testing.T) {
+	renderer := newTestRenderer(t, Options{
+		ParseOptions: untie.ParseOptions{
+			References: map[string]string{"eq": "3"},
+		},
+	})
+	document, err := renderer.MarshalMathML(
+		context.Background(),
+		`\eqref{eq}`,
+		untie.Display,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(document), "(3)") {
+		t.Fatalf("MathML = %s, want resolved reference", document)
 	}
 }
 

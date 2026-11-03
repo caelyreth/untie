@@ -127,9 +127,9 @@ Inline math in MyGo Markdown already copies as its source through
 `markdown.InlineObject`. Standalone formula elements do not expose a text
 selection model; enable `Clipboard` for explicit copy menu actions.
 
-Presentation MathML conversion is available through the standalone `mathml`
-package. The MyGo adapter still does not advertise or fabricate MathML clipboard
-data.
+Set `ClipboardOptions.MathML` to add `application/mathml+xml` to the context
+menu. `Renderer.MarshalMathML` and the clipboard helpers use the standalone
+`mathml` package and the adapter's configured ParseOptions.
 
 ## Inline Baseline
 

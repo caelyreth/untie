@@ -118,9 +118,9 @@ Found hit events also include `Caret` and `HasCaret`, so click-to-edit can enter
 the editor at a proven source boundary without recomputing pointer affinity.
 
 `FormulaClipboardData` and the context-menu option expose plain text and custom
-TeX/Typst source MIME formats. The standalone `mathml` package now provides
-explicit Presentation MathML conversion; it does not silently add a MathML
-clipboard MIME type to the MyGo adapter.
+TeX/Typst source MIME formats. Set `ClipboardOptions.MathML` to add
+`application/mathml+xml` through `Renderer.MarshalMathML`, which uses the same
+dialect, macros, labels, and reference map as rendering.
 
 ## Caret Stops
 

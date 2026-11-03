@@ -11,12 +11,16 @@ const (
 	FormatTeX transfer.Format = "text/x-tex"
 	// FormatTypst is the source representation used for Typst formulas.
 	FormatTypst transfer.Format = "text/x-typst"
+	// FormatMathML is the Presentation MathML representation.
+	FormatMathML transfer.Format = "application/mathml+xml"
 )
 
 // ClipboardOptions configure the formula context menu.
 type ClipboardOptions struct {
 	// Enabled adds explicit Copy Plain Text and Copy Source actions.
 	Enabled bool
+	// MathML adds a Copy MathML action when serialization succeeds.
+	MathML bool
 }
 
 // SourceFormat returns the source MIME format for dialect.
@@ -69,12 +73,42 @@ func FormulaClipboardData(
 	)), true
 }
 
+// MathMLClipboardData returns a clipboard payload containing Presentation
+// MathML.
+func MathMLClipboardData(document []byte) transfer.Data {
+	return transfer.New(transfer.NewItem(
+		transfer.Bytes(FormatMathML, append([]byte(nil), document...)),
+	))
+}
+
+// FormulaClipboardDataWithMathML returns one clipboard item with plain text,
+// dialect source, and Presentation MathML.
+func FormulaClipboardDataWithMathML(
+	source string,
+	alt untie.Alt,
+	dialect untie.Dialect,
+	document []byte,
+) (transfer.Data, bool) {
+	format, ok := SourceFormat(dialect)
+	if !ok {
+		return transfer.Data{}, false
+	}
+	plain := DescribeFormula(source, alt).PlainText
+	return transfer.New(transfer.NewItem(
+		transfer.Bytes(transfer.Text, []byte(plain)),
+		transfer.Bytes(format, []byte(source)),
+		transfer.Bytes(FormatMathML, append([]byte(nil), document...)),
+	)), true
+}
+
 func addClipboardMenu(
 	element ui.Element,
 	c *ui.Context,
 	source string,
 	alt untie.Alt,
 	dialect untie.Dialect,
+	mathML func() ([]byte, error),
+	options ClipboardOptions,
 ) ui.Element {
 	if !element.Valid() || c == nil {
 		return element
@@ -93,6 +127,11 @@ func addClipboardMenu(
 		if menu.Item(sourceLabel).Chosen() {
 			if data, ok := SourceClipboardData(source, dialect); ok {
 				c.Services().WriteClipboardData(data)
+			}
+		}
+		if options.MathML && menu.Item("Copy MathML").Chosen() && mathML != nil {
+			if document, err := mathML(); err == nil {
+				c.Services().WriteClipboardData(MathMLClipboardData(document))
 			}
 		}
 	})
