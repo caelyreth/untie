@@ -18,23 +18,41 @@ var (
 )
 
 func styledText(text string, variant ir.Variant, autoMath bool) (string, bool) {
-	var out strings.Builder
+	styled, _, _, ok := styledTextWithMap(text, variant, autoMath)
+	return styled, ok
+}
+
+// styledTextWithMap returns the transformed runes and, for every transformed
+// rune, the index of the source rune that produced it. One source rune may
+// produce a base rune plus a variation selector.
+func styledTextWithMap(text string, variant ir.Variant, autoMath bool) (string, []int, rune, bool) {
 	runes := []rune(text)
+	styledRunes := make([]rune, 0, len(runes))
+	sourceRunes := make([]int, 0, len(runes))
 	for i := 0; i < len(runes); i++ {
 		styled, ok := styleRune(runes[i], variant, autoMath)
 		if !ok {
-			return "", false
+			return "", nil, runes[i], false
 		}
-		out.WriteString(styled)
+		produced := []rune(styled)
+		for range produced {
+			sourceRunes = append(sourceRunes, i)
+		}
+		styledRunes = append(styledRunes, produced...)
 		if i+1 < len(runes) && isVariationSelector(runes[i+1]) {
-			styledRunes := []rune(styled)
-			if len(styledRunes) == 1 || !isVariationSelector(styledRunes[len(styledRunes)-1]) {
-				out.WriteRune(runes[i+1])
+			if len(produced) == 1 || !isVariationSelector(produced[len(produced)-1]) {
+				styledRunes = append(styledRunes, runes[i+1])
+				sourceRunes = append(sourceRunes, i+1)
+			} else {
+				// The styled rune already carries a selector. Attribute that
+				// styled selector to the source selector so a combined shaping
+				// cluster still spans both original runes.
+				sourceRunes[len(sourceRunes)-1] = i + 1
 			}
 			i++
 		}
 	}
-	return out.String(), true
+	return string(styledRunes), sourceRunes, 0, true
 }
 
 func styleRune(r rune, variant ir.Variant, autoMath bool) (string, bool) {

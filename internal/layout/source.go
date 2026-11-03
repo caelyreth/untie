@@ -5,6 +5,7 @@ import (
 
 	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
+	"github.com/caelyreth/untie/source"
 )
 
 // Axis is a glyph stretch axis.
@@ -179,11 +180,23 @@ type OperatorRequest struct {
 	Features []string
 }
 
+// TextCluster preserves the source extent of one shaping cluster. Byte offsets
+// are relative to the text passed in TextRequest or OperatorRequest, not to the
+// complete document source.
+type TextCluster struct {
+	RuneStart int
+	RuneEnd   int
+	Source    source.Range
+}
+
 // PositionedGlyph is one glyph in a shaped text run, in local ems relative to
-// the run baseline.
+// the run baseline. Cluster indexes TextRun.Clusters and is meaningful only
+// when that slice is non-empty.
 type PositionedGlyph struct {
 	Glyph Glyph
 	At    Point
+	// Cluster is the zero-based index into TextRun.Clusters.
+	Cluster int
 }
 
 // TextRun is a shaped one-line text run in local ems.
@@ -192,7 +205,10 @@ type TextRun struct {
 	Ascent  geometry.Em
 	Descent geometry.Em
 	Italic  geometry.Em
-	Glyphs  []PositionedGlyph
+	// Clusters is in visual glyph order and preserves source extents for editor
+	// hit testing. It may be empty for non-text providers and synthetic runs.
+	Clusters []TextCluster
+	Glyphs   []PositionedGlyph
 }
 
 // TextSource is an optional extension port for deterministic text shaping.

@@ -71,9 +71,18 @@ The text face does not become the source of math symbols. The math face is
 still required for operators, MATH constants, script variants, stretchy
 constructions, and math italics.
 
-Fallback selection is per shaped unit, not a global font switch. A CJK text
-run can use a fallback face while surrounding math uses the primary math face.
-The host can add a CJK face to `Fallbacks` without changing math symbols.
+Fallback selection is per shaped unit, not a global font switch. Ordinary text
+is segmented by Unicode bidi, script, and extended grapheme cluster before a
+face is selected, so combining marks and emoji ZWJ sequences are not split
+merely to change fonts. A CJK text run can use a fallback face while surrounding
+math uses the primary math face. The host can add a CJK face to `Fallbacks`
+without changing math symbols.
+
+When a single face covers a complete bidi/script run, it is used for that whole
+run to preserve contextual shaping. For complex text scripts, an explicit text
+face or fallback is preferred over the primary MATH face when both nominally
+cover the run. Latin, Greek, and Cyrillic continue to prefer the normal face
+order.
 
 If no face maps the required rune or variation sequence, layout returns an
 error wrapping `ErrMissingGlyph`. There is no automatic visible placeholder
