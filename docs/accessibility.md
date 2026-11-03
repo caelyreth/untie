@@ -23,6 +23,11 @@ Text:   x_i²
 Speech: x sub i squared
 ```
 
+`mathml.Marshal` uses the same source-independent generator for the root
+MathML `alttext` attribute and exposes the compact form through
+`data-untie-alt-text` when it differs. Import regenerates accessibility text
+from the canonical IR instead of trusting arbitrary annotation markup.
+
 ## Three Ways to Obtain Alt
 
 ### `Expr.Alt()`

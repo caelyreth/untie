@@ -104,8 +104,9 @@ MyGo input callbacks. `Options.Inline.Metrics` can report nominal baseline
 metrics with overflow ink kept drawable through the surrounding text clip.
 
 `FormulaClipboardData` and the context-menu option expose plain text and custom
-TeX/Typst source MIME formats. MathML is not offered until Untie has a real
-MathML serializer.
+TeX/Typst source MIME formats. The standalone `mathml` package now provides
+explicit Presentation MathML conversion; it does not silently add a MathML
+clipboard MIME type to the MyGo adapter.
 
 ## Caret Stops
 

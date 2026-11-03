@@ -36,6 +36,7 @@ const navigation = [
       'parsing.md',
       'errors-and-limits.md',
       'canonical-ir.md',
+      'mathml.md',
     ],
   },
   {
