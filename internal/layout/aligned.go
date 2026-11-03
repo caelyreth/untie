@@ -83,37 +83,33 @@ func (s *layoutState) layoutAlignedParts(node ir.Node, env environment, depth in
 }
 
 func (s *layoutState) layoutAlignmentNodes(nodes []ir.Node, env environment, depth int) ([]measuredPart, error) {
-	transfer := make([]geometry.Em, len(nodes))
-	for i := 0; i+1 < len(nodes); i += 2 {
-		spacing, err := s.alignmentLeadingSpacing(nodes[i+1], env)
-		if err != nil {
-			return nil, err
-		}
-		transfer[i] = spacing
-	}
 	parts := make([]measuredPart, len(nodes))
 	for i, part := range nodes {
 		if err := s.ctx.Err(); err != nil {
 			return nil, err
 		}
 		partEnv := env
-		if i > 0 && transfer[i-1] > 0 {
-			partEnv.SkipLeadingExplicit = true
+		if i > 0 && parts[i-1].fragment.hasAtomClass {
+			partEnv.LeadingClass = parts[i-1].fragment.lastAtomClass
+			partEnv.HasLeadingClass = true
+			partEnv.AlignmentInfix = true
 		}
 		fragment, err := s.layoutNode(part, partEnv, depth)
 		if err != nil {
 			return nil, err
 		}
-		if transfer[i] > 0 {
+		if i > 0 && fragment.alignedLeadingSpace > 0 {
+			previous := parts[i-1].fragment
 			space := s.emptyFragment(env.Style.Size, s.scale(env.Style))
-			space.Width = transfer[i]
-			if err := fragment.AddGroup(fragment.Width, 0, space); err != nil {
+			space.Width = fragment.alignedLeadingSpace
+			if err := previous.AddGroup(previous.Width, 0, space); err != nil {
 				return nil, err
 			}
-			fragment.Width, err = add(fragment.Width, transfer[i])
+			previous.Width, err = add(previous.Width, fragment.alignedLeadingSpace)
 			if err != nil {
 				return nil, err
 			}
+			parts[i-1].width = previous.Width
 		}
 		parts[i] = measuredPart{
 			fragment: fragment,
@@ -123,34 +119,6 @@ func (s *layoutState) layoutAlignmentNodes(nodes []ir.Node, env environment, dep
 		}
 	}
 	return parts, nil
-}
-
-func (s *layoutState) alignmentLeadingSpacing(node ir.Node, env environment) (geometry.Em, error) {
-	first := alignmentFirstNode(node)
-	if first == nil {
-		return 0, nil
-	}
-	firstEnv := s.nodeEnvironment(first, env)
-	value, ok, err := s.leftSpacing(first, firstEnv)
-	if err != nil || !ok {
-		return 0, err
-	}
-	return value, nil
-}
-
-func alignmentFirstNode(node ir.Node) ir.Node {
-	row, ok := node.(*ir.Row)
-	if !ok {
-		return node
-	}
-	for _, item := range row.Items {
-		switch item.(type) {
-		case *ir.AlignMarker, *ir.Break:
-			continue
-		}
-		return item
-	}
-	return nil
 }
 
 type alignedRun struct {

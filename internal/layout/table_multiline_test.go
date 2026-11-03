@@ -152,6 +152,39 @@ func TestTableAlignmentSubcolumns(t *testing.T) {
 	}
 }
 
+func TestTableAlignmentMovesRelationSpacingToPreviousColumn(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	style := testStyle(16)
+	style.GlyphRefs = true
+	cell := func(left, right string) ir.Node {
+		return ir.NewRow(source.NewRange(0, 4),
+			glyph(left, ir.ClassNormal),
+			alignMarker(),
+			glyph("=", ir.ClassRelation),
+			glyph(right, ir.ClassNormal),
+		)
+	}
+	table := ir.NewTable(source.NewRange(0, 9),
+		ir.TableRow{Cells: []ir.Node{cell("x", "1")}},
+		ir.TableRow{Cells: []ir.Node{cell("y", "2")}},
+	)
+	box, err := renderer.Layout(table, ir.Display, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := glyphItems(box)
+	if len(refs) != 6 {
+		t.Fatalf("refs = %d, want 6", len(refs))
+	}
+	thick := hostEm(t, ThickSpace, 16)
+	if !closeHost(refs[1].At.X, refs[0].At.X+refs[0].Bound.Width+thick) ||
+		!closeHost(refs[2].At.X, refs[1].At.X+refs[1].Bound.Width+thick) {
+		t.Fatalf("relation positions = %+v, want symmetric %.4f spacing", refs[:3], thick)
+	}
+}
+
 func TestMultilineAlignmentAndCentering(t *testing.T) {
 	t.Parallel()
 
@@ -204,6 +237,83 @@ func TestMultilineAlignmentAndCentering(t *testing.T) {
 		}
 		if !closeHost(box.Ascent, 11.2) || !closeHost(box.Descent, 28) {
 			t.Fatalf("gathered box = %+v", box)
+		}
+	})
+}
+
+func TestAlignedColumnsMoveBoundarySpacingWithoutChangingAtomClass(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	style := testStyle(16)
+	style.GlyphRefs = true
+	multilineCell := func(items ...ir.Node) *ir.Row {
+		row := ir.NewRow(source.NewRange(0, 1))
+		row.Items = items
+		return row
+	}
+
+	t.Run("relation", func(t *testing.T) {
+		multiline := ir.NewMultiline(source.NewRange(0, 12),
+			[]ir.Node{
+				multilineCell(glyph("x", ir.ClassNormal)),
+				alignMarker(),
+				multilineCell(
+					glyph("=", ir.ClassRelation),
+					glyph("1", ir.ClassNormal),
+				),
+			},
+			[]ir.Node{
+				multilineCell(glyph("y", ir.ClassNormal)),
+				alignMarker(),
+				multilineCell(
+					glyph("=", ir.ClassRelation),
+					glyph("2", ir.ClassNormal),
+				),
+			},
+		)
+		box, err := renderer.Layout(multiline, ir.Display, style)
+		if err != nil {
+			t.Fatal(err)
+		}
+		refs := glyphItems(box)
+		if len(refs) != 6 {
+			t.Fatalf("refs = %d, want 6", len(refs))
+		}
+		thick := hostEm(t, ThickSpace, 16)
+		leftGap := refs[1].At.X - (refs[0].At.X + refs[0].Bound.Width)
+		rightGap := refs[2].At.X - (refs[1].At.X + refs[1].Bound.Width)
+		if !closeHost(leftGap, thick) || !closeHost(rightGap, thick) {
+			t.Fatalf("relation gaps = %v/%v, want %v/%v; refs=%+v",
+				leftGap, rightGap, thick, thick, refs[:3])
+		}
+	})
+
+	t.Run("binary at alignment point", func(t *testing.T) {
+		multiline := ir.NewMultiline(source.NewRange(0, 12),
+			[]ir.Node{
+				multilineCell(glyph("a", ir.ClassNormal)),
+				alignMarker(),
+				multilineCell(
+					glyph("+", ir.ClassBinary),
+					glyph("b", ir.ClassNormal),
+				),
+			},
+		)
+		box, err := renderer.Layout(multiline, ir.Display, style)
+		if err != nil {
+			t.Fatal(err)
+		}
+		refs := glyphItems(box)
+		if len(refs) != 3 {
+			t.Fatalf("refs = %d, want 3", len(refs))
+		}
+		medium := hostEm(t, MediumSpace, 16)
+		leftGap := refs[1].At.X - (refs[0].At.X + refs[0].Bound.Width)
+		rightGap := refs[2].At.X - (refs[1].At.X + refs[1].Bound.Width)
+		if !closeHost(leftGap, medium) || !closeHost(rightGap, medium) {
+			t.Fatalf("binary gaps = %v/%v, want %v/%v; refs=%+v",
+				leftGap, rightGap, medium, medium, refs)
 		}
 	})
 }

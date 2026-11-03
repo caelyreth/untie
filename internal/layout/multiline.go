@@ -153,6 +153,15 @@ func splitRowAlignmentParts(items []ir.Node) []ir.Node {
 	parts := make([]ir.Node, 0, 2)
 	current := make([]ir.Node, 0, len(items))
 	flush := func() {
+		// Parser cell segments are already rows. Preserve their atom metadata
+		// instead of hiding it behind an extra ClassNormal row.
+		if len(current) == 1 {
+			if row, ok := current[0].(*ir.Row); ok {
+				parts = append(parts, row)
+				current = make([]ir.Node, 0, len(items))
+				return
+			}
+		}
 		row := ir.NewRow(source.Detached(), current...)
 		row.Class = ir.ClassInner
 		parts = append(parts, row)

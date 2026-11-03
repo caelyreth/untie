@@ -47,23 +47,39 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		})
 		rawClasses = append(rawClasses, effectiveNodeClass(node, fragment.Class))
 	}
-	normalized := normalizeRowClassesInPlace(rawClasses)
+	var normalized []ir.MathClass
+	if env.HasLeadingClass {
+		normalized = normalizeRowClassesWithLeadingInPlace(rawClasses, env.LeadingClass)
+	} else {
+		normalized = normalizeRowClassesInPlace(rawClasses)
+	}
 	for i := range atoms {
 		atoms[i].fragment.Class = normalized[i]
 		atoms[i].leftClass = spacingLeftClass(atoms[i].node, normalized[i])
 		atoms[i].rightClass = spacingRightClass(atoms[i].node, normalized[i])
 	}
+	for _, class := range normalized {
+		if classOf(class) == groupNone {
+			continue
+		}
+		row.lastAtomClass = class
+		row.hasAtomClass = true
+	}
 	row.reserveDraws(len(atoms))
 
 	var x, ascent, descent, italic geometry.Em
 	var previousClass ir.MathClass
-	var havePreviousClass bool
+	havePreviousClass := env.HasLeadingClass
+	if havePreviousClass {
+		previousClass = env.LeadingClass
+	}
 	var previousNode ir.Node
 	var previousEnv environment
 	var pendingSpace geometry.Em
 	var pendingVisible, pendingWeak bool
 	var afterExplicitSpace bool
 	var pending pendingBreak
+	var alignedLeadingSpace geometry.Em
 	atomIndex := 0
 
 	flushSpace := func() error {
@@ -171,7 +187,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 				hasExplicit = true
 			}
 		}
-		if atomIndex != 1 || !nodeEnv.SkipLeadingExplicit {
+		if atomIndex != 1 || !nodeEnv.AlignmentInfix {
 			if value, ok, err := s.leftSpacing(node, nodeEnv); err != nil {
 				return nil, err
 			} else if ok {
@@ -181,6 +197,11 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 				}
 				hasExplicit = true
 			}
+		} else if value, ok, err := s.leftSpacing(node, nodeEnv); err != nil {
+			return nil, err
+		} else if ok {
+			alignedLeadingSpace = value
+			hasExplicit = true
 		}
 
 		if pendingVisible {
@@ -188,14 +209,19 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 				return nil, err
 			}
 		} else if !hasExplicit && !afterExplicitSpace && havePreviousClass &&
-			!previousNode.NodeBase().IgnoreAsSpace && !node.NodeBase().IgnoreAsSpace {
+			(previousNode == nil || !previousNode.NodeBase().IgnoreAsSpace) &&
+			!node.NodeBase().IgnoreAsSpace {
 			local := MathSpacing(previousClass, leftClass, nodeEnv.Style)
 			if local != 0 {
 				auto, err := s.metricAt(local, nodeEnv.Style)
 				if err != nil {
 					return nil, err
 				}
-				explicitBefore = auto
+				if atomIndex == 1 && nodeEnv.AlignmentInfix {
+					alignedLeadingSpace = auto
+				} else {
+					explicitBefore = auto
+				}
 			}
 		}
 		var err error
@@ -272,6 +298,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.Italic = italic
 	row.AccentTop = row.Width / 2
 	row.AccentBottom = row.Width / 2
+	row.alignedLeadingSpace = alignedLeadingSpace
 	row.breaks = normalizeFragmentBreaks(row.breaks)
 	return row, nil
 }

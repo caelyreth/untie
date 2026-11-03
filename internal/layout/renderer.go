@@ -215,12 +215,14 @@ func (s *layoutState) releaseScratch() {
 }
 
 type environment struct {
-	Style               Style
-	Variant             ir.Variant
-	Font                ir.FontRole
-	Paint               ir.Paint
-	Features            []string
-	SkipLeadingExplicit bool
+	Style           Style
+	Variant         ir.Variant
+	Font            ir.FontRole
+	Paint           ir.Paint
+	Features        []string
+	LeadingClass    ir.MathClass
+	HasLeadingClass bool
+	AlignmentInfix  bool
 }
 
 func rootStyle(mode ir.Mode, scriptLevel int) (Style, error) {

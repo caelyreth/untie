@@ -120,6 +120,33 @@ func TestTeXNotMatchesTypstPrecomposedNegations(t *testing.T) {
 	}
 }
 
+func TestAlignedRelationSpacingMatchesTypst(t *testing.T) {
+	root, _ := crosscheckPaths(t)
+	harness := testHarness(t, root)
+	texRoot := requireValidRoot(t, untie.ParseTeX(
+		`\begin{aligned}x&=1\\y&=2\end{aligned}`,
+		ir.Display,
+		untie.ParseOptions{},
+	))
+	typstRoot := requireValidRoot(t, untie.ParseTypst(
+		`x &= 1 \ y &= 2`,
+		ir.Display,
+		untie.ParseOptions{},
+	))
+
+	texBox, err := harness.layout(t.Context(), texRoot.Root, ir.Display, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typstBox, err := harness.layout(t.Context(), typstRoot.Root, ir.Display, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if difference := CompareOutputs(texBox, typstBox); difference != "" {
+		t.Fatalf("aligned layout mismatch: %s", difference)
+	}
+}
+
 func TestSemanticNormalizationRejectsMaterialDifference(t *testing.T) {
 	superscript := requireValidRoot(t, untie.ParseTeX(`x^2`, ir.Inline, untie.ParseOptions{}))
 	subscript := requireValidRoot(t, untie.ParseTeX(`x_2`, ir.Inline, untie.ParseOptions{}))

@@ -83,18 +83,22 @@ func NormalizeClass(previous *ir.MathClass, current ir.MathClass) ir.MathClass {
 // requires one step of lookahead rather than only the previous class.
 func normalizeRowClasses(classes []ir.MathClass) []ir.MathClass {
 	out := make([]ir.MathClass, len(classes))
-	return normalizeRowClassesInto(classes, out)
+	return normalizeRowClassesInto(classes, out, nil)
 }
 
 // normalizeRowClassesInPlace reuses the caller's class scratch buffer. It is
 // safe because normalization only writes the current index after all
 // look-ahead reads have completed.
 func normalizeRowClassesInPlace(classes []ir.MathClass) []ir.MathClass {
-	return normalizeRowClassesInto(classes, classes)
+	return normalizeRowClassesInto(classes, classes, nil)
 }
 
-func normalizeRowClassesInto(classes, out []ir.MathClass) []ir.MathClass {
-	var previous *ir.MathClass
+func normalizeRowClassesWithLeadingInPlace(classes []ir.MathClass, leading ir.MathClass) []ir.MathClass {
+	return normalizeRowClassesInto(classes, classes, &leading)
+}
+
+func normalizeRowClassesInto(classes, out []ir.MathClass, leading *ir.MathClass) []ir.MathClass {
+	previous := leading
 	for i, current := range classes {
 		next := nextAtomClass(classes, i+1)
 		normalized := normalizeAtomClass(previous, current, next)

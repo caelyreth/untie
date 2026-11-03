@@ -41,6 +41,10 @@ type Fragment struct {
 	// StretchableHorizontal mirrors the base glyph's MATH construction.
 	StretchableHorizontal bool
 
+	lastAtomClass       ir.MathClass
+	hasAtomClass        bool
+	alignedLeadingSpace geometry.Em
+
 	firstDraw placedDraw
 	moreDraws []placedDraw
 	drawCount int
