@@ -143,14 +143,17 @@ func reserveDisplayPaths(paths []display.PathTemplate, additional, limit int) []
 }
 
 type flattenState struct {
-	layout     *layoutState
-	box        *display.Box
-	stack      []*Fragment
-	pathCache  map[pathTemplateKey]int
-	offsetX    float32
-	offsetY    float32
-	visits     int
-	operations int
+	layout         *layoutState
+	box            *display.Box
+	stack          []*Fragment
+	inlinePathKeys [inlinePathCacheSize]pathTemplateKey
+	inlinePathIDs  [inlinePathCacheSize]int
+	inlinePaths    int
+	pathCache      map[pathTemplateKey]int
+	offsetX        float32
+	offsetY        float32
+	visits         int
+	operations     int
 }
 
 type pathTemplateKey struct {
@@ -160,6 +163,8 @@ type pathTemplateKey struct {
 	glyphID uint16
 	exact   bool
 }
+
+const inlinePathCacheSize = 8
 
 func newFlattenState(layout *layoutState, box *display.Box, offsetX, offsetY float32) flattenState {
 	return flattenState{
@@ -411,8 +416,8 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		return item, nil
 	}
 
-	key := glyphPathTemplateKey(glyph.Glyph)
-	pathIndex, err := f.pathTemplate(key, glyph.Glyph.Outline)
+	key, cacheable := glyphPathTemplateKey(glyph.Glyph)
+	pathIndex, err := f.pathTemplate(key, cacheable, glyph.Glyph.Outline)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -444,7 +449,8 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	if err != nil {
 		return display.Item{}, err
 	}
-	pathIndex, err := f.pathTemplate(pathTemplateKeyFor(path.path), path.path)
+	key, cacheable := pathTemplateKeyFor(path.path)
+	pathIndex, err := f.pathTemplate(key, cacheable, path.path)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -467,27 +473,27 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	}, nil
 }
 
-func pathTemplateKeyFor(path Path) *pathTemplateKey {
+func pathTemplateKeyFor(path Path) (pathTemplateKey, bool) {
 	if len(path) == 0 {
-		return nil
+		return pathTemplateKey{}, false
 	}
-	return &pathTemplateKey{first: &path[0], length: len(path)}
+	return pathTemplateKey{first: &path[0], length: len(path)}, true
 }
 
-func glyphPathTemplateKey(glyph Glyph) *pathTemplateKey {
+func glyphPathTemplateKey(glyph Glyph) (pathTemplateKey, bool) {
 	if glyph.ExactGlyphRef && glyph.FontID != "" && glyph.ID != 0 {
-		return &pathTemplateKey{
+		return pathTemplateKey{
 			fontID:  glyph.FontID,
 			glyphID: glyph.ID,
 			exact:   true,
-		}
+		}, true
 	}
 	return pathTemplateKeyFor(glyph.Outline)
 }
 
-func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error) {
-	if key != nil && f.pathCache != nil {
-		if index, ok := f.pathCache[*key]; ok {
+func (f *flattenState) pathTemplate(key pathTemplateKey, cacheable bool, path Path) (int, error) {
+	if cacheable {
+		if index, ok := f.cachedPathTemplate(key); ok {
 			return index, nil
 		}
 	}
@@ -532,13 +538,36 @@ func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error
 	}
 	index := len(f.box.Paths)
 	f.box.Paths = append(f.box.Paths, template)
-	if key != nil {
-		if f.pathCache == nil {
-			f.pathCache = make(map[pathTemplateKey]int)
-		}
-		f.pathCache[*key] = index
+	if cacheable {
+		f.cachePathTemplate(key, index)
 	}
 	return index, nil
+}
+
+func (f *flattenState) cachedPathTemplate(key pathTemplateKey) (int, bool) {
+	for i := 0; i < f.inlinePaths; i++ {
+		if f.inlinePathKeys[i] == key {
+			return f.inlinePathIDs[i], true
+		}
+	}
+	if f.pathCache == nil {
+		return 0, false
+	}
+	index, ok := f.pathCache[key]
+	return index, ok
+}
+
+func (f *flattenState) cachePathTemplate(key pathTemplateKey, index int) {
+	if f.inlinePaths < len(f.inlinePathKeys) {
+		f.inlinePathKeys[f.inlinePaths] = key
+		f.inlinePathIDs[f.inlinePaths] = index
+		f.inlinePaths++
+		return
+	}
+	if f.pathCache == nil {
+		f.pathCache = make(map[pathTemplateKey]int)
+	}
+	f.pathCache[key] = index
 }
 
 func (s *layoutState) placedPathBound(local geometry.Rect, at geometry.Point, em float32) (geometry.Rect, error) {
