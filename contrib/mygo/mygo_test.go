@@ -81,6 +81,12 @@ func TestCacheHitsEvictionAndDiagnosticOwnership(t *testing.T) {
 	}
 	original := first.Diagnostics[0].Message
 	first.Diagnostics[0].Message = "mutated"
+	if len(first.Diagnostics[0].Args) > 0 {
+		first.Diagnostics[0].Args[0] = "MUTATED_ARG"
+	}
+	if len(first.Diagnostics[0].Hints) > 0 {
+		first.Diagnostics[0].Hints[0] = "MUTATED_HINT"
+	}
 
 	second, err := renderer.Render(ctx, `x^`, untie.Inline, untie.Style{Size: 16})
 	if err != nil {
@@ -91,6 +97,10 @@ func TestCacheHitsEvictionAndDiagnosticOwnership(t *testing.T) {
 	}
 	if second.Diagnostics[0].Message != original {
 		t.Fatalf("cached diagnostics were mutated: %q", second.Diagnostics[0].Message)
+	}
+	if (len(second.Diagnostics[0].Args) > 0 && second.Diagnostics[0].Args[0] == "MUTATED_ARG") ||
+		(len(second.Diagnostics[0].Hints) > 0 && second.Diagnostics[0].Hints[0] == "MUTATED_HINT") {
+		t.Fatalf("cached diagnostic slices were mutated: %+v", second.Diagnostics[0])
 	}
 
 	for _, source := range []string{`y`, `z`} {

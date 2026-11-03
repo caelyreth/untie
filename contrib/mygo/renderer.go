@@ -168,7 +168,7 @@ func (r *Renderer) Render(
 	if cached, ok := r.cache.get(key); ok {
 		return &untie.RenderResult{
 			Box:         cached.box,
-			Diagnostics: append([]untie.Diagnostic(nil), cached.diagnostics...),
+			Diagnostics: cloneDiagnostics(cached.diagnostics),
 			Alt:         cached.box.Alt.Clone(),
 		}, nil
 	}
