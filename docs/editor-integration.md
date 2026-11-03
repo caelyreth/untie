@@ -64,6 +64,12 @@ source range). Bidirectional runs therefore expose hits in visual order while
 the canonical IR map remains ordered in logical text order. Text without a
 parser-authored map keeps the existing whole-node hit fallback.
 
+The 0.3 display contract is outline-only. Monochrome outline emoji can be
+shaped and drawn; fonts that expose only bitmap or COLR color emoji are outside
+the current font loader and display-item model. An unsupported color cluster
+must use the same visible missing-cluster placeholder and diagnostic rather
+than disappearing.
+
 ## Hybrid Text-Shaper Boundary
 
 The long-term architecture is a hybrid:

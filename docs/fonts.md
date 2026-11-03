@@ -90,6 +90,10 @@ an error-painted placeholder box, records a `missing-glyph` diagnostic on both
 the box and high-level render result, and continues with the surrounding row.
 Use `RecoveryStrict` when a complete font match is required.
 
+Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.3
+outline-only font and display contract. When such coverage is required, load a
+monochrome outline font or let the missing cluster use visible recovery.
+
 ## Unicode and Variation Selectors
 
 The adapter tries a direct rune mapping, then a rune plus variation selector
