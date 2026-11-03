@@ -300,6 +300,13 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 	row.AccentBottom = row.Width / 2
 	row.alignedLeadingSpace = alignedLeadingSpace
 	row.breaks = normalizeFragmentBreaks(row.breaks)
+	if len(atoms) == 1 && row.drawCount == 1 {
+		draw := row.drawAt(0)
+		if draw.kind == drawGroup && draw.x == 0 && draw.y == 0 &&
+			len(draw.group.rows) > 0 {
+			row.rows = draw.group.rows
+		}
+	}
 	return row, nil
 }
 

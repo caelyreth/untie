@@ -27,6 +27,8 @@ const (
 	astClass
 	astRule
 	astStyle
+	astOverlay
+	astRaise
 	astVariant
 	astTable
 	astMultiline
@@ -244,9 +246,23 @@ type astRuleNode struct {
 
 type astStyleNode struct {
 	astBase
-	body    astNode
-	size    ir.MathSize
-	cramped bool
+	body        astNode
+	size        ir.MathSize
+	cramped     bool
+	fontSize    ir.Length
+	setFontSize bool
+}
+
+type astOverlayNode struct {
+	astBase
+	body      astNode
+	alignment ir.OverlayAlignment
+}
+
+type astRaiseNode struct {
+	astBase
+	body   astNode
+	amount ir.Length
 }
 
 type astVariantNode struct {

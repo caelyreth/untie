@@ -112,10 +112,13 @@ element := math.DisplayMathWidthWithOptions(
 )
 ```
 
-`OnHit` emits hover, press, and click events from MyGo pointer input. `HitAt`
-performs the same inverse viewport transform for applications with their own
-event dispatch. MyGo v0.7.4 does not expose a reliable pointer-leave event, so
-hosts must clear hover state when another hit begins.
+`OnHit` emits hover, press, and click events from MyGo pointer input. Each found
+event includes the nearest proven caret boundary as `Caret`/`HasCaret`, so a
+click can enter the editor without guessing left/right affinity from the hit
+rectangle. `HitAt` performs the same inverse viewport transform for
+applications with their own event dispatch; use `Box.NearestCaret` for the same
+point-to-caret resolution. MyGo v0.7.4 does not expose a reliable pointer-leave
+event, so hosts must clear hover state when another hit begins.
 
 Diagnostics can paint source-range underlines through `Box.Covering` and attach
 a whole-element tooltip. `DiagnosticOptions.Paint` and `DiagnosticOptions.Format`

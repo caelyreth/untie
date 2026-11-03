@@ -43,6 +43,7 @@ type canonicalBoxSnapshot struct {
 	Alt        *canonicalAlt       `json:"alt,omitempty"`
 	FontUsage  *canonicalFontUsage `json:"fontUsage,omitempty"`
 	Tag        *canonicalTagBox    `json:"tag,omitempty"`
+	Tags       []canonicalTagBox   `json:"tags,omitempty"`
 	Lines      []canonicalLine     `json:"lines,omitempty"`
 }
 
@@ -123,6 +124,12 @@ func canonicalBoxValue(b *Box, includeLines bool) canonicalBoxSnapshot {
 	if b.Tag != nil {
 		tag := canonicalTag(b.Tag)
 		out.Tag = &tag
+	}
+	if len(b.Tags) > 0 {
+		out.Tags = make([]canonicalTagBox, len(b.Tags))
+		for i := range b.Tags {
+			out.Tags[i] = canonicalTag(&b.Tags[i])
+		}
 	}
 	if includeLines && len(b.Lines) > 0 {
 		out.Lines = make([]canonicalLine, len(b.Lines))

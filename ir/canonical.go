@@ -208,7 +208,24 @@ func (s *canonicalState) node(n Node, depth int) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"base": base, "body": body, "set-size": n.SetSize, "size": n.NewSize, "set-cramped": n.SetCramped, "cramped": n.Cramped}, nil
+		return map[string]any{
+			"base": base, "body": body,
+			"set-size": n.SetSize, "size": n.NewSize,
+			"set-cramped": n.SetCramped, "cramped": n.Cramped,
+			"set-font-size": n.SetFontSize, "font-size": snapshotLength(n.FontSize),
+		}, nil
+	case *Overlay:
+		body, err := s.node(n.Body, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"base": base, "body": body, "alignment": n.Alignment}, nil
+	case *Raise:
+		body, err := s.node(n.Body, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"base": base, "body": body, "amount": snapshotLength(n.Amount)}, nil
 	case *Color:
 		body, err := s.node(n.Body, depth+1)
 		if err != nil {
