@@ -252,7 +252,7 @@ func (s *layoutState) appendLineOwnHit(parent *display.Box, root *Fragment, line
 			Width:  line.Width,
 			Height: height,
 		},
-		Depth: hit.depth,
+		Depth: int(hit.depth),
 		Kind:  hit.kind,
 	})
 	if len(parent.Hits) > s.limits.MaxNodes {

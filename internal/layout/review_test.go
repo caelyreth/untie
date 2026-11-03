@@ -214,14 +214,16 @@ func TestMathKernInfoSelectionAndScaling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newFragment(script) error = %v", err)
 	}
-	base.Kerns.TopRight = &MathKern{
+	baseKerns := MathKernInfo{TopRight: &MathKern{
 		Heights: []geometry.Em{em(2, 10)},
 		Kerns:   []geometry.Em{em(-1, 10), em(-2, 10)},
-	}
-	script.Kerns.BottomLeft = &MathKern{
+	}}
+	base.kerns = &baseKerns
+	scriptKerns := MathKernInfo{BottomLeft: &MathKern{
 		Heights: []geometry.Em{em(2, 10)},
 		Kerns:   []geometry.Em{em(-3, 10), em(-4, 10)},
-	}
+	}}
+	script.kerns = &scriptKerns
 	gotKern, err := mathKern(base, script, em(4, 10), KernTopRight)
 	if err != nil {
 		t.Fatalf("mathKern() error = %v", err)

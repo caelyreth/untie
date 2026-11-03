@@ -94,7 +94,7 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 			fragment.HasInkBottom = true
 		}
 	}
-	fragment.Kerns = scaled.Glyph.Kerns
+	fragment.kerns = &scaled.Glyph.Kerns
 	if err := fragment.pushGlyph(0, 0, scaled); err != nil {
 		return nil, err
 	}

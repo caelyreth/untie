@@ -28,6 +28,9 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 	if !span.IsValid() {
 		return fmt.Errorf("%w: invalid hit source range %+v", ErrInvalidInput, span)
 	}
+	if depth < 0 || uint64(depth) > uint64(^uint32(0)) {
+		return fmt.Errorf("%w: source hit depth %d", ErrInvalidInput, depth)
+	}
 	height, err := fragment.Height()
 	if err != nil {
 		return err
@@ -37,7 +40,7 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 		y:      -fragment.Ascent,
 		width:  fragment.Width,
 		height: height,
-		depth:  depth,
+		depth:  uint32(depth),
 		kind:   kind,
 	})
 	fragment.ownHit = index
@@ -131,7 +134,7 @@ func (s *layoutState) appendFragmentHits(f *flattenState, fragment *Fragment, x,
 				Width:  width,
 				Height: height,
 			},
-			Depth: hit.depth,
+			Depth: int(hit.depth),
 			Kind:  hit.kind,
 		}); err != nil {
 			return err

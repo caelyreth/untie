@@ -36,7 +36,7 @@ type Fragment struct {
 	AccentBottom geometry.Em
 	InkBottom    geometry.Em
 	HasInkBottom bool
-	Kerns        MathKernInfo
+	kerns        *MathKernInfo
 	TextLike     bool
 	// StretchableHorizontal mirrors the base glyph's MATH construction.
 	StretchableHorizontal bool
@@ -72,7 +72,7 @@ type sourceHit struct {
 	y      geometry.Em
 	width  geometry.Em
 	height geometry.Em
-	depth  int
+	depth  uint32
 	kind   display.HitKind
 }
 
@@ -370,7 +370,10 @@ func (f *Fragment) kernAtHeight(corner KernCorner, height geometry.Em) (geometry
 	if f == nil {
 		return 0, nil
 	}
-	table := f.Kerns.at(corner)
+	if f.kerns == nil {
+		return 0, nil
+	}
+	table := f.kerns.at(corner)
 	if table == nil || len(table.Kerns) == 0 {
 		return 0, nil
 	}
