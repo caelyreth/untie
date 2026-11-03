@@ -102,9 +102,10 @@ itself and do not imply system-font discovery or bundled production fonts.
   `4ffe8874dabc`, path `opentype/common/SourceSans-VF.ttf`.
 - Estedad variable, from the same revision and path
   `opentype/common/Estedad-VF.ttf`.
-- License: SIL Open Font License 1.1. Source Sans is Copyright 2010-2020 Adobe,
-  with Reserved Font Name "Source". Estedad is from
-  <https://github.com/aminabedi68/Estedad>.
+- Source Sans license: `licenses/SourceSans-OFL-1.1.txt`. Copyright 2010-2024
+  Adobe, with Reserved Font Name "Source".
+- Estedad license: `licenses/Estedad-OFL-1.1.txt`. Copyright 2022 The Estedad
+  Project Authors, <https://github.com/aminabedi68/Estedad>.
 
 `fonts/SourceSans-VF-MATH.ttf` is a test-only derivative of the Source Sans
 fixture. A deterministic SFNT rewrite preserves every upstream table and adds
