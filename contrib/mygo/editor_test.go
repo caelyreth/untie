@@ -13,14 +13,28 @@ import (
 )
 
 func TestDescribeFormula(t *testing.T) {
+	description := &untie.AltDescription{
+		Version: untie.AltDescriptionVersion,
+		Root: untie.AltNode{
+			Kind: untie.AltKindGlyph,
+			Text: "x",
+		},
+	}
 	semantics := DescribeFormula(`x_i^2`, untie.Alt{
-		Speech: `x sub i squared`,
-		Text:   `x_i²`,
+		Speech:      `x sub i squared`,
+		Text:        `x_i²`,
+		Description: description,
 	})
 	if semantics.Label != `x sub i squared` ||
 		semantics.Value != `x_i^2` ||
-		semantics.PlainText != `x_i²` {
+		semantics.PlainText != `x_i²` ||
+		semantics.Description == nil ||
+		semantics.Description.Root.Text != "x" {
 		t.Fatalf("DescribeFormula() = %+v", semantics)
+	}
+	semantics.Description.Root.Text = "changed"
+	if description.Root.Text != "x" {
+		t.Fatal("DescribeFormula shared the structured description")
 	}
 
 	fallback := DescribeFormula(`\alpha`, untie.Alt{})
@@ -31,6 +45,58 @@ func TestDescribeFormula(t *testing.T) {
 	empty := DescribeFormula(``, untie.Alt{})
 	if empty.Label != emptyFormulaLabel || empty.Value != "" || empty.PlainText != "" {
 		t.Fatalf("empty formula semantics = %+v", empty)
+	}
+}
+
+func TestAccessibleLabelLocalization(t *testing.T) {
+	description := &untie.AltDescription{
+		Version: untie.AltDescriptionVersion,
+		Root: untie.AltNode{
+			Kind:    untie.AltKindFraction,
+			Text:    "unused",
+			Variant: untie.AltVariantBold,
+		},
+	}
+	semantics := FormulaSemantics{
+		Label:       "English fallback",
+		Description: description,
+	}
+	called := false
+	label := accessibleLabel(semantics, func(got *untie.AltDescription) string {
+		called = true
+		if got != description || got.Root.Kind != untie.AltKindFraction {
+			t.Fatalf("localizer description = %#v", got)
+		}
+		return "host-localized label"
+	})
+	if !called || label != "host-localized label" {
+		t.Fatalf("accessibleLabel() = %q, called %v", label, called)
+	}
+	if fallback := accessibleLabel(semantics, func(*untie.AltDescription) string {
+		return "  "
+	}); fallback != semantics.Label {
+		t.Fatalf("blank localized label = %q, want %q", fallback, semantics.Label)
+	}
+	if fallback := accessibleLabel(FormulaSemantics{Label: "English"}, nil); fallback != "English" {
+		t.Fatalf("nil localizer label = %q", fallback)
+	}
+}
+
+func TestElementUsesLocalizedAccessibilityLabel(t *testing.T) {
+	const localized = "localized formula label"
+	renderer := newTestRenderer(t, Options{
+		LocalizeLabel: func(description *untie.AltDescription) string {
+			if description == nil || description.Root.Kind != untie.AltKindScripts {
+				t.Fatalf("localizer description = %#v", description)
+			}
+			return localized
+		},
+	})
+	tester := ui.NewTester(func(c *ui.Context) {
+		renderer.Element(c, `x^2`, untie.Inline)
+	}, 160, 80)
+	if _, ok := tester.Find(localized); !ok {
+		t.Fatalf("localized label %q not found in %q", localized, tester.Texts())
 	}
 }
 

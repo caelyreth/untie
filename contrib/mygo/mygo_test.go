@@ -118,6 +118,42 @@ func TestCacheHitsEvictionAndDiagnosticOwnership(t *testing.T) {
 	}
 }
 
+func TestCacheClonesStructuredAccessibilityDescription(t *testing.T) {
+	renderer := newTestRenderer(t, Options{CacheEntries: 2})
+	ctx := context.Background()
+	style := untie.Style{Size: 16, GenerateAlt: true}
+
+	first, err := renderer.Render(ctx, `x^2`, untie.Inline, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Alt.Description == nil {
+		t.Fatal("first Alt.Description = nil")
+	}
+	original, err := first.Alt.Description.MarshalCanonical()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Alt.Description.Root.Text = "mutated"
+	first.Alt.Description.Root.Kind = untie.AltKindError
+
+	second, err := renderer.Render(ctx, `x^2`, untie.Inline, style)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Alt.Description == nil {
+		t.Fatal("cached Alt.Description = nil")
+	}
+	canonical, err := second.Alt.Description.MarshalCanonical()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(canonical) != string(original) {
+		t.Fatalf("cache shared structured Alt storage:\noriginal: %s\ncached:   %s",
+			original, canonical)
+	}
+}
+
 func TestCanceledRenderDoesNotUseCache(t *testing.T) {
 	renderer := newTestRenderer(t, Options{})
 	ctx := context.Background()

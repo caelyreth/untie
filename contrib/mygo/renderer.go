@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/caelyreth/untie"
 	"github.com/caelyreth/untie/render"
@@ -66,6 +67,11 @@ type Options struct {
 	// Accessibility controls semantic alternative-text generation for
 	// standalone elements. The zero value requests it.
 	Accessibility AccessibilityMode
+	// LocalizeLabel optionally maps the structured Alt.Description to a
+	// host-localized accessible label. It is called for standalone elements
+	// after layout. An empty result falls back to Alt.Speech, then Alt.Text, then
+	// source. The callback must not mutate or retain the description.
+	LocalizeLabel func(description *untie.AltDescription) string
 	// Inline controls Markdown inline-object baseline metrics.
 	Inline InlineOptions
 }
@@ -81,6 +87,7 @@ type Renderer struct {
 	displaySize float32
 	draw        DrawOptions
 	access      AccessibilityMode
+	localize    func(description *untie.AltDescription) string
 	inline      InlineOptions
 	cache       *layoutCache
 }
@@ -147,6 +154,7 @@ func New(fonts *untie.FontSet, opts Options) (*Renderer, error) {
 		displaySize: displaySize,
 		draw:        opts.Draw,
 		access:      opts.Accessibility,
+		localize:    opts.LocalizeLabel,
 		inline:      opts.Inline,
 		cache:       newLayoutCache(cacheEntries),
 	}, nil
@@ -245,8 +253,9 @@ func (r *Renderer) InlineMath(source string, size float32) (markdown.InlineObjec
 //
 // Rendering reuses the adapter cache. The element carries source as its
 // accessibility value and semantic alternative text as its label when enabled.
-// If parsing or layout fails, it shows the source as selectable danger-colored
-// text instead of disappearing.
+// Options.LocalizeLabel can replace the English label using the structured
+// description. If parsing or layout fails, it shows the source as selectable
+// danger-colored text instead of disappearing.
 func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Element {
 	return r.ElementWithOptions(c, source, mode, ElementOptions{})
 }
@@ -448,11 +457,12 @@ func (r *Renderer) formulaElement(
 ) ui.Element {
 	box := result.Box
 	semantics := DescribeFormula(source, result.Alt)
+	label := accessibleLabel(semantics, r.localize)
 	element := ui.Box(c).
 		Width(width).
 		Height(height).
 		Role(ui.RoleImage).
-		Label(semantics.Label).
+		Label(label).
 		Value(semantics.Value).
 		Draw(func(painter *ui.Painter, rect ui.Rect) {
 			_ = DrawBox(painter, box, rect, draw)
@@ -494,6 +504,18 @@ func (r *Renderer) formulaElement(
 		element = addClipboardMenu(element, c, source, result.Alt, r.dialect)
 	}
 	return element
+}
+
+func accessibleLabel(
+	semantics FormulaSemantics,
+	localize func(description *untie.AltDescription) string,
+) string {
+	if localize != nil && semantics.Description != nil {
+		if label := strings.TrimSpace(localize(semantics.Description)); label != "" {
+			return label
+		}
+	}
+	return semantics.Label
 }
 
 func fallbackElement(

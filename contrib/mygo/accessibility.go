@@ -8,9 +8,9 @@ const emptyFormulaLabel = "Math formula"
 // semantic alternative text during layout.
 //
 // Source text is always used as the element's accessibility value. Automatic
-// mode also requests Alt.Speech and Alt.Text from Untie and uses the spoken
-// form as the element label. Disabled mode skips that extra traversal and
-// falls back to the source as the label.
+// mode also requests Alt.Speech, Alt.Text, and Alt.Description from Untie.
+// Disabled mode skips that extra traversal and falls back to the source as the
+// label.
 type AccessibilityMode uint8
 
 const (
@@ -25,8 +25,8 @@ func (m AccessibilityMode) validate() bool {
 	return m == AccessibilityAuto || m == AccessibilityDisabled
 }
 
-// FormulaSemantics is the accessible text derived from a formula source and
-// its optional generated alternative text.
+// FormulaSemantics is the accessible text and structured semantic description
+// derived from a formula source and its optional generated alternative text.
 type FormulaSemantics struct {
 	// Label names the formula for assistive technology. It prefers spoken
 	// alternative text, then plain text, then source.
@@ -35,6 +35,9 @@ type FormulaSemantics struct {
 	Value string
 	// PlainText is a compact linear form suitable for copy and search.
 	PlainText string
+	// Description is the source-independent semantic tree generated with Alt.
+	// Hosts can map it to their locale without parsing Label or PlainText.
+	Description *untie.AltDescription
 }
 
 // DescribeFormula returns deterministic accessible text without inspecting
@@ -53,8 +56,9 @@ func DescribeFormula(source string, alt untie.Alt) FormulaSemantics {
 		label = emptyFormulaLabel
 	}
 	return FormulaSemantics{
-		Label:     label,
-		Value:     source,
-		PlainText: plain,
+		Label:       label,
+		Value:       source,
+		PlainText:   plain,
+		Description: alt.Description.Clone(),
 	}
 }
