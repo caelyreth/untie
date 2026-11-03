@@ -67,15 +67,9 @@ func (a *adapter) centerOnAxis(glyph layout.Glyph) (layout.Glyph, error) {
 		return layout.Glyph{}, err
 	}
 	if shift != 0 {
-		glyph.Outline = append(layout.Path(nil), glyph.Outline...)
-		for i := range glyph.Outline {
-			for j := range glyph.Outline[i].Points {
-				glyph.Outline[i].Points[j].Y, err = glyph.Outline[i].Points[j].Y.Add(shift)
-				if err != nil {
-					return layout.Glyph{}, err
-				}
-			}
-		}
+		// OriginY carries the frame-to-font-baseline displacement. The outline
+		// stays in immutable font coordinates so glyph references and path
+		// templates retain the same origin and can remain deduplicated.
 		glyph.OriginY, err = glyph.OriginY.Add(shift)
 		if err != nil {
 			return layout.Glyph{}, err

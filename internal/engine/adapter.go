@@ -15,12 +15,14 @@ import (
 )
 
 type adapter struct {
-	fonts       *font.FontSet
-	limits      source.Limits
-	metrics     layout.MathMetrics
-	mathFaces   []font.FaceRef
-	textFaces   []font.FaceRef
-	designPaths sync.Map // map[font.Glyph]layout.Path
+	fonts          *font.FontSet
+	limits         source.Limits
+	metrics        layout.MathMetrics
+	mathFaces      []font.FaceRef
+	textFaces      []font.FaceRef
+	designPaths    sync.Map // map[font.Glyph]layout.Path
+	glyphTemplates sync.Map // map[glyphTemplateKey]*glyphTemplate
+	constructions  sync.Map // map[constructionKey]*constructionTemplate
 }
 
 func newAdapter(fonts *font.FontSet, limits source.Limits) (*adapter, error) {
@@ -93,7 +95,7 @@ func (a *adapter) Stretch(req layout.StretchRequest) (layout.Glyph, error) {
 	if req.Axis == layout.Horizontal {
 		axis = font.HorizontalAxis
 	}
-	construction, ok := a.fonts.MathConstruction(mapped, axis)
+	construction, ok := a.cachedMathConstruction(mapped, axis)
 	if !ok {
 		construction = font.MathConstruction{}
 	}

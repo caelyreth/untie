@@ -90,7 +90,10 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 	fragment.HasInkBottom = scaled.Glyph.HasInkBottom
 	if !fragment.HasInkBottom {
 		if bottom, ok := pathInkBottom(scaled.Glyph.Outline, scaled.Scale); ok {
-			fragment.InkBottom = bottom
+			fragment.InkBottom, err = bottom.Add(scaled.Glyph.OriginY)
+			if err != nil {
+				return nil, err
+			}
 			fragment.HasInkBottom = true
 		}
 	}
