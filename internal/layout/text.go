@@ -49,7 +49,7 @@ func (s *layoutState) layoutText(node *ir.Text, env environment) (*Fragment, err
 				string(runes[cluster.RuneStart:cluster.RuneEnd]),
 			)
 		}
-		s.recordMissingGlyphText(node.Base.Span, string(runes[cluster.RuneStart:cluster.RuneEnd]), nil)
+		s.recordMissingGlyphText(node.Span, string(runes[cluster.RuneStart:cluster.RuneEnd]), nil)
 	}
 	return s.layoutTextRun(run, env, true)
 }
