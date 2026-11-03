@@ -315,6 +315,38 @@ func TestShapeTextAcceptsShortFeatureTags(t *testing.T) {
 	}
 }
 
+func TestShapeTextRequiresVariationSequenceCoverage(t *testing.T) {
+	t.Parallel()
+
+	set := loadComplexTextFont(t)
+	faces := []FaceRef{MathFace}
+	for i := 0; ; i++ {
+		face, ok := FallbackFace(i)
+		if !ok {
+			break
+		}
+		if _, exists := set.Face(face); exists {
+			faces = append(faces, face)
+		}
+	}
+	for _, face := range faces {
+		if _, ok := set.MapVariation(face, '\u2600', '\uFE0F'); ok {
+			t.Skip("test font set unexpectedly covers the sun variation sequence")
+		}
+	}
+	shaped, err := set.ShapeText(TextShapeRequest{
+		Context: context.Background(),
+		Text:    "\u2600\uFE0F",
+		Faces:   faces,
+	})
+	if err != nil {
+		t.Fatalf("ShapeText: %v", err)
+	}
+	if len(shaped.Clusters) != 1 || !shaped.Clusters[0].Missing {
+		t.Fatalf("variation-selector clusters = %#v, want one missing cluster", shaped.Clusters)
+	}
+}
+
 func TestShapedTextSourceRangesMatchText(t *testing.T) {
 	t.Parallel()
 

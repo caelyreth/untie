@@ -308,6 +308,29 @@ func TestRenderRecoversOnlyMissingTextCluster(t *testing.T) {
 	}
 }
 
+func TestRenderAcceptsShortTextFeatureTags(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	result, err := renderer.Render(
+		context.Background(),
+		`\text{abc}`,
+		RenderRequest{Style: display.Style{
+			Size:     16,
+			Features: []string{"ss1"},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("Render(ss1) error = %v", err)
+	}
+	if result.Box == nil || len(result.Box.Items) == 0 {
+		t.Fatal("Render(ss1) returned no visible text")
+	}
+}
+
 func TestRenderReportsEachRepeatedMissingTextCluster(t *testing.T) {
 	t.Parallel()
 
