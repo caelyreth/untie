@@ -15,10 +15,11 @@ import (
 // Stats is the immutable resource-envelope summary produced while validating a
 // formula. It lets parser-owned snapshots answer stricter configured-limit
 // checks without traversing the full IR again. Values are extrema, not totals,
-// except Nodes and Tags.
+// except Nodes, Tags, and Labels.
 type Stats struct {
 	Nodes             int
 	Tags              int
+	Labels            int
 	MaxDepth          int
 	MaxTextBytes      int
 	MaxDimensionValue int64 // Absolute fixed-point value in millionths of a unit.
@@ -97,6 +98,48 @@ func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 	if err := state.visit(f.Root, 0); err != nil {
 		return Stats{}, err
 	}
+	var labelNames map[string]struct{}
+	if len(f.Labels) > 0 {
+		labelNames = make(map[string]struct{}, len(f.Labels))
+	}
+	for i, label := range f.Labels {
+		state.path.reset()
+		state.path.pushLabel(i)
+		state.count++
+		if state.count > state.limits.MaxNodes {
+			return Stats{}, fmt.Errorf("%w: %w: %s: metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, &state.path)
+		}
+		if err := state.validateRangeField(label.Span, ".span"); err != nil {
+			return Stats{}, err
+		}
+		if err := state.validateRangeField(label.Origin, ".origin"); err != nil {
+			return Stats{}, err
+		}
+		state.path.pushText(".name")
+		switch {
+		case label.Name == "":
+			err := fmt.Errorf("%w: %s: empty label name", ErrInvalidIR, &state.path)
+			state.path.pop()
+			return Stats{}, err
+		case !utf8.ValidString(label.Name):
+			err := fmt.Errorf("%w: %s: label name is not valid UTF-8", ErrInvalidIR, &state.path)
+			state.path.pop()
+			return Stats{}, err
+		case strings.IndexByte(label.Name, 0) >= 0:
+			err := fmt.Errorf("%w: %s: label name contains NUL", ErrInvalidIR, &state.path)
+			state.path.pop()
+			return Stats{}, err
+		case len(label.Name) > state.limits.MaxTextBytes:
+			err := fmt.Errorf("%w: %s: label name too long", ErrInvalidIR, &state.path)
+			state.path.pop()
+			return Stats{}, err
+		}
+		state.path.pop()
+		if _, duplicate := labelNames[label.Name]; duplicate {
+			return Stats{}, fmt.Errorf("%w: %s: duplicate label name %q", ErrInvalidIR, &state.path, label.Name)
+		}
+		labelNames[label.Name] = struct{}{}
+	}
 	var manualLines map[int]bool
 	var rowLines map[int]bool
 	previousRowLine := -1
@@ -172,6 +215,7 @@ func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 	}
 	state.stats.Nodes = state.count
 	state.stats.Tags = len(f.Tags)
+	state.stats.Labels = len(f.Labels)
 	return state.stats, nil
 }
 
@@ -864,6 +908,7 @@ const (
 	validationPathText validationPathFrameKind = iota
 	validationPathChild
 	validationPathTag
+	validationPathLabel
 	validationPathPadding
 	validationPathTableLine
 )
@@ -886,6 +931,10 @@ func (p *validationPath) pushChild(kind NodeKind, index int) {
 
 func (p *validationPath) pushTag(index int) {
 	p.frames = append(p.frames, validationPathFrame{frameKind: validationPathTag, index: index})
+}
+
+func (p *validationPath) pushLabel(index int) {
+	p.frames = append(p.frames, validationPathFrame{frameKind: validationPathLabel, index: index})
 }
 
 func (p *validationPath) pushPadding(index int) {
@@ -918,6 +967,10 @@ func (p *validationPath) String() string {
 			b.WriteByte(']')
 		case validationPathTag:
 			b.WriteString("tags[")
+			b.WriteString(strconv.Itoa(frame.index))
+			b.WriteByte(']')
+		case validationPathLabel:
+			b.WriteString("labels[")
 			b.WriteString(strconv.Itoa(frame.index))
 			b.WriteByte(']')
 		case validationPathPadding:

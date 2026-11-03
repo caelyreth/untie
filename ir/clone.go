@@ -27,8 +27,9 @@ func CloneFormula(f *Formula, limits ...source.Limits) (*Formula, error) {
 		return nil, err
 	}
 	out := &Formula{
-		Root: root,
-		Tags: make([]EquationTag, len(f.Tags)),
+		Root:   root,
+		Tags:   make([]EquationTag, len(f.Tags)),
+		Labels: append([]EquationLabel(nil), f.Labels...),
 	}
 	for i, tag := range f.Tags {
 		state.count++
