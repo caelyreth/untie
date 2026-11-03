@@ -247,7 +247,7 @@ func TestMissingGlyphKeepsPartialFormula(t *testing.T) {
 		context.Background(),
 		source,
 		untie.Display,
-		untie.Style{Size: 24},
+		untie.Style{Size: 24, GenerateAlt: true},
 	)
 	if err != nil {
 		t.Fatalf("Render() error = %v, want visible recovery", err)
@@ -502,10 +502,12 @@ func TestDisplayMathWidthWrapsAtRequestedWidth(t *testing.T) {
 			Align:   render.AlignCenter,
 		},
 	})
+	expr := untie.Parse(source, untie.TeX, untie.Display, untie.ParseOptions{})
+	label := DescribeFormula(source, expr.Alt()).Label
 	tester := ui.NewTester(func(c *ui.Context) {
 		renderer.DisplayMathWidth(c, source, width)
 	}, width, 400)
-	rect, ok := tester.Find(source)
+	rect, ok := tester.Find(label)
 	if !ok {
 		t.Fatalf("width-aware element not found in %q", tester.Texts())
 	}
@@ -515,9 +517,10 @@ func TestDisplayMathWidthWrapsAtRequestedWidth(t *testing.T) {
 
 	stats := renderer.CacheStats()
 	result, err := renderer.Render(context.Background(), source, untie.Display, untie.Style{
-		Size:     24,
-		MaxWidth: frame,
-		Align:    untie.AlignCenter,
+		Size:        24,
+		MaxWidth:    frame,
+		Align:       untie.AlignCenter,
+		GenerateAlt: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -559,10 +562,12 @@ func TestDisplayMathWidthWideContentAndFallback(t *testing.T) {
 		DisplaySize: 24,
 		Draw:        DrawOptions{Padding: padding},
 	})
+	expr := untie.Parse(source, untie.TeX, untie.Display, untie.ParseOptions{})
+	label := DescribeFormula(source, expr.Alt()).Label
 	tester := ui.NewTester(func(c *ui.Context) {
 		renderer.DisplayMathWidth(c, source, width)
 	}, width, 200)
-	rect, ok := tester.Find(source)
+	rect, ok := tester.Find(label)
 	if !ok {
 		t.Fatalf("wide element not found in %q", tester.Texts())
 	}
@@ -570,8 +575,9 @@ func TestDisplayMathWidthWideContentAndFallback(t *testing.T) {
 		t.Fatalf("wide element width = %v, want %v", rect.W, width)
 	}
 	result, err := renderer.Render(context.Background(), source, untie.Display, untie.Style{
-		Size:     24,
-		MaxWidth: frame,
+		Size:        24,
+		MaxWidth:    frame,
+		GenerateAlt: true,
 	})
 	if err != nil {
 		t.Fatal(err)

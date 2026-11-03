@@ -64,7 +64,7 @@ source range). Bidirectional runs therefore expose hits in visual order while
 the canonical IR map remains ordered in logical text order. Text without a
 parser-authored map keeps the existing whole-node hit fallback.
 
-The 0.3 display contract is outline-only. Monochrome outline emoji can be
+The 0.4 display contract is outline-only. Monochrome outline emoji can be
 shaped and drawn; fonts that expose only bitmap or COLR color emoji are outside
 the current font loader and display-item model. An unsupported color cluster
 must use the same visible missing-cluster placeholder and diagnostic rather
@@ -135,6 +135,29 @@ Editors know the available frame width and should lay out for it before drawing.
 The MyGo adapter exposes this distinction as `DisplayMathWidth` versus
 `DisplayMath`.
 
+## MyGo Editor Surface
+
+The MyGo adapter exposes editor-facing contracts without depending on private
+MyGo internals:
+
+- `ElementWithOptions` and the width-aware variants attach optional hit,
+  diagnostic, and clipboard behavior to one element;
+- `OnHit` reports hover, press, and click phases with the `untie.Hit` resolved
+  by `Box.At`;
+- `HitAt` exposes the inverse draw transform for custom event dispatch;
+- `DiagnosticMarks` maps diagnostics through `Box.Covering`, while
+  `DiagnosticOptions.Paint` and `Format` are clean drawing and localization
+  hooks;
+- `FormulaClipboardData` and the context-menu option provide plain text and
+  dialect-specific source without inventing a MathML representation;
+- `InlineIgnoreOverflow` reports nominal inline baseline metrics while keeping
+  certified overflow drawable through the host text clip.
+
+MyGo v0.7.4 does not expose a reliable pointer-leave event or per-inline-object
+accessibility metadata. Hover state must therefore be cleared by the host when
+another hit begins, and Markdown inline math cannot independently carry spoken
+alternative text through the pinned `markdown.InlineObject` contract.
+
 ## Required Tests
 
 - missing glyphs in atoms, text runs, scripts, fractions, roots, tables, and
@@ -144,5 +167,10 @@ The MyGo adapter exposes this distinction as `DisplayMathWidth` versus
 - bidirectional ordering and source cluster partitioning;
 - explicit-color preservation and host remapping;
 - width-aware wrapping, overfull lines, cache identity, and immutability;
+- accessibility label fallback and source value construction;
+- hit testing under `ScaleFit`, `ScaleNatural`, offsets, and pointer phases;
+- diagnostic range mapping, custom painters, formatting, and tooltips;
+- clipboard source/plain formats and context-menu behavior;
+- include-overflow versus nominal inline metrics and baseline placement;
 - SVG/PNG fail-closed behavior for any future host-only text item;
 - MyGo adapter tests against the supported v0.7.4 dependency.

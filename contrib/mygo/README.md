@@ -39,6 +39,16 @@ scales down when its layout box is smaller and resolves semantic paint roles
 from the active MyGo theme. If parsing or layout fails, it shows the source as
 selectable danger-colored text.
 
+Standalone elements expose semantic accessibility text by default:
+
+- `Alt.Speech` (or `Alt.Text`/source as a fallback) is the accessible label;
+- the exact TeX or Typst source is the accessibility value;
+- an empty formula still has a stable accessible name.
+
+Use `Options.Accessibility` to skip alternative-text generation when an
+application does not need the richer spoken label. The source remains the
+accessibility value in either mode.
+
 `DisplayMath` is the compact preview path used by Markdown. When an editor or
 another host knows the available width, call `DisplayMathWidth` instead:
 
@@ -55,6 +65,74 @@ Use `untie.Inline` for a standalone inline-size element. Use `InlineMath` or
 Markdown binding when the formula must share a text baseline with surrounding
 content.
 
+## Editor Elements
+
+`ElementWithOptions`, `DisplayMathWithOptions`, and
+`DisplayMathWidthWithOptions` add editor interactions without changing the
+basic element behavior:
+
+```go
+math.ElementWithOptions(c, source, untie.Display, untiemygo.ElementOptions{
+	OnHit: func(event untiemygo.HitEvent) {
+		if event.Found && event.Phase == untiemygo.HitClick {
+			placeCaretAt(event.Hit.Source)
+		}
+	},
+	Diagnostics: untiemygo.DiagnosticOptions{
+		Mode: untiemygo.DiagnosticUnderline | untiemygo.DiagnosticTooltip,
+	},
+	Clipboard: untiemygo.ClipboardOptions{Enabled: true},
+})
+```
+
+`OnHit` reports hover, primary press, and completed click phases. The hit comes
+from `untie.Box.At` after inverting the same transform used to draw the element.
+`HitAt` exposes that geometry directly for hosts with custom event models.
+MyGo v0.7.4 has no dependable hover-exit callback, so an editor should treat a
+new hover or press elsewhere as leaving the previous hit.
+
+Diagnostic underlines map each diagnostic source range through `Box.Covering`.
+`DiagnosticOptions.Paint` receives transformed marks when an application wants
+to draw its own decoration. `DiagnosticOptions.Format` can localize tooltip
+text. A diagnostic without covered geometry still contributes to the tooltip.
+
+`BindMarkdownWithOptions` applies the same element options to display math
+inside a Markdown view.
+
+## Copy And Selection
+
+`FormulaClipboardData`, `PlainTextClipboardData`, `SourceClipboardData`, and
+`SourceFormat` expose copy data to applications with their own selection model.
+The context-menu option writes:
+
+- plain text from `Alt.Text`, falling back to source;
+- `text/x-tex` or `text/x-typst` source.
+
+Inline math in MyGo Markdown already copies as its source through
+`markdown.InlineObject`. Standalone formula elements do not expose a text
+selection model; enable `Clipboard` for explicit copy menu actions.
+
+Untie has no MathML serializer, so the adapter does not advertise or fabricate
+MathML clipboard data.
+
+## Inline Baseline
+
+By default, Markdown inline objects include certified overflow in their
+baseline-relative width, height, and depth. Editors can keep line height stable
+while retaining overflow ink inside the surrounding text clip:
+
+```go
+math, err := untiemygo.New(fonts, untiemygo.Options{
+	Inline: untiemygo.InlineOptions{
+		Metrics: untiemygo.InlineIgnoreOverflow,
+	},
+})
+```
+
+The nominal mode reports `Box.Width`, `Box.Ascent`, and `Box.Descent`. The draw
+transform remains baseline-correct and uses the host paragraph clip for
+certified overflow outside those nominal extents.
+
 ## Markdown
 
 `BindMarkdown` enables `$...$`, `$$...$$`, `\(...\)`, and `\[...\]` math while
@@ -66,9 +144,10 @@ math.BindMarkdown(&options)
 markdown.View(c, source, &options)
 ```
 
-Inline math maps the complete `Box.Bounds`, including overflow, into MyGo's
-baseline-relative width, height, and depth. Display math paints at native size
-and scales down when its host is narrower.
+By default, inline math maps the complete `Box.Bounds`, including overflow, into
+MyGo's baseline-relative width, height, and depth. `InlineIgnoreOverflow`
+selects nominal metrics. Display math paints at native size and scales down when
+its host is narrower.
 
 ## Existing Boxes
 

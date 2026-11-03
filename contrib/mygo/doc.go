@@ -8,6 +8,16 @@
 // is the compact fit-to-viewport path, while DisplayMathWidth lays out against
 // a known width and wraps before drawing at natural scale.
 //
+// Standalone elements expose semantic alternative text as their accessibility
+// label and exact formula source as their value. ElementWithOptions adds
+// source-hit callbacks, diagnostic source-range underlines and tooltips, and
+// explicit source/plain-text clipboard actions without placing MyGo UI values
+// in Untie's immutable display list.
+//
+// HitAt performs the same inverse viewport transform used by drawing. Inline
+// Markdown objects can use nominal baseline metrics while retaining certified
+// overflow ink inside the surrounding text clip.
+//
 // DrawBox draws an existing Untie box without requiring a Renderer. Paint
 // resolution happens at draw time through PaintResolver, so cached geometry
 // can follow theme changes or a host's own color policy. The default resolver

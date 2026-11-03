@@ -76,16 +76,19 @@ func ExampleRenderer_DisplayMathWidth() {
 	}
 
 	const source = `a+b+c+d`
+	expr := untie.Parse(source, untie.TeX, untie.Display, untie.ParseOptions{})
+	label := untiemygo.DescribeFormula(source, expr.Alt()).Label
 	tester := ui.NewTester(func(c *ui.Context) {
 		math.DisplayMathWidth(c, source, 68)
 	}, 68, 240)
-	bounds, ok := tester.Find(source)
+	bounds, ok := tester.Find(label)
 	if !ok {
 		panic("width-aware math element not found")
 	}
 	result, err := math.Render(context.Background(), source, untie.Display, untie.Style{
-		Size:     24,
-		MaxWidth: 60,
+		Size:        24,
+		MaxWidth:    60,
+		GenerateAlt: true,
 	})
 	if err != nil {
 		panic(err)

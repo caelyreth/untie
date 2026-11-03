@@ -164,6 +164,12 @@ Suppression-only metadata does not add spoken text.
 - Call `box.Alt.Validate()` if a host accepts boxes from outside the normal
   engine path.
 
+The MyGo adapter applies this policy to standalone formula elements by default:
+`DescribeFormula` selects the label, and the element receives the exact source
+as its accessibility value. MyGo v0.7.4 does not expose per-inline-object
+accessibility metadata, so this wiring is limited to normal elements rather
+than `markdown.InlineObject`.
+
 ## Example
 
 ```go

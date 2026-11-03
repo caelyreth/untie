@@ -40,6 +40,11 @@ other MyGo element. It starts at the formula's natural size and scales down
 when the available box is smaller. Set `DrawOptions.AllowUpscale` if a host
 wants formulas to grow into larger spaces.
 
+Standalone elements use `Alt.Speech` as their accessibility label, with
+`Alt.Text` and source as fallbacks, and the exact dialect source as their
+accessibility value. `Options.Accessibility` can disable the extra
+alternative-text traversal.
+
 `untie.Inline` selects inline math size. A standalone inline element still
 participates in normal MyGo box layout; use `InlineMath` when baseline
 placement inside text is required.
@@ -80,6 +85,56 @@ The width is the outer MyGo element width. The adapter subtracts configured
 draw padding and passes the remaining frame as `Style.MaxWidth`. The resulting
 `Box.Lines` are drawn at natural scale instead of uniformly shrinking the
 whole formula.
+
+## Editor Integration
+
+Use `ElementWithOptions`, `DisplayMathWithOptions`, or
+`DisplayMathWidthWithOptions` for editor behavior:
+
+```go
+element := math.DisplayMathWidthWithOptions(
+	c,
+	source,
+	width,
+	untiemygo.ElementOptions{
+		OnHit: func(event untiemygo.HitEvent) {
+			if event.Found && event.Phase == untiemygo.HitClick {
+				editAt(event.Hit.Source)
+			}
+		},
+		Diagnostics: untiemygo.DiagnosticOptions{
+			Mode: untiemygo.DiagnosticUnderline |
+				untiemygo.DiagnosticTooltip,
+		},
+		Clipboard: untiemygo.ClipboardOptions{Enabled: true},
+	},
+)
+```
+
+`OnHit` emits hover, press, and click events from MyGo pointer input. `HitAt`
+performs the same inverse viewport transform for applications with their own
+event dispatch. MyGo v0.7.4 does not expose a reliable pointer-leave event, so
+hosts must clear hover state when another hit begins.
+
+Diagnostics can paint source-range underlines through `Box.Covering` and attach
+a whole-element tooltip. `DiagnosticOptions.Paint` and `DiagnosticOptions.Format`
+are the adapter-side extension points for custom drawing and localized text.
+
+`FormulaClipboardData` and related helpers offer plain text plus
+`text/x-tex`/`text/x-typst` source. The context-menu option writes those formats
+directly. Inline Markdown math already copies as source. Untie has no MathML
+serializer, so the adapter intentionally exposes no MathML clipboard format.
+
+For baseline-stable inline math, set:
+
+```go
+Options{Inline: untiemygo.InlineOptions{
+	Metrics: untiemygo.InlineIgnoreOverflow,
+}}
+```
+
+This reports nominal width/ascent/descent while preserving certified overflow
+as drawable ink inside the host text clip.
 
 ## Existing Boxes
 
