@@ -143,8 +143,19 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/examples/svg": {
 		Production: []string{
-			modulePath,
 			modulePath + "/encode/svg",
+			modulePath + "/examples/internal/example",
+		},
+	},
+	modulePath + "/examples/png": {
+		Production: []string{
+			modulePath + "/encode/raster",
+			modulePath + "/examples/internal/example",
+		},
+	},
+	modulePath + "/examples/internal/example": {
+		Production: []string{
+			modulePath,
 			modulePath + "/fontsource",
 		},
 	},
