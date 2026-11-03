@@ -32,7 +32,7 @@ The build script:
 1. compiles `web/wasm` for `js/wasm`;
 2. strips the Go binary and runs `wasm-opt -Oz`;
 3. copies `wasm_exec.js` and the New Computer Modern Math font;
-4. prerenders all Markdown pages under `src/content/docs`;
+4. prerenders all Markdown pages under the repository's `docs/`;
 5. writes the static site to `web/build`.
 
 Generated files under `static/untie` and the static adapter output are ignored.

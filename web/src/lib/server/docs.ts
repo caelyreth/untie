@@ -1,59 +1,82 @@
 import { basename, posix } from 'node:path'
 
-import { marked } from 'marked'
+import { createMarkdownParser, type MarkdownDocument } from 'comark'
+import headings from 'comark/plugins/headings'
+import security from 'comark/plugins/security'
 
 import type { DocLink, DocPage } from '#lib/docs/types'
 
 const repository = 'https://github.com/caelyreth/untie/blob/main/'
-const markdownFiles = import.meta.glob('/src/content/docs/*.md', {
+const markdownFiles = import.meta.glob('../../../../docs/*.md', {
   eager: true,
   import: 'default',
   query: '?raw',
 }) as Record<string, string>
-const order = [
-  'README.md',
-  'getting-started.md',
-  'concepts.md',
-  'rendering.md',
-  'fonts.md',
-  'parsing.md',
-  'errors-and-limits.md',
-  'canonical-ir.md',
-  'concurrency.md',
-  'accessibility.md',
-  'mygo.md',
-  'tex-support.md',
-  'typst-support.md',
-  'stability.md',
-  'quality.md',
-  'performance.md',
-  'migration.md',
-]
+const markdownParser = createMarkdownParser({
+  plugins: [headings({ remove: true }), security()],
+  headingIds: true,
+})
+const navigation = [
+  {
+    label: 'Start',
+    files: ['README.md', 'getting-started.md', 'concepts.md'],
+  },
+  {
+    label: 'Pipeline',
+    files: [
+      'rendering.md',
+      'fonts.md',
+      'parsing.md',
+      'errors-and-limits.md',
+      'canonical-ir.md',
+    ],
+  },
+  {
+    label: 'Runtime',
+    files: ['concurrency.md', 'accessibility.md', 'mygo.md'],
+  },
+  {
+    label: 'Reference',
+    files: [
+      'tex-support.md',
+      'typst-support.md',
+      'stability.md',
+      'quality.md',
+      'performance.md',
+      'migration.md',
+    ],
+  },
+] as const
+const fileOrder = new Map<string, number>(
+  navigation
+    .flatMap((section) => section.files)
+    .map((file, index) => [file, index]),
+)
+const fileSection = new Map<string, string>(
+  navigation.flatMap((section) =>
+    section.files.map((file) => [file, section.label] as const),
+  ),
+)
 
-let catalog: readonly DocLink[] | undefined
+let catalog: Promise<readonly DocLink[]> | undefined
 
 export function listDocs(): Promise<readonly DocLink[]> {
   catalog ??= readCatalog()
-  return Promise.resolve(catalog)
+  return catalog
 }
 
 export async function loadDoc(slug: string): Promise<DocPage> {
   const file = documentFile(slug)
   const markdown = documentMarkdown(file)
-  const docs = await listDocs()
   const rewritten = rewriteLinks(markdown)
-  const rawHtml = marked.parse(rewritten, {
-    async: false,
-    gfm: true,
-  })
-  const title =
-    docs.find((doc) => doc.href === `/docs/${slug}`.replace(/\/$/, ''))
-      ?.title ?? extractTitle(markdown)
+  const document = await markdownParser(rewritten)
+  const title = metadataTitle(document) ?? extractTitle(markdown)
   return {
-    description: extractDescription(markdown, title),
-    html: addHeadingIDs(rawHtml),
+    description:
+      metadataDescription(document) ?? extractDescription(markdown, title),
+    document,
     slug,
-    sourceHref: `${repository}web/src/content/docs/${file}`,
+    sourceHref: `${repository}docs/${file}`,
     title,
   }
 }
@@ -66,35 +89,44 @@ function documentFile(slug: string) {
 }
 
 function documentMarkdown(file: string) {
-  const markdown = markdownFiles[`/src/content/docs/${file}`]
+  const markdown =
+    markdownFiles[`../../../../docs/${file}`] ??
+    markdownFiles[`/../../docs/${file}`]
   if (!markdown) {
     throw new Error(`Unknown document: ${file}`)
   }
   return markdown
 }
 
-function readCatalog(): readonly DocLink[] {
+async function readCatalog(): Promise<readonly DocLink[]> {
   const files = Object.keys(markdownFiles)
     .map((file) => basename(file))
     .sort(
       (left, right) =>
         rank(left) - rank(right) || left.localeCompare(right),
     )
-  return files.map((file) => {
-    const markdown = markdownFiles[`/src/content/docs/${file}`] ?? ''
-    const slug = file === 'README.md' ? '' : basename(file, '.md')
-    const title = extractTitle(markdown)
-    return {
-      href: slug ? `/docs/${slug}` : '/docs',
-      label: file === 'README.md' ? 'Overview' : title,
-      title,
-    }
-  })
+  return Promise.all(
+    files.map(async (file) => {
+      const markdown = documentMarkdown(file)
+      const slug = file === 'README.md' ? '' : basename(file, '.md')
+      const document = await markdownParser(rewriteLinks(markdown))
+      const title = metadataTitle(document) ?? extractTitle(markdown)
+      return {
+        href: slug ? `/docs/${slug}` : '/docs',
+        label: file === 'README.md' ? 'Overview' : title,
+        section: sectionFor(file),
+        title,
+      }
+    }),
+  )
 }
 
 function rank(file: string) {
-  const index = order.indexOf(file)
-  return index === -1 ? order.length : index
+  return fileOrder.get(file) ?? fileOrder.size
+}
+
+function sectionFor(file: string) {
+  return fileSection.get(file) ?? 'Reference'
 }
 
 function extractTitle(markdown: string) {
@@ -104,6 +136,18 @@ function extractTitle(markdown: string) {
       ?.replaceAll('`', '')
       .trim() ?? 'Untie documentation'
   )
+}
+
+function metadataTitle(document: MarkdownDocument) {
+  return typeof document.meta.title === 'string'
+    ? document.meta.title
+    : undefined
+}
+
+function metadataDescription(document: MarkdownDocument) {
+  return typeof document.meta.description === 'string'
+    ? truncateDescription(document.meta.description)
+    : undefined
 }
 
 function extractDescription(markdown: string, title: string) {
@@ -182,28 +226,4 @@ function documentHref(pathPart: string, hash: string) {
 function repositoryHref(pathPart: string, hash: string) {
   const repositoryPath = posix.normalize(posix.join('docs', pathPart))
   return `${repository}${repositoryPath}${hash}`
-}
-
-function addHeadingIDs(html: string) {
-  const ids = new Map<string, number>()
-  return html.replace(
-    /<h([1-3])>(.*?)<\/h\1>/g,
-    (heading, level: string, content: string) => {
-      const plain = content
-        .replace(/<[^>]+>/g, '')
-        .replaceAll('&amp;', 'and')
-        .replaceAll('&lt;', '')
-        .replaceAll('&gt;', '')
-      const base =
-        plain
-          .toLowerCase()
-          .replace(/[^a-z0-9 -]/g, '')
-          .trim()
-          .replace(/\s+/g, '-') || 'section'
-      const count = ids.get(base) ?? 0
-      ids.set(base, count + 1)
-      const id = count ? `${base}-${count}` : base
-      return `<h${level} id="${id}">${content}</h${level}>`
-    },
-  )
 }

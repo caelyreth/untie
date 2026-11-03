@@ -28,4 +28,4 @@ cross-dialect behavior. It is not a runtime dependency.
   a compatibility review.
 
 Compatibility summaries and current reviewed outcomes are documented in
-[Compatibility and Verification](../web/src/content/docs/quality.md).
+[Compatibility and Verification](../docs/quality.md).
