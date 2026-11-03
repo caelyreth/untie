@@ -97,6 +97,7 @@ func (a *adapter) shapeTextRun(
 			RuneEnd:   end,
 			Source:    sourceRange,
 			Missing:   cluster.Missing,
+			RTL:       cluster.RTL,
 		}
 	}
 

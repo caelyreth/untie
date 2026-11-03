@@ -66,6 +66,7 @@ func (s *layoutState) flattenSingleDisplayLine(root *Fragment, offsetX float32) 
 	}
 	parent.Items = make([]display.Item, 0, s.outputItemCapacity(root.flatItems))
 	parent.Hits = make([]display.Hit, 0, s.outputHitCapacity(root.flatHits))
+	parent.CaretStops = make([]display.CaretStop, 0, s.outputItemCapacity(root.flatCarets))
 	width, ascent, descent, italic, err := s.fragmentHostMetrics(root)
 	if err != nil {
 		return nil, err
@@ -113,6 +114,7 @@ func (s *layoutState) flattenPlannedDisplayLines(
 	hitCapacity := root.flatHits - root.hitCount
 	hitCapacity = saturatedAdd(hitCapacity, root.hitCount*len(plans))
 	parent.Hits = make([]display.Hit, 0, s.outputHitCapacity(hitCapacity))
+	parent.CaretStops = make([]display.CaretStop, 0, s.outputItemCapacity(root.flatCarets))
 	parent.Lines = make([]display.LineBox, 0, len(plans))
 	var baseline float32
 	for i, plan := range plans {

@@ -146,6 +146,9 @@ func TestShapeTextKeepsRTLRunsInVisualOrder(t *testing.T) {
 	}
 	for i, cluster := range run.Clusters {
 		starts[i] = cluster.RuneStart
+		if !cluster.RTL {
+			t.Fatalf("RTL cluster %#v has RTL=false", cluster)
+		}
 		if i > 0 && run.Glyphs[i].At.X <= run.Glyphs[i-1].At.X {
 			t.Fatalf("RTL glyphs are not left-to-right visual order: %+v", run.Glyphs)
 		}

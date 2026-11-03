@@ -57,6 +57,10 @@ type ShapedCluster struct {
 	ByteStart int
 	ByteEnd   int
 	Face      FaceRef
+	// RTL reports that the cluster was shaped in a right-to-left run. Clusters
+	// remain stored in visual order; this flag lets source maps recover caret
+	// affinity within a cluster.
+	RTL bool
 	// Missing reports that the selected face does not cover every significant
 	// rune in the cluster, or that OpenType shaping produced .notdef.
 	Missing bool
@@ -459,6 +463,7 @@ func (f *FontSet) ShapeText(req TextShapeRequest) (ShapedText, error) {
 				&result,
 				output,
 				faces[selected].ref,
+				part.Direction.Progression() == di.TowardTopLeft,
 				text,
 				byteOffsets,
 				missingRune,
@@ -509,6 +514,7 @@ func appendShapedOutput(
 	result *ShapedText,
 	output shaping.Output,
 	face FaceRef,
+	rtl bool,
 	text []rune,
 	byteOffsets []int,
 	missingRune []bool,
@@ -549,6 +555,7 @@ func appendShapedOutput(
 				ByteStart: byteOffsets[start],
 				ByteEnd:   byteOffsets[end],
 				Face:      face,
+				RTL:       rtl,
 				Missing:   missing,
 			})
 		}

@@ -51,6 +51,19 @@ func (s *layoutState) attachNodeHit(fragment *Fragment, node ir.Node, depth int)
 		nodeID: base.NodeID,
 	})
 	fragment.ownHit = index
+	if caretBearingHit(kind) && span.Start < span.End {
+		bottom := fragment.Descent
+		fragment.appendCaretBoundaries(
+			span.Start,
+			span.End,
+			0,
+			fragment.Width,
+			-fragment.Ascent,
+			bottom,
+			false,
+			base.NodeID,
+		)
+	}
 	return nil
 }
 

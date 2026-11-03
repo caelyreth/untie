@@ -56,6 +56,7 @@ type (
 	Hit           = display.Hit
 	HitKind       = display.HitKind
 	Break         = display.Break
+	CaretStop     = display.CaretStop
 	TagBox        = display.TagBox
 	BreakKind     = display.BreakKind
 	Align         = display.Align

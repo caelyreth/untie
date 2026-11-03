@@ -3,6 +3,7 @@ package display
 import (
 	"encoding/json"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
@@ -35,6 +36,10 @@ func TestCloneIndependent(t *testing.T) {
 			{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: 1, Height: 1}},
 			{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: 1, Height: 1}},
 		},
+		CaretStops: []CaretStop{
+			{Source: 2, X: 2, Top: -1, Bottom: 1},
+			{Source: 1, X: 1, Top: -1, Bottom: 1},
+		},
 		Breaks: []Break{{X: 1, Kind: BreakRelation}},
 		Alt:    Alt{Text: "x", Speech: "x"},
 		Diagnostics: []source.Diagnostic{{
@@ -57,6 +62,7 @@ func TestCloneIndependent(t *testing.T) {
 	got := box.Clone()
 	got.Paths[0].Segments[0].Op = geometry.SegClose
 	got.Hits[0].Area.Width = 2
+	got.CaretStops[0].X = 10
 	got.Breaks[0].X = 2
 	got.Diagnostics[0].Args[0] = "changed"
 	got.Lines[0].Items.Count = 0
@@ -66,6 +72,9 @@ func TestCloneIndependent(t *testing.T) {
 	}
 	if box.Hits[0].Area.Width != 1 {
 		t.Fatal("Clone shared hit storage")
+	}
+	if box.CaretStops[0].X != 2 {
+		t.Fatal("Clone shared caret storage")
 	}
 	if box.Breaks[0].X != 1 {
 		t.Fatal("Clone shared break storage")
@@ -84,6 +93,39 @@ func TestCloneIndependent(t *testing.T) {
 	}
 	if box.Alt != (Alt{Text: "x", Speech: "x"}) {
 		t.Fatal("Clone changed alternative text")
+	}
+}
+
+func TestBoxCaretsAreSourceOrderedAndResolveNearest(t *testing.T) {
+	t.Parallel()
+
+	box := &Box{CaretStops: []CaretStop{
+		{Source: 8, X: 16, Top: -2, Bottom: 2},
+		{Source: 2, X: 4, Top: -1, Bottom: 1},
+		{Source: 4, X: 8, Top: -1, Bottom: 1},
+	}}
+	carets := box.Carets()
+	if got := []int{carets[0].Source, carets[1].Source, carets[2].Source}; !slices.Equal(got, []int{2, 4, 8}) {
+		t.Fatalf("Carets order = %v", got)
+	}
+	carets[1].X = 99
+	if box.CaretStops[2].X != 8 {
+		t.Fatal("Carets exposed backing storage")
+	}
+
+	exact, ok := box.CaretAt(4)
+	if !ok || exact.Source != 4 || exact.X != 8 {
+		t.Fatalf("CaretAt(4) = %#v, %v", exact, ok)
+	}
+	nearest, ok := box.CaretAt(3)
+	if !ok || nearest.Source != 2 {
+		t.Fatalf("CaretAt(3) = %#v, %v, want earlier tie", nearest, ok)
+	}
+	if _, ok := box.CaretAt(-1); ok {
+		t.Fatal("CaretAt(-1) succeeded")
+	}
+	if _, ok := (*Box)(nil).CaretAt(0); ok {
+		t.Fatal("nil CaretAt succeeded")
 	}
 }
 
@@ -111,7 +153,10 @@ func TestMarshalCanonical(t *testing.T) {
 		Items:   []Item{item},
 		Hits:    []Hit{hit},
 		Breaks:  []Break{{X: 0.5, Kind: BreakRelation}},
-		Alt:     Alt{Text: "x", Speech: "x"},
+		CaretStops: []CaretStop{{
+			Source: 1, X: 0.5, Top: -2, Bottom: 1,
+		}},
+		Alt: Alt{Text: "x", Speech: "x"},
 		Lines: []LineBox{{
 			Baseline: 1,
 			Width:    1,
@@ -139,6 +184,7 @@ func TestMarshalCanonical(t *testing.T) {
 		!strings.Contains(string(first), `"breaks"`) ||
 		!strings.Contains(string(first), `"alt":{"speech":"x","text":"x"}`) ||
 		!strings.Contains(string(first), `"italic":-0.5`) ||
+		!strings.Contains(string(first), `"carets":[{"source":1`) ||
 		!strings.Contains(string(first), `"lines":[{"baseline":1,"offsetX":0,"width":1`) ||
 		!strings.Contains(string(first), `"items":{"start":0,"count":1}`) {
 		t.Fatalf("canonical output omitted hits, breaks, alt, signed italic, lines, or ranges: %s", first)
@@ -410,6 +456,9 @@ func TestValidateBoxRejectsInvalidHitsBreaksAndLineRanges(t *testing.T) {
 		{name: "hit area", box: &Box{Hits: []Hit{{Source: source.NewRange(0, 1), Area: geometry.Rect{Width: -1}}}}},
 		{name: "hit depth", box: &Box{Hits: []Hit{{Source: source.NewRange(0, 1), Depth: -1}}}},
 		{name: "hit kind", box: &Box{Hits: []Hit{{Source: source.NewRange(0, 1), Kind: HitOther + 1}}}},
+		{name: "caret source", box: &Box{CaretStops: []CaretStop{{Source: -1}}}},
+		{name: "caret geometry", box: &Box{CaretStops: []CaretStop{{Source: 0, Top: 1, Bottom: 0}}}},
+		{name: "caret order", box: &Box{CaretStops: []CaretStop{{Source: 2}, {Source: 1}}}},
 		{name: "break x", box: &Box{Breaks: []Break{{X: float32(math.Inf(1))}}}},
 		{name: "break kind", box: &Box{Breaks: []Break{{Kind: BreakExplicit + 1}}}},
 		{name: "alt", box: &Box{Alt: Alt{Text: "x\x00y"}}},

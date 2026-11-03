@@ -76,6 +76,7 @@ func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 		Items:      make([]display.Item, 0, s.outputItemCapacity(root.flatItems)),
 		Paths:      make([]display.PathTemplate, 0, s.outputItemCapacity(root.flatItems)),
 		Hits:       make([]display.Hit, 0, s.outputHitCapacity(root.flatHits)),
+		CaretStops: make([]display.CaretStop, 0, s.outputItemCapacity(root.flatCarets)),
 	}
 	state := newFlattenState(s, box, 0, 0)
 	if err := state.visit(root, 0, 0, 0); err != nil {
@@ -304,6 +305,9 @@ func (f *flattenState) visit(
 		nodeID = inheritedID
 	}
 	if err := f.layout.appendFragmentHits(f, fragment, x, y, nodeID); err != nil {
+		return err
+	}
+	if err := f.layout.appendFragmentCarets(f, fragment, x, y, nodeID); err != nil {
 		return err
 	}
 	for drawIndex := 0; drawIndex < fragment.drawCount; drawIndex++ {

@@ -53,13 +53,18 @@ type Fragment struct {
 	// flatItems and flatHits are exact finalized subtree counts. A child must
 	// be complete before it is placed with pushGroup, as required by the
 	// immutable-after-construction fragment contract.
-	flatItems int
-	flatHits  int
+	flatItems  int
+	flatHits   int
+	flatCarets int
 
 	firstHit sourceHit
 	moreHits []sourceHit
 	hitCount int
 	ownHit   int
+
+	firstCaret sourceCaret
+	moreCarets []sourceCaret
+	caretCount int
 
 	breaks []fragmentBreak
 }
@@ -280,6 +285,7 @@ func (f *Fragment) appendDraw(draw placedDraw) {
 	f.flatItems = saturatedAdd(f.flatItems, drawFlatItems(draw))
 	if draw.kind == drawGroup && draw.group != nil {
 		f.flatHits = saturatedAdd(f.flatHits, draw.group.flatHits)
+		f.flatCarets = saturatedAdd(f.flatCarets, draw.group.flatCarets)
 	}
 }
 

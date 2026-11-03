@@ -217,6 +217,7 @@ func (r *Renderer) layoutFormulaContext(
 			return nil, err
 		}
 	}
+	box.CaretStops = box.Carets()
 	if err := box.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}

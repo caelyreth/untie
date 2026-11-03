@@ -2,6 +2,7 @@
 package display
 
 import (
+	"cmp"
 	"slices"
 
 	"github.com/caelyreth/untie/geometry"
@@ -200,7 +201,10 @@ type Box struct {
 	Paths  []PathTemplate
 	Hits   []Hit
 	Breaks []Break
-	Alt    Alt
+	// CaretStops is source ordered in final box coordinates. Use Carets for an
+	// immutable snapshot and CaretAt to resolve a source offset.
+	CaretStops []CaretStop
+	Alt        Alt
 	// Diagnostics reports recoverable layout problems, such as unavailable
 	// glyphs rendered as visible placeholders. Parse diagnostics remain on the
 	// high-level RenderResult.
@@ -242,6 +246,7 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	out.Paths = clonePaths(b.Paths)
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
+	out.CaretStops = slices.Clone(b.CaretStops)
 	if len(b.Diagnostics) > 0 {
 		out.Diagnostics = make([]source.Diagnostic, len(b.Diagnostics))
 		for i, diagnostic := range b.Diagnostics {
@@ -339,6 +344,21 @@ type Break struct {
 	Kind BreakKind
 }
 
+// CaretStop is one source-ordered caret position in box coordinates.
+//
+// Source is an absolute UTF-8 byte offset. X is the caret line's horizontal
+// position and Top/Bottom are its vertical extent. A formula may have multiple
+// stops for one offset, for example where a nested construct contributes more
+// than one baseline. NodeID is the optional semantic identity associated with
+// the stop.
+type CaretStop struct {
+	Source int
+	X      float32
+	Top    float32
+	Bottom float32
+	NodeID identity.NodeID
+}
+
 // At returns the innermost hit containing p.
 func (b *Box) At(p geometry.Point) (Hit, bool) {
 	if b == nil {
@@ -419,6 +439,36 @@ func (b *Box) Covering(r source.Range) []geometry.Rect {
 	return out
 }
 
+// Carets returns an independent copy of the source-ordered caret stops.
+func (b *Box) Carets() []CaretStop {
+	if b == nil || len(b.CaretStops) == 0 {
+		return nil
+	}
+	out := slices.Clone(b.CaretStops)
+	sortCaretStops(out)
+	return out
+}
+
+// CaretAt returns the preferred caret for offset.
+//
+// An exact source offset wins. When no stop exists at offset, the nearest
+// previous or following proven source boundary is returned. Ties prefer the
+// earlier source offset, then deterministic top-to-bottom and left-to-right
+// geometry. Negative offsets and an empty caret map return false.
+func (b *Box) CaretAt(offset int) (CaretStop, bool) {
+	if b == nil || offset < 0 || len(b.CaretStops) == 0 {
+		return CaretStop{}, false
+	}
+	carets := b.Carets()
+	best := carets[0]
+	for _, candidate := range carets[1:] {
+		if betterCaretAt(candidate, best, offset) {
+			best = candidate
+		}
+	}
+	return best, true
+}
+
 func contains(r geometry.Rect, p geometry.Point) bool {
 	return p.X >= r.X && p.X <= r.X+r.Width && p.Y >= r.Y && p.Y <= r.Y+r.Height
 }
@@ -436,6 +486,66 @@ func betterHit(candidate, current Hit) bool {
 		return candidate.Source.Start < current.Source.Start
 	}
 	return candidate.Source.End < current.Source.End
+}
+
+func betterCaretAt(candidate, current CaretStop, offset int) bool {
+	candidateExact := candidate.Source == offset
+	currentExact := current.Source == offset
+	if candidateExact != currentExact {
+		return candidateExact
+	}
+	candidateDistance := absInt(candidate.Source - offset)
+	currentDistance := absInt(current.Source - offset)
+	if candidateDistance != currentDistance {
+		return candidateDistance < currentDistance
+	}
+	if candidate.Source != current.Source {
+		return candidate.Source < current.Source
+	}
+	if candidate.Top != current.Top {
+		return candidate.Top < current.Top
+	}
+	if candidate.X != current.X {
+		return candidate.X < current.X
+	}
+	if candidate.Bottom != current.Bottom {
+		return candidate.Bottom < current.Bottom
+	}
+	return candidate.NodeID < current.NodeID
+}
+
+func sortCaretStops(carets []CaretStop) {
+	slices.SortFunc(carets, func(a, b CaretStop) int {
+		if c := cmp.Compare(a.Source, b.Source); c != 0 {
+			return c
+		}
+		if a.Top != b.Top {
+			if a.Top < b.Top {
+				return -1
+			}
+			return 1
+		}
+		if a.X != b.X {
+			if a.X < b.X {
+				return -1
+			}
+			return 1
+		}
+		if a.Bottom != b.Bottom {
+			if a.Bottom < b.Bottom {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(a.NodeID, b.NodeID)
+	})
+}
+
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
 
 func absFloat(v float32) float32 {
