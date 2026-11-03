@@ -139,7 +139,11 @@ jobs:
           test -n "$VERCEL_PROJECT_ID"
           nix develop .. --impure --command bash -eu -o pipefail -c '
             bunx vercel@65.10.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
-            bunx vercel@65.10.0 build --prod --token "$VERCEL_TOKEN"
-            bunx vercel@65.10.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+            mkdir -p .vercel/output/static
+            cp -a build/. .vercel/output/static/
+            printf '{"version":3}\n' > .vercel/output/config.json
+            bunx vercel@65.10.0 deploy \
+              --prebuilt \
+              --prod \
+              --token "$VERCEL_TOKEN"
           '
-
