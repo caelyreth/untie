@@ -441,7 +441,14 @@ func (l *lowerer) lowerWrappedFence(e *xmlElement, view *attrView) (ir.Node, err
 	if err != nil {
 		return nil, err
 	}
-	if hasOpen && len(children) == 0 || hasClose && len(children) == 0 {
+	delimiters := 0
+	if hasOpen {
+		delimiters++
+	}
+	if hasClose {
+		delimiters++
+	}
+	if len(children) < delimiters {
 		return nil, fmt.Errorf("%w: fenced mrow is missing an advertised delimiter", ErrInvalidMathML)
 	}
 	node := ir.NewFenced(source.Detached())
@@ -742,7 +749,14 @@ func (l *lowerer) lowerFraction(e *xmlElement, view *attrView) (ir.Node, error) 
 		if err != nil {
 			return nil, err
 		}
-		node.Bar = !value.IsZero()
+		if !value.IsZero() {
+			return nil, fmt.Errorf(
+				"%w: custom fraction line thickness %q is not represented in canonical IR",
+				ErrUnsupported,
+				thickness,
+			)
+		}
+		node.Bar = false
 	}
 	if bevelled, ok := view.take("bevelled"); ok {
 		value, err := parseBool("bevelled", bevelled)

@@ -26,7 +26,7 @@ func (b *Box) Split(at Break) (left, right *Box, err error) {
 	if b == nil {
 		return nil, nil, fmt.Errorf("%w: nil box", ErrCannotSplit)
 	}
-	if len(b.Lines) != 0 || b.Tag != nil {
+	if len(b.Lines) != 0 || b.Tag != nil || len(b.Tags) > 0 {
 		return nil, nil, fmt.Errorf(
 			"%w: split supports inline boxes without lines or tags",
 			ErrCannotSplit,

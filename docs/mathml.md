@@ -117,6 +117,10 @@ Supported ordinary attributes include `display`, `mathvariant`, `mathcolor`,
 Non-semantic document attributes such as `class`, `id`, and `aria-label` are
 accepted and ignored. Unknown attributes are rejected.
 
+`linethickness="0"` removes a fraction bar. Custom nonzero thicknesses have no
+neutral IR field and are rejected as unsupported rather than silently replaced
+with the default rule thickness.
+
 Optional `data-untie-*` metadata can preserve IR fields that MathML cannot spell
 directly, including stable IDs, paint roles, semantic script/table/fraction
 roles, and exact nonnegative lengths. MathML without these attributes remains

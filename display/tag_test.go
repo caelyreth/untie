@@ -1,6 +1,7 @@
 package display
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -184,6 +185,16 @@ func TestRowTagCollectionCloneCanonicalAndValidation(t *testing.T) {
 				t.Fatal("Validate() accepted malformed row-tag collection")
 			}
 		})
+	}
+}
+
+func TestBoxSplitRejectsRowTags(t *testing.T) {
+	t.Parallel()
+
+	box := rowTaggedRangeBox()
+	box.Breaks = []Break{{X: 1, Kind: BreakExplicit}}
+	if _, _, err := box.Split(box.Breaks[0]); !errors.Is(err, ErrCannotSplit) {
+		t.Fatalf("Split(row-tagged) error = %v, want ErrCannotSplit", err)
 	}
 }
 

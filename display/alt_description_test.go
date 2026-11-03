@@ -107,6 +107,12 @@ func TestAltDescriptionValidationRejectsMalformedTrees(t *testing.T) {
 				Body:       &AltNode{Kind: AltKindGlyph, Text: "1"},
 			}}
 		}},
+		{name: "manual suppressed tag", edit: func(d *AltDescription) {
+			d.Tags = []AltTag{{Suppressed: true, Manual: true, Line: FormulaTagLine}}
+		}},
+		{name: "starred suppressed tag", edit: func(d *AltDescription) {
+			d.Tags = []AltTag{{Suppressed: true, Starred: true, Line: FormulaTagLine}}
+		}},
 		{name: "nonmanual tag", edit: func(d *AltDescription) {
 			d.Tags = []AltTag{{
 				Line: FormulaTagLine,

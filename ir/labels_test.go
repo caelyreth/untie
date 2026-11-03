@@ -81,6 +81,7 @@ func TestFormulaLabelsRejectMalformedMetadata(t *testing.T) {
 		label EquationLabel
 	}{
 		{name: "empty name", label: EquationLabel{Span: span, Origin: span}},
+		{name: "blank name", label: EquationLabel{Name: " \t ", Span: span, Origin: span}},
 		{name: "invalid UTF-8", label: EquationLabel{Name: string([]byte{0xff}), Span: span, Origin: span}},
 		{name: "control character", label: EquationLabel{Name: "eq\nx", Span: span, Origin: span}},
 		{name: "invalid span", label: EquationLabel{Name: "eq:x", Span: source.Range{Start: 3, End: 2}, Origin: span}},

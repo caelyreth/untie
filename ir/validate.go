@@ -118,8 +118,8 @@ func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 		}
 		state.path.pushText(".name")
 		switch {
-		case label.Name == "":
-			err := fmt.Errorf("%w: %s: empty label name", ErrInvalidIR, &state.path)
+		case strings.TrimSpace(label.Name) == "":
+			err := fmt.Errorf("%w: %s: label name must not be blank", ErrInvalidIR, &state.path)
 			state.path.pop()
 			return Stats{}, err
 		case !utf8.ValidString(label.Name):

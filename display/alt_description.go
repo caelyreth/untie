@@ -448,6 +448,9 @@ func (d *AltDescription) ValidateWithLimits(limits source.Limits) error {
 			if tag.Body != nil {
 				return fmt.Errorf("%w: %s.suppressed has a body", ErrInvalidAltDescription, path)
 			}
+			if tag.Manual || tag.Starred {
+				return fmt.Errorf("%w: %s.suppressed cannot be manual or starred", ErrInvalidAltDescription, path)
+			}
 		} else {
 			if !tag.Manual {
 				return fmt.Errorf("%w: %s non-suppressed tag is not manual", ErrInvalidAltDescription, path)

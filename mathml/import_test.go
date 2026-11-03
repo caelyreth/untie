@@ -3,6 +3,7 @@ package mathml_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -228,6 +229,12 @@ func TestUnmarshalRejectsUnknownAndMalformedConstructs(t *testing.T) {
 			want: mathml.ErrInvalidMathML,
 			code: source.CodeSyntax,
 		},
+		{
+			name: "custom fraction thickness",
+			xml:  `<math xmlns="http://www.w3.org/1998/Math/MathML"><mfrac linethickness="2pt"><mi>a</mi><mi>b</mi></mfrac></math>`,
+			want: mathml.ErrUnsupported,
+			code: source.CodeUnsupported,
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -245,6 +252,51 @@ func TestUnmarshalRejectsUnknownAndMalformedConstructs(t *testing.T) {
 				t.Fatalf("diagnostics = %#v", result.Diagnostics)
 			}
 		})
+	}
+}
+
+func TestUnmarshalFencedDelimiterCombinations(t *testing.T) {
+	t.Parallel()
+
+	for _, hasOpen := range []bool{false, true} {
+		for _, hasClose := range []bool{false, true} {
+			for childCount := 0; childCount <= 2; childCount++ {
+				hasOpen, hasClose, childCount := hasOpen, hasClose, childCount
+				t.Run(fmt.Sprintf("open=%t/close=%t/children=%d", hasOpen, hasClose, childCount), func(t *testing.T) {
+					t.Parallel()
+					var children strings.Builder
+					for i := 0; i < childCount; i++ {
+						fmt.Fprintf(&children, "<mi>%c</mi>", 'a'+i)
+					}
+					input := fmt.Sprintf(
+						`<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow data-untie-kind="fenced" data-untie-has-open="%t" data-untie-has-close="%t">%s</mrow></math>`,
+						hasOpen,
+						hasClose,
+						children.String(),
+					)
+					result, err := mathml.UnmarshalString(context.Background(), input, mathml.Options{})
+					delimiters := 0
+					if hasOpen {
+						delimiters++
+					}
+					if hasClose {
+						delimiters++
+					}
+					if childCount == 0 || childCount < delimiters {
+						if !errors.Is(err, mathml.ErrInvalidMathML) {
+							t.Fatalf("error = %v, want ErrInvalidMathML", err)
+						}
+						return
+					}
+					if err != nil {
+						t.Fatalf("UnmarshalString() error = %v", err)
+					}
+					if result.Formula == nil {
+						t.Fatal("nil imported formula")
+					}
+				})
+			}
+		}
 	}
 }
 
