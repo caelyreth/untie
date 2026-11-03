@@ -13,7 +13,7 @@ the public `contrib/mygo` module are versioned together.
 5. Review the changelog output locally:
 
    ```sh
-   npx --yes changelogithub@15.0.5 --to v0.2.1 --dry
+   npx --yes changelogithub@15.0.5 --to v0.3.0 --dry
    ```
 
 The release notes come from one-line Conventional Commit subjects. The
@@ -25,9 +25,9 @@ and excludes nested module tags from root release changelogs.
 Create both module tags on the same commit:
 
 ```sh
-git tag -a v0.2.1 -m "v0.2.1"
-git tag -a contrib/mygo/v0.2.1 -m "contrib/mygo/v0.2.1"
-git push origin v0.2.1 contrib/mygo/v0.2.1
+git tag -a v0.3.0 -m "v0.3.0"
+git tag -a contrib/mygo/v0.3.0 -m "contrib/mygo/v0.3.0"
+git push origin v0.3.0 contrib/mygo/v0.3.0
 ```
 
 The `v*` tag starts the release workflow. It first runs the complete reusable
