@@ -169,9 +169,34 @@ var (
 // braces; Typst link destinations are limited to non-empty strings in the
 // bounded evaluator. Labels, references, and document-level link resolution are
 // outside this API.
-func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Expr) {
+func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) *Expr {
+	expr, _ := ParseContext(context.Background(), src, dialect, mode, opts)
+	return expr
+}
+
+// ParseContext parses source with context cancellation. Cancellation is checked
+// before parser dispatch and again before the expression is returned. Parser
+// work already in progress is bounded by opts.Limits rather than interrupted at
+// arbitrary points. A canceled call returns a nil expression and ctx.Err.
+//
+// Parse options are snapshotted before parsing. The caller may reuse or mutate
+// its macro map and limits after ParseContext returns.
+func ParseContext(
+	ctx context.Context,
+	src string,
+	dialect Dialect,
+	mode Mode,
+	opts ParseOptions,
+) (*Expr, error) {
+	if ctx == nil {
+		return nil, ErrInvalidContext
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	opts = snapshotParseOptions(opts)
 	limits := opts.Limits.WithDefaults()
-	return parseRecovered(src, dialect, mode, opts, limits, func(limits source.Limits) frontendResult {
+	expr := parseRecovered(src, dialect, mode, opts, limits, func(limits source.Limits) frontendResult {
 		switch dialect {
 		case TeX:
 			macros := make(map[string]tex.Macro, len(opts.Macros))
@@ -196,6 +221,24 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 			}
 		}
 	})
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return expr, nil
+}
+
+func snapshotParseOptions(opts ParseOptions) ParseOptions {
+	opts.Limits = opts.Limits.WithDefaults()
+	if len(opts.Macros) == 0 {
+		opts.Macros = nil
+		return opts
+	}
+	macros := make(map[string]Macro, len(opts.Macros))
+	for name, macro := range opts.Macros {
+		macros[name] = macro
+	}
+	opts.Macros = macros
+	return opts
 }
 
 type frontendResult struct {
