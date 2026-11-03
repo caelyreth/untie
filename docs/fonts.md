@@ -113,7 +113,7 @@ for editor ranges and visible recovery.
 The report covers shaped text clusters, not math atoms selected directly through
 OpenType MATH tables. It is empty when a formula has no shaped text.
 
-Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.3
+Color-only emoji formats such as sbix, CBDT, and COLR are not part of the 0.4
 outline-only font and display contract. When such coverage is required, load a
 monochrome outline font or let the missing cluster use visible recovery.
 

@@ -61,7 +61,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Migrating to 0.3](migration-v0.3.md) records editor recovery, shaping,
   diagnostics, source maps, and MyGo drawing changes.
 - [Migrating to 0.4](migration-v0.4.md) records core color policy, fallback
-  reporting, pixel-grid snapping, and cache identity changes.
+  reporting, pixel-grid snapping, MyGo accessibility, hit testing, diagnostics,
+  clipboard, inline baseline integration, and cache identity changes.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a

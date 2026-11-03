@@ -1,7 +1,8 @@
 # Migrating To 0.4
 
-Untie 0.4 adds core output policy and shaped-text provenance. The runtime
-version is `0.4.0+layout.3`, and the process-wide Engine cache schema is `3`.
+Untie 0.4 adds core output policy, shaped-text provenance, and the complete
+MyGo editor integration surface. The runtime version is `0.4.0+layout.3`, and
+the process-wide Engine cache schema is `3`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -71,6 +72,40 @@ are unchanged. The zero grid is a no-op.
 `Item.Snap` and `render.Command.Snap` expose the candidate axis even when
 snapping is disabled, allowing hosts to implement an equivalent draw-time
 policy without re-inferring geometry.
+
+## Semantic Accessibility
+
+Standalone MyGo elements now request semantic alternative text and expose:
+
+- `Alt.Speech` as the label, with `Alt.Text` and source as fallbacks;
+- exact TeX or Typst source as the value;
+- a stable non-empty name for empty formulas.
+
+Set `Options.Accessibility = untiemygo.AccessibilityDisabled` to retain
+source-only labels without the alternative-text traversal. Use
+`DescribeFormula` when an application needs the same deterministic fallback
+policy outside an element.
+
+MyGo v0.7.4's `markdown.InlineObject` has no per-object accessibility metadata.
+Inline formulas continue to participate in the paragraph's source-copy and
+selection behavior, but cannot independently attach spoken alternative text
+through the pinned adapter API.
+
+## MyGo Editor Elements
+
+The new options-bearing element methods add:
+
+- `OnHit` hover, press, and click callbacks resolved through `Box.At`;
+- source-range diagnostic underlines and whole-element tooltips;
+- plain-text and dialect-source clipboard context menu actions.
+
+`HitAt` exposes the inverse draw transform for applications that do not use
+MyGo input callbacks. `Options.Inline.Metrics` can report nominal baseline
+metrics with overflow ink kept drawable through the surrounding text clip.
+
+`FormulaClipboardData` and the context-menu option expose plain text and custom
+TeX/Typst source MIME formats. MathML is not offered until Untie has a real
+MathML serializer.
 
 ## Display And Cache Compatibility
 

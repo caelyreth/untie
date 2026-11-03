@@ -99,20 +99,17 @@ func (r *Renderer) Draw(painter *ui.Painter, box *untie.Box, viewport ui.Rect) e
 	return DrawBox(painter, box, viewport, r.draw)
 }
 
-func (r *Renderer) drawInline(painter *ui.Painter, box *untie.Box, rect ui.Rect) {
+func (r *Renderer) drawInline(
+	painter *ui.Painter,
+	box *untie.Box,
+	rect ui.Rect,
+	metrics InlineMetricsMode,
+) {
 	if r == nil || painter == nil || box == nil {
 		return
 	}
-	bounds := box.Bounds()
-	height, _ := inlineExtents(bounds)
-	transform := render.Transform{
-		Scale: 1,
-		Offset: untie.Point{
-			X: rect.X - bounds.X,
-			Y: rect.Y + height,
-		},
-	}
-	_ = drawBoxCommands(painter, box, rect, transform, r.draw.Paint)
+	transform, clip := inlinePlacement(box, rect, metrics)
+	_ = drawBoxCommands(painter, box, clip, transform, r.draw.Paint)
 }
 
 func drawTransform(box *untie.Box, viewport ui.Rect, options DrawOptions) (render.Transform, error) {

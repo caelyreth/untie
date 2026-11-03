@@ -63,6 +63,11 @@ type Options struct {
 	CacheEntries int
 	Limits       untie.Limits
 	Draw         DrawOptions
+	// Accessibility controls semantic alternative-text generation for
+	// standalone elements. The zero value requests it.
+	Accessibility AccessibilityMode
+	// Inline controls Markdown inline-object baseline metrics.
+	Inline InlineOptions
 }
 
 // Renderer is a concurrency-safe MyGo adapter over one Untie renderer.
@@ -75,6 +80,8 @@ type Renderer struct {
 	baseSize    float32
 	displaySize float32
 	draw        DrawOptions
+	access      AccessibilityMode
+	inline      InlineOptions
 	cache       *layoutCache
 }
 
@@ -114,6 +121,14 @@ func New(fonts *untie.FontSet, opts Options) (*Renderer, error) {
 		return nil, fmt.Errorf("%w: cache entries %d exceed %d",
 			ErrInvalidOptions, cacheEntries, MaxCacheEntries)
 	}
+	if !opts.Accessibility.validate() {
+		return nil, fmt.Errorf("%w: unknown accessibility mode %d",
+			ErrInvalidOptions, opts.Accessibility)
+	}
+	if !opts.Inline.validate() {
+		return nil, fmt.Errorf("%w: unknown inline metrics mode %d",
+			ErrInvalidOptions, opts.Inline.Metrics)
+	}
 	if err := validateDrawOptions(opts.Draw); err != nil {
 		return nil, err
 	}
@@ -131,6 +146,8 @@ func New(fonts *untie.FontSet, opts Options) (*Renderer, error) {
 		baseSize:    baseSize,
 		displaySize: displaySize,
 		draw:        opts.Draw,
+		access:      opts.Accessibility,
+		inline:      opts.Inline,
 		cache:       newLayoutCache(cacheEntries),
 	}, nil
 }
@@ -189,15 +206,18 @@ func (r *Renderer) Render(
 
 // InlineMath implements markdown.Options.InlineMath.
 //
-// It returns false when rendering fails. The object dimensions map the complete
-// Box.Bounds, including certified overflow, around the baseline. The adapter
-// retains the immutable box and the Draw closure only reads it.
+// It returns false when rendering fails. By default the object dimensions map
+// the complete Box.Bounds, including certified overflow, around the baseline.
+// Options.Inline can instead report nominal metrics and preserve overflow only
+// as drawable ink inside the surrounding text clip.
 func (r *Renderer) InlineMath(source string, size float32) (markdown.InlineObject, bool) {
 	if r == nil {
 		return markdown.InlineObject{}, false
 	}
 	if size <= 0 {
 		size = r.baseSize
+	} else if !finite(size) {
+		return markdown.InlineObject{}, false
 	}
 	result, err := r.Render(context.Background(), source, untie.Inline,
 		untie.Style{Size: size})
@@ -205,14 +225,13 @@ func (r *Renderer) InlineMath(source string, size float32) (markdown.InlineObjec
 		return markdown.InlineObject{}, false
 	}
 	box := result.Box
-	bounds := box.Bounds()
-	height, depth := inlineExtents(bounds)
+	width, height, depth := inlineObjectMetrics(box, r.inline.Metrics)
 	return markdown.InlineObject{
-		Width:  bounds.Width,
+		Width:  width,
 		Height: height,
 		Depth:  depth,
 		Draw: func(painter *ui.Painter, rect ui.Rect) {
-			r.drawInline(painter, box, rect)
+			r.drawInline(painter, box, rect, r.inline.Metrics)
 		},
 	}, true
 }
@@ -224,33 +243,61 @@ func (r *Renderer) InlineMath(source string, size float32) (markdown.InlineObjec
 // standalone formula elements; use InlineMath or BindMarkdown when the formula
 // must participate in a text baseline.
 //
-// Rendering reuses the adapter cache. If parsing or layout fails, the element
-// shows the source as selectable danger-colored text instead of disappearing.
+// Rendering reuses the adapter cache. The element carries source as its
+// accessibility value and semantic alternative text as its label when enabled.
+// If parsing or layout fails, it shows the source as selectable danger-colored
+// text instead of disappearing.
 func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Element {
+	return r.ElementWithOptions(c, source, mode, ElementOptions{})
+}
+
+// ElementWithOptions is Element with optional hit callbacks, diagnostic
+// decorations, and clipboard actions.
+func (r *Renderer) ElementWithOptions(
+	c *ui.Context,
+	source string,
+	mode untie.Mode,
+	options ElementOptions,
+) ui.Element {
 	if c == nil || !c.Valid() {
 		return ui.Element{}
 	}
 	if r == nil {
-		return fallbackElement(c, source, DefaultBaseSize, untie.RoleError)
+		return fallbackElement(
+			c,
+			source,
+			DefaultBaseSize,
+			untie.RoleError,
+			"math renderer unavailable",
+		)
 	}
 	size := r.baseSize
 	if mode == untie.Display {
 		size = r.displaySize
 	}
-	result, err := r.Render(context.Background(), source, mode, untie.Style{})
+	result, err := r.Render(context.Background(), source, mode, r.elementStyle(size))
 	if err != nil || result == nil || result.Box == nil {
-		return fallbackElement(c, source, size, untie.RoleError)
+		return fallbackElement(
+			c,
+			source,
+			size,
+			untie.RoleError,
+			renderFailureText(result, err),
+		)
 	}
 	box := result.Box
 	bounds := box.Bounds()
 	padding := r.draw.Padding
-	return ui.Box(c).
-		Width(max(1, bounds.Width+2*padding)).
-		Height(max(1, bounds.Height+2*padding)).
-		Label(source).
-		Draw(func(painter *ui.Painter, rect ui.Rect) {
-			_ = r.Draw(painter, box, rect)
-		})
+	return r.formulaElement(
+		c,
+		source,
+		mode,
+		result,
+		r.draw,
+		max(1, bounds.Width+2*padding),
+		max(1, bounds.Height+2*padding),
+		options,
+	)
 }
 
 // DisplayMath builds a full-width display-math element for MyGo Markdown.
@@ -262,7 +309,16 @@ func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Ele
 // A layout failure falls back to selectable source text in the danger color
 // rather than hiding the input.
 func (r *Renderer) DisplayMath(c *ui.Context, source string) ui.Element {
-	return r.Element(c, source, untie.Display).FillWidth()
+	return r.DisplayMathWithOptions(c, source, ElementOptions{})
+}
+
+// DisplayMathWithOptions is DisplayMath with editor element options.
+func (r *Renderer) DisplayMathWithOptions(
+	c *ui.Context,
+	source string,
+	options ElementOptions,
+) ui.Element {
+	return r.ElementWithOptions(c, source, untie.Display, options).FillWidth()
 }
 
 // DisplayMathWidth builds a width-aware display-math element.
@@ -279,49 +335,96 @@ func (r *Renderer) DisplayMathWidth(
 	source string,
 	width float32,
 ) ui.Element {
+	return r.DisplayMathWidthWithOptions(c, source, width, ElementOptions{})
+}
+
+// DisplayMathWidthWithOptions is DisplayMathWidth with editor element options.
+func (r *Renderer) DisplayMathWidthWithOptions(
+	c *ui.Context,
+	source string,
+	width float32,
+	elementOptions ElementOptions,
+) ui.Element {
 	if c == nil || !c.Valid() {
 		return ui.Element{}
 	}
 	if r == nil {
-		return fallbackElement(c, source, DefaultBaseSize, untie.RoleError)
+		return fallbackElement(
+			c,
+			source,
+			DefaultBaseSize,
+			untie.RoleError,
+			"math renderer unavailable",
+		)
 	}
 	padding := r.draw.Padding
 	frameWidth := width - 2*padding
 	if !positiveFinite(width) || !positiveFinite(frameWidth) {
-		return fallbackElement(c, source, r.displaySize, untie.RoleError)
+		return fallbackElement(
+			c,
+			source,
+			r.displaySize,
+			untie.RoleError,
+			"display width does not leave a positive content frame",
+		)
 	}
-	result, err := r.Render(context.Background(), source, untie.Display, untie.Style{
-		Size:     r.displaySize,
-		MaxWidth: frameWidth,
-		Align:    untie.Align(r.draw.Align),
-	})
+	style := r.elementStyle(r.displaySize)
+	style.MaxWidth = frameWidth
+	style.Align = untie.Align(r.draw.Align)
+	result, err := r.Render(context.Background(), source, untie.Display, style)
 	if err != nil || result == nil || result.Box == nil {
-		return fallbackElement(c, source, r.displaySize, untie.RoleError)
+		return fallbackElement(
+			c,
+			source,
+			r.displaySize,
+			untie.RoleError,
+			renderFailureText(result, err),
+		)
 	}
 	box := result.Box
 	bounds := box.Bounds()
-	options := r.draw
-	options.Scale = ScaleNatural
-	return ui.Box(c).
-		Width(width).
-		Height(max(1, bounds.Height+2*padding)).
-		Label(source).
-		Draw(func(painter *ui.Painter, rect ui.Rect) {
-			_ = DrawBox(painter, box, rect, options)
-		})
+	draw := r.draw
+	draw.Scale = ScaleNatural
+	return r.formulaElement(
+		c,
+		source,
+		untie.Display,
+		result,
+		draw,
+		width,
+		max(1, bounds.Height+2*padding),
+		elementOptions,
+	)
 }
 
 // BindMarkdown installs math rendering on options and enables single-dollar
 // inline math. Existing non-math callbacks and parser extensions are retained.
 func (r *Renderer) BindMarkdown(options *markdown.Options) {
+	r.BindMarkdownWithOptions(options, ElementOptions{})
+}
+
+// BindMarkdownWithOptions is BindMarkdown with editor element options applied
+// to display math. Inline math keeps the markdown.InlineObject contract and is
+// configured through Options.Inline.
+func (r *Renderer) BindMarkdownWithOptions(
+	options *markdown.Options,
+	elementOptions ElementOptions,
+) {
 	if r == nil || options == nil {
 		return
 	}
 	options.Extensions |= parser.ExtMath | parser.ExtDollarMath
 	options.Math = func(c *ui.Context, source string) {
-		r.DisplayMath(c, source)
+		r.DisplayMathWithOptions(c, source, elementOptions)
 	}
 	options.InlineMath = r.InlineMath
+}
+
+func (r *Renderer) elementStyle(size float32) untie.Style {
+	return untie.Style{
+		Size:        size,
+		GenerateAlt: r.access == AccessibilityAuto,
+	}
 }
 
 // CacheStats reports the current cache size, hard capacity, and hit/miss
@@ -333,10 +436,94 @@ func (r *Renderer) CacheStats() CacheStats {
 	return r.cache.stats()
 }
 
-func fallbackElement(c *ui.Context, source string, size float32, role untie.Role) ui.Element {
-	return ui.Text(c, source).
+func (r *Renderer) formulaElement(
+	c *ui.Context,
+	source string,
+	mode untie.Mode,
+	result *untie.RenderResult,
+	draw DrawOptions,
+	width float32,
+	height float32,
+	options ElementOptions,
+) ui.Element {
+	box := result.Box
+	semantics := DescribeFormula(source, result.Alt)
+	element := ui.Box(c).
+		Width(width).
+		Height(height).
+		Role(ui.RoleImage).
+		Label(semantics.Label).
+		Value(semantics.Value).
+		Draw(func(painter *ui.Painter, rect ui.Rect) {
+			_ = DrawBox(painter, box, rect, draw)
+		})
+	if options.Diagnostics.Mode&DiagnosticUnderline != 0 {
+		element = element.DrawOver(func(painter *ui.Painter, rect ui.Rect) {
+			paintDiagnostics(
+				painter,
+				rect,
+				box,
+				result.Diagnostics,
+				draw,
+				options.Diagnostics,
+			)
+		})
+	}
+	if options.Diagnostics.Mode&DiagnosticTooltip != 0 {
+		if tooltip := DiagnosticTooltipText(
+			result.Diagnostics,
+			options.Diagnostics.Format,
+		); tooltip != "" {
+			element = element.Tooltip(tooltip)
+		}
+	}
+	element = wirePointerHits(
+		element,
+		source,
+		mode,
+		box,
+		width,
+		height,
+		draw,
+		options.OnHit,
+	)
+	if options.OnHit != nil {
+		element = element.Cursor(ui.CursorPointer)
+	}
+	if options.Clipboard.Enabled {
+		element = addClipboardMenu(element, c, source, result.Alt, r.dialect)
+	}
+	return element
+}
+
+func fallbackElement(
+	c *ui.Context,
+	source string,
+	size float32,
+	role untie.Role,
+	detail string,
+) ui.Element {
+	semantics := DescribeFormula(source, untie.Alt{})
+	element := ui.Text(c, source).
 		FontSize(size).
-		TextColor(PaintColor(c.Theme(), untie.Paint{Role: role}))
+		TextColor(PaintColor(c.Theme(), untie.Paint{Role: role})).
+		Selectable().
+		Label(semantics.Label).
+		Value(semantics.Value)
+	if detail != "" {
+		element = element.Tooltip(detail)
+	}
+	return element
+}
+
+func renderFailureText(result *untie.RenderResult, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	if result != nil {
+		return DiagnosticTooltipText(result.Diagnostics, nil)
+	}
+	return ""
 }
 
 func inlineExtents(bounds untie.Rect) (height, depth float32) {

@@ -291,6 +291,7 @@ var allowedContribImports = map[string]packageRules{
 			"github.com/egoist/mygo/ui",
 			"github.com/egoist/mygo/ui/markdown",
 			"github.com/egoist/mygo/ui/markdown/parser",
+			"github.com/egoist/mygo/transfer",
 		},
 		Tests: []string{contribModulePath},
 	},
