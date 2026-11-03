@@ -53,15 +53,24 @@ Export mappings include:
 | scripts | `msub`, `msup`, `msubsup`, `munder`, `mover`, `munderover`, `mmultiscripts` |
 | fenced, sized delimiter | `mrow` with delimiters, `mo` |
 | accent, line, cancel | `mover`/`munder`, `menclose` |
-| table, multiline | `mtable`, `mtr`, `mtd` |
-| style, color, box | `mstyle` |
+| table, multiline | `mtable`, `mtr`, `mtd`, `mlabeledtr` |
+| style, color, box | `mstyle`; font-size declarations also use `mathsize` |
+| overlay, raise | `mpadded` |
 | phantom | `mphantom` |
 | error, placeholder | `merror` |
 | break, alignment marker | zero-width `mspace` |
 
-Formula-level equation tags use `mtable`/`mlabeledtr`. Suppression-only tag
-events are represented by root metadata because they have no visible MathML
-content.
+Formula-level equation tags use `mtable`/`mlabeledtr`. Source-row tags use
+`mlabeledtr` entries in the exported multiline `mtable`; suppressed row events
+remain on the corresponding `mtr` as metadata. Since raw tag bodies omit
+numbering parentheses, unstarred tags are wrapped in Presentation MathML
+delimiters while starred tags are emitted directly. Suppression-only row events
+also record their row indexes on the root as `data-untie-suppressed-tag-lines`.
+
+Row-tag export supports the canonical shapes produced by the TeX frontend: a
+`Multiline` root or a single-item `Row` containing one `Multiline`. Row tags
+outside that multiline shape are rejected as unrepresentable rather than being
+silently attached to the wrong row.
 
 Source spans, origins, and text-cluster maps are deliberately not exported.
 They describe a particular TeX or Typst source buffer, not the formula's
@@ -125,6 +134,7 @@ The importer rejects these constructs explicitly:
 - Content MathML and mixed content markup;
 - `semantics`, `annotation`, and other annotation layers;
 - `mstyle`, `mphantom`, `menclose`, `merror`, and `mmultiscripts`;
+- `mpadded`, including exported `Overlay` and `Raise` nodes;
 - `mlabeledtr` equation tags;
 - links, external references, macros, embedded HTML/SVG, and CSS beyond
   `letter-spacing` on `mtext`;

@@ -97,6 +97,12 @@ type writer struct {
 	mode    ir.Mode
 	limits  source.Limits
 	count   int
+	rowTags *rowTagState
+}
+
+type rowTagState struct {
+	target *ir.Multiline
+	tags   map[int]ir.EquationTag
 }
 
 func validateExportFormula(f *ir.Formula, mode ir.Mode, limits source.Limits) error {
@@ -106,16 +112,11 @@ func validateExportFormula(f *ir.Formula, mode ir.Mode, limits source.Limits) er
 	if err := ir.Validate(f, limits); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidFormula, err)
 	}
-	visible, suppressed := 0, 0
-	for i, tag := range f.Tags {
-		if tag.Line != ir.FormulaTagLine {
-			return fmt.Errorf("%w: tag %d uses unsupported line %d", ErrInvalidFormula, i, tag.Line)
+	visible := 0
+	for _, tag := range f.Tags {
+		if tag.Line == ir.FormulaTagLine && !tag.Suppressed {
+			visible++
 		}
-		if tag.Suppressed {
-			suppressed++
-			continue
-		}
-		visible++
 	}
 	if visible > 0 && mode != ir.Display {
 		return fmt.Errorf("%w: equation tags require display mode", ErrInvalidFormula)
@@ -123,11 +124,18 @@ func validateExportFormula(f *ir.Formula, mode ir.Mode, limits source.Limits) er
 	if visible > 1 {
 		return fmt.Errorf("%w: multiple visible formula tags cannot be represented", ErrInvalidFormula)
 	}
-	_ = suppressed
+	if _, err := rowTagsForFormula(f, mode); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (w *writer) writeMath(f *ir.Formula, alt accessibilityText) error {
+	rowTags, err := rowTagsForFormula(f, w.mode)
+	if err != nil {
+		return err
+	}
+	w.rowTags = rowTags
 	attrs := []xml.Attr{
 		attr("xmlns", Namespace),
 		attr("display", modeAttribute(w.mode)),
@@ -142,6 +150,9 @@ func (w *writer) writeMath(f *ir.Formula, alt accessibilityText) error {
 	suppressed := suppressedTagCount(f)
 	if suppressed > 0 {
 		attrs = append(attrs, attr(attrSuppressed, strconv.Itoa(suppressed)))
+	}
+	if lines := suppressedRowTagLines(f); lines != "" {
+		attrs = append(attrs, attr(attrSuppressedLine, lines))
 	}
 	start := xml.StartElement{Name: localName("math"), Attr: attrs}
 	if err := w.start(start); err != nil {
@@ -163,10 +174,12 @@ func (w *writer) writeMath(f *ir.Formula, alt accessibilityText) error {
 		if err := w.start(xml.StartElement{Name: localName("mlabeledtr"), Attr: rowAttrs}); err != nil {
 			return err
 		}
-		if err := w.start(xml.StartElement{Name: localName("mtd")}); err != nil {
+		if err := w.start(xml.StartElement{Name: localName("mtd"), Attr: []xml.Attr{
+			dataAttr(attrKind, "tag-label"),
+		}}); err != nil {
 			return err
 		}
-		if err := w.node(visibleTag.Body, 0); err != nil {
+		if err := w.writeTagBody(visibleTag, 0); err != nil {
 			return err
 		}
 		if err := w.end("mtd"); err != nil {
@@ -200,11 +213,92 @@ type accessibilityText struct {
 
 func formulaTag(f *ir.Formula) (ir.EquationTag, bool) {
 	for _, tag := range f.Tags {
-		if !tag.Suppressed && tag.Body != nil {
+		if tag.Line == ir.FormulaTagLine && !tag.Suppressed && tag.Body != nil {
 			return tag, true
 		}
 	}
 	return ir.EquationTag{}, false
+}
+
+func rowTagsForFormula(f *ir.Formula, mode ir.Mode) (*rowTagState, error) {
+	tags := make(map[int]ir.EquationTag)
+	hasVisible := false
+	for _, tag := range f.Tags {
+		if tag.Line >= 0 {
+			tags[tag.Line] = tag
+			if !tag.Suppressed {
+				hasVisible = true
+			}
+		}
+	}
+	if !hasVisible {
+		return nil, nil
+	}
+	if mode != ir.Display {
+		return nil, fmt.Errorf("%w: equation tags require display mode", ErrInvalidFormula)
+	}
+	target, ok := multilineTagRoot(f.Root)
+	if !ok {
+		return nil, fmt.Errorf("%w: row tags require a multiline root", ErrInvalidFormula)
+	}
+	for line := range tags {
+		if line >= len(target.Rows) {
+			return nil, fmt.Errorf("%w: tag row %d exceeds %d rows", ErrInvalidFormula, line, len(target.Rows))
+		}
+	}
+	return &rowTagState{target: target, tags: tags}, nil
+}
+
+func suppressedRowTagLines(f *ir.Formula) string {
+	var lines []string
+	for _, tag := range f.Tags {
+		if tag.Suppressed && tag.Line >= 0 {
+			lines = append(lines, strconv.Itoa(tag.Line))
+		}
+	}
+	return strings.Join(lines, ",")
+}
+
+func multilineTagRoot(n ir.Node) (*ir.Multiline, bool) {
+	switch n := n.(type) {
+	case *ir.Multiline:
+		return n, true
+	case *ir.Row:
+		if len(n.Items) == 1 {
+			return multilineTagRoot(n.Items[0])
+		}
+	}
+	return nil, false
+}
+
+func (w *writer) writeTagBody(tag ir.EquationTag, depth int) error {
+	if tag.Body == nil {
+		return fmt.Errorf("%w: nil equation tag body", ErrInvalidFormula)
+	}
+	if tag.Starred {
+		return w.node(tag.Body, depth+1)
+	}
+	if err := w.start(xml.StartElement{Name: localName("mrow"), Attr: []xml.Attr{
+		dataAttr(attrKind, "tag-label"),
+	}}); err != nil {
+		return err
+	}
+	if err := w.textElement("mo", []xml.Attr{
+		attr("fence", "true"),
+		attr("form", "prefix"),
+	}, "("); err != nil {
+		return err
+	}
+	if err := w.node(tag.Body, depth+2); err != nil {
+		return err
+	}
+	if err := w.textElement("mo", []xml.Attr{
+		attr("fence", "true"),
+		attr("form", "postfix"),
+	}, ")"); err != nil {
+		return err
+	}
+	return w.end("mrow")
 }
 
 func suppressedTagCount(f *ir.Formula) int {
@@ -367,10 +461,33 @@ func (w *writer) node(n ir.Node, depth int) error {
 			dataAttr(attrSetCramped, boolString(n.SetCramped)),
 			dataAttr(attrStyleSize, enumOrInvalid(sizeNames[:], n.NewSize)),
 			dataAttr(attrStyleCramped, boolString(n.Cramped)),
+			dataAttr(attrSetFontSize, boolString(n.SetFontSize)),
+			dataAttr(attrFontSize, mustFormatLength(n.FontSize)),
 		)
 		var styleAttrs []xml.Attr
 		styleAttrs = appendSizeAttrs(styleAttrs, n.NewSize, n.SetSize)
+		if n.SetFontSize {
+			styleAttrs = append(styleAttrs, attr("mathsize", mustFormatLength(n.FontSize)))
+		}
 		return w.nestedStyle(attrs, styleAttrs, n.Body, depth)
+	case *ir.Overlay:
+		attrs = append(attrs,
+			attr("width", "0"),
+			dataAttr(attrOverlayAlign, enumOrInvalid([]string{"start", "center", "end"}, n.Alignment)),
+		)
+		switch n.Alignment {
+		case ir.OverlayCenter:
+			attrs = append(attrs, attr("lspace", "-0.5width"))
+		case ir.OverlayEnd:
+			attrs = append(attrs, attr("lspace", "-1width"))
+		}
+		return w.wrap("mpadded", attrs, n.Body, depth)
+	case *ir.Raise:
+		attrs = append(attrs,
+			attr("voffset", mustFormatLength(n.Amount)),
+			dataAttr(attrRaiseAmount, mustFormatLength(n.Amount)),
+		)
+		return w.wrap("mpadded", attrs, n.Body, depth)
 	case *ir.Color:
 		return w.nestedStyle(attrs, paintAttributes(nil, n.Paint, "mathcolor"), n.Body, depth)
 	case *ir.Box:
@@ -732,8 +849,60 @@ func (w *writer) multiline(n *ir.Multiline, attrs []xml.Attr, depth int) error {
 	if err := w.start(xml.StartElement{Name: localName("mtable"), Attr: attrs}); err != nil {
 		return err
 	}
-	for _, row := range n.Rows {
-		if err := w.start(xml.StartElement{Name: localName("mtr")}); err != nil {
+	for line, row := range n.Rows {
+		var tag ir.EquationTag
+		hasTag := false
+		if w.rowTags != nil && w.rowTags.target == n {
+			tag, hasTag = w.rowTags.tags[line]
+		}
+		if hasTag && !tag.Suppressed {
+			rowAttrs := []xml.Attr{
+				dataAttr(attrTagLine, strconv.Itoa(tag.Line)),
+				dataAttr(attrTagManual, boolString(tag.Manual)),
+				dataAttr(attrTagSuppressed, boolString(tag.Suppressed)),
+				dataAttr(attrTagStarred, boolString(tag.Starred)),
+			}
+			if err := w.start(xml.StartElement{Name: localName("mlabeledtr"), Attr: rowAttrs}); err != nil {
+				return err
+			}
+			if err := w.start(xml.StartElement{Name: localName("mtd"), Attr: []xml.Attr{
+				dataAttr(attrKind, "tag-label"),
+			}}); err != nil {
+				return err
+			}
+			if err := w.writeTagBody(tag, depth+2); err != nil {
+				return err
+			}
+			if err := w.end("mtd"); err != nil {
+				return err
+			}
+			if err := w.start(xml.StartElement{Name: localName("mtd")}); err != nil {
+				return err
+			}
+			for _, child := range row {
+				if err := w.node(child, depth+2); err != nil {
+					return err
+				}
+			}
+			if err := w.end("mtd"); err != nil {
+				return err
+			}
+			if err := w.end("mlabeledtr"); err != nil {
+				return err
+			}
+			continue
+		}
+
+		var rowAttrs []xml.Attr
+		if hasTag && tag.Suppressed {
+			rowAttrs = append(rowAttrs,
+				dataAttr(attrTagLine, strconv.Itoa(tag.Line)),
+				dataAttr(attrTagManual, boolString(tag.Manual)),
+				dataAttr(attrTagSuppressed, "true"),
+				dataAttr(attrTagStarred, boolString(tag.Starred)),
+			)
+		}
+		if err := w.start(xml.StartElement{Name: localName("mtr"), Attr: rowAttrs}); err != nil {
 			return err
 		}
 		if err := w.start(xml.StartElement{Name: localName("mtd")}); err != nil {

@@ -251,7 +251,7 @@ func TestUnmarshalRejectsUnknownAndMalformedConstructs(t *testing.T) {
 func TestUnmarshalExportOnlyElementsAreExplicitlyUnsupported(t *testing.T) {
 	t.Parallel()
 	for _, element := range []string{
-		"mmultiscripts", "mstyle", "menclose", "mphantom", "merror", "semantics", "mlabeledtr",
+		"mmultiscripts", "mpadded", "mstyle", "menclose", "mphantom", "merror", "semantics", "mlabeledtr",
 	} {
 		element := element
 		t.Run(element, func(t *testing.T) {
