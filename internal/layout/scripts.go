@@ -136,10 +136,22 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 		return nil, err
 	}
 
-	topLeftKern := mathKern(base, topLeft, supShift, KernTopLeft)
-	bottomLeftKern := mathKern(base, bottomLeft, subShift, KernBottomLeft)
-	topRightKern := mathKern(base, topRight, supShift, KernTopRight)
-	bottomRightKern := mathKern(base, bottomRight, subShift, KernBottomRight)
+	topLeftKern, err := mathKern(base, topLeft, supShift, KernTopLeft)
+	if err != nil {
+		return nil, err
+	}
+	bottomLeftKern, err := mathKern(base, bottomLeft, subShift, KernBottomLeft)
+	if err != nil {
+		return nil, err
+	}
+	topRightKern, err := mathKern(base, topRight, supShift, KernTopRight)
+	if err != nil {
+		return nil, err
+	}
+	bottomRightKern, err := mathKern(base, bottomRight, subShift, KernBottomRight)
+	if err != nil {
+		return nil, err
+	}
 	if bottomRight != nil && (base.TextLike || singleSymbolBase(node.BaseItem)) {
 		bottomRightKern, err = sub(bottomRightKern, base.Italic)
 		if err != nil {
@@ -358,9 +370,9 @@ func (s *layoutState) usesLimits(node *ir.Scripts, env environment) bool {
 	return env.Style.Size == Display && class == ir.ClassLarge
 }
 
-func mathKern(base, script *Fragment, shift geometry.Em, corner KernCorner) geometry.Em {
+func mathKern(base, script *Fragment, shift geometry.Em, corner KernCorner) (geometry.Em, error) {
 	if base == nil || script == nil {
-		return 0
+		return 0, nil
 	}
 	var top, bottom geometry.Em
 	switch corner {
@@ -371,10 +383,26 @@ func mathKern(base, script *Fragment, shift geometry.Em, corner KernCorner) geom
 		top = script.Ascent - shift
 		bottom = shift - base.Descent
 	}
-	summed := func(height geometry.Em) geometry.Em {
-		return base.kernAtHeight(corner, height) + script.kernAtHeight(corner.inverse(), height)
+	summed := func(height geometry.Em) (geometry.Em, error) {
+		baseKern, err := base.kernAtHeight(corner, height)
+		if err != nil {
+			return 0, err
+		}
+		scriptKern, err := script.kernAtHeight(corner.inverse(), height)
+		if err != nil {
+			return 0, err
+		}
+		return add(baseKern, scriptKern)
 	}
-	return max(summed(top), summed(bottom))
+	topKern, err := summed(top)
+	if err != nil {
+		return 0, err
+	}
+	bottomKern, err := summed(bottom)
+	if err != nil {
+		return 0, err
+	}
+	return max(topKern, bottomKern), nil
 }
 
 func (s *layoutState) optionalChild(node ir.Node, env environment, depth int) (*Fragment, error) {

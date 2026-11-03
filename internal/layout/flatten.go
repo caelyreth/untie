@@ -146,7 +146,6 @@ type flattenState struct {
 	layout     *layoutState
 	box        *display.Box
 	stack      []*Fragment
-	pathCache  map[pathTemplateKey]int
 	offsetX    float32
 	offsetY    float32
 	visits     int
@@ -161,13 +160,31 @@ type pathTemplateKey struct {
 	exact   bool
 }
 
+const inlinePathCacheSize = 8
+
+type flattenPathCache struct {
+	box        *display.Box
+	inlineKeys [inlinePathCacheSize]pathTemplateKey
+	inlineIDs  [inlinePathCacheSize]int
+	inline     int
+	overflow   map[pathTemplateKey]int
+}
+
 func newFlattenState(layout *layoutState, box *display.Box, offsetX, offsetY float32) flattenState {
+	layout.pathCache.bind(box)
 	return flattenState{
 		layout:  layout,
 		box:     box,
 		offsetX: offsetX,
 		offsetY: offsetY,
 	}
+}
+
+func (c *flattenPathCache) bind(box *display.Box) {
+	if c.box == box {
+		return
+	}
+	*c = flattenPathCache{box: box}
 }
 
 func (f *flattenState) appendItem(item display.Item) error {
@@ -411,8 +428,8 @@ func (f *flattenState) glyphItem(x, y geometry.Em, glyph *GlyphFragment) (displa
 		return item, nil
 	}
 
-	key := glyphPathTemplateKey(glyph.Glyph)
-	pathIndex, err := f.pathTemplate(key, glyph.Glyph.Outline)
+	key, cacheable := glyphPathTemplateKey(glyph.Glyph)
+	pathIndex, err := f.pathTemplate(key, cacheable, glyph.Glyph.Outline)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -444,7 +461,8 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	if err != nil {
 		return display.Item{}, err
 	}
-	pathIndex, err := f.pathTemplate(pathTemplateKeyFor(path.path), path.path)
+	key, cacheable := pathTemplateKeyFor(path.path)
+	pathIndex, err := f.pathTemplate(key, cacheable, path.path)
 	if err != nil {
 		return display.Item{}, err
 	}
@@ -467,27 +485,29 @@ func (f *flattenState) pathItem(x, y geometry.Em, path *pathDraw) (display.Item,
 	}, nil
 }
 
-func pathTemplateKeyFor(path Path) *pathTemplateKey {
+func pathTemplateKeyFor(path Path) (pathTemplateKey, bool) {
 	if len(path) == 0 {
-		return nil
+		return pathTemplateKey{}, false
 	}
-	return &pathTemplateKey{first: &path[0], length: len(path)}
+	return pathTemplateKey{first: &path[0], length: len(path)}, true
 }
 
-func glyphPathTemplateKey(glyph Glyph) *pathTemplateKey {
+func glyphPathTemplateKey(glyph Glyph) (pathTemplateKey, bool) {
+	key, cacheable := pathTemplateKeyFor(glyph.Outline)
+	if !cacheable {
+		return pathTemplateKey{}, false
+	}
 	if glyph.ExactGlyphRef && glyph.FontID != "" && glyph.ID != 0 {
-		return &pathTemplateKey{
-			fontID:  glyph.FontID,
-			glyphID: glyph.ID,
-			exact:   true,
-		}
+		key.fontID = glyph.FontID
+		key.glyphID = glyph.ID
+		key.exact = true
 	}
-	return pathTemplateKeyFor(glyph.Outline)
+	return key, true
 }
 
-func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error) {
-	if key != nil && f.pathCache != nil {
-		if index, ok := f.pathCache[*key]; ok {
+func (f *flattenState) pathTemplate(key pathTemplateKey, cacheable bool, path Path) (int, error) {
+	if cacheable {
+		if index, ok := f.layout.pathCache.lookup(key); ok {
 			return index, nil
 		}
 	}
@@ -532,13 +552,36 @@ func (f *flattenState) pathTemplate(key *pathTemplateKey, path Path) (int, error
 	}
 	index := len(f.box.Paths)
 	f.box.Paths = append(f.box.Paths, template)
-	if key != nil {
-		if f.pathCache == nil {
-			f.pathCache = make(map[pathTemplateKey]int)
-		}
-		f.pathCache[*key] = index
+	if cacheable {
+		f.layout.pathCache.insert(key, index)
 	}
 	return index, nil
+}
+
+func (c *flattenPathCache) lookup(key pathTemplateKey) (int, bool) {
+	for i := 0; i < c.inline; i++ {
+		if c.inlineKeys[i] == key {
+			return c.inlineIDs[i], true
+		}
+	}
+	if c.overflow == nil {
+		return 0, false
+	}
+	index, ok := c.overflow[key]
+	return index, ok
+}
+
+func (c *flattenPathCache) insert(key pathTemplateKey, index int) {
+	if c.inline < len(c.inlineKeys) {
+		c.inlineKeys[c.inline] = key
+		c.inlineIDs[c.inline] = index
+		c.inline++
+		return
+	}
+	if c.overflow == nil {
+		c.overflow = make(map[pathTemplateKey]int)
+	}
+	c.overflow[key] = index
 }
 
 func (s *layoutState) placedPathBound(local geometry.Rect, at geometry.Point, em float32) (geometry.Rect, error) {

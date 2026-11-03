@@ -97,7 +97,7 @@ func (s *layoutState) layoutGlyphText(text string, env environment, stretch *str
 			fragment.HasInkBottom = true
 		}
 	}
-	fragment.Kerns = scaled.Glyph.Kerns
+	fragment.kerns = &scaled.Glyph.Kerns
 	if err := fragment.pushGlyph(0, 0, scaled); err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 	if scaled.InkBottom, err = scale(glyph.InkBottom, factor); err != nil {
 		return nil, err
 	}
-	if scaled.Kerns, err = scaleKernInfo(glyph.Kerns, factor); err != nil {
+	if err := validateKernInfo(glyph.Kerns); err != nil {
 		return nil, err
 	}
 	if len(glyph.Parts) > 0 {
@@ -242,55 +242,33 @@ func (s *layoutState) scaleGlyph(glyph Glyph, style Style, paint ir.Paint) (*Gly
 	return s.newGlyphFragment(scaled, factor, paint), nil
 }
 
-func scaleKernInfo(info MathKernInfo, factor geometry.Em) (MathKernInfo, error) {
-	var out MathKernInfo
-	var err error
-	if out.TopLeft, err = scaleKern(info.TopLeft, factor); err != nil {
-		return MathKernInfo{}, err
+func validateKernInfo(info MathKernInfo) error {
+	for _, kern := range [...]*MathKern{
+		info.TopLeft,
+		info.TopRight,
+		info.BottomRight,
+		info.BottomLeft,
+	} {
+		if err := validateKern(kern); err != nil {
+			return err
+		}
 	}
-	if out.TopRight, err = scaleKern(info.TopRight, factor); err != nil {
-		return MathKernInfo{}, err
-	}
-	if out.BottomRight, err = scaleKern(info.BottomRight, factor); err != nil {
-		return MathKernInfo{}, err
-	}
-	if out.BottomLeft, err = scaleKern(info.BottomLeft, factor); err != nil {
-		return MathKernInfo{}, err
-	}
-	return out, nil
+	return nil
 }
 
-func scaleKern(kern *MathKern, factor geometry.Em) (*MathKern, error) {
+func validateKern(kern *MathKern) error {
 	if kern == nil {
-		return nil, nil
+		return nil
 	}
 	if len(kern.Kerns) != len(kern.Heights)+1 {
-		return nil, fmt.Errorf("%w: malformed math kern table", ErrInvalidInput)
+		return fmt.Errorf("%w: malformed math kern table", ErrInvalidInput)
 	}
 	for i := 1; i < len(kern.Heights); i++ {
 		if kern.Heights[i] <= kern.Heights[i-1] {
-			return nil, fmt.Errorf("%w: math kern heights are not increasing", ErrInvalidInput)
+			return fmt.Errorf("%w: math kern heights are not increasing", ErrInvalidInput)
 		}
 	}
-	out := &MathKern{
-		Heights: make([]geometry.Em, len(kern.Heights)),
-		Kerns:   make([]geometry.Em, len(kern.Kerns)),
-	}
-	for i, height := range kern.Heights {
-		value, err := scale(height, factor)
-		if err != nil {
-			return nil, err
-		}
-		out.Heights[i] = value
-	}
-	for i, value := range kern.Kerns {
-		scaled, err := scale(value, factor)
-		if err != nil {
-			return nil, err
-		}
-		out.Kerns[i] = scaled
-	}
-	return out, nil
+	return nil
 }
 
 func (s *layoutState) layoutSpace(space *ir.Space, env environment) (*Fragment, error) {

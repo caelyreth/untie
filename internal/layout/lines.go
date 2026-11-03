@@ -205,7 +205,6 @@ func (s *layoutState) newConstrainedDisplayBox() (*display.Box, error) {
 	return &display.Box{
 		Width:      s.request.MaxWidth,
 		AxisHeight: axisHeight,
-		Paths:      make([]display.PathTemplate, 0, s.outputItemCapacity(s.nodes)),
 	}, nil
 }
 
@@ -253,7 +252,7 @@ func (s *layoutState) appendLineOwnHit(parent *display.Box, root *Fragment, line
 			Width:  line.Width,
 			Height: height,
 		},
-		Depth: hit.depth,
+		Depth: int(hit.depth),
 		Kind:  hit.kind,
 	})
 	if len(parent.Hits) > s.limits.MaxNodes {

@@ -72,7 +72,26 @@ func TestRowAssemblyAndSpacing(t *testing.T) {
 func TestGlyphPathTemplatesAreSharedAndPlacedPerItem(t *testing.T) {
 	t.Parallel()
 
-	renderer, _, _ := newTestRenderer(t)
+	renderer, glyphs, _ := newTestRenderer(t)
+	outline := Path{
+		{Op: geometry.SegMoveTo, Points: [3]Point{{X: 0, Y: -em(2, 10)}}},
+		{Op: geometry.SegLineTo, Points: [3]Point{{X: em(1, 2), Y: -em(2, 10)}}},
+		{Op: geometry.SegLineTo, Points: [3]Point{{X: em(1, 2), Y: em(7, 10)}}},
+		{Op: geometry.SegLineTo, Points: [3]Point{{X: 0, Y: em(7, 10)}}},
+		{Op: geometry.SegClose},
+	}
+	glyphs.glyphs["x"] = Glyph{
+		ID:            120,
+		FontID:        "test-math",
+		Advance:       em(1, 2),
+		Ascent:        em(7, 10),
+		Descent:       em(2, 10),
+		Italic:        em(1, 20),
+		TopAccent:     em(1, 4),
+		ExactGlyphRef: true,
+		TextLike:      true,
+		Outline:       outline,
+	}
 	root := ir.NewRow(source.NewRange(0, 2),
 		glyph("x", ir.ClassNormal),
 		glyph("x", ir.ClassNormal),

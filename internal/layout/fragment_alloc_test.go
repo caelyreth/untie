@@ -2,6 +2,7 @@ package layout
 
 import (
 	"context"
+	"math/bits"
 	"testing"
 
 	"github.com/caelyreth/untie/geometry"
@@ -64,6 +65,27 @@ func TestFragmentInlineDrawAndHitStorage(t *testing.T) {
 		if got := reserved.drawAt(i).x; got != geometry.Em(i) {
 			t.Fatalf("reserved drawAt(%d).x = %d, want %d", i, got, i)
 		}
+	}
+}
+
+func TestSourceHitDepthStorageBounds(t *testing.T) {
+	t.Parallel()
+	if bits.UintSize <= 32 {
+		t.Skip("depth overflow cannot be represented in int on 32-bit platforms")
+	}
+
+	state := &layoutState{}
+	node := glyph("x", ir.ClassNormal)
+	maxDepth := int(^uint32(0))
+	fragment := emptyFragment(Text, geometry.Em(geometry.EmScale))
+	if err := state.attachNodeHit(fragment, node, maxDepth); err != nil {
+		t.Fatalf("attachNodeHit(max depth) error = %v", err)
+	}
+	if hit, ok := fragment.hitAt(0); !ok || hit.depth != uint32(maxDepth) {
+		t.Fatalf("stored hit = %+v, %v; want depth %d", hit, ok, maxDepth)
+	}
+	if err := state.attachNodeHit(fragment, node, maxDepth+1); err == nil {
+		t.Fatal("attachNodeHit() accepted a depth wider than storage")
 	}
 }
 

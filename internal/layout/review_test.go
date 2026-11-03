@@ -144,6 +144,13 @@ func TestBinaryClassLookahead(t *testing.T) {
 		if got[test.index] != test.want {
 			t.Fatalf("%s: normalized class = %v, want %v", test.name, got[test.index], test.want)
 		}
+		scratch := append([]ir.MathClass(nil), test.classes...)
+		inPlace := normalizeRowClassesInPlace(scratch)
+		for i := range got {
+			if inPlace[i] != got[i] {
+				t.Fatalf("%s: in-place class %d = %v, want %v", test.name, i, inPlace[i], got[i])
+			}
+		}
 	}
 
 	renderer, _, _ := newTestRenderer(t)
@@ -207,27 +214,40 @@ func TestMathKernInfoSelectionAndScaling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newFragment(script) error = %v", err)
 	}
-	base.Kerns.TopRight = &MathKern{
+	baseKerns := MathKernInfo{TopRight: &MathKern{
 		Heights: []geometry.Em{em(2, 10)},
 		Kerns:   []geometry.Em{em(-1, 10), em(-2, 10)},
-	}
-	script.Kerns.BottomLeft = &MathKern{
+	}}
+	base.kerns = &baseKerns
+	scriptKerns := MathKernInfo{BottomLeft: &MathKern{
 		Heights: []geometry.Em{em(2, 10)},
 		Kerns:   []geometry.Em{em(-3, 10), em(-4, 10)},
+	}}
+	script.kerns = &scriptKerns
+	gotKern, err := mathKern(base, script, em(4, 10), KernTopRight)
+	if err != nil {
+		t.Fatalf("mathKern() error = %v", err)
 	}
-	if got, want := mathKern(base, script, em(4, 10), KernTopRight), em(-4, 10); got < want-2 || got > want+2 {
+	if got, want := gotKern, em(-4, 10); got < want-2 || got > want+2 {
 		t.Fatalf("mathKern() = %d, want %d (+/-2)", got, want)
 	}
 	if KernTopRight.inverse() != KernBottomLeft || KernTopLeft.inverse() != KernBottomRight {
 		t.Fatal("kern corner inverse mapping is incorrect")
 	}
 
-	scaled, err := scaleKernInfo(base.Kerns, em(8, 10))
-	if err != nil {
-		t.Fatalf("scaleKernInfo() error = %v", err)
+	base.Scale = em(8, 10)
+	if got, err := base.kernAtHeight(KernTopRight, em(3, 10)); err != nil {
+		t.Fatalf("kernAtHeight() error = %v", err)
+	} else if got != em(-16, 100) {
+		t.Fatalf("lazy scaled kern = %v, want %v", got, em(-16, 100))
 	}
-	if scaled.TopRight == nil || scaled.TopRight.Kerns[1] != em(-16, 100) {
-		t.Fatalf("scaled kern = %+v", scaled.TopRight)
+
+	malformed := MathKernInfo{TopLeft: &MathKern{
+		Heights: []geometry.Em{em(1, 10)},
+		Kerns:   []geometry.Em{em(1, 10)},
+	}}
+	if err := validateKernInfo(malformed); err == nil {
+		t.Fatal("validateKernInfo() accepted a malformed table")
 	}
 }
 
