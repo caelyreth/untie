@@ -5,8 +5,8 @@ go 1.27.3
 tool github.com/egoist/mygo/cmd/mygo
 
 require (
-	github.com/caelyreth/untie v0.2.1
-	github.com/caelyreth/untie/contrib/mygo v0.2.1
+	github.com/caelyreth/untie v0.3.0
+	github.com/caelyreth/untie/contrib/mygo v0.3.0
 	github.com/egoist/mygo v0.7.4
 )
 
