@@ -4,6 +4,7 @@ package typst
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -17,6 +18,7 @@ type Options struct {
 type Result struct {
 	Root        ir.Node
 	Diagnostics []source.Diagnostic
+	Arena       *irarena.Arena
 }
 
 // Parse lowers Typst math source into the neutral IR. Malformed source is
@@ -24,7 +26,6 @@ type Result struct {
 // parts that could not be understood.
 func Parse(src string, mode ir.Mode, opts Options) (result Result) {
 	limits := opts.Limits.WithDefaults()
-	result = Result{Root: ir.NewRow(source.NewRange(0, len(src)))}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			span := source.NewRange(0, len(src))

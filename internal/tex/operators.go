@@ -84,7 +84,7 @@ func (p *parser) buildNamedOperator(command token, spec namedOperatorSpec) astNo
 			body = &astAccentNode{
 				astBase:  newASTBaseAt(astAccent, command.span, tokenOrigin(command)),
 				body:     body,
-				mark:     newGlyphAST(command.span, spec.accent, ir.ClassDiacritic),
+				mark:     p.newGlyphAST(command.span, spec.accent, ir.ClassDiacritic),
 				position: position,
 				stretchy: true,
 			}

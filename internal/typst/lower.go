@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -20,10 +21,12 @@ type lowerer struct {
 	depth             int
 	callDepth         int
 	tableLimit        bool
+	arena             *irarena.Arena
 }
 
 func lower(root *astNode, src string, limits source.Limits) Result {
-	l := lowerer{src: src, limits: limits.WithDefaults()}
+	arena := irarena.New(len(src))
+	l := lowerer{src: src, limits: limits.WithDefaults(), arena: arena}
 	node := l.lower(root)
 	if l.exhausted {
 		node = l.fallbackWithinBudget(rootSpan(root, len(src)))
@@ -37,6 +40,7 @@ func lower(root *astNode, src string, limits source.Limits) Result {
 	return Result{
 		Root:        node,
 		Diagnostics: source.NormalizeDiagnostics(l.diags),
+		Arena:       arena,
 	}
 }
 
@@ -686,7 +690,9 @@ func (l *lowerer) lowerDelimited(n *astNode) ir.Node {
 
 func (l *lowerer) flattenFenceBody(body ir.Node) []ir.Node {
 	if row, ok := body.(*ir.Row); ok {
-		return append([]ir.Node(nil), row.Items...)
+		// Callers release the intermediate row before transferring its items
+		// into the replacement fenced/row node.
+		return row.Items
 	}
 	return []ir.Node{body}
 }

@@ -91,19 +91,20 @@ func (e *Engine) Layout(ctx context.Context, root ir.Node, mode ir.Mode, style d
 
 // LayoutFormula lays out a complete formula, including formula-scoped metadata.
 func (e *Engine) LayoutFormula(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return e.layoutFormula(ctx, formula, mode, style, false)
+	return e.layoutFormula(ctx, formula, ir.Stats{}, mode, style, false)
 }
 
 // LayoutParsedFormula lays out a formula that was structurally validated and
 // frozen by the parser boundary. It skips repeated structural validation while
 // retaining engine-configured limits and output invariants.
-func (e *Engine) LayoutParsedFormula(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return e.layoutFormula(ctx, formula, mode, style, true)
+func (e *Engine) LayoutParsedFormula(ctx context.Context, formula *ir.Formula, stats ir.Stats, mode ir.Mode, style display.Style) (*display.Box, error) {
+	return e.layoutFormula(ctx, formula, stats, mode, style, true)
 }
 
 func (e *Engine) layoutFormula(
 	ctx context.Context,
 	formula *ir.Formula,
+	stats ir.Stats,
 	mode ir.Mode,
 	style display.Style,
 	parsed bool,
@@ -125,7 +126,7 @@ func (e *Engine) layoutFormula(
 	}
 	style.Features = append([]string(nil), style.Features...)
 	if parsed {
-		return e.renderer.LayoutParsedFormulaContext(ctx, formula, mode, style)
+		return e.renderer.LayoutParsedFormulaContext(ctx, formula, stats, mode, style)
 	}
 	return e.renderer.LayoutFormulaContext(ctx, formula, mode, style)
 }

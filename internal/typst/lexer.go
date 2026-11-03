@@ -380,29 +380,47 @@ func (l *lexer) invalidUTF8(start int) {
 
 func (l *lexer) stringToken(start int, space bool) token {
 	l.pos++ // opening quote
+	literalStart := l.pos
 	var decoded strings.Builder
+	decoding := false
+	startDecoding := func(until int) {
+		if decoding {
+			return
+		}
+		decoded.WriteString(l.src[literalStart:until])
+		decoding = true
+	}
 	for l.pos < len(l.src) {
 		if l.src[l.pos] == '"' {
+			literal := l.src[literalStart:l.pos]
 			l.pos++
+			if decoding {
+				literal = decoded.String()
+			}
 			return token{
 				kind:        tokString,
 				span:        source.NewRange(start, l.pos),
 				text:        l.src[start:l.pos],
-				literal:     decoded.String(),
+				literal:     literal,
 				spaceBefore: space,
 			}
 		}
 		if l.src[l.pos] != '\\' {
+			runeStart := l.pos
 			r, size := utf8.DecodeRuneInString(l.src[l.pos:])
 			if r == utf8.RuneError && size == 1 {
+				startDecoding(runeStart)
 				l.invalidUTF8(l.pos)
 				l.pos++
 				continue
 			}
-			decoded.WriteRune(r)
+			if decoding {
+				decoded.WriteRune(r)
+			}
 			l.pos += size
 			continue
 		}
+		startDecoding(l.pos)
 		escaped, emit, ok := l.scanEscape()
 		if !ok {
 			break
@@ -417,11 +435,15 @@ func (l *lexer) stringToken(start int, space bool) token {
 		Code:     source.CodeUnclosedGroup,
 		Message:  "unclosed string",
 	})
+	literal := l.src[literalStart:l.pos]
+	if decoding {
+		literal = decoded.String()
+	}
 	return token{
 		kind:        tokString,
 		span:        source.NewRange(start, l.pos),
 		text:        l.src[start:l.pos],
-		literal:     decoded.String(),
+		literal:     literal,
 		spaceBefore: space,
 	}
 }

@@ -73,159 +73,159 @@ func (l *lowerer) newRow(span source.Range, items ...ir.Node) *ir.Row {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewRow(span, items...)
+	return l.arena.NewRow(span, items...)
 }
 
 func (l *lowerer) newGlyph(span source.Range, text string) *ir.Glyph {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewGlyph(span, text)
+	return l.arena.NewGlyph(span, text)
 }
 
 func (l *lowerer) newText(span source.Range, text string) *ir.Text {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewText(span, text)
+	return l.arena.NewText(span, text)
 }
 
 func (l *lowerer) newOperator(span source.Range, text string) *ir.Operator {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewOperator(span, text)
+	return l.arena.NewOperator(span, text)
 }
 
 func (l *lowerer) newSpace(span source.Range, kind ir.SpaceKind, amount ir.Length) *ir.Space {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewSpace(span, kind, amount)
+	return l.arena.NewSpace(span, kind, amount)
 }
 
 func (l *lowerer) newFraction(span source.Range, numerator, denominator ir.Node) *ir.Fraction {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewFraction(span, numerator, denominator)
+	return l.arena.NewFraction(span, numerator, denominator)
 }
 
 func (l *lowerer) newRadical(span source.Range, radicand, index ir.Node) *ir.Radical {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewRadical(span, radicand, index)
+	return l.arena.NewRadical(span, radicand, index)
 }
 
 func (l *lowerer) newScripts(span source.Range, base ir.Node) *ir.Scripts {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewScripts(span, base)
+	return l.arena.NewScripts(span, base)
 }
 
 func (l *lowerer) newFenced(span source.Range, body ...ir.Node) *ir.Fenced {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewFenced(span, body...)
+	return l.arena.NewFenced(span, body...)
 }
 
 func (l *lowerer) newSizedDelimiter(span source.Range, text string, sizing ir.DelimiterSizing) *ir.SizedDelimiter {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewSizedDelimiter(span, text, sizing)
+	return l.arena.NewSizedDelimiter(span, text, sizing)
 }
 
 func (l *lowerer) newAccent(span source.Range, body, accent ir.Node, position ir.Position) *ir.Accent {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewAccent(span, body, accent, position)
+	return l.arena.NewAccent(span, body, accent, position)
 }
 
 func (l *lowerer) newLine(span source.Range, body ir.Node, position ir.Position) *ir.Line {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewLine(span, body, position)
+	return l.arena.NewLine(span, body, position)
 }
 
 func (l *lowerer) newCancel(span source.Range, body ir.Node) *ir.Cancel {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewCancel(span, body)
+	return l.arena.NewCancel(span, body)
 }
 
 func (l *lowerer) newTable(span source.Range, rows ...ir.TableRow) *ir.Table {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewTable(span, rows...)
+	return l.arena.NewTable(span, rows...)
 }
 
 func (l *lowerer) newMultiline(span source.Range, rows ...[]ir.Node) *ir.Multiline {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewMultiline(span, rows...)
+	return l.arena.NewMultiline(span, rows...)
 }
 
 func (l *lowerer) newStyle(span source.Range, body ir.Node) *ir.Style {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewStyle(span, body)
+	return l.arena.NewStyle(span, body)
 }
 
 func (l *lowerer) newColor(span source.Range, body ir.Node, paint ir.Paint) *ir.Color {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewColor(span, body, paint)
+	return l.arena.NewColor(span, body, paint)
 }
 
 func (l *lowerer) newBox(span source.Range, body ir.Node) *ir.Box {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewBox(span, body)
+	return l.arena.NewBox(span, body)
 }
 
 func (l *lowerer) newPhantom(span source.Range, body ir.Node) *ir.Phantom {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewPhantom(span, body)
+	return l.arena.NewPhantom(span, body)
 }
 
 func (l *lowerer) newError(span source.Range, text string, code source.Code) *ir.ErrorNode {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewError(span, text, code)
+	return l.arena.NewError(span, text, code)
 }
 
 func (l *lowerer) newPlaceholder(span source.Range, reason string) *ir.Placeholder {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewPlaceholder(span, reason)
+	return l.arena.NewPlaceholder(span, reason)
 }
 
 func (l *lowerer) newBreak(span source.Range, kind ir.BreakKind) *ir.Break {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewBreak(span, kind)
+	return l.arena.NewBreak(span, kind)
 }
 
 func (l *lowerer) newAlignMarker(span source.Range) *ir.AlignMarker {
 	if !l.reserveNode(span) {
 		return nil
 	}
-	return ir.NewAlignMarker(span)
+	return l.arena.NewAlignMarker(span)
 }

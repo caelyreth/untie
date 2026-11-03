@@ -13,6 +13,7 @@ import (
 	"github.com/caelyreth/untie/font"
 	"github.com/caelyreth/untie/geometry"
 	internalalt "github.com/caelyreth/untie/internal/alt"
+	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/internal/tex"
 	"github.com/caelyreth/untie/internal/typst"
 	"github.com/caelyreth/untie/ir"
@@ -144,6 +145,8 @@ type Expr struct {
 	root        *ir.Formula
 	limits      source.Limits
 	diagnostics []source.Diagnostic
+	arena       *irarena.Arena
+	stats       ir.Stats
 	key         uint64
 }
 
@@ -176,10 +179,10 @@ func Parse(src string, dialect Dialect, mode Mode, opts ParseOptions) (expr *Exp
 				macros[name] = tex.Macro{Body: macro.Body, Args: macro.Args}
 			}
 			result := tex.Parse(src, mode, tex.Options{Macros: macros, Limits: limits})
-			return frontendResult{root: result.Root, tags: result.Tags, diagnostics: result.Diagnostics}
+			return frontendResult{root: result.Root, tags: result.Tags, diagnostics: result.Diagnostics, arena: result.Arena}
 		case Typst:
 			result := typst.Parse(src, mode, typst.Options{Limits: limits})
-			return frontendResult{root: result.Root, diagnostics: result.Diagnostics}
+			return frontendResult{root: result.Root, diagnostics: result.Diagnostics, arena: result.Arena}
 		default:
 			span := source.NewRange(0, len(src))
 			return frontendResult{
@@ -199,6 +202,7 @@ type frontendResult struct {
 	root        ir.Node
 	tags        []ir.EquationTag
 	diagnostics []source.Diagnostic
+	arena       *irarena.Arena
 }
 
 type frontendParser func(source.Limits) frontendResult
@@ -211,7 +215,9 @@ func parseRecovered(
 	limits source.Limits,
 	parser frontendParser,
 ) (expr *Expr) {
-	root := fallbackFormula(src, limits)
+	var root *ir.Formula
+	var arena *irarena.Arena
+	var stats ir.Stats
 	var diagnostics []source.Diagnostic
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -222,8 +228,10 @@ func parseRecovered(
 				Message:  fmt.Sprintf("parser invariant failure: %v", recovered),
 			}
 			root = fallbackFormula(src, limits)
+			arena = nil
+			stats = ir.Stats{}
 			diagnostics = []source.Diagnostic{diagnostic}
-			expr = newExpr(src, dialect, mode, limits, root, diagnostics, opts)
+			expr = newExpr(src, dialect, mode, limits, root, arena, stats, diagnostics, opts)
 		}
 	}()
 
@@ -245,7 +253,7 @@ func parseRecovered(
 				Code:     source.CodeInternal,
 				Message:  "frontend returned a nil IR root",
 			})
-		} else if err := ir.ValidateSource(candidate, src, limits); err != nil {
+		} else if validated, err := ir.ValidateSourceWithStats(candidate, src, limits); err != nil {
 			diagnostics = append(diagnostics, result.diagnostics...)
 			code := source.CodeInternal
 			message := fmt.Sprintf("frontend returned invalid IR: %v", err)
@@ -261,11 +269,17 @@ func parseRecovered(
 			})
 		} else {
 			root = candidate
+			arena = result.arena
+			stats = validated
 			diagnostics = append(diagnostics, result.diagnostics...)
 		}
 	}
 
-	return newExpr(src, dialect, mode, limits, root, diagnostics, opts)
+	if root == nil {
+		root = fallbackFormula(src, limits)
+		stats, _ = ir.ValidateWithStats(root, limits)
+	}
+	return newExpr(src, dialect, mode, limits, root, arena, stats, diagnostics, opts)
 }
 
 func newExpr(
@@ -274,6 +288,8 @@ func newExpr(
 	mode Mode,
 	limits source.Limits,
 	root *ir.Formula,
+	arena *irarena.Arena,
+	stats ir.Stats,
 	diagnostics []source.Diagnostic,
 	opts ParseOptions,
 ) *Expr {
@@ -284,6 +300,8 @@ func newExpr(
 		root:        root,
 		limits:      limits,
 		diagnostics: source.NormalizeDiagnosticsFor(diagnostics, len(src)),
+		arena:       arena,
+		stats:       stats,
 	}
 	expr.key = computeKey(expr, limits, opts)
 	return expr

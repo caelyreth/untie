@@ -600,6 +600,16 @@ func (p *parser) namedArgName() (string, int) {
 	if p.current().kind != tokIdent {
 		return "", 0
 	}
+	first := p.peek(1)
+	if first.kind == tokColon {
+		if first.spaceBefore {
+			return "", 0
+		}
+		return p.current().text, 1
+	}
+	if first.kind != tokShorthand || first.literal != "−" {
+		return "", 0
+	}
 	var b strings.Builder
 	b.WriteString(p.current().text)
 	i := 1

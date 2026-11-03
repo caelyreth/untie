@@ -66,6 +66,74 @@ func Children(n Node) []Node {
 	}
 }
 
+// VisitChildren visits direct child nodes in deterministic semantic order
+// without allocating a child slice. The callback must not retain or mutate the
+// tree; it may recurse with another VisitChildren call.
+func VisitChildren(n Node, visit func(Node)) {
+	if nodeIsNil(n) || visit == nil {
+		return
+	}
+	visitNode := func(child Node) {
+		if child != nil {
+			visit(child)
+		}
+	}
+	switch n := n.(type) {
+	case *Row:
+		for _, child := range n.Items {
+			visitNode(child)
+		}
+	case *Glyph, *Text, *Operator, *Space, *SizedDelimiter, *ErrorNode, *Placeholder, *Break, *AlignMarker:
+	case *Fraction:
+		visitNode(n.Numerator)
+		visitNode(n.Denominator)
+	case *Radical:
+		visitNode(n.Radicand)
+		visitNode(n.Index)
+	case *Scripts:
+		visitNode(n.BaseItem)
+		visitNode(n.Top)
+		visitNode(n.Bottom)
+		visitNode(n.TopLeft)
+		visitNode(n.BottomLeft)
+		visitNode(n.TopRight)
+		visitNode(n.BottomRight)
+	case *Fenced:
+		visitNode(n.Open)
+		for _, child := range n.Body {
+			visitNode(child)
+		}
+		visitNode(n.Close)
+	case *Accent:
+		visitNode(n.Body)
+		visitNode(n.Accent)
+	case *Line:
+		visitNode(n.Body)
+	case *Cancel:
+		visitNode(n.Body)
+	case *Table:
+		for _, row := range n.Rows {
+			for _, child := range row.Cells {
+				visitNode(child)
+			}
+		}
+	case *Multiline:
+		for _, row := range n.Rows {
+			for _, child := range row {
+				visitNode(child)
+			}
+		}
+	case *Style:
+		visitNode(n.Body)
+	case *Color:
+		visitNode(n.Body)
+	case *Box:
+		visitNode(n.Body)
+	case *Phantom:
+		visitNode(n.Body)
+	}
+}
+
 // WalkFormula visits the formula root followed by every equation tag body in
 // source order. Traversal budgets and cycle checks are shared across all
 // entries, so tags cannot bypass the formula's node or nesting limits.

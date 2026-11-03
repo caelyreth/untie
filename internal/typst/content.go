@@ -291,9 +291,7 @@ func applyTextTracking(n ir.Node, tracking ir.Length) {
 	if text, ok := n.(*ir.Text); ok {
 		text.Tracking = tracking
 	}
-	for _, child := range ir.Children(n) {
-		applyTextTracking(child, tracking)
-	}
+	ir.VisitChildren(n, func(child ir.Node) { applyTextTracking(child, tracking) })
 }
 
 func (l *lowerer) lowerBox(call *astNode) ir.Node {

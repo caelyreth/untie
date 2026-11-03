@@ -54,14 +54,14 @@ func (r *Renderer) LayoutContext(ctx context.Context, root ir.Node, mode ir.Mode
 // LayoutFormulaContext lays out a complete formula with cancellation and
 // deterministic resource limits.
 func (r *Renderer) LayoutFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return r.layoutFormulaContext(ctx, formula, mode, style, true)
+	return r.layoutFormulaContext(ctx, formula, mode, style, true, nil)
 }
 
 // LayoutParsedFormulaContext lays out a formula that was structurally
 // validated and frozen by the parser boundary. Engine-configured limits and
 // final output invariants are still enforced.
-func (r *Renderer) LayoutParsedFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mode, style display.Style) (*display.Box, error) {
-	return r.layoutFormulaContext(ctx, formula, mode, style, false)
+func (r *Renderer) LayoutParsedFormulaContext(ctx context.Context, formula *ir.Formula, stats ir.Stats, mode ir.Mode, style display.Style) (*display.Box, error) {
+	return r.layoutFormulaContext(ctx, formula, mode, style, false, &stats)
 }
 
 func (r *Renderer) layoutFormulaContext(
@@ -70,6 +70,7 @@ func (r *Renderer) layoutFormulaContext(
 	mode ir.Mode,
 	style display.Style,
 	validateStructure bool,
+	preparedStats *ir.Stats,
 ) (*display.Box, error) {
 	if r == nil {
 		return nil, fmt.Errorf("%w: nil renderer", ErrInvalidInput)
@@ -84,7 +85,7 @@ func (r *Renderer) layoutFormulaContext(
 		return nil, fmt.Errorf("%w: nil formula", ErrInvalidInput)
 	}
 	root := formula.Root
-	if err := validateConfiguredLimits(ctx, formula, r.limits); err != nil {
+	if err := validateConfiguredLimits(ctx, formula, r.limits, preparedStats); err != nil {
 		return nil, err
 	}
 	if validateStructure {
@@ -250,8 +251,14 @@ func (s *layoutState) reservePathSegments(count int) error {
 	return nil
 }
 
-func validateConfiguredLimits(ctx context.Context, formula *ir.Formula, limits source.Limits) error {
+func validateConfiguredLimits(ctx context.Context, formula *ir.Formula, limits source.Limits, stats *ir.Stats) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	limits = limits.WithDefaults()
+	if stats != nil && stats.WithinLimits(limits) {
+		return nil
+	}
 	nodes := 0
 	var visit func(ir.Node, int) error
 	visit = func(node ir.Node, depth int) error {

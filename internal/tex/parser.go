@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/caelyreth/untie/internal/irarena"
 	"github.com/caelyreth/untie/ir"
 	"github.com/caelyreth/untie/source"
 )
@@ -23,6 +24,7 @@ type parser struct {
 	tags             []astEquationTag
 	metadataDepth    int
 	parsedTableCells int
+	arena            astArena
 }
 
 type stopMode uint8
@@ -61,19 +63,20 @@ const (
 )
 
 func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.Limits) *parser {
-	p := &parser{src: src, mode: mode, limits: limits}
+	p := &parser{src: src, mode: mode, limits: limits, arena: newASTArena(len(src))}
 	p.exp = newExpander(src, limits, macros, p.report)
 	return p
 }
 
-func (p *parser) parse() (ir.Node, []ir.EquationTag) {
+func (p *parser) parse() (ir.Node, []ir.EquationTag, *irarena.Arena) {
 	parsedRoot := p.parseSequence(stopEOF)
-	lower := newLowerer(p.limits, p.report)
+	arena := irarena.New(len(p.src))
+	lower := newLowerer(p.limits, p.report, arena)
 	// Parsing and lowering share one resource-limit diagnostic per parse.
 	lower.limitHit = p.limitHit
 	node := lower.lower(parsedRoot, lowerContext{})
 	if node == nil {
-		node = ir.NewRow(source.NewRange(0, len(p.src)))
+		node = arena.NewRow(source.NewRange(0, len(p.src)))
 	}
 	node.NodeBase().Span = source.NewRange(0, len(p.src))
 	node.NodeBase().Origin = node.NodeBase().Span
@@ -82,7 +85,7 @@ func (p *parser) parse() (ir.Node, []ir.EquationTag) {
 	} else {
 		node.NodeBase().Size = ir.SizeText
 	}
-	return node, lower.lowerTags(p.tags)
+	return node, lower.lowerTags(p.tags), arena
 }
 
 func (p *parser) parseSequence(stop stopMode) astNode {
@@ -193,7 +196,7 @@ func (p *parser) parseSequenceWithInfix(stop stopMode, infixSeen bool) astNode {
 						source.Merge(body.base().origin, glyph.origin),
 					),
 					body:     body,
-					mark:     newGlyphAST(glyph.span, mark, ir.ClassDiacritic),
+					mark:     p.newGlyphAST(glyph.span, mark, ir.ClassDiacritic),
 					position: position,
 					dotless:  true,
 				}
@@ -322,8 +325,8 @@ func (p *parser) applyInfix(items []astNode, start source.Range, infix fractionI
 	if infix.open != "" || infix.close != "" {
 		return &astFencedNode{
 			astBase:  newASTBase(astFenced, fraction.span),
-			open:     newGlyphAST(command.span, infix.open, ir.ClassOpening),
-			close:    newGlyphAST(command.span, infix.close, ir.ClassClosing),
+			open:     p.newGlyphAST(command.span, infix.open, ir.ClassOpening),
+			close:    p.newGlyphAST(command.span, infix.close, ir.ClassClosing),
 			body:     []astNode{fraction},
 			balanced: true,
 		}
@@ -401,7 +404,7 @@ func (p *parser) parseAtom(stop stopMode) astNode {
 			setScriptSpan(span)
 		case !t.isControl() && t.is(tokChar) && (t.text == "'" || t.text == "′"):
 			p.exp.next()
-			prime := newGlyphASTAt(t.span, tokenOrigin(t), "′", ir.ClassNormal)
+			prime := p.newGlyphASTAt(t.span, tokenOrigin(t), "′", ir.ClassNormal)
 			if top == nil {
 				top = &astRowNode{astBase: newASTBaseAt(astRow, t.span, tokenOrigin(t)), items: []astNode{prime}}
 			} else if row, ok := top.(*astRowNode); ok && isPrimeRow(row) {
@@ -577,7 +580,7 @@ func (p *parser) parseNucleus(stop stopMode) astNode {
 			return astErr(t.span, t.text, source.CodeUnsupported)
 		}
 		spec := symbolForChar(t.text)
-		return astGlyphSpec(t.span, t.origin, spec)
+		return p.astGlyphSpec(t.span, t.origin, spec)
 	case tokEndGroup, tokAlignment, tokParameter:
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(t.span),
@@ -941,29 +944,16 @@ func (p *parser) consumeRawGroupTextRange() (string, source.Range, source.Range,
 	return b.String(), source.NewRange(start, end), open.span, true
 }
 
-func newGlyphAST(span source.Range, text string, class ir.MathClass) *astGlyphNode {
-	return newGlyphASTAt(span, span, text, class)
+func (p *parser) newGlyphAST(span source.Range, text string, class ir.MathClass) *astGlyphNode {
+	return p.newGlyphASTAt(span, span, text, class)
 }
 
-func newGlyphASTAt(span, origin source.Range, text string, class ir.MathClass) *astGlyphNode {
-	return &astGlyphNode{
-		astBase: newASTBaseAt(astGlyph, span, origin),
-		text:    text,
-		class:   class,
-		variant: ir.VariantAuto,
-	}
+func (p *parser) newGlyphASTAt(span, origin source.Range, text string, class ir.MathClass) *astGlyphNode {
+	return p.arena.allocGlyph(span, origin, text, class, ir.VariantAuto, ir.LimitsAuto)
 }
 
-func astGlyphSpec(span, origin source.Range, spec symbolSpec) *astGlyphNode {
-	b := newASTBase(astGlyph, span)
-	b.origin = origin
-	return &astGlyphNode{
-		astBase: b,
-		text:    spec.text,
-		class:   spec.class,
-		variant: spec.variant,
-		limits:  spec.limits,
-	}
+func (p *parser) astGlyphSpec(span, origin source.Range, spec symbolSpec) *astGlyphNode {
+	return p.arena.allocGlyph(span, origin, spec.text, spec.class, spec.variant, spec.limits)
 }
 
 func newPlaceholderAST(span source.Range, reason string) *astPlaceholderNode {

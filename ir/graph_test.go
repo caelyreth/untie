@@ -36,6 +36,32 @@ func TestChildrenReturnsIndependentSlices(t *testing.T) {
 	}
 }
 
+func TestVisitChildrenMatchesChildrenOrder(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 4)
+	glyph := func(text string) Node { return NewGlyph(span, text) }
+	root := NewRow(span,
+		NewFenced(span, glyph("a"), glyph("b")),
+		NewFraction(span, glyph("c"), glyph("d")),
+		NewTable(span, TableRow{Cells: []Node{glyph("e"), glyph("f")}}),
+	)
+
+	want := Children(root)
+	var got []Node
+	VisitChildren(root, func(child Node) {
+		got = append(got, child)
+	})
+	if len(got) != len(want) {
+		t.Fatalf("VisitChildren count = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("VisitChildren[%d] = %T, want %T", i, got[i], want[i])
+		}
+	}
+}
+
 func TestGraphUtilitiesRejectCycles(t *testing.T) {
 	t.Parallel()
 
