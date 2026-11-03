@@ -1,6 +1,7 @@
 package untiemygo_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -54,4 +55,41 @@ func ExampleRenderer_Element() {
 
 	fmt.Println(math.CacheStats().Entries)
 	// Output: 1
+}
+
+func ExampleRenderer_DisplayMathWidth() {
+	data, err := os.ReadFile("../../testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		panic(err)
+	}
+	fonts, err := untie.LoadMathFont(data)
+	if err != nil {
+		panic(err)
+	}
+	math, err := untiemygo.New(fonts, untiemygo.Options{
+		DisplaySize:  24,
+		CacheEntries: 8,
+		Draw:         untiemygo.DrawOptions{Padding: 4},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	const source = `a+b+c+d`
+	tester := ui.NewTester(func(c *ui.Context) {
+		math.DisplayMathWidth(c, source, 68)
+	}, 68, 240)
+	bounds, ok := tester.Find(source)
+	if !ok {
+		panic("width-aware math element not found")
+	}
+	result, err := math.Render(context.Background(), source, untie.Display, untie.Style{
+		Size:     24,
+		MaxWidth: 60,
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(bounds.W, len(result.Box.Lines) > 1, math.CacheStats().Hits)
+	// Output: 68 true 1
 }

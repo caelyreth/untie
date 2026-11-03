@@ -33,13 +33,20 @@ var (
 	ErrInvalidPainter = errors.New("untiemygo: invalid painter")
 )
 
-// DrawOptions controls placement of a complete Box.Bounds rectangle in a
-// viewport. Padding is applied on every side. Alignment affects horizontal
-// placement; content is always vertically centered.
+// DrawOptions controls placement and painting of a complete Box.Bounds
+// rectangle in a viewport. Padding is applied on every side. Alignment affects
+// horizontal placement; content is always vertically centered.
+//
+// ScaleFit uniformly scales a box down to fit the padded viewport, or up when
+// AllowUpscale is true. ScaleNatural draws at scale 1 and clips only at the
+// viewport boundary. Paint resolves semantic and explicit paints at draw time;
+// nil uses the active MyGo theme.
 type DrawOptions struct {
 	Padding      float32
 	Align        render.Align
+	Scale        ScaleMode
 	AllowUpscale bool
+	Paint        PaintResolver
 }
 
 // Options configure a MyGo adapter.
@@ -107,12 +114,8 @@ func New(fonts *untie.FontSet, opts Options) (*Renderer, error) {
 		return nil, fmt.Errorf("%w: cache entries %d exceed %d",
 			ErrInvalidOptions, cacheEntries, MaxCacheEntries)
 	}
-	if !finite(opts.Draw.Padding) || opts.Draw.Padding < 0 {
-		return nil, fmt.Errorf("%w: padding %v is invalid",
-			ErrInvalidOptions, opts.Draw.Padding)
-	}
-	if opts.Draw.Align > render.AlignEnd {
-		return nil, fmt.Errorf("%w: unknown alignment %d", ErrInvalidOptions, opts.Draw.Align)
+	if err := validateDrawOptions(opts.Draw); err != nil {
+		return nil, err
 	}
 	renderer, err := untie.NewRenderer(fonts, untie.RendererOptions{
 		Limits:         opts.Limits,
@@ -225,7 +228,7 @@ func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Ele
 		return ui.Element{}
 	}
 	if r == nil {
-		return ui.Text(c, source).TextColor(c.Theme().Danger)
+		return fallbackElement(c, source, DefaultBaseSize, untie.RoleError)
 	}
 	size := r.baseSize
 	if mode == untie.Display {
@@ -233,7 +236,7 @@ func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Ele
 	}
 	result, err := r.Render(context.Background(), source, mode, untie.Style{})
 	if err != nil || result == nil || result.Box == nil {
-		return ui.Text(c, source).FontSize(size).TextColor(c.Theme().Danger)
+		return fallbackElement(c, source, size, untie.RoleError)
 	}
 	box := result.Box
 	bounds := box.Bounds()
@@ -249,11 +252,60 @@ func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Ele
 
 // DisplayMath builds a full-width display-math element for MyGo Markdown.
 //
-// The element paints at native size and scales down when its host width is too
-// narrow. A layout failure falls back to selectable source text in the danger
-// color rather than hiding the input.
+// This is the compact preview path: it lays out at natural width and scales
+// down when its host is too narrow. Hosts that know the available width should
+// use DisplayMathWidth so Untie can wrap with Style.MaxWidth instead.
+//
+// A layout failure falls back to selectable source text in the danger color
+// rather than hiding the input.
 func (r *Renderer) DisplayMath(c *ui.Context, source string) ui.Element {
 	return r.Element(c, source, untie.Display).FillWidth()
+}
+
+// DisplayMathWidth builds a width-aware display-math element.
+//
+// width is the element's outer width in MyGo DIPs. The configured draw padding
+// is removed from that width and the remaining frame is passed to Untie as
+// Style.MaxWidth, producing Box.Lines when the formula does not fit. The
+// resulting box is drawn at natural scale rather than uniformly shrunk.
+//
+// Invalid input or a layout failure falls back to selectable source text in the
+// danger color rather than hiding the input.
+func (r *Renderer) DisplayMathWidth(
+	c *ui.Context,
+	source string,
+	width float32,
+) ui.Element {
+	if c == nil || !c.Valid() {
+		return ui.Element{}
+	}
+	if r == nil {
+		return fallbackElement(c, source, DefaultBaseSize, untie.RoleError)
+	}
+	padding := r.draw.Padding
+	frameWidth := width - 2*padding
+	if !positiveFinite(width) || !positiveFinite(frameWidth) {
+		return fallbackElement(c, source, r.displaySize, untie.RoleError)
+	}
+	result, err := r.Render(context.Background(), source, untie.Display, untie.Style{
+		Size:     r.displaySize,
+		MaxWidth: frameWidth,
+		Align:    untie.Align(r.draw.Align),
+	})
+	if err != nil || result == nil || result.Box == nil {
+		return fallbackElement(c, source, r.displaySize, untie.RoleError)
+	}
+	box := result.Box
+	bounds := box.Bounds()
+	options := r.draw
+	options.Scale = ScaleNatural
+	return ui.Box(c).
+		Width(width).
+		Height(max(1, bounds.Height+2*padding)).
+		Label(source).
+		Draw(func(painter *ui.Painter, rect ui.Rect) {
+			_ = DrawBox(painter, box, rect, options)
+		})
 }
 
 // BindMarkdown installs math rendering on options and enables single-dollar
@@ -276,6 +328,12 @@ func (r *Renderer) CacheStats() CacheStats {
 		return CacheStats{}
 	}
 	return r.cache.stats()
+}
+
+func fallbackElement(c *ui.Context, source string, size float32, role untie.Role) ui.Element {
+	return ui.Text(c, source).
+		FontSize(size).
+		TextColor(PaintColor(c.Theme(), untie.Paint{Role: role}))
 }
 
 func inlineExtents(bounds untie.Rect) (height, depth float32) {
