@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"unicode/utf8"
@@ -12,7 +13,7 @@ import (
 )
 
 // AltDescriptionVersion is the current structured accessibility schema.
-const AltDescriptionVersion = 1
+const AltDescriptionVersion = 2
 
 // ErrInvalidAltDescription reports a malformed structured accessibility
 // description.
@@ -39,6 +40,8 @@ const (
 	AltKindTable          AltNodeKind = "table"
 	AltKindMultiline      AltNodeKind = "multiline"
 	AltKindStyle          AltNodeKind = "style"
+	AltKindOverlay        AltNodeKind = "overlay"
+	AltKindRaise          AltNodeKind = "raise"
 	AltKindColor          AltNodeKind = "color"
 	AltKindBox            AltNodeKind = "box"
 	AltKindPhantom        AltNodeKind = "phantom"
@@ -210,6 +213,31 @@ const (
 	AltSizeScriptScript AltMathSize = "script-script"
 )
 
+// AltOverlayAlignment identifies the horizontal placement of zero-width
+// overlay content.
+type AltOverlayAlignment string
+
+const (
+	AltOverlayStart  AltOverlayAlignment = "start"
+	AltOverlayCenter AltOverlayAlignment = "center"
+	AltOverlayEnd    AltOverlayAlignment = "end"
+)
+
+// AltRaiseDirection identifies the semantic vertical direction of a raise.
+type AltRaiseDirection string
+
+const (
+	AltRaiseUp   AltRaiseDirection = "up"
+	AltRaiseDown AltRaiseDirection = "down"
+	AltRaiseZero AltRaiseDirection = "zero"
+)
+
+// AltFontSize is an explicit uniform font-size percentage relative to the
+// root host font size. A value of 100 means 100 percent.
+type AltFontSize struct {
+	Percent float64 `json:"percent"`
+}
+
 // AltFlag carries a stable semantic boolean. Absence means false; a defined
 // positive or negative token records the authored state where needed.
 type AltFlag string
@@ -255,18 +283,21 @@ type AltNode struct {
 	// Code is a stable error or diagnostic token for error nodes.
 	Code string `json:"code,omitempty"`
 
-	Variant       AltVariant       `json:"variant,omitempty"`
-	FractionRole  AltFractionRole  `json:"fractionRole,omitempty"`
-	FractionStyle AltFractionStyle `json:"fractionStyle,omitempty"`
-	ScriptRole    AltScriptRole    `json:"scriptRole,omitempty"`
-	TableRole     AltTableRole     `json:"tableRole,omitempty"`
-	CancelRole    AltCancelRole    `json:"cancelRole,omitempty"`
-	Position      AltPosition      `json:"position,omitempty"`
-	Space         AltSpaceKind     `json:"space,omitempty"`
-	SpaceWidth    AltSpaceWidth    `json:"spaceWidth,omitempty"`
-	Break         AltBreakKind     `json:"break,omitempty"`
-	Sizing        AltSizingKind    `json:"sizing,omitempty"`
-	Size          AltMathSize      `json:"size,omitempty"`
+	Variant          AltVariant          `json:"variant,omitempty"`
+	FractionRole     AltFractionRole     `json:"fractionRole,omitempty"`
+	FractionStyle    AltFractionStyle    `json:"fractionStyle,omitempty"`
+	ScriptRole       AltScriptRole       `json:"scriptRole,omitempty"`
+	TableRole        AltTableRole        `json:"tableRole,omitempty"`
+	CancelRole       AltCancelRole       `json:"cancelRole,omitempty"`
+	Position         AltPosition         `json:"position,omitempty"`
+	Space            AltSpaceKind        `json:"space,omitempty"`
+	SpaceWidth       AltSpaceWidth       `json:"spaceWidth,omitempty"`
+	Break            AltBreakKind        `json:"break,omitempty"`
+	Sizing           AltSizingKind       `json:"sizing,omitempty"`
+	Size             AltMathSize         `json:"size,omitempty"`
+	OverlayAlignment AltOverlayAlignment `json:"overlayAlignment,omitempty"`
+	RaiseDirection   AltRaiseDirection   `json:"raise,omitempty"`
+	FontSize         *AltFontSize        `json:"fontSize,omitempty"`
 
 	Flags   []AltFlag   `json:"flags,omitempty"`
 	Parts   []AltPart   `json:"parts,omitempty"`
@@ -291,8 +322,9 @@ type AltColumn struct {
 	Align AltColumnAlign `json:"align"`
 }
 
-// AltTag describes one formula-level tag event. A suppressed event has no
-// body. Line is -1 for the complete formula.
+// AltTag describes one formula- or row-scoped tag event. A suppressed event
+// has no body. Line is FormulaTagLine for the complete formula or the
+// zero-based source row for a multiline row tag.
 type AltTag struct {
 	Body       *AltNode `json:"body,omitempty"`
 	Manual     bool     `json:"manual,omitempty"`
@@ -325,6 +357,10 @@ func (d *AltDescription) Clone() *AltDescription {
 func (n AltNode) Clone() AltNode {
 	out := n
 	out.Flags = append([]AltFlag(nil), n.Flags...)
+	if n.FontSize != nil {
+		fontSize := *n.FontSize
+		out.FontSize = &fontSize
+	}
 	if len(n.Parts) > 0 {
 		out.Parts = make([]AltPart, len(n.Parts))
 		for i, part := range n.Parts {
@@ -377,10 +413,33 @@ func (d *AltDescription) ValidateWithLimits(limits source.Limits) error {
 	if err := state.node(d.Root, 0, "root"); err != nil {
 		return err
 	}
+	hasFormulaTag := false
+	hasRowTag := false
+	previousRowLine := -1
+	rowLines := make(map[int]bool)
 	for i, tag := range d.Tags {
 		path := fmt.Sprintf("tags[%d]", i)
 		if tag.Line < -1 {
 			return fmt.Errorf("%w: %s.line %d", ErrInvalidAltDescription, path, tag.Line)
+		}
+		if tag.Line == FormulaTagLine {
+			if hasRowTag {
+				return fmt.Errorf("%w: %s mixes formula and row tags", ErrInvalidAltDescription, path)
+			}
+			hasFormulaTag = true
+		} else {
+			if hasFormulaTag {
+				return fmt.Errorf("%w: %s mixes formula and row tags", ErrInvalidAltDescription, path)
+			}
+			if tag.Line <= previousRowLine {
+				return fmt.Errorf("%w: %s row tags are not strictly ordered", ErrInvalidAltDescription, path)
+			}
+			if rowLines[tag.Line] {
+				return fmt.Errorf("%w: %s duplicate row tag", ErrInvalidAltDescription, path)
+			}
+			hasRowTag = true
+			previousRowLine = tag.Line
+			rowLines[tag.Line] = true
 		}
 		if tag.Starred && !tag.Manual {
 			return fmt.Errorf("%w: %s.starred without manual", ErrInvalidAltDescription, path)
@@ -477,6 +536,8 @@ func (s *altDescriptionValidationState) node(n AltNode, depth int, path string) 
 		{"break", n.Break != "" && !n.Break.valid()},
 		{"sizing", n.Sizing != "" && !n.Sizing.valid()},
 		{"size", n.Size != "" && !n.Size.valid()},
+		{"overlayAlignment", n.OverlayAlignment != "" && !n.OverlayAlignment.valid()},
+		{"raise", n.RaiseDirection != "" && !n.RaiseDirection.valid()},
 	} {
 		name := field.name
 		value := field.value
@@ -493,6 +554,12 @@ func (s *altDescriptionValidationState) node(n AltNode, depth int, path string) 
 			return fmt.Errorf("%w: %s duplicate flag %q", ErrInvalidAltDescription, path, flag)
 		}
 		seenFlags[flag] = true
+	}
+	if n.FontSize != nil {
+		if math.IsNaN(n.FontSize.Percent) || math.IsInf(n.FontSize.Percent, 0) ||
+			n.FontSize.Percent <= 0 {
+			return fmt.Errorf("%w: %s font size is invalid", ErrInvalidAltDescription, path)
+		}
 	}
 	if err := n.validateShape(path); err != nil {
 		return err
@@ -623,6 +690,18 @@ func (n AltNode) validateShape(path string) error {
 		requireParts[AltPartBody] = 1
 		allowFlags[AltFlagCramped] = true
 		allowFlags[AltFlagUncramped] = true
+	case AltKindOverlay:
+		allowedPart[AltPartBody] = true
+		requireParts[AltPartBody] = 1
+		if n.OverlayAlignment == "" {
+			return fmt.Errorf("%w: %s overlay alignment is empty", ErrInvalidAltDescription, path)
+		}
+	case AltKindRaise:
+		allowedPart[AltPartBody] = true
+		requireParts[AltPartBody] = 1
+		if n.RaiseDirection == "" {
+			return fmt.Errorf("%w: %s raise direction is empty", ErrInvalidAltDescription, path)
+		}
 	case AltKindColor, AltKindBox, AltKindPhantom:
 		allowedPart[AltPartBody] = true
 		requireParts[AltPartBody] = 1
@@ -689,6 +768,15 @@ func (n AltNode) validateShape(path string) error {
 	if n.Size != "" && n.Kind != AltKindStyle {
 		return fmt.Errorf("%w: %s has size metadata", ErrInvalidAltDescription, path)
 	}
+	if n.OverlayAlignment != "" && n.Kind != AltKindOverlay {
+		return fmt.Errorf("%w: %s has overlay-alignment metadata", ErrInvalidAltDescription, path)
+	}
+	if n.RaiseDirection != "" && n.Kind != AltKindRaise {
+		return fmt.Errorf("%w: %s has raise metadata", ErrInvalidAltDescription, path)
+	}
+	if n.FontSize != nil && n.Kind != AltKindStyle {
+		return fmt.Errorf("%w: %s has font-size metadata", ErrInvalidAltDescription, path)
+	}
 	if len(n.Rows) > 0 && !allowRows {
 		return fmt.Errorf("%w: %s kind %q has rows", ErrInvalidAltDescription, path, n.Kind)
 	}
@@ -750,9 +838,9 @@ func (k AltNodeKind) valid() bool {
 	case AltKindRow, AltKindGlyph, AltKindText, AltKindOperator, AltKindSpace,
 		AltKindFraction, AltKindRadical, AltKindScripts, AltKindFenced,
 		AltKindSizedDelimiter, AltKindAccent, AltKindLine, AltKindCancel,
-		AltKindTable, AltKindMultiline, AltKindStyle, AltKindColor, AltKindBox,
-		AltKindPhantom, AltKindError, AltKindPlaceholder, AltKindBreak,
-		AltKindAlignMarker:
+		AltKindTable, AltKindMultiline, AltKindStyle, AltKindOverlay, AltKindRaise,
+		AltKindColor, AltKindBox, AltKindPhantom, AltKindError,
+		AltKindPlaceholder, AltKindBreak, AltKindAlignMarker:
 		return true
 	default:
 		return false
@@ -842,6 +930,14 @@ func (a AltColumnAlign) valid() bool {
 func (s AltMathSize) valid() bool {
 	return s == AltSizeInherit || s == AltSizeDisplay || s == AltSizeText ||
 		s == AltSizeScript || s == AltSizeScriptScript
+}
+
+func (a AltOverlayAlignment) valid() bool {
+	return a == AltOverlayStart || a == AltOverlayCenter || a == AltOverlayEnd
+}
+
+func (r AltRaiseDirection) valid() bool {
+	return r == AltRaiseUp || r == AltRaiseDown || r == AltRaiseZero
 }
 
 func (f AltFlag) valid() bool {

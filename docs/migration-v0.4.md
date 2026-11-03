@@ -3,7 +3,7 @@
 Untie 0.4 adds core output policy, shaped-text provenance, the complete MyGo
 editor integration surface, editor geometry, structured accessibility
 descriptions, and high-value TeX layout constructs. The runtime version is
-`0.4.0+layout.5`, and the process-wide Engine cache schema is `5`.
+`0.4.0+layout.6`, and the process-wide Engine cache schema is `6`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -87,6 +87,10 @@ Standalone MyGo elements now request semantic alternative text and expose:
 accessible label. `FormulaSemantics.Description` exposes the same tree to
 applications that manage their own accessibility model. The existing strings
 remain valid compatibility fallbacks.
+
+The structured schema is now version `2`. It covers `Style.SetFontSize` and
+`Style.FontSize`, `Overlay` alignment, `Raise` direction, and formula- or
+row-scoped tags. Existing accessibility strings remain unchanged.
 
 Set `Options.Accessibility = untiemygo.AccessibilityDisabled` to retain
 source-only labels without the alternative-text traversal. Use
@@ -237,7 +241,7 @@ tags, and automatic document counters remain outside the contract.
 - canonical box JSON may include `fontUsage`, `snap`, `carets`, `tags`, and
   node IDs;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.5`;
-- the Engine cache schema is now `5`.
+- `untie.Version()` is now `0.4.0+layout.6`;
+- the Engine cache schema is now `6`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.

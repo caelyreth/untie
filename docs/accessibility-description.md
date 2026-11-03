@@ -27,7 +27,7 @@ type AltDescription struct {
 }
 ```
 
-`Version` is currently `untie.AltDescriptionVersion` (`1`). Unknown versions
+`Version` is currently `untie.AltDescriptionVersion` (`2`). Unknown versions
 must be rejected rather than guessed.
 
 Each `AltNode` carries:
@@ -92,7 +92,9 @@ Every public canonical IR node family has a corresponding description kind:
 | `cancel` | cancellation/negation role, body, cross/inverted flags |
 | `table` | matrix/array/cases/vector role, rows, cells, column alignment |
 | `multiline` | rows and optional `centered` flag |
-| `style` | body, explicit math size, cramped/uncramped state |
+| `style` | body, explicit math size, cramped/uncramped state, uniform font-size percentage |
+| `overlay` | body and start/center/end zero-width placement |
+| `raise` | body and semantic up/down/zero direction |
 | `color` | body; paint is intentionally not an accessibility semantic |
 | `box` | body, `fill` and `border` flags |
 | `phantom` | body and preserved width/height/depth flags |
@@ -129,16 +131,17 @@ Changing spans, origins, node IDs, or paint therefore cannot change the
 description. A one-item `row` produced by grouping syntax is transparent in
 the semantic tree, so cosmetic braces do not change localized output.
 
-The tree can still contain semantic wrappers such as `style`, `color`, `box`,
-and `phantom`. This is deliberate: hosts can decide whether a wrapper is
-spoken, and all public IR families remain visible.
+The tree can still contain semantic wrappers such as `style`, `overlay`,
+`raise`, `color`, `box`, and `phantom`. This is deliberate: hosts can decide
+whether a wrapper is spoken, and all public IR families remain visible.
 
 ## Tags, Errors, and Placeholders
 
-Formula tags are top-level `AltTag` values:
+Formula- and row-scoped tags are top-level `AltTag` values:
 
 - `Body` is the tag body description;
-- `Line` is `-1` for the current formula-level contract;
+- `Line` is `-1` for a formula-level tag or the zero-based source row for a
+  row tag;
 - `Manual`, `Starred`, and `Suppressed` preserve authored semantics;
 - suppressed metadata has no body.
 
@@ -238,6 +241,7 @@ accessibility projection rather than a full IR serializer:
   name dictionary; hosts map Unicode or operator text to their vocabulary;
 - custom explicit-space lengths are identified as `custom` without duplicating
   their numeric layout value;
+- raise descriptions expose direction but not the exact signed layout amount;
 - visual-only data such as paint values, font faces, tracking, padding,
   border/rule thickness, table gaps and rules, and display geometry is omitted;
 - source ranges, origins, and `NodeID` values are omitted, so description nodes

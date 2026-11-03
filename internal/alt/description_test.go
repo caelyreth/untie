@@ -47,6 +47,8 @@ func TestDescriptionCoversEveryPublicIRNodeKind(t *testing.T) {
 		"table":           {table, display.AltKindTable},
 		"multiline":       {ir.NewMultiline(span, []ir.Node{glyph("x")}), display.AltKindMultiline},
 		"style":           {ir.NewStyle(span, glyph("x")), display.AltKindStyle},
+		"overlay":         {ir.NewOverlay(span, glyph("x"), ir.OverlayCenter), display.AltKindOverlay},
+		"raise":           {ir.NewRaise(span, glyph("x"), ir.RawLength(ir.LengthEm, 500_000)), display.AltKindRaise},
 		"color":           {ir.NewColor(span, glyph("x"), ir.Paint{Role: ir.PaintInk}), display.AltKindColor},
 		"box":             {ir.NewBox(span, glyph("x")), display.AltKindBox},
 		"phantom":         {ir.NewPhantom(span, glyph("x")), display.AltKindPhantom},
@@ -55,13 +57,16 @@ func TestDescriptionCoversEveryPublicIRNodeKind(t *testing.T) {
 		"break":           {ir.NewBreak(span, ir.BreakExplicit), display.AltKindBreak},
 		"align-marker":    {ir.NewAlignMarker(span), display.AltKindAlignMarker},
 	}
-	if len(tests) != 23 {
-		t.Fatalf("fixture covers %d node kinds, want 23", len(tests))
+	if len(tests) != 25 {
+		t.Fatalf("fixture covers %d node kinds, want 25", len(tests))
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			out := Generate(tc.node, ir.Inline, source.Limits{})
+			out, err := GenerateContext(context.Background(), tc.node, ir.Inline, source.Limits{})
+			if err != nil {
+				t.Fatalf("GenerateContext() error = %v", err)
+			}
 			if out.Description == nil {
 				t.Fatal("Description = nil")
 			}
@@ -218,6 +223,107 @@ func TestDescriptionTagsAndRecoveryNodes(t *testing.T) {
 	}
 	if err := out.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestDescriptionTeXCompatibilityFields(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	fontSize, err := ir.PercentLength(248.8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	style := ir.NewStyle(span, ir.NewGlyph(span, "x"))
+	style.SetFontSize = true
+	style.FontSize = fontSize
+
+	styled, err := GenerateContext(context.Background(), style, ir.Inline, source.Limits{})
+	if err != nil {
+		t.Fatalf("GenerateContext(style) error = %v", err)
+	}
+	if styled.Description.Root.FontSize == nil ||
+		styled.Description.Root.FontSize.Percent != 248.8 {
+		t.Fatalf("style font size = %#v", styled.Description.Root.FontSize)
+	}
+
+	overlay := ir.NewOverlay(span, ir.NewGlyph(span, "x"), ir.OverlayEnd)
+	overlaid, err := GenerateContext(context.Background(), overlay, ir.Inline, source.Limits{})
+	if err != nil {
+		t.Fatalf("GenerateContext(overlay) error = %v", err)
+	}
+	if overlaid.Description.Root.Kind != display.AltKindOverlay ||
+		overlaid.Description.Root.OverlayAlignment != display.AltOverlayEnd {
+		t.Fatalf("overlay description = %#v", overlaid.Description.Root)
+	}
+	assertDescriptionPart(t, overlaid.Description.Root, display.AltPartBody, display.AltKindGlyph, "x")
+	if overlaid.Text != "x" || overlaid.Speech != "x" {
+		t.Fatalf("overlay Alt = %#v, want visible body content", overlaid)
+	}
+
+	for _, tc := range []struct {
+		amount ir.Length
+		want   display.AltRaiseDirection
+	}{
+		{ir.RawLength(ir.LengthEm, 500_000), display.AltRaiseUp},
+		{ir.RawLength(ir.LengthEm, -500_000), display.AltRaiseDown},
+		{ir.RawLength(ir.LengthEm, 0), display.AltRaiseZero},
+	} {
+		raise := ir.NewRaise(span, ir.NewGlyph(span, "x"), tc.amount)
+		raised, err := GenerateContext(context.Background(), raise, ir.Inline, source.Limits{})
+		if err != nil {
+			t.Fatalf("GenerateContext(raise) error = %v", err)
+		}
+		if raised.Description.Root.Kind != display.AltKindRaise ||
+			raised.Description.Root.RaiseDirection != tc.want {
+			t.Fatalf("raise description = %#v, want %q", raised.Description.Root, tc.want)
+		}
+		assertDescriptionPart(t, raised.Description.Root, display.AltPartBody, display.AltKindGlyph, "x")
+		if raised.Text != "x" || raised.Speech != "x" {
+			t.Fatalf("raise Alt = %#v, want visible body content", raised)
+		}
+	}
+}
+
+func TestDescriptionRowTags(t *testing.T) {
+	t.Parallel()
+
+	span := source.NewRange(0, 1)
+	formula := &ir.Formula{
+		Root: ir.NewMultiline(span,
+			[]ir.Node{ir.NewGlyph(span, "x")},
+			[]ir.Node{ir.NewGlyph(span, "y")},
+		),
+		Tags: []ir.EquationTag{
+			{
+				Body:   ir.NewGlyph(span, "1"),
+				Manual: true,
+				Line:   0,
+			},
+			{
+				Suppressed: true,
+				Line:       1,
+			},
+		},
+	}
+	out, err := GenerateFormulaContext(context.Background(), formula, ir.Display, source.Limits{})
+	if err != nil {
+		t.Fatalf("GenerateFormulaContext() error = %v", err)
+	}
+	if out.Description == nil || len(out.Description.Tags) != 2 {
+		t.Fatalf("Description = %#v", out.Description)
+	}
+	if out.Description.Tags[0].Line != 0 || out.Description.Tags[0].Body == nil ||
+		out.Description.Tags[1].Line != 1 || !out.Description.Tags[1].Suppressed {
+		t.Fatalf("row tags = %#v", out.Description.Tags)
+	}
+	canonical, err := out.Description.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	if !strings.Contains(string(canonical), `"line":0`) ||
+		!strings.Contains(string(canonical), `"line":1`) {
+		t.Fatalf("canonical row tags = %s", canonical)
 	}
 }
 

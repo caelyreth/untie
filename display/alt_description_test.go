@@ -29,7 +29,7 @@ func TestAltDescriptionCloneValidateAndCanonical(t *testing.T) {
 	if !bytes.Equal(first, second) {
 		t.Fatalf("clone changed canonical JSON:\n%s\n%s", first, second)
 	}
-	const want = `{"version":1,"root":{"kind":"fraction","fractionRole":"ordinary","fractionStyle":"vertical","parts":[{"role":"numerator","node":{"kind":"glyph","text":"1"}},{"role":"denominator","node":{"kind":"fraction","fractionRole":"binomial","fractionStyle":"no-bar","parts":[{"role":"numerator","node":{"kind":"glyph","text":"n"}},{"role":"denominator","node":{"kind":"glyph","text":"k"}}]}}]}}`
+	const want = `{"version":2,"root":{"kind":"fraction","fractionRole":"ordinary","fractionStyle":"vertical","parts":[{"role":"numerator","node":{"kind":"glyph","text":"1"}},{"role":"denominator","node":{"kind":"fraction","fractionRole":"binomial","fractionStyle":"no-bar","parts":[{"role":"numerator","node":{"kind":"glyph","text":"n"}},{"role":"denominator","node":{"kind":"glyph","text":"k"}}]}}]}}`
 	if string(first) != want {
 		t.Fatalf("MarshalCanonical() = %s, want %s", first, want)
 	}
@@ -113,6 +113,44 @@ func TestAltDescriptionValidationRejectsMalformedTrees(t *testing.T) {
 				Body: &AltNode{Kind: AltKindGlyph, Text: "1"},
 			}}
 		}},
+		{name: "mixed tag scopes", edit: func(d *AltDescription) {
+			d.Tags = []AltTag{
+				{Manual: true, Line: FormulaTagLine, Body: &AltNode{Kind: AltKindGlyph, Text: "1"}},
+				{Manual: true, Line: 0, Body: &AltNode{Kind: AltKindGlyph, Text: "2"}},
+			}
+		}},
+		{name: "unordered row tags", edit: func(d *AltDescription) {
+			d.Tags = []AltTag{
+				{Manual: true, Line: 1, Body: &AltNode{Kind: AltKindGlyph, Text: "1"}},
+				{Manual: true, Line: 0, Body: &AltNode{Kind: AltKindGlyph, Text: "2"}},
+			}
+		}},
+		{name: "duplicate row tags", edit: func(d *AltDescription) {
+			d.Tags = []AltTag{
+				{Suppressed: true, Line: 0},
+				{Manual: true, Line: 0, Body: &AltNode{Kind: AltKindGlyph, Text: "1"}},
+			}
+		}},
+		{name: "overlay alignment", edit: func(d *AltDescription) {
+			d.Root = AltNode{Kind: AltKindOverlay, Parts: []AltPart{
+				{Role: AltPartBody, Node: AltNode{Kind: AltKindGlyph, Text: "x"}},
+			}}
+		}},
+		{name: "raise direction", edit: func(d *AltDescription) {
+			d.Root = AltNode{Kind: AltKindRaise, Parts: []AltPart{
+				{Role: AltPartBody, Node: AltNode{Kind: AltKindGlyph, Text: "x"}},
+			}}
+		}},
+		{name: "font size", edit: func(d *AltDescription) {
+			d.Root = AltNode{
+				Kind:     AltKindStyle,
+				FontSize: &AltFontSize{Percent: 0},
+				Parts: []AltPart{{
+					Role: AltPartBody,
+					Node: AltNode{Kind: AltKindGlyph, Text: "x"},
+				}},
+			}
+		}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -182,8 +220,69 @@ func TestAltCloneEqualAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Alt.MarshalCanonical() error = %v", err)
 	}
-	if !strings.Contains(string(canonical), `"description":{"version":1`) {
+	if !strings.Contains(string(canonical), `"description":{"version":2`) {
 		t.Fatalf("Alt.MarshalCanonical() omitted description: %s", canonical)
+	}
+}
+
+func TestAltDescriptionTeXCompatibilityFields(t *testing.T) {
+	t.Parallel()
+
+	description := &AltDescription{
+		Version: AltDescriptionVersion,
+		Root: AltNode{
+			Kind:             AltKindOverlay,
+			OverlayAlignment: AltOverlayCenter,
+			Parts: []AltPart{{
+				Role: AltPartBody,
+				Node: AltNode{
+					Kind: AltKindStyle,
+					FontSize: &AltFontSize{
+						Percent: 248.8,
+					},
+					Parts: []AltPart{{
+						Role: AltPartBody,
+						Node: AltNode{
+							Kind:           AltKindRaise,
+							RaiseDirection: AltRaiseDown,
+							Parts: []AltPart{{
+								Role: AltPartBody,
+								Node: AltNode{Kind: AltKindGlyph, Text: "x"},
+							}},
+						},
+					}},
+				},
+			}},
+		},
+		Tags: []AltTag{
+			{Manual: true, Line: 0, Body: &AltNode{Kind: AltKindGlyph, Text: "1"}},
+			{Suppressed: true, Line: 1},
+		},
+	}
+	if err := description.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	clone := description.Clone()
+	clone.Root.Parts[0].Node.FontSize.Percent = 50
+	if description.Root.Parts[0].Node.FontSize.Percent != 248.8 {
+		t.Fatal("Clone shared font-size metadata")
+	}
+	encoded, err := description.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	for _, want := range []string{
+		`"kind":"overlay"`,
+		`"overlayAlignment":"center"`,
+		`"fontSize":{"percent":248.8}`,
+		`"kind":"raise"`,
+		`"raise":"down"`,
+		`"line":0`,
+		`"line":1`,
+	} {
+		if !strings.Contains(string(encoded), want) {
+			t.Fatalf("canonical description omitted %s: %s", want, encoded)
+		}
 	}
 }
 

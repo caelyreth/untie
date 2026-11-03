@@ -109,6 +109,9 @@ The IR's semantic roles improve the output:
   instead of "equals canceled";
 - brace labels, overlays, roots, fences, and accents use their semantic form.
 
+Structured descriptions also preserve uniform font-size declarations, overlay
+alignment, raise direction, and formula- or row-scoped tag metadata.
+
 The exact vocabularies are deterministic and tested. `Text` and `Speech` remain
 English-centric compatibility forms. Use
 [the structured description](accessibility-description.md) for host

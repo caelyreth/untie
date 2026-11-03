@@ -317,6 +317,27 @@ func (b *descriptionBuilder) nodeValue(node ir.Node, depth int) (display.AltNode
 				addAltFlag(&out, display.AltFlagUncramped, true)
 			}
 		}
+		if n.SetFontSize {
+			out.FontSize = &display.AltFontSize{Percent: n.FontSize.Float()}
+		}
+		return out, nil
+	case *ir.Overlay:
+		out := display.AltNode{
+			Kind:             display.AltKindOverlay,
+			OverlayAlignment: altOverlayAlignment(n.Alignment),
+		}
+		if err := b.appendPart(&out, depth, display.AltPartBody, n.Body); err != nil {
+			return display.AltNode{}, err
+		}
+		return out, nil
+	case *ir.Raise:
+		out := display.AltNode{
+			Kind:           display.AltKindRaise,
+			RaiseDirection: altRaiseDirection(n.Amount),
+		}
+		if err := b.appendPart(&out, depth, display.AltPartBody, n.Body); err != nil {
+			return display.AltNode{}, err
+		}
 		return out, nil
 	case *ir.Color:
 		out := display.AltNode{Kind: display.AltKindColor}
@@ -613,5 +634,27 @@ func altMathSize(size ir.MathSize) display.AltMathSize {
 		return display.AltSizeScriptScript
 	default:
 		return display.AltSizeInherit
+	}
+}
+
+func altOverlayAlignment(alignment ir.OverlayAlignment) display.AltOverlayAlignment {
+	switch alignment {
+	case ir.OverlayCenter:
+		return display.AltOverlayCenter
+	case ir.OverlayEnd:
+		return display.AltOverlayEnd
+	default:
+		return display.AltOverlayStart
+	}
+}
+
+func altRaiseDirection(amount ir.Length) display.AltRaiseDirection {
+	switch {
+	case amount.Value > 0:
+		return display.AltRaiseUp
+	case amount.Value < 0:
+		return display.AltRaiseDown
+	default:
+		return display.AltRaiseZero
 	}
 }

@@ -143,7 +143,7 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 		}
 		return out
 	}
-	switch cursor.next() % 17 {
+	switch cursor.next() % 19 {
 	case 0:
 		return ir.NewRow(span, children(int(cursor.next()%4))...)
 	case 1:
@@ -208,15 +208,23 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 	case 13:
 		return ir.NewMultiline(span, children(int(cursor.next()%3)))
 	case 14:
-		switch cursor.next() % 4 {
+		switch cursor.next() % 5 {
 		case 0:
 			return ir.NewStyle(span, randomNode(cursor, depth+1))
 		case 1:
 			return ir.NewColor(span, randomNode(cursor, depth+1), ir.Paint{})
 		case 2:
 			return ir.NewBox(span, randomNode(cursor, depth+1))
-		default:
+		case 3:
 			return ir.NewPhantom(span, randomNode(cursor, depth+1))
+		default:
+			style := ir.NewStyle(span, randomNode(cursor, depth+1))
+			style.SetFontSize = true
+			style.FontSize = ir.RawLength(
+				ir.LengthPercent,
+				int64(cursor.next()%249+1)*1_000_000,
+			)
+			return style
 		}
 	case 15:
 		texts := []string{"(", ".", "", "()", string([]byte{0xff})}
@@ -238,6 +246,19 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 			node.Class = ir.ClassRelation
 		}
 		return node
+	case 16:
+		return ir.NewOverlay(
+			span,
+			randomNode(cursor, depth+1),
+			ir.OverlayAlignment(cursor.next()%3),
+		)
+	case 17:
+		amount := int64(cursor.next()%11-5) * 1_000_000
+		return ir.NewRaise(
+			span,
+			randomNode(cursor, depth+1),
+			ir.RawLength(ir.LengthEm, amount),
+		)
 	default:
 		switch cursor.next() % 4 {
 		case 0:

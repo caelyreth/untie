@@ -6,7 +6,7 @@ display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
 These docs describe the public API at library version `0.4.0` and layout
-revision `5`. They focus on the behavior a host or code assistant can rely on
+revision `6`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here

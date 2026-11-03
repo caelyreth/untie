@@ -186,7 +186,7 @@ stronger identity.
 
 ### Version
 
-`untie.Version()` currently returns `0.4.0+layout.5`. The layout revision is
+`untie.Version()` currently returns `0.4.0+layout.6`. The layout revision is
 part of the engine-cache contract. Do not use a cached engine across an
 incompatible version without consulting `Version()`.
 
