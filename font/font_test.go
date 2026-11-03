@@ -36,6 +36,14 @@ func TestLoadNewCM(t *testing.T) {
 	if set.Key() == 0 && set.KeySHA256() == ([32]byte{}) {
 		t.Fatal("font key is empty")
 	}
+	metrics, ok := set.VerticalMetrics(MathFace)
+	if !ok {
+		t.Fatal("VerticalMetrics = false")
+	}
+	wantBounds := Bounds{XMin: -1044, YMin: -3560, XMax: 4088, YMax: 3060}
+	if metrics.FontBounds != wantBounds {
+		t.Fatalf("FontBounds = %#v, want %#v", metrics.FontBounds, wantBounds)
+	}
 }
 
 func TestInputAndOutputOwnership(t *testing.T) {

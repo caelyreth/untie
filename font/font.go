@@ -335,7 +335,7 @@ func (f *FontSet) MapVariation(ref FaceRef, r, selector rune) (Glyph, bool) {
 	if face == nil {
 		return Glyph{}, false
 	}
-	gid, ok := face.opentype.GlyphIndexVariation(r, selector)
+	gid, ok := face.glyphFont.VariationGlyph(r, selector)
 	if !ok {
 		return Glyph{}, false
 	}

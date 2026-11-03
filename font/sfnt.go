@@ -8,7 +8,6 @@ import (
 	"sort"
 	"unicode/utf16"
 
-	ot "github.com/go-opentype/opentype"
 	tsfont "github.com/go-text/typesetting/font"
 )
 
@@ -23,7 +22,6 @@ type parsedFace struct {
 	data      FontFace
 	info      FaceInfo
 	glyphFont *tsfont.Font
-	opentype  *ot.Font
 	sfntBytes []byte
 	tables    map[string][]byte
 	math      mathTable
@@ -257,15 +255,12 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 		return nil, fmt.Errorf("face %d (%q): extracted SFNT contains %d faces", data.Index, data.ID, len(tsFaces))
 	}
 	glyphFont := tsFaces[0].Font
-	of, err := ot.Parse(standalone)
-	if err != nil {
-		return nil, fmt.Errorf("face %d (%q): parse OpenType tables: %w", data.Index, data.ID, err)
-	}
 	if glyphFont.Upem() == 0 {
 		return nil, fmt.Errorf("face %d (%q): invalid units per em 0", data.Index, data.ID)
 	}
-	if int(glyphFont.Upem()) != of.UnitsPerEm() {
-		return nil, fmt.Errorf("face %d (%q): units per em disagree: outlines=%d opentype=%d", data.Index, data.ID, glyphFont.Upem(), of.UnitsPerEm())
+	glyphCount, err := readGlyphCount(tables["maxp"])
+	if err != nil {
+		return nil, fmt.Errorf("face %d (%q): read glyph count: %w", data.Index, data.ID, err)
 	}
 
 	name, err := postScriptName(tables["name"])
@@ -287,10 +282,10 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 	if err != nil {
 		return nil, fmt.Errorf("face %d (%q): parse GSUB: %w", data.Index, data.ID, err)
 	}
-	if err := m.validateGlyphIDs(of.NumGlyphs()); err != nil {
+	if err := m.validateGlyphIDs(glyphCount); err != nil {
 		return nil, fmt.Errorf("face %d (%q): validate MATH glyph references: %w", data.Index, data.ID, err)
 	}
-	if err := g.validateGlyphIDs(of.NumGlyphs()); err != nil {
+	if err := g.validateGlyphIDs(glyphCount); err != nil {
 		return nil, fmt.Errorf("face %d (%q): validate GSUB glyph references: %w", data.Index, data.ID, err)
 	}
 
@@ -301,11 +296,10 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 			Index:          data.Index,
 			PostScriptName: name,
 			UnitsPerEm:     glyphFont.Upem(),
-			GlyphCount:     of.NumGlyphs(),
+			GlyphCount:     glyphCount,
 			HasMath:        m.present,
 		},
 		glyphFont: glyphFont,
-		opentype:  of,
 		sfntBytes: standalone,
 		tables:    tables,
 		math:      m,
@@ -321,19 +315,42 @@ func parseSelectedFace(data FontFace) (*parsedFace, error) {
 }
 
 func (f *parsedFace) readVerticalMetrics() error {
-	xMin, yMin, xMax, yMax := f.opentype.FontBBox()
+	fontBounds, err := readFontBounds(f.tables["head"])
+	if err != nil {
+		return fmt.Errorf("face %d (%q): read font bounds: %w", f.data.Index, f.data.ID, err)
+	}
+	face := tsfont.NewFace(f.glyphFont)
+	extents, ok := face.FontHExtents()
+	if !ok {
+		return fmt.Errorf("face %d (%q): missing horizontal font metrics", f.data.Index, f.data.ID)
+	}
+	ascender, err := roundedMetric(extents.Ascender, "ascender")
+	if err != nil {
+		return fmt.Errorf("face %d (%q): %w", f.data.Index, f.data.ID, err)
+	}
+	descender, err := roundedMetric(extents.Descender, "descender")
+	if err != nil {
+		return fmt.Errorf("face %d (%q): %w", f.data.Index, f.data.ID, err)
+	}
+	lineGap, err := roundedMetric(extents.LineGap, "line gap")
+	if err != nil {
+		return fmt.Errorf("face %d (%q): %w", f.data.Index, f.data.ID, err)
+	}
+	capHeight, err := roundedMetric(face.LineMetric(tsfont.CapHeight), "cap height")
+	if err != nil {
+		return fmt.Errorf("face %d (%q): %w", f.data.Index, f.data.ID, err)
+	}
+	xHeight, err := roundedMetric(face.LineMetric(tsfont.XHeight), "x-height")
+	if err != nil {
+		return fmt.Errorf("face %d (%q): %w", f.data.Index, f.data.ID, err)
+	}
 	f.vertical = VerticalMetrics{
-		Ascender:  int32(f.opentype.Ascent()),
-		Descender: int32(f.opentype.Descent()),
-		LineGap:   int32(f.opentype.LineGap()),
-		CapHeight: int32(f.opentype.CapHeight()),
-		XHeight:   int32(f.opentype.XHeight()),
-		FontBounds: Bounds{
-			XMin: int32(xMin),
-			YMin: int32(-yMax),
-			XMax: int32(xMax),
-			YMax: int32(-yMin),
-		},
+		Ascender:   ascender,
+		Descender:  descender,
+		LineGap:    lineGap,
+		CapHeight:  capHeight,
+		XHeight:    xHeight,
+		FontBounds: fontBounds,
 	}
 	return nil
 }

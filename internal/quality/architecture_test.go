@@ -132,7 +132,6 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/font": {
 		Production: []string{
-			"github.com/go-opentype/opentype",
 			"github.com/go-text/typesetting/font",
 			"github.com/go-text/typesetting/font/opentype",
 			modulePath + "/geometry",
