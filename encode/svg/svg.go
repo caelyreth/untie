@@ -67,11 +67,7 @@ func DefaultOptions() Options {
 //
 // A nil options pointer uses DefaultOptions. Marshal does not mutate box.
 func Marshal(box *display.Box, options *Options) ([]byte, error) {
-	var output bytes.Buffer
-	if err := Write(&output, box, options); err != nil {
-		return nil, err
-	}
-	return output.Bytes(), nil
+	return marshal(box, options)
 }
 
 // Write encodes box as a standalone SVG document to writer.
@@ -82,19 +78,31 @@ func Write(writer io.Writer, box *display.Box, options *Options) error {
 	if writer == nil {
 		return fmt.Errorf("%w: nil writer", ErrInvalidWriter)
 	}
-	opts, err := normalizeOptions(options)
+	output, err := marshal(box, options)
 	if err != nil {
 		return err
 	}
+	count, err := writer.Write(output)
+	if err == nil && count != len(output) {
+		err = io.ErrShortWrite
+	}
+	return err
+}
+
+func marshal(box *display.Box, options *Options) ([]byte, error) {
+	opts, err := normalizeOptions(options)
+	if err != nil {
+		return nil, err
+	}
 	if box == nil {
-		return fmt.Errorf("%w: nil box", ErrInvalidBox)
+		return nil, fmt.Errorf("%w: nil box", ErrInvalidBox)
 	}
 	if err := box.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidBox, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidBox, err)
 	}
 	for i, path := range box.Paths {
 		if path.Segments[0].Op != geometry.SegMoveTo {
-			return fmt.Errorf("%w: path %d does not begin with MoveTo", ErrInvalidBox, i)
+			return nil, fmt.Errorf("%w: path %d does not begin with MoveTo", ErrInvalidBox, i)
 		}
 	}
 
@@ -102,36 +110,38 @@ func Write(writer io.Writer, box *display.Box, options *Options) error {
 	width := bounds.Width + 2*opts.Padding
 	height := bounds.Height + 2*opts.Padding
 	if !finite(width) || !finite(height) || width < 0 || height < 0 {
-		return fmt.Errorf("%w: output dimensions are not finite", ErrInvalidOptions)
+		return nil, fmt.Errorf("%w: output dimensions are not finite", ErrInvalidOptions)
 	}
 	offset := geometry.Point{
 		X: opts.Padding - bounds.X,
 		Y: opts.Padding - bounds.Y,
 	}
 	if !finite(offset.X) || !finite(offset.Y) {
-		return fmt.Errorf("%w: output translation is not finite", ErrInvalidOptions)
+		return nil, fmt.Errorf("%w: output translation is not finite", ErrInvalidOptions)
 	}
 
+	capacity := 256 + len(box.Items)*64
+	for _, path := range box.Paths {
+		capacity += len(path.Segments) * 24
+	}
 	encoder := svgEncoder{
-		writer:    writer,
+		dst:       make([]byte, 0, capacity),
 		options:   opts,
 		offset:    offset,
 		width:     width,
 		height:    height,
-		scratch:   make([]byte, 0, 64),
 		pathFirst: true,
 	}
 	encoder.encode(box)
-	return encoder.err
+	return encoder.dst, encoder.err
 }
 
 type svgEncoder struct {
-	writer  io.Writer
+	dst     []byte
 	options Options
 	offset  geometry.Point
 	width   float32
 	height  float32
-	scratch []byte
 	err     error
 
 	pathFirst bool
@@ -322,55 +332,44 @@ func (e *svgEncoder) writeNumber(value float32) {
 	if e.options.Precision > 0 {
 		precision = e.options.Precision
 	}
-	e.scratch = strconv.AppendFloat(e.scratch[:0], float64(value), 'f', precision, 32)
+	start := len(e.dst)
+	e.dst = strconv.AppendFloat(e.dst, float64(value), 'f', precision, 32)
 	if precision > 0 {
-		for len(e.scratch) > 0 && e.scratch[len(e.scratch)-1] == '0' {
-			e.scratch = e.scratch[:len(e.scratch)-1]
+		for len(e.dst) > start && e.dst[len(e.dst)-1] == '0' {
+			e.dst = e.dst[:len(e.dst)-1]
 		}
-		if len(e.scratch) > 0 && e.scratch[len(e.scratch)-1] == '.' {
-			e.scratch = e.scratch[:len(e.scratch)-1]
+		if len(e.dst) > start && e.dst[len(e.dst)-1] == '.' {
+			e.dst = e.dst[:len(e.dst)-1]
 		}
 	}
-	if len(e.scratch) == 0 {
-		e.scratch = append(e.scratch, '0')
+	if len(e.dst) == start {
+		e.dst = append(e.dst, '0')
 	}
-	e.writeBytes(e.scratch)
 }
 
 func (e *svgEncoder) writeUint(value uint64) {
-	e.scratch = strconv.AppendUint(e.scratch[:0], value, 10)
-	e.writeBytes(e.scratch)
+	e.dst = strconv.AppendUint(e.dst, value, 10)
 }
 
 func (e *svgEncoder) writeByte(value byte) {
 	if e.err != nil {
 		return
 	}
-	var one [1]byte
-	one[0] = value
-	e.writeBytes(one[:])
+	e.dst = append(e.dst, value)
 }
 
 func (e *svgEncoder) writeString(value string) {
 	if e.err != nil {
 		return
 	}
-	count, err := io.WriteString(e.writer, value)
-	if err == nil && count != len(value) {
-		err = io.ErrShortWrite
-	}
-	e.err = err
+	e.dst = append(e.dst, value...)
 }
 
 func (e *svgEncoder) writeBytes(value []byte) {
 	if e.err != nil {
 		return
 	}
-	count, err := e.writer.Write(value)
-	if err == nil && count != len(value) {
-		err = io.ErrShortWrite
-	}
-	e.err = err
+	e.dst = append(e.dst, value...)
 }
 
 func normalizeOptions(options *Options) (Options, error) {
