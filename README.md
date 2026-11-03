@@ -21,7 +21,9 @@ glyph paths, rules, source hits, and accessibility text.
 - reusable rendering with bounded caches;
 - inline and display layout, line breaking, equation tags, and overflow bounds;
 - formula-scoped labels and host-resolved equation references;
-- deterministic text and speech alternatives for accessibility;
+- deterministic text, speech, and structured localization alternatives for
+  accessibility;
+- deterministic Presentation MathML export and a bounded strict importer;
 - optional SVG and PNG output.
 
 ### Use
@@ -82,6 +84,10 @@ For ready-made output, use
 SVG supports deterministic vector export; the raster package provides
 antialiased RGBA and PNG output without cgo.
 
+Use [`mathml`](mathml/mathml.go) for Presentation MathML interchange. Export
+covers every canonical IR node family. Import is intentionally limited to a
+documented strict subset with structured diagnostics for unsupported input.
+
 ### Lower-Level API
 
 Use `NewEngine` when you need explicit engine ownership, direct canonical-IR
@@ -132,6 +138,7 @@ Markdown binding, and existing-box drawing.
 - [Getting Started](docs/getting-started.md)
 - [Core Concepts](docs/concepts.md)
 - [Rendering](docs/rendering.md)
+- [MathML Interchange](docs/mathml.md)
 - [Editor Integration](docs/editor-integration.md)
 - [Fonts](docs/fonts.md)
 - [Parsing](docs/parsing.md)

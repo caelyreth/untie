@@ -18,7 +18,7 @@ import (
 func TestVersionIncludesOutputPolicyLayoutRevision(t *testing.T) {
 	t.Parallel()
 
-	if got, want := Version(), "0.4.0+layout.6"; got != want {
+	if got, want := Version(), "0.4.0+layout.7"; got != want {
 		t.Fatalf("Version() = %q, want %q", got, want)
 	}
 }
@@ -205,7 +205,7 @@ func TestLayoutPopulatesAltWithoutChangingGeometry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayoutContext() error = %v", err)
 	}
-	if box.Alt != expr.Alt() {
+	if !box.Alt.Equal(expr.Alt()) {
 		t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, expr.Alt())
 	}
 	if box.Alt.Text == "" || box.Alt.Speech == "" {
@@ -277,7 +277,7 @@ func TestAltGenerationIsExplicit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Layout(GenerateAlt) error = %v", err)
 	}
-	if accessible.Alt != expr.Alt() {
+	if !accessible.Alt.Equal(expr.Alt()) {
 		t.Fatalf("accessible Box.Alt = %#v, want %#v", accessible.Alt, expr.Alt())
 	}
 }
@@ -401,7 +401,7 @@ func TestLayoutAltRecognizesExactTeXSpaceLengths(t *testing.T) {
 			if err != nil {
 				t.Fatalf("LayoutContext() error = %v", err)
 			}
-			if box.Alt != exprAlt {
+			if !box.Alt.Equal(exprAlt) {
 				t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, exprAlt)
 			}
 		})
@@ -957,7 +957,7 @@ func TestLayoutFormulaContextAcceptsCanonicalIR(t *testing.T) {
 	if err := box.Validate(); err != nil {
 		t.Fatalf("Box.Validate() error = %v", err)
 	}
-	if box.Alt != expr.Alt() {
+	if !box.Alt.Equal(expr.Alt()) {
 		t.Fatalf("Box.Alt = %#v, want %#v", box.Alt, expr.Alt())
 	}
 	_, err = engine.LayoutFormulaContext(context.Background(), nil, Inline, Style{Size: 16})
@@ -1042,10 +1042,15 @@ func TestExprAltIsSemanticAndDeterministic(t *testing.T) {
 	if texAlt.Text != "x_i²" || texAlt.Speech != "x sub i squared" {
 		t.Fatalf("TeX Alt() = %#v", texAlt)
 	}
-	if typstAlt != texAlt {
+	if texAlt.Description == nil ||
+		texAlt.Description.Root.Kind != display.AltKindScripts ||
+		texAlt.Description.Root.ScriptRole != display.AltScriptOrdinary {
+		t.Fatalf("TeX structured Alt() = %#v", texAlt.Description)
+	}
+	if !typstAlt.Equal(texAlt) {
 		t.Fatalf("equivalent source produced different alt text:\nTeX:   %#v\nTypst: %#v", texAlt, typstAlt)
 	}
-	if again := tex.Alt(); again != texAlt {
+	if again := tex.Alt(); !again.Equal(texAlt) {
 		t.Fatalf("Alt() is nondeterministic: %#v != %#v", texAlt, again)
 	}
 	if err := texAlt.Validate(); err != nil {
@@ -1058,7 +1063,7 @@ func TestExprAltIgnoresSourceSpans(t *testing.T) {
 
 	plain := ParseTeX(`x`, Inline, ParseOptions{}).Alt()
 	grouped := ParseTeX(`{x}`, Inline, ParseOptions{}).Alt()
-	if plain != grouped {
+	if !plain.Equal(grouped) {
 		t.Fatalf("source grouping changed alternative text:\nplain:   %#v\ngrouped: %#v", plain, grouped)
 	}
 }
@@ -1306,11 +1311,16 @@ func TestExprAltContextLimitContract(t *testing.T) {
 	if len(alt.Text) > 5 || len(alt.Speech) > 5 {
 		t.Fatalf("AltContext() fallback exceeds limit: text=%d speech=%d", len(alt.Text), len(alt.Speech))
 	}
+	if alt.Description == nil ||
+		alt.Description.Root.Kind != display.AltKindError ||
+		alt.Description.Root.Code != string(source.CodeInternal) {
+		t.Fatalf("AltContext() structured fallback = %#v", alt.Description)
+	}
 	if err := alt.Validate(); err != nil {
 		t.Fatalf("fallback Validate() error = %v", err)
 	}
 	again, againErr := expr.AltContext(context.Background())
-	if again != alt || !errors.Is(againErr, ErrAltLimitExceeded) {
+	if !again.Equal(alt) || !errors.Is(againErr, ErrAltLimitExceeded) {
 		t.Fatalf("AltContext() is nondeterministic: %#v/%v != %#v/%v", alt, err, again, againErr)
 	}
 }

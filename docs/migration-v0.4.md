@@ -1,9 +1,10 @@
 # Migrating To 0.4
 
-Untie 0.4 adds core output policy, shaped-text provenance, and the complete
-MyGo editor integration surface, editor geometry, and high-value TeX layout
-constructs. The runtime version is `0.4.0+layout.6`, and the process-wide
-Engine cache schema is `5`.
+Untie 0.4 adds core output policy, shaped-text provenance, the complete MyGo
+editor integration surface, editor geometry, structured accessibility
+descriptions, Presentation MathML interchange, formula labels and references,
+and high-value TeX layout constructs. The runtime version is
+`0.4.0+layout.7`, and the process-wide Engine cache schema is `7`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -78,9 +79,19 @@ policy without re-inferring geometry.
 
 Standalone MyGo elements now request semantic alternative text and expose:
 
-- `Alt.Speech` as the label, with `Alt.Text` and source as fallbacks;
+- `Alt.Description` as a versioned localization tree;
+- `Alt.Speech` as the English label, with `Alt.Text` and source as fallbacks;
 - exact TeX or Typst source as the value;
 - a stable non-empty name for empty formulas.
+
+`Options.LocalizeLabel` can turn the structured description into a host-owned
+accessible label. `FormulaSemantics.Description` exposes the same tree to
+applications that manage their own accessibility model. The existing strings
+remain valid compatibility fallbacks.
+
+The structured schema is now version `2`. It covers `Style.SetFontSize` and
+`Style.FontSize`, `Overlay` alignment, `Raise` direction, and formula- or
+row-scoped tags. Existing accessibility strings remain unchanged.
 
 Set `Options.Accessibility = untiemygo.AccessibilityDisabled` to retain
 source-only labels without the alternative-text traversal. Use
@@ -107,8 +118,9 @@ Found hit events also include `Caret` and `HasCaret`, so click-to-edit can enter
 the editor at a proven source boundary without recomputing pointer affinity.
 
 `FormulaClipboardData` and the context-menu option expose plain text and custom
-TeX/Typst source MIME formats. MathML is not offered until Untie has a real
-MathML serializer.
+TeX/Typst source MIME formats. The standalone `mathml` package now provides
+explicit Presentation MathML conversion; it does not silently add a MathML
+clipboard MIME type to the MyGo adapter.
 
 ## Caret Stops
 
@@ -250,6 +262,8 @@ behavior.
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
+- `display.Alt` gained the versioned `Description` tree, with stable semantic
+  kinds, roles, parts, flags, tags, and canonical JSON;
 - `display.Item` gained `Snap`;
 - `display.Box` gained `CaretStops`;
 - `display.Box` gained `Tags` for source-row tags;
@@ -260,7 +274,7 @@ behavior.
   node IDs;
 - expression and renderer parse-cache identity includes TeX references;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.6`;
-- the Engine cache schema is now `5`.
+- `untie.Version()` is now `0.4.0+layout.7`;
+- the Engine cache schema is now `7`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.

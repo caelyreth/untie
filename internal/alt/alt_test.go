@@ -249,12 +249,16 @@ func TestGenerateDecorationsAndWrappers(t *testing.T) {
 			wantSpeech: "phantom of x",
 		},
 		{
-			name: "style and color are semantic pass-throughs",
+			name: "style color overlay and raise are semantic pass-throughs",
 			node: func() ir.Node {
 				colored := ir.NewColor(testSpan, glyph("x"), ir.Paint{HasExplicit: true, Explicit: ir.RGBA{A: 255}})
-				styled := ir.NewStyle(testSpan, colored)
+				raised := ir.NewRaise(testSpan, colored, ir.RawLength(ir.LengthEm, 250_000))
+				overlay := ir.NewOverlay(testSpan, raised, ir.OverlayCenter)
+				styled := ir.NewStyle(testSpan, overlay)
 				styled.SetSize = true
 				styled.NewSize = ir.SizeDisplay
+				styled.SetFontSize = true
+				styled.FontSize = ir.RawLength(ir.LengthPercent, 150_000_000)
 				return styled
 			}(),
 			wantText:   "x",
@@ -420,7 +424,7 @@ func TestGenerateSanitizesPanicFallback(t *testing.T) {
 	if !errors.Is(firstErr, ErrInvalidRoot) || !errors.Is(secondErr, ErrInvalidRoot) {
 		t.Fatalf("errors = %v, %v, want ErrInvalidRoot", firstErr, secondErr)
 	}
-	if first != second {
+	if !first.Equal(second) {
 		t.Fatalf("panic fallback is nondeterministic: %#v != %#v", first, second)
 	}
 	if len(first.Text) > 16 || len(first.Speech) > 16 {
@@ -455,10 +459,10 @@ func TestGenerateIsSourceIndependentAndDeterministic(t *testing.T) {
 	second := ir.NewFraction(source.Detached(), glyphAt(source.Detached(), "a"), glyphAt(source.Detached(), "b"))
 	firstAlt := Generate(first, ir.Inline, source.Limits{})
 	secondAlt := Generate(second, ir.Inline, source.Limits{})
-	if firstAlt != secondAlt {
+	if !firstAlt.Equal(secondAlt) {
 		t.Fatalf("source ranges changed semantics: %#v != %#v", firstAlt, secondAlt)
 	}
-	if again := Generate(first, ir.Inline, source.Limits{}); again != firstAlt {
+	if again := Generate(first, ir.Inline, source.Limits{}); !again.Equal(firstAlt) {
 		t.Fatalf("Generate() is nondeterministic: %#v != %#v", firstAlt, again)
 	}
 }

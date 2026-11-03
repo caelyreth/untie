@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.4.0` with layout revision `6`. This page defines
+Untie is currently version `0.4.0` with layout revision `7`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -34,8 +34,9 @@ Primary surface:
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `CaretStop`, `Break`, `NodeID`,
-  `LineBox`, `TagBox`, `Alt`, `ColorPolicy`, `PixelGrid`, `FontUsage`,
-  `Box.Carets`, `Box.CaretAt`, `Box.Split`, and `Box.Diagnostics`;
+  `LineBox`, `TagBox`, `Alt`, `AltDescription`, semantic `AltNode` kinds and
+  roles, `ColorPolicy`, `PixelGrid`, `FontUsage`, `Box.Carets`,
+  `Box.CaretAt`, `Box.Split`, and `Box.Diagnostics`;
 - public error sentinels and diagnostic severities/codes.
 
 Tier 1 is the recommended integration surface. Breaking changes are allowed
@@ -52,6 +53,7 @@ Packages:
 - `github.com/caelyreth/untie/geometry`
 - `github.com/caelyreth/untie/encode/raster`
 - `github.com/caelyreth/untie/encode/svg`
+- `github.com/caelyreth/untie/mathml`
 - low-level introspection in `github.com/caelyreth/untie/font`
 
 This tier supports:
@@ -61,6 +63,8 @@ This tier supports:
 - `Engine.LayoutFormulaContext`;
 - source ranges, diagnostic codes, and resource limits;
 - optional SVG or PNG output;
+- deterministic Presentation MathML export and the documented strict import
+  subset;
 - exact glyph metadata, feature tags, MATH tables, and font identity.
 
 These are public and intended to be usable, but they expose more of the data
@@ -89,7 +93,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.4.0+layout.6
+0.4.0+layout.7
 ```
 
 The package-level engine cache includes that whole string. A layout behavior

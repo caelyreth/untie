@@ -1,8 +1,21 @@
 # Examples
 
 - [`mygo/`](mygo/) shows Untie in a native MyGo desktop window.
+- [`mathml/`](mathml/) converts TeX or Typst to deterministic Presentation MathML.
 - [`svg/`](svg/) exports a formula as a deterministic standalone SVG.
 - [`png/`](png/) rasterizes a formula to an antialiased PNG.
+
+## MathML
+
+Write Presentation MathML to standard output:
+
+```sh
+go run ./examples/mathml \
+  -source '\frac{-b \pm \sqrt{b^2-4ac}}{2a}'
+```
+
+Use `-dialect typst` for Typst input, `-mode inline` for inline math, or
+`-out formula.xml` to write a file. This example needs no font.
 
 ## SVG
 

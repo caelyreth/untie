@@ -118,11 +118,19 @@ func GenerateFormulaContext(ctx context.Context, formula *ir.Formula, mode ir.Mo
 			return failedAlt(err, r.limits.MaxTextBytes), err
 		}
 	}
-	out = display.Alt{
-		Speech: strings.TrimSpace(parts.speech),
-		Text:   strings.TrimSpace(parts.text),
+	description, err := buildDescription(ctx, formula, r.limits)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return display.Alt{}, ctxErr
+		}
+		return failedAlt(err, r.limits.MaxTextBytes), err
 	}
-	if err := out.Validate(); err != nil {
+	out = display.Alt{
+		Speech:      strings.TrimSpace(parts.speech),
+		Text:        strings.TrimSpace(parts.text),
+		Description: description,
+	}
+	if err := out.ValidateWithLimits(r.limits); err != nil {
 		return failedAlt(err, r.limits.MaxTextBytes), fmt.Errorf("%w: %v", ErrInvalidRoot, err)
 	}
 	return out, r.firstErr
@@ -214,6 +222,10 @@ func (r *renderer) render(node ir.Node, env renderEnv, depth int) (piece, error)
 		out, err = r.multiline(n, env, depth)
 	case *ir.Style:
 		out, err = r.style(n, env, depth)
+	case *ir.Overlay:
+		out, err = r.child(n.Body, env, depth)
+	case *ir.Raise:
+		out, err = r.child(n.Body, env, depth)
 	case *ir.Color:
 		out, err = r.child(n.Body, env, depth)
 	case *ir.Box:
@@ -1337,10 +1349,26 @@ func failedAlt(err error, limit int) display.Alt {
 		message += ": " + detail
 	}
 	message = sanitizeFallbackText(message)
+	descriptionText := truncateUTF8Bytes(detailText(err, limit), limit)
 	return display.Alt{
 		Text:   truncateUTF8Bytes(sanitizeFallbackText("["+message+"]"), limit),
 		Speech: truncateUTF8Bytes(message, limit),
+		Description: &display.AltDescription{
+			Version: display.AltDescriptionVersion,
+			Root: display.AltNode{
+				Kind: display.AltKindError,
+				Code: string(source.CodeInternal),
+				Text: descriptionText,
+			},
+		},
 	}
+}
+
+func detailText(err error, limit int) string {
+	if err == nil {
+		return ""
+	}
+	return truncateUTF8Bytes(sanitizeFallbackText(err.Error()), limit)
 }
 
 func sanitizeFallbackText(text string) string {
@@ -1445,6 +1473,10 @@ func nodeKindName(kind ir.NodeKind) string {
 		return "multiline"
 	case ir.KindStyle:
 		return "style"
+	case ir.KindOverlay:
+		return "overlay"
+	case ir.KindRaise:
+		return "raise"
 	case ir.KindColor:
 		return "color"
 	case ir.KindBox:

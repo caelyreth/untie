@@ -244,11 +244,25 @@ type Box struct {
 type Alt struct {
 	Speech string
 	Text   string
+	// Description is a versioned, source-independent semantic tree for hosts
+	// that localize accessibility output instead of using the English Speech
+	// string. Nil is permitted for compatibility with host-constructed Alt
+	// values and older callers.
+	Description *AltDescription
 }
 
 // Clone returns an independent copy of the alternative text.
 func (a Alt) Clone() Alt {
+	a.Description = a.Description.Clone()
 	return a
+}
+
+// Equal reports whether two Alt values contain the same text and structured
+// description.
+func (a Alt) Equal(other Alt) bool {
+	return a.Speech == other.Speech &&
+		a.Text == other.Text &&
+		a.Description.Equal(other.Description)
 }
 
 // Clone returns an independent copy of the box.
@@ -266,6 +280,7 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 	out.Hits = append([]Hit(nil), b.Hits...)
 	out.Breaks = append([]Break(nil), b.Breaks...)
 	out.CaretStops = slices.Clone(b.CaretStops)
+	out.Alt = b.Alt.Clone()
 	if len(b.Diagnostics) > 0 {
 		out.Diagnostics = make([]source.Diagnostic, len(b.Diagnostics))
 		for i, diagnostic := range b.Diagnostics {

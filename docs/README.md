@@ -6,7 +6,7 @@ display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
 These docs describe the public API at library version `0.4.0` and layout
-revision `6`. They focus on the behavior a host or code assistant can rely on
+revision `7`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here
@@ -19,6 +19,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Rendering the display list](rendering.md) defines coordinates, items,
   lines, tags, hits, overflow, bounds, drawing helpers, and optional SVG/PNG
   output.
+- [MathML interchange](mathml.md) defines total Presentation MathML export and
+  the strict bounded import subset.
 - [Editor integration](editor-integration.md) defines recovery, source
   mapping, host shaping, color policy, and MyGo font ownership for live
   editors.
@@ -35,10 +37,15 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   errors, parse-time recovery, and configurable limits.
 - [Canonical IR and `Engine.LayoutFormulaContext`](canonical-ir.md) is for
   hosts that inspect or cache the language-neutral formula tree.
+- [MathML interchange](mathml.md) converts validated canonical IR without
+  coupling the renderer core to XML.
 - [Concurrency, lifecycle, and caching](concurrency.md) describes safe reuse,
   cancellation, package-level caching, and ownership under concurrency.
 - [Accessibility text](accessibility.md) explains `Alt.Text`, `Alt.Speech`,
   fallback markers, and how accessibility errors differ from layout errors.
+- [Structured accessibility descriptions](accessibility-description.md)
+  defines the versioned localization tree, semantic node coverage, limits, and
+  MyGo label hook.
 
 ## Compatibility and Verification
 
@@ -85,7 +92,8 @@ For an editor or document application:
 1. [Parsing, diagnostics, and recovery](parsing.md)
 2. [Concurrency, lifecycle, and caching](concurrency.md)
 3. [Accessibility text](accessibility.md)
-4. The supported-syntax page for the active input dialect
+4. [Structured accessibility descriptions](accessibility-description.md)
+5. The supported-syntax page for the active input dialect
 
 For a host that stores or transforms formula trees:
 

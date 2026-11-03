@@ -41,7 +41,11 @@ func TestCloneIndependent(t *testing.T) {
 			{Source: 1, X: 1, Top: -1, Bottom: 1},
 		},
 		Breaks: []Break{{X: 1, Kind: BreakRelation}},
-		Alt:    Alt{Text: "x", Speech: "x"},
+		Alt: Alt{
+			Text:        "x",
+			Speech:      "x",
+			Description: testAltDescription(),
+		},
 		Diagnostics: []source.Diagnostic{{
 			Range:   source.NewRange(0, 1),
 			Code:    source.CodeMissingGlyph,
@@ -65,6 +69,7 @@ func TestCloneIndependent(t *testing.T) {
 	got.CaretStops[0].X = 10
 	got.Breaks[0].X = 2
 	got.Diagnostics[0].Args[0] = "changed"
+	got.Alt.Description.Root.Parts[0].Node.Text = "changed"
 	got.Lines[0].Items.Count = 0
 	got.Lines[0].Tag.Width = 3
 	if box.Paths[0].Segments[0].Op != geometry.SegMoveTo {
@@ -82,6 +87,9 @@ func TestCloneIndependent(t *testing.T) {
 	if box.Diagnostics[0].Args[0] != "x" {
 		t.Fatal("Clone shared diagnostic storage")
 	}
+	if box.Alt.Description.Root.Parts[0].Node.Text != "1" {
+		t.Fatal("Clone shared alternative-description storage")
+	}
 	if box.Lines[0].Items.Count != 1 {
 		t.Fatal("Clone shared line metadata storage")
 	}
@@ -91,7 +99,7 @@ func TestCloneIndependent(t *testing.T) {
 	if got.Lines[0].OffsetX != 2.5 {
 		t.Fatalf("Clone OffsetX = %v, want 2.5", got.Lines[0].OffsetX)
 	}
-	if box.Alt != (Alt{Text: "x", Speech: "x"}) {
+	if !box.Alt.Equal(Alt{Text: "x", Speech: "x", Description: testAltDescription()}) {
 		t.Fatal("Clone changed alternative text")
 	}
 }

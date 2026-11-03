@@ -1,11 +1,13 @@
-# Accessibility Text
+# Accessibility
 
-`display.Alt` supplies two deterministic text forms derived from canonical IR:
+`display.Alt` supplies two deterministic text forms and one structured semantic
+form derived from canonical IR:
 
 ```go
 type Alt struct {
-	Speech string
-	Text   string
+	Speech      string
+	Text        string
+	Description *AltDescription
 }
 ```
 
@@ -13,6 +15,9 @@ type Alt struct {
   or an accessible name.
 - `Speech` is an English spoken interpretation suitable for a screen reader or
   a host's accessibility API.
+- `Description` is a versioned semantic tree for hosts that localize their own
+  labels. It contains stable tokens and literal payloads, not generated English
+  prose.
 
 Alternative text is not a transcription of source syntax. It is generated from
 semantic nodes, so equivalent TeX and Typst formulas can produce the same
@@ -22,6 +27,11 @@ result. For example, both `x_i^2` inputs produce:
 Text:   x_i²
 Speech: x sub i squared
 ```
+
+`mathml.Marshal` uses the same source-independent generator for the root
+MathML `alttext` attribute and exposes the compact form through
+`data-untie-alt-text` when it differs. Import regenerates accessibility text
+from the canonical IR instead of trusting arbitrary annotation markup.
 
 ## Three Ways to Obtain Alt
 
@@ -104,8 +114,13 @@ The IR's semantic roles improve the output:
   instead of "equals canceled";
 - brace labels, overlays, roots, fences, and accents use their semantic form.
 
-The exact vocabularies are deterministic and tested. They are English-centric;
-the library does not currently expose localization hooks.
+Structured descriptions also preserve uniform font-size declarations, overlay
+alignment, raise direction, and formula- or row-scoped tag metadata.
+
+The exact vocabularies are deterministic and tested. `Text` and `Speech` remain
+English-centric compatibility forms. Use
+[the structured description](accessibility-description.md) for host
+localization.
 
 ## Recoverable Errors Are Visible
 
@@ -139,7 +154,9 @@ returns a zero Alt and the context error.
 `Alt.Validate()` checks:
 
 - both fields are valid UTF-8;
-- neither field contains NUL.
+- neither field contains NUL;
+- the structured description, when present, has a supported version, valid
+  semantic shapes, bounded traversal, and valid literal payloads.
 
 Use only validated output for a host accessibility API.
 
@@ -155,8 +172,12 @@ Suppression-only metadata does not add spoken text.
 
 ## Host Recommendations
 
-- Use `Alt.Speech` for a screen-reader label or an accessible description.
+- Prefer `Alt.Description` when the host has a localization catalog or its own
+  accessibility grammar.
+- Use `Alt.Speech` as the compatibility English fallback.
 - Keep `Alt.Text` available for copy, search, and visual fallback.
+- Compare `Alt` values with `Alt.Equal`, not Go `==`, because `Description` is
+  a recursively owned pointer.
 - Surface visible parse diagnostics separately; Alt is not an error channel.
 - Do not derive accessibility text by stripping TeX or Typst source.
 - Do not omit text for a formula only because it has parse diagnostics. The
@@ -166,9 +187,10 @@ Suppression-only metadata does not add spoken text.
 
 The MyGo adapter applies this policy to standalone formula elements by default:
 `DescribeFormula` selects the label, and the element receives the exact source
-as its accessibility value. MyGo v0.7.4 does not expose per-inline-object
-accessibility metadata, so this wiring is limited to normal elements rather
-than `markdown.InlineObject`.
+as its accessibility value. `Options.LocalizeLabel` can replace the English
+label using the structured description. MyGo v0.7.4 does not expose
+per-inline-object accessibility metadata, so this wiring is limited to normal
+elements rather than `markdown.InlineObject`.
 
 ## Example
 
@@ -186,4 +208,7 @@ if err != nil && !errors.Is(err, untie.ErrAltUnsupportedNode) {
 
 accessibilityLabel := alt.Speech
 copyText := alt.Text
+if alt.Description != nil {
+	accessibilityLabel = localize(alt.Description)
+}
 ```

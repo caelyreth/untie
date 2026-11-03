@@ -96,7 +96,7 @@ func TestRenderAppliesDialectModeSizeAndStyleDefaults(t *testing.T) {
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("Render(defaults) diagnostics = %+v", result.Diagnostics)
 	}
-	if result.Alt.Text == "" || result.Alt.Speech == "" || result.Alt != result.Box.Alt {
+	if result.Alt.Text == "" || result.Alt.Speech == "" || !result.Alt.Equal(result.Box.Alt) {
 		t.Fatalf("Render(defaults) Alt = %#v, Box.Alt = %#v", result.Alt, result.Box.Alt)
 	}
 	style, err := renderer.effectiveStyle(display.Style{})
@@ -456,7 +456,7 @@ func TestRenderAlternativeTextIsOptional(t *testing.T) {
 	if accessible.Alt.Text == "" || accessible.Alt.Speech == "" {
 		t.Fatalf("Render(accessible) Alt = %#v", accessible.Alt)
 	}
-	if accessible.Alt != accessible.Box.Alt {
+	if !accessible.Alt.Equal(accessible.Box.Alt) {
 		t.Fatalf("Render(accessible) Alt = %#v, Box.Alt = %#v", accessible.Alt, accessible.Box.Alt)
 	}
 }

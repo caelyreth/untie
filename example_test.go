@@ -17,6 +17,25 @@ func ExampleParseTeX() {
 	// 0
 }
 
+func ExampleAltDescription() {
+	expr := untie.ParseTeX(`\frac{n}{k}`, untie.Inline, untie.ParseOptions{})
+	description := expr.Alt().Description
+	if description == nil {
+		panic("missing structured accessibility description")
+	}
+	root := description.Root
+	fmt.Println(root.Kind)
+	fmt.Println(root.FractionRole)
+	for _, part := range root.Parts {
+		fmt.Println(part.Role, part.Node.Kind, part.Node.Text)
+	}
+	// Output:
+	// fraction
+	// ordinary
+	// numerator glyph n
+	// denominator glyph k
+}
+
 func ExampleEngine_layoutAtTwoSizes() {
 	fontBytes, err := os.ReadFile("testdata/upstream/fonts/NewCMMath-Book.otf")
 	if err != nil {

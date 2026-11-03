@@ -30,7 +30,7 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 			if firstErr != nil || secondErr != nil {
 				t.Fatalf("attachment fixture error = %v, %v", firstErr, secondErr)
 			}
-			if first != second {
+			if !first.Equal(second) {
 				t.Fatalf("attachment fixture is nondeterministic:\n%#v\n%#v", first, second)
 			}
 			if err := first.Validate(); err != nil {
@@ -44,7 +44,7 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 		if (firstErr == nil) != (secondErr == nil) || firstErr != nil && firstErr.Error() != secondErr.Error() {
 			t.Fatalf("nondeterministic errors: %v, %v", firstErr, secondErr)
 		}
-		if first != second {
+		if !first.Equal(second) {
 			t.Fatalf("nondeterministic output:\n%#v\n%#v", first, second)
 		}
 		if firstErr != nil && (first.Text == "" || first.Speech == "") {
@@ -52,6 +52,20 @@ func FuzzGenerateTerminatesAndIsDeterministic(f *testing.F) {
 		}
 		if err := first.Validate(); err != nil {
 			t.Fatalf("invalid generated Alt: %v", err)
+		}
+		if first.Description == nil {
+			t.Fatal("generated Alt has no structured description")
+		}
+		descriptionJSON, err := first.Description.MarshalCanonical()
+		if err != nil {
+			t.Fatalf("description MarshalCanonical() error = %v", err)
+		}
+		cloneJSON, err := first.Description.Clone().MarshalCanonical()
+		if err != nil {
+			t.Fatalf("cloned description MarshalCanonical() error = %v", err)
+		}
+		if string(descriptionJSON) != string(cloneJSON) {
+			t.Fatal("cloned description changed canonical JSON")
 		}
 		if len(first.Text) > limits.MaxTextBytes || len(first.Speech) > limits.MaxTextBytes {
 			t.Fatalf("generated Alt exceeds MaxTextBytes: text=%d speech=%d limit=%d",
@@ -129,7 +143,7 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 		}
 		return out
 	}
-	switch cursor.next() % 17 {
+	switch cursor.next() % 19 {
 	case 0:
 		return ir.NewRow(span, children(int(cursor.next()%4))...)
 	case 1:
@@ -194,15 +208,23 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 	case 13:
 		return ir.NewMultiline(span, children(int(cursor.next()%3)))
 	case 14:
-		switch cursor.next() % 4 {
+		switch cursor.next() % 5 {
 		case 0:
 			return ir.NewStyle(span, randomNode(cursor, depth+1))
 		case 1:
 			return ir.NewColor(span, randomNode(cursor, depth+1), ir.Paint{})
 		case 2:
 			return ir.NewBox(span, randomNode(cursor, depth+1))
-		default:
+		case 3:
 			return ir.NewPhantom(span, randomNode(cursor, depth+1))
+		default:
+			style := ir.NewStyle(span, randomNode(cursor, depth+1))
+			style.SetFontSize = true
+			style.FontSize = ir.RawLength(
+				ir.LengthPercent,
+				int64(cursor.next()%249+1)*1_000_000,
+			)
+			return style
 		}
 	case 15:
 		texts := []string{"(", ".", "", "()", string([]byte{0xff})}
@@ -224,6 +246,19 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 			node.Class = ir.ClassRelation
 		}
 		return node
+	case 16:
+		return ir.NewOverlay(
+			span,
+			randomNode(cursor, depth+1),
+			ir.OverlayAlignment(cursor.next()%3),
+		)
+	case 17:
+		amount := int64(cursor.next()%11-5) * 1_000_000
+		return ir.NewRaise(
+			span,
+			randomNode(cursor, depth+1),
+			ir.RawLength(ir.LengthEm, amount),
+		)
 	default:
 		switch cursor.next() % 4 {
 		case 0:
