@@ -14,36 +14,36 @@ func TestTrackedCorpusMatchesExactManifest(t *testing.T) {
 	if err := ValidateCorpus(cases, manifest); err != nil {
 		t.Fatal(err)
 	}
-	if len(cases) != 92 {
-		t.Fatalf("case count = %d, want 92", len(cases))
+	if len(cases) != 124 {
+		t.Fatalf("case count = %d, want 124", len(cases))
 	}
 	wantCategories := map[string]int{
-		"algebra":                10,
-		"calculus":               12,
-		"delimiters":             6,
+		"algebra":                16,
+		"calculus":               18,
+		"delimiters":             8,
 		"display-wrapping":       5,
 		"equation-tags":          3,
 		"links":                  2,
-		"linear-algebra":         10,
+		"linear-algebra":         14,
 		"malformed-input":        4,
-		"multiline-cases":        6,
-		"physics-engineering":    10,
-		"probability-statistics": 8,
+		"multiline-cases":        8,
+		"physics-engineering":    14,
+		"probability-statistics": 12,
 		"resource-limits":        4,
-		"sets-logic":             8,
+		"sets-logic":             12,
 		"text-and-fallback":      4,
 	}
 	if !mapsEqual(manifest.Categories, wantCategories) {
 		t.Fatalf("categories = %v, want %v", manifest.Categories, wantCategories)
 	}
-	if manifest.Count != 92 || manifest.CoverageGroups != 35 || manifest.SourceSpecific != 22 {
+	if manifest.Count != 124 || manifest.CoverageGroups != 51 || manifest.SourceSpecific != 22 {
 		t.Fatalf("manifest counts = total %d, groups %d, specific %d",
 			manifest.Count, manifest.CoverageGroups, manifest.SourceSpecific)
 	}
-	if manifest.Dialects["tex"] != 51 || manifest.Dialects["typst"] != 41 {
+	if manifest.Dialects["tex"] != 67 || manifest.Dialects["typst"] != 57 {
 		t.Fatalf("dialect counts = %v", manifest.Dialects)
 	}
-	if manifest.Modes["inline"] != 37 || manifest.Modes["display"] != 55 {
+	if manifest.Modes["inline"] != 43 || manifest.Modes["display"] != 81 {
 		t.Fatalf("mode counts = %v", manifest.Modes)
 	}
 	if len(manifest.ExpectedIssues) != 0 {

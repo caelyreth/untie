@@ -15,9 +15,11 @@
   type DialectFilter = 'all' | LibraryDialect
   type ModeFilter = 'all' | LibraryMode
 
+  const defaultDialect: DialectFilter = 'tex'
+
   let { data }: PageProps = $props()
   let query = $state('')
-  let dialect = $state<DialectFilter>('all')
+  let dialect = $state<DialectFilter>(defaultDialect)
   let mode = $state<ModeFilter>('all')
   let category = $state('all')
   let previews = $state<Record<string, string>>({})
@@ -28,10 +30,22 @@
   const filtered = $derived.by(() => data.cases.filter(matchesFilters))
   const filtersActive = $derived(
     Boolean(query) ||
-      dialect !== 'all' ||
+      dialect !== defaultDialect ||
       mode !== 'all' ||
       category !== 'all',
   )
+  const categoryCounts = $derived.by(() => {
+    const counts = new Map<string, number>()
+    for (const testCase of data.cases) {
+      if (dialect === 'all' || testCase.dialect === dialect) {
+        counts.set(
+          testCase.category,
+          (counts.get(testCase.category) ?? 0) + 1,
+        )
+      }
+    }
+    return counts
+  })
 
   onMount(() => {
     let disposed = false
@@ -70,7 +84,7 @@
 
   function clearFilters() {
     query = ''
-    dialect = 'all'
+    dialect = defaultDialect
     mode = 'all'
     category = 'all'
   }
@@ -161,7 +175,9 @@
       <select bind:value={category}>
         <option value="all">All categories</option>
         {#each data.categories as item}
-          <option value={item.value}>{item.label} ({item.count})</option>
+          <option value={item.value}
+            >{item.label} ({categoryCounts.get(item.value) ?? 0})</option
+          >
         {/each}
       </select>
     </label>
