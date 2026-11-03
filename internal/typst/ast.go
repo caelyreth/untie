@@ -45,6 +45,8 @@ type astNode struct {
 	close string
 	raw   string
 
+	literalSpans []literalSpan
+
 	openSpan  source.Range
 	closeSpan source.Range
 

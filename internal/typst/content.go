@@ -204,7 +204,7 @@ func (l *lowerer) lowerTextBody(n *astNode) ir.Node {
 	}
 	switch n.kind {
 	case astString:
-		return l.text(n.span, n.text)
+		return l.textFromAST(n)
 	case astIdentifier, astField:
 		if def, ok := symbol(n.text); ok {
 			return l.text(n.span, def.text)
