@@ -14,7 +14,16 @@ import (
 )
 
 func (a *adapter) ShapeText(req layout.TextRequest) (layout.TextRun, error) {
-	return a.shapeTextRun(req.Context, req.Text, req.Style, req.Variant, req.Font, req.Features, req.Tracking)
+	return a.shapeTextRun(
+		req.Context,
+		req.Text,
+		req.Clusters,
+		req.Style,
+		req.Variant,
+		req.Font,
+		req.Features,
+		req.Tracking,
+	)
 }
 
 func (a *adapter) ShapeOperator(req layout.OperatorRequest) (layout.TextRun, error) {
@@ -24,6 +33,7 @@ func (a *adapter) ShapeOperator(req layout.OperatorRequest) (layout.TextRun, err
 func (a *adapter) shapeTextRun(
 	ctx context.Context,
 	text string,
+	sourceClusters []ir.TextClusterSource,
 	style layout.Style,
 	variant ir.Variant,
 	role ir.FontRole,
@@ -71,10 +81,21 @@ func (a *adapter) shapeTextRun(
 		if !ok {
 			return layout.TextRun{}, fmt.Errorf("%w: invalid styled text cluster", layout.ErrInvalidInput)
 		}
+		sourceRange := source.NewRange(sourceOffsets[start], sourceOffsets[end])
+		if len(sourceClusters) > 0 {
+			sourceRange, ok = mappedTextSourceRange(
+				sourceClusters,
+				sourceOffsets[start],
+				sourceOffsets[end],
+			)
+			if !ok {
+				return layout.TextRun{}, fmt.Errorf("%w: text cluster has no source mapping", layout.ErrInvalidInput)
+			}
+		}
 		run.Clusters[i] = layout.TextCluster{
 			RuneStart: start,
 			RuneEnd:   end,
-			Source:    source.NewRange(sourceOffsets[start], sourceOffsets[end]),
+			Source:    sourceRange,
 			Missing:   cluster.Missing,
 		}
 	}
@@ -119,6 +140,7 @@ func (a *adapter) shapeTextRun(
 				}
 			}
 			lastCluster = positioned.Cluster
+			run.Clusters[positioned.Cluster].X = pen
 		}
 		if run.Clusters[positioned.Cluster].Missing {
 			if renderedMissing[positioned.Cluster] {
@@ -140,6 +162,11 @@ func (a *adapter) shapeTextRun(
 			}
 			if len(run.Glyphs) >= a.limits.MaxOutputItems {
 				return layout.TextRun{}, fmt.Errorf("%w: output item count", layout.ErrLimit)
+			}
+			run.Clusters[positioned.Cluster].Advance, err =
+				run.Clusters[positioned.Cluster].Advance.Add(advance)
+			if err != nil {
+				return layout.TextRun{}, err
 			}
 			run.Glyphs = append(run.Glyphs, layout.PositionedGlyph{
 				Glyph:   glyph,
@@ -167,6 +194,11 @@ func (a *adapter) shapeTextRun(
 			return layout.TextRun{}, fmt.Errorf("%w: negative shaped advance", layout.ErrInvalidInput)
 		}
 		if positioned.Invisible {
+			run.Clusters[positioned.Cluster].Advance, err =
+				run.Clusters[positioned.Cluster].Advance.Add(advance)
+			if err != nil {
+				return layout.TextRun{}, err
+			}
 			pen, err = pen.Add(advance)
 			if err != nil {
 				return layout.TextRun{}, err
@@ -197,6 +229,11 @@ func (a *adapter) shapeTextRun(
 		glyph.AdvanceIncludesItalic = false
 		if len(run.Glyphs) >= a.limits.MaxOutputItems {
 			return layout.TextRun{}, fmt.Errorf("%w: output item count", layout.ErrLimit)
+		}
+		run.Clusters[positioned.Cluster].Advance, err =
+			run.Clusters[positioned.Cluster].Advance.Add(advance)
+		if err != nil {
+			return layout.TextRun{}, err
 		}
 		if err := reserveSegments(&pathSegments, len(glyph.Outline), a.limits.MaxPathSegments); err != nil {
 			return layout.TextRun{}, err
@@ -241,6 +278,29 @@ func (a *adapter) shapeTextRun(
 	}
 	run.Width = pen
 	return run, nil
+}
+
+func mappedTextSourceRange(clusters []ir.TextClusterSource, start, end int) (source.Range, bool) {
+	if start < 0 || end <= start {
+		return source.Range{}, false
+	}
+	var merged source.Range
+	found := false
+	for _, cluster := range clusters {
+		if cluster.TextEnd <= start {
+			continue
+		}
+		if cluster.TextStart >= end {
+			break
+		}
+		if !found {
+			merged = cluster.Source
+			found = true
+		} else {
+			merged = source.Merge(merged, cluster.Source)
+		}
+	}
+	return merged, found
 }
 
 func sourceClusterRange(styledToSource []int, start, end int, sourceRunes []rune) (int, int, bool) {

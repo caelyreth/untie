@@ -603,7 +603,7 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 		}
 		return withClass(fragment, node.Class), nil
 	case *ir.Text:
-		fragment, err = s.layoutText(node, env)
+		fragment, err = s.layoutText(node, env, depth)
 		if err != nil {
 			return nil, err
 		}
