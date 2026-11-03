@@ -81,6 +81,44 @@ returns a uniform `Transform` that fits `box.Bounds()` after padding, including
 certified overflow; it centers vertically and supports start, center, or end
 horizontal alignment.
 
+## Raster and PNG Export
+
+`github.com/caelyreth/untie/encode/raster` is an optional pure-Go encoder for
+hosts that cannot consume the display list directly:
+
+```go
+options := raster.DefaultOptions()
+options.Scale = 2 // two output pixels per host unit
+options.Padding = 12
+options.Background = &color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+
+img, err := raster.Encode(box, &options)
+if err != nil {
+	return err
+}
+
+err = raster.EncodePNG(writer, box, &options)
+```
+
+The encoder walks visible commands in paint order, uses the same nonzero
+fill rule as the path contract, and antialiases lines and Bézier curves.
+Explicit paints take precedence over the `Ink`, `Error`, and `Placeholder`
+palette colors. A nil `Options` uses `DefaultOptions`; a nil `Background`
+leaves the image transparent.
+
+Output dimensions are deterministic:
+
+```text
+width  = ceil(box.Bounds().Width*Scale  + 2*Padding)
+height = ceil(box.Bounds().Height*Scale + 2*Padding)
+```
+
+Each dimension has a one-pixel minimum. Padding is measured in output pixels,
+not host units. `Box.Bounds()` includes certified overflow, so the encoded
+image does not silently clip display ink. Invalid scale, padding, geometry, or
+an image too large for `image.RGBA` returns a classified error instead of
+panicking.
+
 ## Drawing Items
 
 `Item` is already positioned. Draw it at the host's chosen box origin; do not

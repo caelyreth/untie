@@ -111,6 +111,15 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/display": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
 	},
+	modulePath + "/encode/raster": {
+		Production: []string{
+			"golang.org/x/image/vector",
+			modulePath + "/display",
+			modulePath + "/geometry",
+			modulePath + "/render",
+		},
+		Tests: []string{modulePath + "/encode/raster"},
+	},
 	modulePath + "/font": {
 		Production: []string{
 			"github.com/go-opentype/opentype",

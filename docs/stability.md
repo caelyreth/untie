@@ -32,6 +32,8 @@ Packages:
 - `github.com/caelyreth/untie/ir`
 - `github.com/caelyreth/untie/source`
 - `github.com/caelyreth/untie/geometry`
+- `github.com/caelyreth/untie/render`
+- `github.com/caelyreth/untie/encode/raster`
 - low-level introspection in `github.com/caelyreth/untie/font`
 
 This tier supports:
@@ -40,6 +42,7 @@ This tier supports:
 - `RootSnapshot`, `ValidateSource`, `CloneFormula`, `WalkFormula`;
 - `Engine.LayoutFormulaContext`;
 - source ranges, diagnostic codes, and resource limits;
+- framework-neutral command walking, viewport fitting, and optional PNG export;
 - exact glyph metadata, feature tags, MATH tables, and font identity.
 
 These are public and intended to be usable, but they expose more of the data

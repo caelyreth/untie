@@ -16,7 +16,7 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Core concepts and ownership](concepts.md) explains the pipeline, the
   lifetime of each value, and the inline/display boundary.
 - [Rendering the display list](rendering.md) defines coordinates, items,
-  lines, tags, hits, overflow, and bounds.
+  lines, tags, hits, overflow, bounds, and optional PNG output.
 
 ## Integration Guides
 
@@ -45,6 +45,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   commands that verify parser, layout, font, and corpus contracts.
 - [Performance](performance.md) explains the tracked corpus benchmarks,
   cache strategies, allocation metrics, and profiling commands.
+- [`encode/raster`](../encode/raster/doc.go) renders a display box to a
+  deterministic antialiased RGBA image or PNG without cgo or a UI dependency.
 
 ## Recommended Reading Paths
 

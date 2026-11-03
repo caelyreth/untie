@@ -27,6 +27,8 @@ Use this file as the short entry point for code assistants. Read
   escape hatch.
 - `render.Fit` uses `Box.Bounds()` to fit overflow, padding, vertical centering,
   and horizontal start/center/end alignment into a viewport.
+- `encode/raster` optionally renders the display list to an antialiased RGBA
+  image or PNG using a pure-Go rasterizer.
 - Display layout with positive `Style.MaxWidth` returns `Box.Lines`.
 - Draw `Box.Items` once; line/tag ranges select subsets of the same storage.
 - Use `Box.Bounds()` to include certified overflow.
@@ -65,6 +67,8 @@ draw(box.Items)
   [concepts.md](concepts.md)
 - Canvas, dots/em/coordinate, lines, tags, hits, overflow:
   [rendering.md](rendering.md)
+- PNG export, padding, device scale, and palette colors:
+  [`encode/raster`](../encode/raster/doc.go)
 - Font roles, IDs, TTC, fallback, missing glyphs:
   [fonts.md](fonts.md)
 - Diagnostics and recoverable parse output:
@@ -106,6 +110,8 @@ func (e *Engine) LayoutFormulaContext(ctx context.Context, formula *Formula, mod
 func Walk(box *display.Box, visit func(render.Command) error) error
 func ResolvePath(command render.Command) (geometry.Path, error)
 func Fit(box *display.Box, viewport geometry.Rect, options render.FitOptions) (render.Transform, error)
+func Encode(box *display.Box, options *raster.Options) (*image.RGBA, error)
+func EncodePNG(w io.Writer, box *display.Box, options *raster.Options) error
 
 type LayoutErrorKind string
 type LayoutError struct {
