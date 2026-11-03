@@ -19,6 +19,9 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Rendering the display list](rendering.md) defines coordinates, items,
   lines, tags, hits, overflow, bounds, drawing helpers, and optional SVG/PNG
   output.
+- [Editor integration](editor-integration.md) defines recovery, source
+  mapping, host shaping, color policy, and MyGo font ownership for live
+  editors.
 
 ## Integration Guides
 

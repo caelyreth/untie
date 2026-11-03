@@ -127,6 +127,7 @@ Markdown binding, and existing-box drawing.
 - [Getting Started](docs/getting-started.md)
 - [Core Concepts](docs/concepts.md)
 - [Rendering](docs/rendering.md)
+- [Editor Integration](docs/editor-integration.md)
 - [Fonts](docs/fonts.md)
 - [Parsing](docs/parsing.md)
 - [MyGo Integration](docs/mygo.md)
