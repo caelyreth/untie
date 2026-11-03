@@ -21,7 +21,7 @@ const (
 )
 
 // FormulaTagLine identifies a tag that belongs to the complete formula rather
-// than one rendered display line. It is the only Phase-1 TagBox line value.
+// than one rendered display line or source row.
 const FormulaTagLine = -1
 
 // Style is a layout request in host units.
@@ -104,14 +104,14 @@ type LineBox struct {
 
 // TagBox is equation-tag metadata. Its Items and Hits ranges index the owning
 // Box's parent-frame slices. X and Y are parent-frame coordinates and do not
-// move with LineBox.OffsetX. Line is FormulaTagLine for the formula-level
-// Phase-1 contract.
+// move with LineBox.OffsetX. Line is FormulaTagLine for Box.Tag, or a zero-based
+// source row for an entry in Box.Tags.
 type TagBox struct {
 	Source  source.Range
 	Manual  bool
 	Starred bool
-	// Line is FormulaTagLine. Zero-based row tags are reserved for future
-	// multiline equation-tag support and are not emitted by Phase 1.
+	// Line is FormulaTagLine for a formula-level tag, or a zero-based source
+	// row for a multiline row tag.
 	Line    int
 	X       float32
 	Y       float32
@@ -227,6 +227,11 @@ type Box struct {
 	// Items and Hits ranges identify its records in this Box. It is excluded
 	// from formula-root breaks.
 	Tag *TagBox
+	// Tags contains source-row-scoped equation tags in ascending row order.
+	// It is mutually exclusive with Tag. Each range indexes this Box's
+	// parent-frame Items and Hits and remains row-scoped even when a constrained
+	// display wraps the formula block as one line.
+	Tags []TagBox
 	// Lines is populated only for display layout with a positive Style.MaxWidth.
 	// A constrained display result always has at least one line, including when
 	// the complete formula fits. Its Width is the requested MaxWidth, even when
@@ -274,6 +279,7 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 		canonicalTag = &tag
 		out.Tag = canonicalTag
 	}
+	out.Tags = append([]TagBox(nil), b.Tags...)
 	if !cloneNested || len(b.Lines) == 0 {
 		out.Lines = nil
 		return &out
@@ -484,6 +490,32 @@ func (b *Box) CaretAt(offset int) (CaretStop, bool) {
 	return best, true
 }
 
+// NearestCaret returns the caret stop geometrically nearest to p.
+//
+// Vertical distance is minimized first so a point never snaps to a caret on a
+// different line merely because its x coordinate is closer. Within one line,
+// horizontal distance resolves the left/right affinity. Ties use the same
+// stable source and geometry ordering as CaretAt.
+func (b *Box) NearestCaret(p geometry.Point) (CaretStop, bool) {
+	if b == nil || len(b.CaretStops) == 0 {
+		return CaretStop{}, false
+	}
+	carets := b.Carets()
+	best := carets[0]
+	bestVertical, bestHorizontal := caretPointDistance(best, p)
+	for _, candidate := range carets[1:] {
+		vertical, horizontal := caretPointDistance(candidate, p)
+		if vertical < bestVertical ||
+			vertical == bestVertical && (horizontal < bestHorizontal ||
+				horizontal == bestHorizontal && betterCaretGeometry(candidate, best)) {
+			best = candidate
+			bestVertical = vertical
+			bestHorizontal = horizontal
+		}
+	}
+	return best, true
+}
+
 func contains(r geometry.Rect, p geometry.Point) bool {
 	return p.X >= r.X && p.X <= r.X+r.Width && p.Y >= r.Y && p.Y <= r.Y+r.Height
 }
@@ -514,6 +546,33 @@ func betterCaretAt(candidate, current CaretStop, offset int) bool {
 	if candidateDistance != currentDistance {
 		return candidateDistance < currentDistance
 	}
+	if candidate.Source != current.Source {
+		return candidate.Source < current.Source
+	}
+	if candidate.Top != current.Top {
+		return candidate.Top < current.Top
+	}
+	if candidate.X != current.X {
+		return candidate.X < current.X
+	}
+	if candidate.Bottom != current.Bottom {
+		return candidate.Bottom < current.Bottom
+	}
+	return candidate.NodeID < current.NodeID
+}
+
+func caretPointDistance(caret CaretStop, p geometry.Point) (vertical, horizontal float32) {
+	switch {
+	case p.Y < caret.Top:
+		vertical = caret.Top - p.Y
+	case p.Y > caret.Bottom:
+		vertical = p.Y - caret.Bottom
+	}
+	horizontal = absFloat(p.X - caret.X)
+	return vertical, horizontal
+}
+
+func betterCaretGeometry(candidate, current CaretStop) bool {
 	if candidate.Source != current.Source {
 		return candidate.Source < current.Source
 	}

@@ -46,10 +46,14 @@ type HitEvent struct {
 	Hit    untie.Hit
 	Found  bool
 	Point  untie.Point
-	X      float32
-	Y      float32
-	Clicks int
-	Mods   ui.Modifiers
+	Caret  untie.CaretStop
+	// HasCaret reports whether Caret contains the nearest proven source
+	// boundary to Point.
+	HasCaret bool
+	X        float32
+	Y        float32
+	Clicks   int
+	Mods     ui.Modifiers
 }
 
 // HitAt resolves a pointer at x,y relative to viewport to the innermost
@@ -131,17 +135,20 @@ func wirePointerHits(
 		if err != nil {
 			return
 		}
+		caret, hasCaret := box.NearestCaret(point)
 		onHit(HitEvent{
-			Source: source,
-			Mode:   mode,
-			Phase:  phase,
-			Hit:    hit,
-			Found:  found,
-			Point:  point,
-			X:      x,
-			Y:      y,
-			Clicks: clicks,
-			Mods:   mods,
+			Source:   source,
+			Mode:     mode,
+			Phase:    phase,
+			Hit:      hit,
+			Found:    found,
+			Point:    point,
+			Caret:    caret,
+			HasCaret: hasCaret,
+			X:        x,
+			Y:        y,
+			Clicks:   clicks,
+			Mods:     mods,
 		})
 	}
 	element = element.HandleInput(func(event ui.InputEvent) bool {

@@ -452,6 +452,8 @@ func isBuiltinCommand(name string) bool {
 		"\\relax", "\\def", "\\gdef", "\\edef", "\\xdef", "\\newcommand", "\\renewcommand",
 		"\\providecommand", "\\let", "\\global", "\\begin", "\\end", "\\limits", "\\nolimits",
 		"\\mathstrut", "\\textcircled",
+		"\\llap", "\\rlap", "\\clap", "\\mathllap", "\\mathrlap", "\\mathclap",
+		"\\raisebox",
 		"\\big", "\\Big", "\\bigg", "\\Bigg", "\\bigl", "\\Bigl", "\\biggl", "\\Biggl",
 		"\\bigr", "\\Bigr", "\\biggr", "\\Biggr", "\\bigm", "\\Bigm", "\\biggm", "\\Biggm":
 		return true

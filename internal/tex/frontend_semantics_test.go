@@ -285,34 +285,58 @@ func TestTextRunsAreCoalescedAndSpacesContracted(t *testing.T) {
 	}
 }
 
-func TestSizeDeclarationsAreBoundedAndExplicit(t *testing.T) {
+func TestSizeDeclarationsLowerToNeutralFontSizeAndTextBox(t *testing.T) {
 	t.Parallel()
 
-	for _, command := range []string{
-		`\tiny`, `\sixptsize`, `\scriptsize`, `\footnotesize`, `\small`,
-		`\normalsize`, `\large`, `\Large`, `\LARGE`, `\huge`, `\Huge`,
-	} {
-		command := command
+	tests := map[string]float64{
+		`\tiny`:         50,
+		`\sixptsize`:    60,
+		`\scriptsize`:   70,
+		`\footnotesize`: 80,
+		`\small`:        90,
+		`\normalsize`:   100,
+		`\large`:        120,
+		`\Large`:        144,
+		`\LARGE`:        172.8,
+		`\huge`:         207.4,
+		`\Huge`:         248.8,
+	}
+	for command, percent := range tests {
+		command, percent := command, percent
 		t.Run(command, func(t *testing.T) {
 			t.Parallel()
 			src := command + " label"
 			result := parseWithin(t, src, 2*time.Second)
-			if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-				t.Fatalf("diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Severity == source.SeverityError {
+					t.Fatalf("diagnostics = %v", result.Diagnostics)
+				}
 			}
-			if hasDiagnostic(result.Diagnostics, source.CodeUnknownCommand) {
-				t.Fatalf("diagnostics = %v, size command was not recognized", diagnosticCodes(result.Diagnostics))
+			style := requireKind[*ir.Style](t, rowItems(t, result.Root)[0])
+			if !style.SetFontSize || style.FontSize.Unit != ir.LengthPercent || style.FontSize.Float() != percent {
+				t.Fatalf("font size = set:%t value:%+v, want %v%%", style.SetFontSize, style.FontSize, percent)
 			}
-			diagnostic := result.Diagnostics[0]
-			if diagnostic.Range.Start != 0 || diagnostic.Range.End != len(command) {
-				t.Fatalf("size diagnostic range = %v, want [0,%d)", diagnostic.Range, len(command))
+			if !style.SetSize || style.NewSize != ir.SizeText {
+				t.Fatalf("style = set:%t size:%v, want explicit text style", style.SetSize, style.NewSize)
 			}
 		})
 	}
 
 	result := parseWithin(t, `\text{\small text}`, 2*time.Second)
-	if !hasDiagnostic(result.Diagnostics, source.CodeUnsupported) {
-		t.Fatalf("text sizing diagnostics = %v, want unsupported", diagnosticCodes(result.Diagnostics))
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Severity == source.SeverityError {
+			t.Fatalf("text sizing diagnostics = %v", result.Diagnostics)
+		}
+	}
+	var textStyle *ir.Style
+	ir.Walk(result.Root, func(node ir.Node) bool {
+		if candidate, ok := node.(*ir.Style); ok && candidate.SetFontSize {
+			textStyle = candidate
+		}
+		return true
+	})
+	if textStyle == nil || textStyle.FontSize.Float() != 90 {
+		t.Fatalf("text sizing style = %+v, want 90%%", textStyle)
 	}
 }
 

@@ -438,6 +438,30 @@ func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 		out.NewSize = n.size
 		out.SetCramped = n.cramped
 		out.Cramped = n.cramped
+		out.SetFontSize = n.setFontSize
+		out.FontSize = n.fontSize
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
+		return out
+	case *astOverlayNode:
+		body := l.lower(n.body, ctx)
+		if l.exhausted {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		if body == nil {
+			return l.placeholder(n.span, "missing overlay body")
+		}
+		out := l.arena.NewOverlay(n.span, body, n.alignment)
+		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
+		return out
+	case *astRaiseNode:
+		body := l.lower(n.body, ctx)
+		if l.exhausted {
+			return l.placeholder(n.span, "IR node limit exceeded")
+		}
+		if body == nil {
+			return l.placeholder(n.span, "missing raise body")
+		}
+		out := l.arena.NewRaise(n.span, body, n.amount)
 		l.applyBase(&out.Base, &n.astBase, ctx, ir.ClassNormal)
 		return out
 	case *astTableNode:

@@ -67,18 +67,51 @@ func (b *Box) Validate() error {
 		return fmt.Errorf("%w: font usage: %v", ErrInvalidBox, err)
 	}
 	if b.Tag != nil {
-		if err := validateTagBox(b.Tag, len(b.Items), len(b.Hits)); err != nil {
+		if err := validateTagBox(b.Tag, len(b.Items), len(b.Hits), true); err != nil {
 			return fmt.Errorf("%w: tag: %v", ErrInvalidBox, err)
 		}
 		if !closeCoordinate(b.Italic, b.Tag.Italic) {
 			return fmt.Errorf("%w: parent italic %v, want rightmost tag run %v", ErrInvalidBox, b.Italic, b.Tag.Italic)
 		}
 	}
+	if len(b.Tags) > 0 {
+		if b.Tag != nil {
+			return fmt.Errorf("%w: formula-level and row-level tags are mutually exclusive", ErrInvalidBox)
+		}
+		previousItemEnd := -1
+		previousHitEnd := -1
+		previousLine := -1
+		for i := range b.Tags {
+			tag := &b.Tags[i]
+			if err := validateTagBox(tag, len(b.Items), len(b.Hits), false); err != nil {
+				return fmt.Errorf("%w: tags[%d]: %v", ErrInvalidBox, i, err)
+			}
+			if tag.Line <= previousLine {
+				return fmt.Errorf("%w: tags[%d] line %d is not strictly increasing", ErrInvalidBox, i, tag.Line)
+			}
+			if previousItemEnd >= 0 && tag.Items.Start != previousItemEnd {
+				return fmt.Errorf("%w: tags[%d] item range is not contiguous", ErrInvalidBox, i)
+			}
+			if previousHitEnd >= 0 && tag.Hits.Start != previousHitEnd {
+				return fmt.Errorf("%w: tags[%d] hit range is not contiguous", ErrInvalidBox, i)
+			}
+			previousLine = tag.Line
+			previousItemEnd = tag.Items.End()
+			previousHitEnd = tag.Hits.End()
+		}
+		if previousItemEnd != len(b.Items) || previousHitEnd != len(b.Hits) {
+			return fmt.Errorf("%w: row tag ranges do not end at the parent suffix", ErrInvalidBox)
+		}
+		if !closeCoordinate(b.Italic, b.Tags[len(b.Tags)-1].Italic) {
+			return fmt.Errorf("%w: parent italic %v, want rightmost row tag run %v",
+				ErrInvalidBox, b.Italic, b.Tags[len(b.Tags)-1].Italic)
+		}
+	}
 	if len(b.Lines) > 0 {
 		if err := validateLines(b); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
 		}
-	} else if b.Tag != nil {
+	} else if b.Tag != nil || len(b.Tags) > 0 {
 		if err := validateUnwrappedTagAggregate(b); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidBox, err)
 		}
@@ -92,6 +125,10 @@ func validateLines(box *Box) error {
 	if box.Tag != nil {
 		itemLimit = box.Tag.Items.Start
 		hitLimit = box.Tag.Hits.Start
+	}
+	if len(box.Tags) > 0 {
+		itemLimit = box.Tags[0].Items.Start
+		hitLimit = box.Tags[0].Hits.Start
 	}
 
 	itemOffset := 0
@@ -205,12 +242,15 @@ func validateLineOverflow(items []Item, line LineBox, parentWidth float32, index
 	return nil
 }
 
-func validateTagBox(tag *TagBox, itemCount, hitCount int) error {
+func validateTagBox(tag *TagBox, itemCount, hitCount int, formulaLevel bool) error {
 	if !tag.Source.IsValid() || tag.Source.IsDetached() {
 		return errors.New("source range is invalid")
 	}
-	if tag.Line != FormulaTagLine {
+	if formulaLevel && tag.Line != FormulaTagLine {
 		return fmt.Errorf("line is %d, want formula-level %d", tag.Line, FormulaTagLine)
+	}
+	if !formulaLevel && tag.Line < 0 {
+		return fmt.Errorf("line is %d, want a nonnegative source row", tag.Line)
 	}
 	if !tag.Manual {
 		return errors.New("tag must be manual in the Phase-1 contract")
@@ -269,12 +309,25 @@ func validateTagRangeSuffix(tag *TagBox, itemCount, hitCount int) error {
 }
 
 func validateUnwrappedTagAggregate(box *Box) error {
-	if err := validateTagRangeSuffix(box.Tag, len(box.Items), len(box.Hits)); err != nil {
-		return err
+	if box.Tag != nil {
+		if err := validateTagRangeSuffix(box.Tag, len(box.Items), len(box.Hits)); err != nil {
+			return err
+		}
+	}
+	if len(box.Tags) > 0 {
+		last := &box.Tags[len(box.Tags)-1]
+		if err := validateTagRangeSuffix(last, len(box.Items), len(box.Hits)); err != nil {
+			return err
+		}
 	}
 	frame := inkExtentForItems(box.Items)
 	required := frame.overflow(box.Width, box.Ascent, box.Descent)
-	required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Width-box.Width))
+	if box.Tag != nil {
+		required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Width-box.Width))
+	}
+	for i := range box.Tags {
+		required = maxFloat(required, maxFloat(0, box.Tags[i].X+box.Tags[i].Width-box.Width))
+	}
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below tag requirement %v", box.Overflow, required)
 	}
@@ -289,6 +342,9 @@ func validateWrappedOverflow(box *Box) error {
 	}
 	if box.Tag != nil {
 		required = maxFloat(required, maxFloat(0, box.Tag.X+box.Tag.Width-box.Width))
+	}
+	for i := range box.Tags {
+		required = maxFloat(required, maxFloat(0, box.Tags[i].X+box.Tags[i].Width-box.Width))
 	}
 	if !overflowAtLeast(box.Overflow, required) {
 		return fmt.Errorf("parent overflow %v is below required %v", box.Overflow, required)

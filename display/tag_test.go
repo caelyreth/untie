@@ -138,6 +138,55 @@ func TestTaggedLineValidationAndCanonical(t *testing.T) {
 	}
 }
 
+func TestRowTagCollectionCloneCanonicalAndValidation(t *testing.T) {
+	t.Parallel()
+
+	box := rowTaggedRangeBox()
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	canonical, err := box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	if !strings.Contains(string(canonical), `"tags":[`) ||
+		!strings.Contains(string(canonical), `"line":0`) ||
+		!strings.Contains(string(canonical), `"line":1`) {
+		t.Fatalf("canonical output omitted row tags: %s", canonical)
+	}
+	clone := box.Clone()
+	clone.Tags[0].X++
+	if box.Tags[0].X == clone.Tags[0].X {
+		t.Fatal("Clone shared row-tag storage")
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(*Box)
+	}{
+		{name: "mixed tag modes", mutate: func(box *Box) { box.Tag = &box.Tags[0] }},
+		{name: "negative row", mutate: func(box *Box) { box.Tags[0].Line = -1 }},
+		{name: "descending row", mutate: func(box *Box) { box.Tags[1].Line = 0 }},
+		{name: "range gap", mutate: func(box *Box) { box.Tags[1].Items.Start++ }},
+		{name: "not suffix", mutate: func(box *Box) {
+			box.Items = append(box.Items, box.Items[len(box.Items)-1])
+			box.Hits = append(box.Hits, box.Hits[len(box.Hits)-1])
+		}},
+		{name: "italic mismatch", mutate: func(box *Box) { box.Italic = 1 }},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			mutated := rowTaggedRangeBox()
+			test.mutate(mutated)
+			if err := mutated.Validate(); err == nil {
+				t.Fatal("Validate() accepted malformed row-tag collection")
+			}
+		})
+	}
+}
+
 func taggedRangeBox(tagX float32) *Box {
 	formulaItem := ruleItemAt(0, 1)
 	tagItem := ruleItemAt(tagX, 1)
@@ -176,6 +225,36 @@ func constrainedTaggedRangeBox() *Box {
 		Tag:    box.Tag,
 	}}
 	return box
+}
+
+func rowTaggedRangeBox() *Box {
+	formula := ruleItemAt(0, 1)
+	first := ruleItemAt(1, 1)
+	second := ruleItemAt(1, 1)
+	formulaHit := ruleHitAt(0, 1)
+	firstHit := ruleHitAt(1, 1)
+	secondHit := ruleHitAt(1, 1)
+	return &Box{
+		Width:  2,
+		Ascent: 2,
+		Italic: -0.25,
+		Items:  []Item{formula, first, second},
+		Hits:   []Hit{formulaHit, firstHit, secondHit},
+		Tags: []TagBox{
+			{
+				Source: source.NewRange(1, 2), Manual: true, Line: 0,
+				X: 1, Y: 0, Width: 1, Ascent: 1, Italic: 0.5,
+				Items: ItemRange{Start: 1, Count: 1},
+				Hits:  HitRange{Start: 1, Count: 1},
+			},
+			{
+				Source: source.NewRange(2, 3), Manual: true, Line: 1,
+				X: 1, Y: 1, Width: 1, Ascent: 1, Italic: -0.25,
+				Items: ItemRange{Start: 2, Count: 1},
+				Hits:  HitRange{Start: 2, Count: 1},
+			},
+		},
+	}
 }
 
 func ruleItemAt(x, width float32) Item {

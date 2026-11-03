@@ -253,15 +253,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		})
 		return newPlaceholderAST(t.span, "unsupported image")
 	case "\\raisebox":
-		_, _, _ = p.consumeRawGroupTextChecked(t)
-		_ = p.parseRequiredArgument(t)
-		p.report(source.Diagnostic{
-			Range:    normalizeRange(t.span),
-			Severity: source.SeverityError,
-			Code:     source.CodeUnsupported,
-			Message:  "vertical raises are not represented in the neutral math IR",
-		})
-		return newPlaceholderAST(t.span, "unsupported raise")
+		return p.parseRaiseBox(t)
 	case "\\vcenter":
 		_ = p.parseRequiredArgument(t)
 		p.report(source.Diagnostic{
@@ -271,15 +263,10 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 			Message:  "vertical centering is not represented in the neutral math IR",
 		})
 		return newPlaceholderAST(t.span, "unsupported vcenter")
-	case "\\mathclap", "\\mathllap", "\\mathrlap", "\\llap", "\\rlap", "\\clap":
-		_ = p.parseRequiredArgument(t)
-		p.report(source.Diagnostic{
-			Range:    normalizeRange(t.span),
-			Severity: source.SeverityError,
-			Code:     source.CodeUnsupported,
-			Message:  "overlapping boxes are not represented in the neutral math IR",
-		})
-		return newPlaceholderAST(t.span, "unsupported overlap")
+	case "\\mathclap", "\\mathllap", "\\mathrlap":
+		return p.parseOverlay(t, false)
+	case "\\llap", "\\rlap", "\\clap":
+		return p.parseOverlay(t, true)
 	case "\\phase":
 		_ = p.parseRequiredArgument(t)
 		p.report(source.Diagnostic{
@@ -309,7 +296,7 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseDeclarativeStyle(t, stop, ir.SizeScriptScript)
 	case "\\tiny", "\\sixptsize", "\\scriptsize", "\\footnotesize", "\\small",
 		"\\normalsize", "\\large", "\\Large", "\\LARGE", "\\huge", "\\Huge":
-		return p.parseUnsupportedSizing(t, stop)
+		return p.parseSizing(t, stop)
 	case "\\rm":
 		return p.parseDeclarativeVariant(t, stop, ir.VariantNormal)
 	case "\\it":
@@ -491,7 +478,8 @@ func (p *parser) parseEquationSuppression(command token) {
 		})
 		return
 	}
-	if p.metadataDepth != 0 {
+	line, rowScoped := p.currentMultilineTagLine()
+	if p.metadataDepth != 0 && !rowScoped {
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(command.span),
 			Severity: source.SeverityError,
@@ -500,12 +488,23 @@ func (p *parser) parseEquationSuppression(command token) {
 		})
 		return
 	}
+	for _, tag := range p.tags {
+		if line >= 0 && tag.line == line && (tag.manual || tag.suppressed) {
+			p.report(source.Diagnostic{
+				Range:    normalizeRange(command.span),
+				Severity: source.SeverityError,
+				Code:     source.CodeInvalidValue,
+				Message:  "row has conflicting equation tag metadata",
+			})
+			return
+		}
+	}
 	span := normalizeRange(command.span)
 	p.tags = append(p.tags, astEquationTag{
 		span:       span,
 		origin:     tokenOrigin(command),
 		suppressed: true,
-		line:       ir.FormulaTagLine,
+		line:       line,
 	})
 }
 
@@ -539,7 +538,8 @@ func (p *parser) parseEquationTag(command token) {
 		})
 		return
 	}
-	if p.metadataDepth != 0 {
+	line, rowScoped := p.currentMultilineTagLine()
+	if p.metadataDepth != 0 && !rowScoped {
 		p.report(source.Diagnostic{
 			Range:    normalizeRange(span),
 			Severity: source.SeverityError,
@@ -549,12 +549,13 @@ func (p *parser) parseEquationTag(command token) {
 		return
 	}
 	for _, tag := range p.tags {
-		if tag.manual {
+		if tag.line == line && tag.manual ||
+			line >= 0 && tag.line == line && tag.suppressed {
 			p.report(source.Diagnostic{
 				Range:    normalizeRange(span),
 				Severity: source.SeverityError,
 				Code:     source.CodeInvalidValue,
-				Message:  "multiple equation tags are not allowed",
+				Message:  "multiple equation tags are not allowed for one line",
 			})
 			return
 		}
@@ -574,8 +575,15 @@ func (p *parser) parseEquationTag(command token) {
 		origin:  origin,
 		manual:  true,
 		starred: starred,
-		line:    ir.FormulaTagLine,
+		line:    line,
 	})
+}
+
+func (p *parser) currentMultilineTagLine() (int, bool) {
+	if p.metadataDepth != 1 || len(p.multilineTags) != 1 {
+		return ir.FormulaTagLine, false
+	}
+	return p.multilineTags[0].line, true
 }
 
 // parseSharedTeXCommand resolves command metadata that is generated once and
@@ -864,18 +872,66 @@ func (p *parser) parseDeclarativeStyle(command token, stop stopMode, size ir.Mat
 	}
 }
 
-func (p *parser) parseUnsupportedSizing(command token, stop stopMode) astNode {
+func (p *parser) parseSizing(command token, stop stopMode) astNode {
 	body := p.parseSequence(stop)
-	span := source.Merge(command.span, body.base().span)
-	body.base().span = span
-	body.base().origin = containerOrigin(command, body, span)
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(command.span),
-		Severity: source.SeverityError,
-		Code:     source.CodeUnsupported,
-		Message:  "math font-size declaration '" + command.text + "' requires a neutral font-size field",
-	})
-	return body
+	return p.sizingNode(command, body)
+}
+
+func (p *parser) sizingNode(command token, body astNode) astNode {
+	fontSize, ok := sizingFontSizes[command.text]
+	if !ok {
+		p.report(source.Diagnostic{
+			Range:    normalizeRange(command.span),
+			Severity: source.SeverityError,
+			Code:     source.CodeInternal,
+			Message:  "unknown font-size declaration '" + command.text + "'",
+		})
+		return body
+	}
+	return &astStyleNode{
+		astBase:     newASTBaseAt(astStyle, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		body:        body,
+		size:        ir.SizeText,
+		fontSize:    fontSize,
+		setFontSize: true,
+	}
+}
+
+func (p *parser) parseOverlay(command token, textMode bool) astNode {
+	var body astNode
+	if textMode {
+		body = p.parseTextArgument(command)
+	} else {
+		body = p.parseRequiredArgument(command)
+	}
+	if body == nil {
+		return newPlaceholderAST(normalizeRange(command.span), "missing overlap body")
+	}
+	alignment := ir.OverlayStart
+	switch command.text {
+	case "\\llap", "\\mathllap":
+		alignment = ir.OverlayEnd
+	case "\\clap", "\\mathclap":
+		alignment = ir.OverlayCenter
+	}
+	return &astOverlayNode{
+		astBase:   newASTBaseAt(astOverlay, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		body:      body,
+		alignment: alignment,
+	}
+}
+
+func (p *parser) parseRaiseBox(command token) astNode {
+	amount := p.parseDimension(command, true)
+	body := p.parseTextArgument(command)
+	if body == nil {
+		return newPlaceholderAST(normalizeRange(command.span), "missing raise body")
+	}
+	return &astRaiseNode{
+		astBase: newASTBaseAt(astRaise, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		body:    body,
+		amount:  amount,
+	}
 }
 
 func (p *parser) parseDeclarativeVariant(command token, stop stopMode, variant ir.Variant) astNode {

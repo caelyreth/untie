@@ -29,17 +29,20 @@ type EquationTag struct {
 }
 ```
 
-For the current Phase 1 contract:
+For the current contract:
 
 - rendered tags are manual;
-- `Line` is `ir.FormulaTagLine`;
+- `Line` is `ir.FormulaTagLine` for a formula-level tag or a zero-based source
+  row for a multiline tag;
 - `Starred` removes the automatic parentheses;
 - suppression events have `Suppressed == true` and a nil body;
 - a rendered tag has a non-nil body and `Manual == true`;
-- multiple manual tags for one line are invalid.
+- formula-level and row-level events cannot be mixed;
+- each line has at most one event and row events are strictly increasing.
 
-The TeX frontend exposes top-level display tags. Typst and nested/multiline
-tagging are outside the Phase 1 metadata contract.
+The TeX frontend exposes formula tags and direct tags in supported multiline
+environments. Typst tags, nested-environment tags, and automatic counters are
+outside the metadata contract.
 
 ## The Node Interface
 
@@ -135,7 +138,9 @@ zero.
 | `Cancel`         | Strike or negation overlay.                                                   |
 | `Table`          | Matrix, array, cases, vector, or aligned grid.                                |
 | `Multiline`      | Source-ordered rows without a table grid.                                     |
-| `Style`          | Explicit math size/cramping wrapper.                                          |
+| `Style`          | Explicit math size, font scale, and cramping wrapper.                         |
+| `Overlay`        | Zero-width start/center/end-aligned content.                                  |
+| `Raise`          | Signed vertical shift that preserves horizontal advance.                      |
 | `Color`          | Paint wrapper.                                                                |
 | `Box`            | Padding, fill, border, and radius decoration.                                 |
 | `Phantom`        | Hidden width/height/depth while preserving selected extents.                  |
@@ -148,6 +153,14 @@ The frontends lower dialect syntax into these families. TeX `pmatrix` and
 Typst `mat` can both become a `Table`; TeX `aligned` and Typst alignment rows
 can both become `Multiline`; a Typst `frac(..., style: "skewed")` and TeX
 `\genfrac` can share `Fraction`.
+
+`Style.SetFontSize` and `Style.FontSize` carry an explicit percentage of the
+root host font size without embedding a dialect-specific size tier. Script
+style transitions still come from layout, not the frontend.
+
+`Overlay` changes horizontal placement while preserving the body's vertical
+metrics. `Raise` changes vertical placement while preserving horizontal
+advance. Both retain child source hits and normal visible recovery.
 
 ### Text Source Clusters
 

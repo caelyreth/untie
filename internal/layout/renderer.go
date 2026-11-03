@@ -189,7 +189,7 @@ func (r *Renderer) layoutFormulaContext(
 	if err != nil {
 		return nil, err
 	}
-	tag, err := state.prepareSingleLineTag(formula.Tags, env)
+	preparedTags, err := state.prepareEquationTags(formula.Tags, rootFragment, env)
 	if err != nil {
 		code, recoverable := recoveryDiagnosticCode(err)
 		if !state.recoverVisible || !recoverable {
@@ -197,10 +197,10 @@ func (r *Renderer) layoutFormulaContext(
 		}
 		span, text := tagRecoverySource(formula.Tags)
 		state.recordRecoveryDiagnosticText(span, text, err, code)
-		tag = nil
+		preparedTags = nil
 	}
 	var box *display.Box
-	if tag != nil {
+	if preparedTags != nil && preparedTags.formula != nil {
 		// Tagged display output is single-line phase-1 metadata. Avoid a
 		// multi-line wrap that cannot own one unambiguous tag.
 		if mode == ir.Display && style.MaxWidth > 0 {
@@ -208,7 +208,22 @@ func (r *Renderer) layoutFormulaContext(
 			if widthErr != nil {
 				return nil, widthErr
 			}
-			formulaFrame := maxFloat(0, style.MaxWidth-tag.width)
+			formulaFrame := maxFloat(0, style.MaxWidth-preparedTags.formula.width)
+			offsetX, offsetErr := state.displayLineOffsetWithin(width, formulaFrame)
+			if offsetErr != nil {
+				return nil, offsetErr
+			}
+			box, err = state.flattenSingleDisplayLine(rootFragment, offsetX)
+		} else {
+			box, err = state.flattenFragment(rootFragment)
+		}
+	} else if preparedTags != nil && len(preparedTags.rows) > 0 {
+		if mode == ir.Display && style.MaxWidth > 0 {
+			width, widthErr := state.host(rootFragment.Width)
+			if widthErr != nil {
+				return nil, widthErr
+			}
+			formulaFrame := maxFloat(0, style.MaxWidth-preparedTags.maxWidth)
 			offsetX, offsetErr := state.displayLineOffsetWithin(width, formulaFrame)
 			if offsetErr != nil {
 				return nil, offsetErr
@@ -223,8 +238,14 @@ func (r *Renderer) layoutFormulaContext(
 	if err != nil {
 		return nil, err
 	}
-	if tag != nil {
-		box, err = state.attachPreparedSingleLineTag(box, tag)
+	if preparedTags != nil && preparedTags.formula != nil {
+		box, err = state.attachPreparedSingleLineTag(box, preparedTags.formula)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if preparedTags != nil && len(preparedTags.rows) > 0 {
+		box, err = state.attachPreparedRowTags(box, preparedTags)
 		if err != nil {
 			return nil, err
 		}
@@ -665,6 +686,10 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 		return s.layoutSizedDelimiter(node, env)
 	case *ir.Style:
 		return s.layoutStyle(node, env, depth+1)
+	case *ir.Overlay:
+		return s.layoutOverlay(node, env, depth+1)
+	case *ir.Raise:
+		return s.layoutRaise(node, env, depth+1)
 	case *ir.Color:
 		child := env
 		child.Paint = node.Paint

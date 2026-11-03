@@ -147,6 +147,9 @@ func TestElementHitCallbacks(t *testing.T) {
 		if event.Phase != HitClick && !event.Found {
 			t.Fatalf("pointer event missed the formula: %+v", event)
 		}
+		if event.Found && !event.HasCaret {
+			t.Fatalf("pointer event has no resolved caret: %+v", event)
+		}
 	}
 	if !phases[HitHover] || !phases[HitPress] || !phases[HitClick] {
 		t.Fatalf("hit phases = %v, events = %+v", phases, events)

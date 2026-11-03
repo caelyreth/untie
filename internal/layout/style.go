@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 
+	"github.com/caelyreth/untie/geometry"
 	"github.com/caelyreth/untie/ir"
 )
 
@@ -25,6 +26,10 @@ const (
 type Style struct {
 	Size    MathSize
 	Cramped bool
+	// SizeScale is an absolute font-size multiplier relative to the root em.
+	// Zero means the default multiplier (one). It is multiplied by the
+	// display/text/script/script-script style scale at layout time.
+	SizeScale geometry.Em
 }
 
 // Superscript returns the style for a superscript. Display and text move to
