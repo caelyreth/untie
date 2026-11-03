@@ -9,9 +9,9 @@ display list. Accessibility generation is optional and excluded unless
 
 The daily performance workload contains:
 
-- 92 formulas;
-- 51 TeX and 41 Typst;
-- 2,252 source bytes;
+- 124 formulas;
+- 67 TeX and 57 Typst;
+- 3,365 source bytes;
 - four effective limit configurations.
 
 Each benchmark operation completes one pass over the corpus. Reported metrics

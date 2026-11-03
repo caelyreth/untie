@@ -133,7 +133,17 @@ Markdown binding, and existing-box drawing.
 - [Supported TeX](docs/tex-support.md)
 - [Supported Typst](docs/typst-support.md)
 - [API Stability](docs/stability.md)
+- [Release Process](docs/releasing.md)
+- [Security Policy](SECURITY.md)
 - [Full Documentation Index](docs/README.md)
+
+### Release
+
+The current tagged release is `v0.2.0`. Untie remains pre-1.0 while its API
+stability tiers are validated in real integrations. Release notes are generated
+from Conventional Commits; see [GitHub Releases](https://github.com/caelyreth/untie/releases)
+for published changes and [Release Process](docs/releasing.md) for the
+maintainer workflow.
 
 ### License
 
@@ -148,4 +158,5 @@ You may choose either license at your option.
 
 The SPDX expression for original project material is `MIT OR Apache-2.0`.
 
-Third-party material remains under its own license.
+Third-party material remains under its own license; see
+[Third-Party Licenses](licenses/README.md).

@@ -28,6 +28,10 @@ CGO_ENABLED=0 go test ./...
 go test ./internal/quality
 CGO_ENABLED=0 go test -shuffle=on -count=2 ./...
 CGO_ENABLED=0 go test -tags=layout_tex_integration ./internal/layout
+cd web
+bun run check
+bun run lint
+bun run build
 ```
 
 `gofmt -l .` must print nothing. CI runs the race detector on a cgo-capable

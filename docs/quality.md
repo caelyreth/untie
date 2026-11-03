@@ -7,13 +7,13 @@ outcomes, not to a claim that either input language is implemented completely.
 
 The product-priority corpus contains:
 
-- 92 cases;
-- 51 TeX and 41 Typst;
-- 55 display and 37 inline;
-- 14 categories and 35 coverage groups;
-- 2,252 source bytes.
+- 124 cases;
+- 67 TeX and 57 Typst;
+- 81 display and 43 inline;
+- 14 categories and 51 coverage groups;
+- 3,365 source bytes.
 
-Expected outcomes include 80 rendered formulas, 7 recoverable parse outcomes,
+Expected outcomes include 112 rendered formulas, 7 recoverable parse outcomes,
 4 missing-glyph font-boundary cases, and 1 output-limit case. Those expected
 failure classes are reviewed outcomes; a passing corpus run does not mean every
 formula rendered successfully.

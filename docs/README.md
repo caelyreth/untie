@@ -45,6 +45,10 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   frontend and its explicit exclusions.
 - [API stability tiers](stability.md) separates the host API, advanced IR
   types, and diagnostic serialization.
+- [Release process](releasing.md) records versioning, module tags, and the
+  automated GitHub release gate.
+- [Security policy](../SECURITY.md) explains supported versions and private
+  vulnerability reporting.
 - [Compatibility and verification](quality.md) summarizes the tracked corpora
   and reviewed coverage.
 - [Performance](performance.md) explains the benchmark workload, cache
