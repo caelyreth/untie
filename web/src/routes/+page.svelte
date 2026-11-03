@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { ArrowUpRight } from '@lucide/svelte'
+  import { Play } from '@lucide/svelte'
 
+  import GithubMark from '#lib/components/github-mark.svelte'
   import Seo from '#lib/components/seo.svelte'
   import Wordmark from '#lib/components/wordmark.svelte'
   import MathFlow from '#lib/home/math-flow.svelte'
@@ -32,12 +33,16 @@
     </p>
     <nav class="hero-actions" aria-label="Get started">
       <a href="/playground">
+        <Play size={14} fill="currentColor" aria-hidden="true" />
         Open playground
-        <ArrowUpRight size={14} aria-hidden="true" />
       </a>
-      <a href="/docs">
-        Read docs
-        <ArrowUpRight size={14} aria-hidden="true" />
+      <a
+        href="https://github.com/caelyreth/untie"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <GithubMark size={14} />
+        GitHub
       </a>
     </nav>
   </section>

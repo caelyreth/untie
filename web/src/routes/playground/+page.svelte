@@ -339,14 +339,20 @@
   }
 
   .formula {
+    display: grid;
     width: min(100%, 900px);
+    height: 100%;
+    max-height: 100%;
     color: var(--ink);
+    place-items: center;
   }
 
   .formula :global(svg) {
     display: block;
-    width: 100%;
+    width: auto;
     height: auto;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .error,
@@ -366,6 +372,20 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  @media (min-width: 901px) {
+    .workbench {
+      height: clamp(520px, 68svh, 760px);
+    }
+
+    .editor-panel {
+      grid-template-rows: 52px minmax(0, 1fr) auto;
+    }
+
+    .preview-panel {
+      grid-template-rows: 52px minmax(0, 1fr);
     }
   }
 
