@@ -52,6 +52,35 @@ type Box struct {
 The slices are owned by the returned box. A new successful layout creates new
 box storage.
 
+## Streaming Drawing Protocol
+
+`github.com/caelyreth/untie/render` provides a framework-neutral convenience
+layer over the same display contract:
+
+```go
+err := render.Walk(box, func(command render.Command) error {
+	switch command.Kind {
+	case render.CommandPath:
+		drawPath(command.Path, command.At, command.Em, command.Paint)
+	case render.CommandRule:
+		fillRect(command.Rect, command.Paint)
+	}
+	return nil
+})
+```
+
+`Walk` preserves `Box.Items` order and skips `ItemGlyphRef` metadata. For path
+commands, `Command.Path` borrows template storage from the box and resolves in
+box coordinates as `At + point*Em`; it does not materialize transformed
+geometry. The template is callback-scoped and must not be mutated or retained.
+A callback error stops the walk and is returned unchanged.
+
+Call `render.ResolvePath(command)` only when a host API requires a standalone
+`geometry.Path`. It intentionally allocates. `render.Fit(box, viewport, opts)`
+returns a uniform `Transform` that fits `box.Bounds()` after padding, including
+certified overflow; it centers vertically and supports start, center, or end
+horizontal alignment.
+
 ## Drawing Items
 
 `Item` is already positioned. Draw it at the host's chosen box origin; do not
