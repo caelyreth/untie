@@ -136,6 +136,11 @@ func (a *adapter) shapeFeatures(mapped font.Glyph, features []font.Feature) (fon
 }
 
 func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool, text string) (layout.Glyph, error) {
+	key := glyphTemplateKey{glyph: mapped, mathText: mathText}
+	if cached, ok := a.glyphTemplates.Load(key); ok {
+		return materializeGlyph(cached.(*glyphTemplate), text), nil
+	}
+
 	info, ok := a.fonts.Face(mapped.Face)
 	if !ok {
 		return layout.Glyph{}, fmt.Errorf("%w: face %d", layout.ErrMissingGlyph, mapped.Face)
@@ -178,7 +183,7 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 		if value, ok := a.fonts.IsExtendedShape(mapped); ok {
 			extended = value
 		}
-		_, stretchableHorizontal = a.fonts.MathConstruction(mapped, font.HorizontalAxis)
+		_, stretchableHorizontal = a.cachedMathConstruction(mapped, font.HorizontalAxis)
 	}
 	advanceIncludesItalic := mathText && !extended
 	if advanceIncludesItalic {
@@ -191,10 +196,9 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 	if err != nil {
 		return layout.Glyph{}, err
 	}
-	result := layout.Glyph{
+	template := &glyphTemplate{mathText: mathText, glyph: layout.Glyph{
 		ID:                    uint16(mapped.ID),
 		FontID:                info.ID,
-		Text:                  text,
 		Advance:               advance,
 		Ascent:                ascent,
 		Descent:               descent,
@@ -202,20 +206,20 @@ func (a *adapter) glyphFromFont(mapped font.Glyph, _ layout.Style, mathText bool
 		AdvanceIncludesItalic: advanceIncludesItalic,
 		StretchableHorizontal: stretchableHorizontal,
 		ExactGlyphRef:         true,
-		TextLike:              mathText && isTextLike(text),
 		Outline:               path,
-	}
+	}}
 	if mathText {
-		result.Kerns = a.loadKerns(mapped)
+		template.glyph.Kerns = a.loadKerns(mapped)
 		if value, ok := a.fonts.TopAccentAttachment(mapped); ok {
-			result.TopAccent, err = a.emFromUnits(int64(value), info.UnitsPerEm)
+			template.glyph.TopAccent, err = a.emFromUnits(int64(value), info.UnitsPerEm)
 			if err != nil {
 				return layout.Glyph{}, err
 			}
-			result.HasTopAccent = true
+			template.glyph.HasTopAccent = true
 		}
 	}
-	return result, nil
+	actual, _ := a.glyphTemplates.LoadOrStore(key, template)
+	return materializeGlyph(actual.(*glyphTemplate), text), nil
 }
 
 func (a *adapter) loadKerns(glyph font.Glyph) layout.MathKernInfo {
