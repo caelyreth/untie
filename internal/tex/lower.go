@@ -64,6 +64,24 @@ func (l *lowerer) lowerTags(tags []astEquationTag) []ir.EquationTag {
 	return out
 }
 
+func (l *lowerer) lowerLabels(labels []astEquationLabel) []ir.EquationLabel {
+	if len(labels) == 0 {
+		return nil
+	}
+	out := make([]ir.EquationLabel, 0, len(labels))
+	for _, label := range labels {
+		if l.exhausted || !l.reserve(label.span) {
+			break
+		}
+		out = append(out, ir.EquationLabel{
+			Name:   label.name,
+			Span:   normalizeRange(label.span),
+			Origin: normalizeRange(label.origin),
+		})
+	}
+	return out
+}
+
 func (l *lowerer) lower(node astNode, ctx lowerContext) ir.Node {
 	if node == nil {
 		return nil

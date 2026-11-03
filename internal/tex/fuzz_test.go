@@ -27,7 +27,11 @@ func FuzzParseNoPanicAndValidIR(f *testing.F) {
 		limits.MaxExpandedTokens = 8_192
 		for _, mode := range []ir.Mode{ir.Inline, ir.Display} {
 			result := Parse(src, mode, Options{Limits: limits})
-			if err := ir.Validate(&ir.Formula{Root: result.Root, Tags: result.Tags}, limits); err != nil {
+			if err := ir.Validate(&ir.Formula{
+				Root:   result.Root,
+				Tags:   result.Tags,
+				Labels: result.Labels,
+			}, limits); err != nil {
 				t.Fatalf("invalid IR for %q in mode %d: %v", src, mode, err)
 			}
 		}

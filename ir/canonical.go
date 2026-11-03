@@ -29,7 +29,8 @@ func MarshalCanonical(f *Formula, limits ...source.Limits) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(f.Tags) > 0 {
+	if len(f.Tags) > 0 || len(f.Labels) > 0 {
+		metadata := map[string]any{"root": snapshot}
 		tags := make([]any, len(f.Tags))
 		for i, tag := range f.Tags {
 			state.count++
@@ -50,7 +51,25 @@ func MarshalCanonical(f *Formula, limits ...source.Limits) ([]byte, error) {
 				"line":       tag.Line,
 			}
 		}
-		snapshot = map[string]any{"root": snapshot, "tags": tags}
+		if len(tags) > 0 {
+			metadata["tags"] = tags
+		}
+		labels := make([]any, len(f.Labels))
+		for i, label := range f.Labels {
+			state.count++
+			if state.count > state.limits.MaxNodes {
+				return nil, fmt.Errorf("%w: %w: label %d metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, i)
+			}
+			labels[i] = map[string]any{
+				"name":   label.Name,
+				"span":   []int{label.Span.Start, label.Span.End},
+				"origin": []int{label.Origin.Start, label.Origin.End},
+			}
+		}
+		if len(labels) > 0 {
+			metadata["labels"] = labels
+		}
+		snapshot = metadata
 	}
 	return json.Marshal(snapshot)
 }

@@ -110,7 +110,7 @@ Expression identity is convenience-only:
 
 - `Expr.Key()` is 64-bit;
 - it includes source, dialect, mode, version, parse-affecting limits, and TeX
-  macros;
+  macros and reference text;
 - it is not cryptographic.
 
 ## Diagnostic Codes

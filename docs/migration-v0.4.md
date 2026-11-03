@@ -2,9 +2,9 @@
 
 Untie 0.4 adds core output policy, shaped-text provenance, the complete MyGo
 editor integration surface, editor geometry, structured accessibility
-descriptions, high-value TeX layout constructs, and variable-font coordinates.
-The runtime version is `0.4.0+layout.7`, and the process-wide Engine cache schema
-is `7`.
+descriptions, Presentation MathML interchange, formula labels and references,
+high-value TeX layout constructs, and variable-font coordinates. The runtime
+version is `0.4.0+layout.7`, and the process-wide Engine cache schema is `7`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -118,9 +118,9 @@ Found hit events also include `Caret` and `HasCaret`, so click-to-edit can enter
 the editor at a proven source boundary without recomputing pointer affinity.
 
 `FormulaClipboardData` and the context-menu option expose plain text and custom
-TeX/Typst source MIME formats. The standalone `mathml` package now provides
-explicit Presentation MathML conversion; it does not silently add a MathML
-clipboard MIME type to the MyGo adapter.
+TeX/Typst source MIME formats. Set `ClipboardOptions.MathML` to add
+`application/mathml+xml` through `Renderer.MarshalMathML`, which uses the same
+dialect, macros, labels, and reference map as rendering.
 
 ## Caret Stops
 
@@ -258,6 +258,35 @@ GSUB FeatureVariations, and text shaping. MATH constants and construction
 recipes remain static OpenType data; construction glyph references use varied
 outlines and metrics.
 
+## Formula Labels and Host References
+
+TeX `\label{name}` now produces immutable, unique formula metadata in
+`ir.Formula.Labels`, also available through `Expr.Labels()`. Labels have no
+visible output and may appear in groups or scripts.
+
+TeX `\eqref{name}` resolves only from the parse-time
+`ParseOptions.References` map:
+
+```go
+expr := untie.ParseTeX(`a=\eqref{eq:a}`, untie.Inline, untie.ParseOptions{
+	References: map[string]string{"eq:a": "3"},
+})
+```
+
+The map value is opaque display text; `\eqref` wraps it as `(<value>)` in a
+text-font IR leaf. The map is copied before parsing. Formula labels never
+populate or override the map, and there is no global state, automatic counter,
+citation resolution, or cross-formula lookup.
+
+Duplicate labels retain the first occurrence and report `duplicate-label`.
+Missing entries report `unresolved-reference`; malformed or oversized values
+report `invalid-value` or `limit-exceeded`. Each `\eqref` failure renders a
+visible placeholder without discarding the surrounding formula.
+
+Expression keys and the renderer's bounded expression cache include TeX
+reference map contents. Typst ignores references, matching its existing macro
+behavior.
+
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
@@ -268,8 +297,10 @@ outlines and metrics.
 - `display.Box` gained `Tags` for source-row tags;
 - `display.Item` and `display.Hit` gained `NodeID`;
 - canonical IR gained `Style.FontSize`, `Overlay`, and `Raise`;
+- canonical IR gained formula-scoped `EquationLabel` metadata;
 - canonical box JSON may include `fontUsage`, `snap`, `carets`, `tags`, and
   node IDs;
+- expression and renderer parse-cache identity includes TeX references;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
 - `untie.Version()` is now `0.4.0+layout.7`;
 - the Engine cache schema is now `7`.

@@ -16,6 +16,8 @@ const (
 	CodeInvalidValue        = source.CodeInvalidValue
 	CodeInvalidEnvironment  = source.CodeInvalidEnvironment
 	CodeUnknownVariable     = source.CodeUnknownVariable
+	CodeDuplicateLabel      = source.CodeDuplicateLabel
+	CodeUnresolvedReference = source.CodeUnresolvedReference
 	CodeMissingGlyph        = source.CodeMissingGlyph
 	CodeInsufficientStretch = source.CodeInsufficientStretch
 	CodeTextUnsupported     = source.CodeTextUnsupported

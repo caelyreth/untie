@@ -71,7 +71,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   reporting, pixel-grid snapping, MyGo accessibility, hit testing, diagnostics,
   clipboard, inline baseline integration, caret geometry, inline splitting,
   explicit stable node identities, TeX sizing, overlap/raise primitives,
-  source-row tags, and cache identity changes.
+  source-row tags, formula labels, host-resolved equation references, and cache
+  identity changes.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a
