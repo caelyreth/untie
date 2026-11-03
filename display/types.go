@@ -484,6 +484,32 @@ func (b *Box) CaretAt(offset int) (CaretStop, bool) {
 	return best, true
 }
 
+// NearestCaret returns the caret stop geometrically nearest to p.
+//
+// Vertical distance is minimized first so a point never snaps to a caret on a
+// different line merely because its x coordinate is closer. Within one line,
+// horizontal distance resolves the left/right affinity. Ties use the same
+// stable source and geometry ordering as CaretAt.
+func (b *Box) NearestCaret(p geometry.Point) (CaretStop, bool) {
+	if b == nil || len(b.CaretStops) == 0 {
+		return CaretStop{}, false
+	}
+	carets := b.Carets()
+	best := carets[0]
+	bestVertical, bestHorizontal := caretPointDistance(best, p)
+	for _, candidate := range carets[1:] {
+		vertical, horizontal := caretPointDistance(candidate, p)
+		if vertical < bestVertical ||
+			vertical == bestVertical && (horizontal < bestHorizontal ||
+				horizontal == bestHorizontal && betterCaretGeometry(candidate, best)) {
+			best = candidate
+			bestVertical = vertical
+			bestHorizontal = horizontal
+		}
+	}
+	return best, true
+}
+
 func contains(r geometry.Rect, p geometry.Point) bool {
 	return p.X >= r.X && p.X <= r.X+r.Width && p.Y >= r.Y && p.Y <= r.Y+r.Height
 }
@@ -514,6 +540,33 @@ func betterCaretAt(candidate, current CaretStop, offset int) bool {
 	if candidateDistance != currentDistance {
 		return candidateDistance < currentDistance
 	}
+	if candidate.Source != current.Source {
+		return candidate.Source < current.Source
+	}
+	if candidate.Top != current.Top {
+		return candidate.Top < current.Top
+	}
+	if candidate.X != current.X {
+		return candidate.X < current.X
+	}
+	if candidate.Bottom != current.Bottom {
+		return candidate.Bottom < current.Bottom
+	}
+	return candidate.NodeID < current.NodeID
+}
+
+func caretPointDistance(caret CaretStop, p geometry.Point) (vertical, horizontal float32) {
+	switch {
+	case p.Y < caret.Top:
+		vertical = caret.Top - p.Y
+	case p.Y > caret.Bottom:
+		vertical = p.Y - caret.Bottom
+	}
+	horizontal = absFloat(p.X - caret.X)
+	return vertical, horizontal
+}
+
+func betterCaretGeometry(candidate, current CaretStop) bool {
 	if candidate.Source != current.Source {
 		return candidate.Source < current.Source
 	}

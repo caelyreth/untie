@@ -127,6 +127,26 @@ func TestBoxCaretsAreSourceOrderedAndResolveNearest(t *testing.T) {
 	if _, ok := (*Box)(nil).CaretAt(0); ok {
 		t.Fatal("nil CaretAt succeeded")
 	}
+
+	for _, test := range []struct {
+		name   string
+		point  geometry.Point
+		source int
+		x      float32
+	}{
+		{name: "left affinity", point: geometry.Point{X: 5, Y: 0}, source: 2, x: 4},
+		{name: "right affinity", point: geometry.Point{X: 14, Y: 0}, source: 8, x: 16},
+		{name: "upper line wins", point: geometry.Point{X: 8, Y: 3}, source: 8, x: 16},
+	} {
+		caret, ok := box.NearestCaret(test.point)
+		if !ok || caret.Source != test.source || caret.X != test.x {
+			t.Fatalf("NearestCaret(%s) = %#v, %v; want source %d x %v",
+				test.name, caret, ok, test.source, test.x)
+		}
+	}
+	if _, ok := (*Box)(nil).NearestCaret(geometry.Point{}); ok {
+		t.Fatal("nil NearestCaret succeeded")
+	}
 }
 
 func TestMarshalCanonical(t *testing.T) {
