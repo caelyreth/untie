@@ -184,7 +184,28 @@ func (c *flattenPathCache) bind(box *display.Box) {
 	if c.box == box {
 		return
 	}
-	*c = flattenPathCache{box: box}
+	c.box = box
+	c.inline = 0
+	c.inlineKeys = [inlinePathCacheSize]pathTemplateKey{}
+	c.inlineIDs = [inlinePathCacheSize]int{}
+	if c.overflow != nil {
+		clear(c.overflow)
+	}
+}
+
+func (c *flattenPathCache) recycle(maxOverflowEntries int) {
+	c.box = nil
+	c.inline = 0
+	c.inlineKeys = [inlinePathCacheSize]pathTemplateKey{}
+	c.inlineIDs = [inlinePathCacheSize]int{}
+	if c.overflow == nil {
+		return
+	}
+	entries := len(c.overflow)
+	clear(c.overflow)
+	if entries > maxOverflowEntries {
+		c.overflow = nil
+	}
 }
 
 func (f *flattenState) appendItem(item display.Item) error {
