@@ -3,12 +3,41 @@ package ir
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/caelyreth/untie/source"
 )
+
+// Stats is the immutable resource-envelope summary produced while validating a
+// formula. It lets parser-owned snapshots answer stricter configured-limit
+// checks without traversing the full IR again. Values are extrema, not totals,
+// except Nodes and Tags.
+type Stats struct {
+	Nodes             int
+	Tags              int
+	MaxDepth          int
+	MaxTextBytes      int
+	MaxDimensionValue int64 // Absolute fixed-point value in millionths of a unit.
+	MaxTableCells     int
+}
+
+// WithinLimits reports whether a formula with these extrema satisfies limits.
+// It is a conservative envelope: a true result is sufficient to skip the full
+// configured-limit traversal, while false requires a diagnostic-producing pass.
+func (s Stats) WithinLimits(limits source.Limits) bool {
+	limits = limits.WithDefaults()
+	if s.Nodes > limits.MaxNodes || s.MaxDepth > limits.MaxNesting ||
+		s.MaxTextBytes > limits.MaxTextBytes || s.MaxTableCells > limits.MaxTableCells {
+		return false
+	}
+	if s.MaxDimensionValue <= 0 || limits.MaxDimension > math.MaxInt64/lengthScale {
+		return true
+	}
+	return s.MaxDimensionValue <= limits.MaxDimension*lengthScale
+}
 
 var (
 	ErrInvalidIR      = errors.New("ir: invalid")
@@ -21,35 +50,48 @@ var (
 // structurally valid. Use ValidateSource at a parser or file-inspection
 // boundary. A zero-value limits uses source.DefaultLimits.
 func Validate(f *Formula, limits source.Limits) error {
-	return validate(f, -1, limits)
+	_, err := ValidateWithStats(f, limits)
+	return err
 }
 
 // ValidateSource checks a formula and verifies that every attached range lies
 // inside src. Detached ranges are permitted.
 func ValidateSource(f *Formula, src string, limits source.Limits) error {
+	_, err := ValidateSourceWithStats(f, src, limits)
+	return err
+}
+
+// ValidateWithStats validates f and returns its resource envelope.
+func ValidateWithStats(f *Formula, limits source.Limits) (Stats, error) {
+	return validate(f, -1, limits)
+}
+
+// ValidateSourceWithStats validates f against src and returns its resource
+// envelope.
+func ValidateSourceWithStats(f *Formula, src string, limits source.Limits) (Stats, error) {
 	return validate(f, len(src), limits)
 }
 
-func validate(f *Formula, sourceLen int, limits source.Limits) error {
+func validate(f *Formula, sourceLen int, limits source.Limits) (Stats, error) {
 	if f == nil {
-		return fmt.Errorf("%w: nil formula", ErrInvalidIR)
+		return Stats{}, fmt.Errorf("%w: nil formula", ErrInvalidIR)
 	}
 	if nodeIsNil(f.Root) {
-		return fmt.Errorf("%w: nil root", ErrInvalidIR)
+		return Stats{}, fmt.Errorf("%w: nil root", ErrInvalidIR)
 	}
 	limits = limits.WithDefaults()
 	if sourceLen >= 0 && sourceLen > limits.MaxSourceBytes {
-		return fmt.Errorf("%w: source exceeds byte limit", ErrInvalidIR)
+		return Stats{}, fmt.Errorf("%w: source exceeds byte limit", ErrInvalidIR)
 	}
 	state := validationState{
 		limits:    limits,
 		sourceLen: sourceLen,
-		active:    make(map[Node]bool),
 	}
+	state.active = state.activeInline[:0]
 	state.path.frames = state.pathInline[:0]
 	state.path.pushText("root")
 	if err := state.visit(f.Root, 0); err != nil {
-		return err
+		return Stats{}, err
 	}
 	var manualLines map[int]bool
 	if len(f.Tags) > 0 {
@@ -60,55 +102,60 @@ func validate(f *Formula, sourceLen int, limits source.Limits) error {
 		state.path.pushTag(i)
 		state.count++
 		if state.count > state.limits.MaxNodes {
-			return fmt.Errorf("%w: %w: %s: metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, &state.path)
+			return Stats{}, fmt.Errorf("%w: %w: %s: metadata limit exceeded", ErrInvalidIR, ErrTraversalLimit, &state.path)
 		}
 		if err := state.validateRangeField(tag.Span, ".span"); err != nil {
-			return err
+			return Stats{}, err
 		}
 		if err := state.validateRangeField(tag.Origin, ".origin"); err != nil {
-			return err
+			return Stats{}, err
 		}
 		if tag.Line < -1 {
-			return fmt.Errorf("%w: %s: invalid line %d", ErrInvalidIR, &state.path, tag.Line)
+			return Stats{}, fmt.Errorf("%w: %s: invalid line %d", ErrInvalidIR, &state.path, tag.Line)
 		}
 		if tag.Starred && !tag.Manual {
-			return fmt.Errorf("%w: %s: starred tag must be manual", ErrInvalidIR, &state.path)
+			return Stats{}, fmt.Errorf("%w: %s: starred tag must be manual", ErrInvalidIR, &state.path)
 		}
 		if tag.Suppressed {
 			if tag.Manual {
-				return fmt.Errorf("%w: %s: tag cannot be both manual and suppressed", ErrInvalidIR, &state.path)
+				return Stats{}, fmt.Errorf("%w: %s: tag cannot be both manual and suppressed", ErrInvalidIR, &state.path)
 			}
 			if tag.Body != nil {
-				return fmt.Errorf("%w: %s: suppression event has a body", ErrInvalidIR, &state.path)
+				return Stats{}, fmt.Errorf("%w: %s: suppression event has a body", ErrInvalidIR, &state.path)
 			}
 			continue
 		}
 		if !tag.Manual {
-			return fmt.Errorf("%w: %s: tag needs a manual body or suppression", ErrInvalidIR, &state.path)
+			return Stats{}, fmt.Errorf("%w: %s: tag needs a manual body or suppression", ErrInvalidIR, &state.path)
 		}
 		if tag.Body == nil {
-			return fmt.Errorf("%w: %s: manual tag has no body", ErrInvalidIR, &state.path)
+			return Stats{}, fmt.Errorf("%w: %s: manual tag has no body", ErrInvalidIR, &state.path)
 		}
 		if manualLines[tag.Line] {
-			return fmt.Errorf("%w: %s: multiple manual tags for line %d", ErrInvalidIR, &state.path, tag.Line)
+			return Stats{}, fmt.Errorf("%w: %s: multiple manual tags for line %d", ErrInvalidIR, &state.path, tag.Line)
 		}
 		manualLines[tag.Line] = true
 		state.path.pushText(".body")
 		err := state.visit(tag.Body, 0)
 		state.path.pop()
 		if err != nil {
-			return err
+			return Stats{}, err
 		}
 	}
-	return nil
+	state.stats.Nodes = state.count
+	state.stats.Tags = len(f.Tags)
+	return state.stats, nil
 }
 
 type validationState struct {
 	limits    source.Limits
 	sourceLen int
 	count     int
-	active    map[Node]bool
+	active    []Node
+	stats     Stats
 	path      validationPath
+	// Common ancestor depths avoid allocating a map for cycle detection.
+	activeInline [16]Node
 	// Common nesting depths avoid a path allocation; deeper trees grow normally.
 	pathInline [8]validationPathFrame
 }
@@ -117,9 +164,17 @@ func (s *validationState) visit(n Node, depth int) error {
 	if nodeIsNil(n) {
 		return fmt.Errorf("%w: %s: nil node", ErrInvalidIR, &s.path)
 	}
-	if s.active[n] {
-		return fmt.Errorf("%w: %w: %s", ErrInvalidIR, ErrCycle, &s.path)
+	for _, ancestor := range s.active {
+		if ancestor == n {
+			return fmt.Errorf("%w: %w: %s", ErrInvalidIR, ErrCycle, &s.path)
+		}
 	}
+	if depth > s.stats.MaxDepth {
+		s.stats.MaxDepth = depth
+	}
+	s.active = append(s.active, n)
+	defer func() { s.active = s.active[:len(s.active)-1] }()
+	s.stats.observe(n)
 	s.count++
 	if s.count > s.limits.MaxNodes {
 		return fmt.Errorf("%w: %w: %s: node limit exceeded", ErrInvalidIR, ErrTraversalLimit, &s.path)
@@ -171,8 +226,6 @@ func (s *validationState) visit(n Node, depth int) error {
 		return fmt.Errorf("%w: %s: right spacing: %v", ErrInvalidIR, &s.path, err)
 	}
 
-	s.active[n] = true
-	defer delete(s.active, n)
 	if err := validateNode(n, s); err != nil {
 		return err
 	}
