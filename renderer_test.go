@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -304,6 +305,38 @@ func TestRenderRecoversOnlyMissingTextCluster(t *testing.T) {
 	}
 	if inkGlyphs < 4 {
 		t.Fatalf("ink glyphs = %d, want surrounding x, A, B, and y", inkGlyphs)
+	}
+}
+
+func TestRenderReportsEachRepeatedMissingTextCluster(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := NewRenderer(loadTestFonts(t), RendererOptions{})
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	const sourceText = `x+\text{中中}+y`
+	result, err := renderer.Render(
+		context.Background(),
+		sourceText,
+		RenderRequest{Style: display.Style{Size: 16}},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if len(result.Box.Diagnostics) != 2 {
+		t.Fatalf("diagnostics = %#v, want two clusters", result.Box.Diagnostics)
+	}
+	first := strings.Index(sourceText, "中")
+	second := strings.Index(sourceText[first+len("中"):], "中") + first + len("中")
+	for i, start := range []int{first, second} {
+		want := source.NewRange(start, start+len("中"))
+		if got := result.Box.Diagnostics[i].Range; got != want {
+			t.Fatalf("diagnostic %d range = %v, want %v", i, got, want)
+		}
+		if _, ok := findAtomHit(result.Box.Hits, want); !ok {
+			t.Fatalf("missing atom hit for diagnostic %d range %v", i, want)
+		}
 	}
 }
 
