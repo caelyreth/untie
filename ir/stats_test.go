@@ -42,7 +42,8 @@ func TestValidateWithStatsEnvelope(t *testing.T) {
 	if stats.Nodes != 14 || stats.Tags != 1 {
 		t.Fatalf("Stats nodes/tags = %d/%d, want 14/1", stats.Nodes, stats.Tags)
 	}
-	if stats.MaxDepth < 2 || stats.MaxTextBytes != 5 || stats.MaxTableCells != 3 || stats.MaxDimensionValue != 2_000_000 {
+	if stats.MaxDepth < 2 || stats.MaxTextBytes != 5 || stats.MaxTableCells != 3 ||
+		stats.MaxDimensionValue != 2_000_000 || stats.GlyphCapacity != 12 {
 		t.Fatalf("Stats envelope = %+v", stats)
 	}
 	if !stats.WithinLimits(source.DefaultLimits()) {

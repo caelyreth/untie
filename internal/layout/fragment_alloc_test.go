@@ -122,6 +122,25 @@ func TestFragmentArenaKeepsPointersStableAcrossChunks(t *testing.T) {
 	}
 }
 
+func TestGlyphArenaReservesExactInitialCapacity(t *testing.T) {
+	t.Parallel()
+
+	var arena glyphArena
+	arena.reserve(3)
+	if len(arena.chunks) != 1 || cap(arena.chunks[0]) != 3 {
+		t.Fatalf("reserved glyph arena = %d chunks, first cap %d", len(arena.chunks), cap(arena.chunks[0]))
+	}
+	first := arena.allocate()
+	second := arena.allocate()
+	third := arena.allocate()
+	if first == second || first == third || second == third {
+		t.Fatal("reserved glyph arena reused storage")
+	}
+	if len(arena.chunks) != 1 {
+		t.Fatalf("exact glyph reservation grew to %d chunks", len(arena.chunks))
+	}
+}
+
 func TestFragmentOutputCountsMatchFlattenedDisplay(t *testing.T) {
 	t.Parallel()
 

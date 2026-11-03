@@ -139,6 +139,13 @@ type glyphArena struct {
 	used   int
 }
 
+func (a *glyphArena) reserve(count int) {
+	if count <= 0 || len(a.chunks) != 0 {
+		return
+	}
+	a.chunks = append(a.chunks, make([]GlyphFragment, count))
+}
+
 func (a *glyphArena) allocate() *GlyphFragment {
 	last := len(a.chunks) - 1
 	if last < 0 || a.used == len(a.chunks[last]) {

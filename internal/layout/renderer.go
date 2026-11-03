@@ -14,6 +14,8 @@ import (
 // not introduce a coarser rounding step before flattening.
 const hostSubunits int64 = 1 << 16
 
+const transientReserveLimit = 4096
+
 // Options configures a Renderer. Zero limits use source.DefaultLimits.
 type Options struct {
 	Limits source.Limits
@@ -117,6 +119,10 @@ func (r *Renderer) layoutFormulaContext(
 		metrics:   metrics,
 		hostSize:  hostSize,
 		limits:    r.limits,
+	}
+	if preparedStats != nil {
+		hint := boundedCapacity(preparedStats.GlyphCapacity, r.limits.MaxOutputItems)
+		state.glyphs.reserve(min(hint, transientReserveLimit))
 	}
 	env := environment{
 		Style:    rootStyle,

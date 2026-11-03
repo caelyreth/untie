@@ -22,6 +22,9 @@ type Stats struct {
 	MaxTextBytes      int
 	MaxDimensionValue int64 // Absolute fixed-point value in millionths of a unit.
 	MaxTableCells     int
+	// GlyphCapacity is a conservative hint for materialized glyph fragments.
+	// Text runs count source bytes, so the value may exceed the shaped output.
+	GlyphCapacity int
 }
 
 // WithinLimits reports whether a formula with these extrema satisfies limits.

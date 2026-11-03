@@ -12,13 +12,17 @@ func (s *Stats) observe(node Node) {
 	switch value := node.(type) {
 	case *Glyph:
 		s.observeText(value.Text)
+		s.GlyphCapacity++
 	case *SizedDelimiter:
 		s.observeText(value.Text)
+		s.GlyphCapacity++
 	case *Text:
 		s.observeText(value.Text)
+		s.GlyphCapacity = saturatedAddInt(s.GlyphCapacity, len(value.Text))
 		s.observeLength(value.Tracking)
 	case *Operator:
 		s.observeText(value.Text)
+		s.GlyphCapacity = saturatedAddInt(s.GlyphCapacity, len(value.Text))
 	case *Space:
 		s.observeLength(value.Amount)
 	case *Fraction:
@@ -52,9 +56,17 @@ func (s *Stats) observe(node Node) {
 		s.observeLength(value.Radius)
 	case *ErrorNode:
 		s.observeText(value.Text)
+		s.GlyphCapacity++
 	case *Placeholder:
 		s.observeText(value.Reason)
 	}
+}
+
+func saturatedAddInt(left, right int) int {
+	if right > 0 && left > math.MaxInt-right {
+		return math.MaxInt
+	}
+	return left + right
 }
 
 func (s *Stats) observeText(text string) {
