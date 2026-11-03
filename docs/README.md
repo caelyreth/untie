@@ -83,10 +83,10 @@ layout, DOM, network access, or semantic TeX/Typst execution. The host owns
 those concerns. Untie's contract ends at a validated `Box`, its accessibility
 text, and its source metadata.
 
-The bundled `examples/mygo` application is a complete drawing integration for
-the public display list. The example module is separate from the library; the
-library itself has no UI dependency.
+The bundled `examples/mygo` application demonstrates the public adapter's
+`Renderer.Render` and `Renderer.Draw` helpers. The example module is separate
+from the library; the library itself has no UI dependency.
 
 For plug-and-play Markdown math, use the separately versioned
-[`contrib/mygo`](../contrib/mygo/README.md) adapter. Importing the root module
-never imports MyGo.
+[`contrib/mygo`](../contrib/mygo/README.md) adapter, whose package name is
+`untiemygo`. Importing the root module never imports MyGo.

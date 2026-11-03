@@ -85,9 +85,9 @@ func TestLayoutCacheKeyIncludesIdentityLimitsAndVersion(t *testing.T) {
 
 	fonts := loadTestFonts(t)
 	data := testFontBytes(t)
-	sameBytesDifferentID, err := LoadFonts(Fonts{Math: FontData{Bytes: data, ID: "other-id"}})
+	sameBytesDifferentID, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "other-id"}})
 	if err != nil {
-		t.Fatalf("LoadFonts(other ID) error = %v", err)
+		t.Fatalf("LoadFontSet(other ID) error = %v", err)
 	}
 	base := makeLayoutEngineCacheKey(fonts, source.Limits{}, Version())
 	if got := makeLayoutEngineCacheKey(fonts, source.Limits{}, Version()); got != base {

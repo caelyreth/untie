@@ -22,8 +22,8 @@ type layoutHarness struct {
 }
 
 func newLayoutHarness(fontBytes []byte) (*layoutHarness, error) {
-	fonts, err := font.Load(font.Fonts{
-		Math: font.FontData{Bytes: fontBytes, ID: "NewCMMath-Book"},
+	fonts, err := font.LoadFontSet(font.FontSetConfig{
+		Math: font.FontFace{Bytes: fontBytes, ID: "NewCMMath-Book"},
 	})
 	if err != nil {
 		return nil, err

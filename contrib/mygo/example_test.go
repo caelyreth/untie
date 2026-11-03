@@ -1,11 +1,11 @@
-package mygo_test
+package untiemygo_test
 
 import (
 	"fmt"
 	"os"
 
 	"github.com/caelyreth/untie"
-	adapter "github.com/caelyreth/untie/contrib/mygo"
+	"github.com/caelyreth/untie/contrib/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 )
@@ -19,7 +19,7 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	math, err := adapter.New(fonts, adapter.Options{CacheEntries: 8})
+	math, err := untiemygo.New(fonts, untiemygo.Options{CacheEntries: 8})
 	if err != nil {
 		panic(err)
 	}

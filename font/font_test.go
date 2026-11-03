@@ -42,7 +42,7 @@ func TestInputAndOutputOwnership(t *testing.T) {
 	t.Parallel()
 	data := readTestFont(t)
 	original := append([]byte(nil), data...)
-	set, err := Load(Fonts{Math: FontData{Bytes: data, ID: "owned"}})
+	set, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "owned"}})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -55,31 +55,31 @@ func TestInputAndOutputOwnership(t *testing.T) {
 	if set.KeySHA256() != key {
 		t.Fatal("caller mutation changed key")
 	}
-	copied := set.Fonts()
+	copied := set.Config()
 	if !bytes.Equal(copied.Math.Bytes, original) {
-		t.Fatal("Fonts() did not return the original bytes")
+		t.Fatal("Config() did not return the original bytes")
 	}
 	copied.Math.Bytes[0] ^= 0xff
-	if set.Fonts().Math.Bytes[0] != original[0] {
-		t.Fatal("Fonts() returned shared storage")
+	if set.Config().Math.Bytes[0] != original[0] {
+		t.Fatal("Config() returned shared storage")
 	}
 }
 
 func TestDeterministicKey(t *testing.T) {
 	t.Parallel()
 	data := readTestFont(t)
-	a, err := Load(Fonts{Math: FontData{Bytes: data, ID: "same"}})
+	a, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "same"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := Load(Fonts{Math: FontData{Bytes: append([]byte(nil), data...), ID: "same"}})
+	b, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: append([]byte(nil), data...), ID: "same"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if a.Key() != b.Key() || a.KeySHA256() != b.KeySHA256() {
 		t.Fatal("identical font sets have different keys")
 	}
-	c, err := Load(Fonts{Math: FontData{Bytes: data, ID: "different"}})
+	c, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "different"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestDeterministicKey(t *testing.T) {
 func TestTTCFaceSelection(t *testing.T) {
 	t.Parallel()
 	data := makeTTC(t, readTestFont(t), 2)
-	set, err := Load(Fonts{Math: FontData{Bytes: data, Index: 1, ID: "ttc-face-1"}})
+	set, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, Index: 1, ID: "ttc-face-1"}})
 	if err != nil {
 		t.Fatalf("Load TTC face 1: %v", err)
 	}
@@ -103,10 +103,10 @@ func TestTTCFaceSelection(t *testing.T) {
 	if info.Index != 1 || info.PostScriptName != "NewCMMath-Book" {
 		t.Fatalf("selected face = %#v", info)
 	}
-	if _, err := Load(Fonts{Math: FontData{Bytes: data, Index: 2, ID: "bad"}}); err == nil {
+	if _, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, Index: 2, ID: "bad"}}); err == nil {
 		t.Fatal("Load accepted an out-of-range TTC index")
 	}
-	if _, err := Load(Fonts{Math: FontData{Bytes: readTestFont(t), Index: 1, ID: "bad"}}); err == nil {
+	if _, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: readTestFont(t), Index: 1, ID: "bad"}}); err == nil {
 		t.Fatal("Load accepted a nonzero index for a single SFNT")
 	}
 }
@@ -114,11 +114,11 @@ func TestTTCFaceSelection(t *testing.T) {
 func TestTextAndFallbacks(t *testing.T) {
 	t.Parallel()
 	data := readTestFont(t)
-	text := FontData{Bytes: data, ID: "text"}
-	set, err := Load(Fonts{
-		Math:      FontData{Bytes: data, ID: "math"},
+	text := FontFace{Bytes: data, ID: "text"}
+	set, err := LoadFontSet(FontSetConfig{
+		Math:      FontFace{Bytes: data, ID: "math"},
 		Text:      &text,
-		Fallbacks: []FontData{{Bytes: data, ID: "fallback"}},
+		Fallbacks: []FontFace{{Bytes: data, ID: "fallback"}},
 	})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -145,7 +145,7 @@ func TestTextAndFallbacks(t *testing.T) {
 			t.Fatalf("Face(%d).ID = %q, want %q", tc.ref, info.ID, tc.id)
 		}
 	}
-	noText, err := Load(Fonts{Math: FontData{Bytes: data, ID: "math"}})
+	noText, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "math"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,41 +154,33 @@ func TestTextAndFallbacks(t *testing.T) {
 	}
 }
 
-func TestFaceIDsMustBeUniqueAndNonEmpty(t *testing.T) {
+func TestFaceIDsMustBeUnique(t *testing.T) {
 	t.Parallel()
 	data := readTestFont(t)
 	tests := []struct {
-		name  string
-		fonts Fonts
+		name   string
+		config FontSetConfig
 	}{
 		{
-			name:  "empty math",
-			fonts: Fonts{Math: FontData{Bytes: data}},
-		},
-		{
-			name:  "blank math",
-			fonts: Fonts{Math: FontData{Bytes: data, ID: " \t"}},
-		},
-		{
 			name: "duplicate text",
-			fonts: func() Fonts {
-				text := FontData{Bytes: data, ID: "same"}
-				return Fonts{Math: FontData{Bytes: data, ID: "same"}, Text: &text}
+			config: func() FontSetConfig {
+				text := FontFace{Bytes: data, ID: "same"}
+				return FontSetConfig{Math: FontFace{Bytes: data, ID: "same"}, Text: &text}
 			}(),
 		},
 		{
 			name: "duplicate fallback",
-			fonts: Fonts{
-				Math:      FontData{Bytes: data, ID: "same"},
-				Fallbacks: []FontData{{Bytes: data, ID: "same"}},
+			config: FontSetConfig{
+				Math:      FontFace{Bytes: data, ID: "same"},
+				Fallbacks: []FontFace{{Bytes: data, ID: "same"}},
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := Load(tc.fonts); err == nil {
-				t.Fatal("Load() error = nil")
+			if _, err := LoadFontSet(tc.config); err == nil {
+				t.Fatal("LoadFontSet() error = nil")
 			}
 		})
 	}
@@ -211,8 +203,8 @@ func TestMalformedInputFailsAtLoad(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := Load(Fonts{Math: FontData{Bytes: tc.data, Index: tc.index}}); err == nil {
-				t.Fatal("Load() error = nil")
+			if _, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: tc.data, Index: tc.index}}); err == nil {
+				t.Fatal("LoadFontSet() error = nil")
 			}
 		})
 	}
@@ -264,7 +256,7 @@ func BenchmarkOutlineCache(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	set, err := Load(Fonts{Math: FontData{Bytes: data, ID: "bench"}})
+	set, err := LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "bench"}})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -291,6 +283,6 @@ func FuzzLoad(f *testing.F) {
 	f.Add([]byte("ttcf\x00\x01\x00\x00\x00\x00\x00\x01\x00\x00\x00\x0c"))
 	f.Add([]byte("not a font"))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = Load(Fonts{Math: FontData{Bytes: data, ID: "fuzz"}})
+		_, _ = LoadFontSet(FontSetConfig{Math: FontFace{Bytes: data, ID: "fuzz"}})
 	})
 }

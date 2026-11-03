@@ -29,8 +29,8 @@ func TestLoadMathFontDerivesStableSafeID(t *testing.T) {
 	if !strings.HasPrefix(info.ID, "math-newcmmath-book-") {
 		t.Fatalf("derived ID = %q, want role and PostScript metadata", info.ID)
 	}
-	if got := first.Fonts().Math.ID; got != info.ID {
-		t.Fatalf("Fonts().Math.ID = %q, want %q", got, info.ID)
+	if got := first.Config().Math.ID; got != info.ID {
+		t.Fatalf("Config().Math.ID = %q, want %q", got, info.ID)
 	}
 	for _, r := range info.ID {
 		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
@@ -41,7 +41,7 @@ func TestLoadMathFontDerivesStableSafeID(t *testing.T) {
 		t.Fatal("stable derived IDs produced different font keys")
 	}
 	data[0] ^= 0xff
-	if got := first.Fonts().Math.Bytes; string(got) != string(original) {
+	if got := first.Config().Math.Bytes; string(got) != string(original) {
 		t.Fatal("LoadMathFont retained caller-owned font bytes")
 	}
 	if _, ok := first.MapRune(MathFace, 'A'); !ok {
@@ -108,8 +108,8 @@ func TestLoadFontSetDerivesUniqueRoleIDs(t *testing.T) {
 			t.Fatalf("role ID %q does not have prefix %q", id, wantPrefix)
 		}
 	}
-	if got := set.Fonts(); got.Math.ID != mathInfo.ID || got.Text.ID != textInfo.ID || got.Fallbacks[0].ID != fallbackInfo.ID {
-		t.Fatalf("Fonts() IDs = %#v", got)
+	if got := set.Config(); got.Math.ID != mathInfo.ID || got.Text.ID != textInfo.ID || got.Fallbacks[0].ID != fallbackInfo.ID {
+		t.Fatalf("Config() IDs = %#v", got)
 	}
 }
 

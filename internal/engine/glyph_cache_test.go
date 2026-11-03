@@ -15,9 +15,9 @@ import (
 
 func TestGlyphTemplateCacheIsolationAndLifetime(t *testing.T) {
 	data := readEngineTestFont(t)
-	firstSet, err := font.Load(font.Fonts{
-		Math: font.FontData{Bytes: data, ID: "first-math"},
-		Fallbacks: []font.FontData{{
+	firstSet, err := font.LoadFontSet(font.FontSetConfig{
+		Math: font.FontFace{Bytes: data, ID: "first-math"},
+		Fallbacks: []font.FontFace{{
 			Bytes: data,
 			ID:    "first-fallback",
 		}},
@@ -25,8 +25,8 @@ func TestGlyphTemplateCacheIsolationAndLifetime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondSet, err := font.Load(font.Fonts{
-		Math: font.FontData{Bytes: data, ID: "second-math"},
+	secondSet, err := font.LoadFontSet(font.FontSetConfig{
+		Math: font.FontFace{Bytes: data, ID: "second-math"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +99,7 @@ func TestGlyphTemplateCacheIsolationAndLifetime(t *testing.T) {
 
 func TestGlyphTemplateCacheConcurrentUse(t *testing.T) {
 	data := readEngineTestFont(t)
-	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: data, ID: "concurrent-math"}})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: font.FontFace{Bytes: data, ID: "concurrent-math"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestGlyphTemplateCacheConcurrentUse(t *testing.T) {
 
 func TestMathConstructionCacheReusesImmutableRecipe(t *testing.T) {
 	data := readEngineTestFont(t)
-	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: data, ID: "construction-math"}})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: font.FontFace{Bytes: data, ID: "construction-math"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestMathConstructionCacheReusesImmutableRecipe(t *testing.T) {
 
 func TestGlyphLookupUsesCachedTemplate(t *testing.T) {
 	data := readEngineTestFont(t)
-	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: data, ID: "cached-lookup-math"}})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: font.FontFace{Bytes: data, ID: "cached-lookup-math"}})
 	if err != nil {
 		t.Fatal(err)
 	}

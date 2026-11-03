@@ -7,8 +7,8 @@ import (
 	"github.com/caelyreth/untie"
 )
 
-// LoadFonts prepares the tracked NewCM font set for per-case Engine creation.
-func LoadFonts(fontPath string) (*untie.FontSet, error) {
+// LoadFontSet prepares the tracked NewCM font set for per-case Engine creation.
+func LoadFontSet(fontPath string) (*untie.FontSet, error) {
 	if fontPath == "" {
 		return nil, errors.New("daily: empty font path")
 	}
@@ -16,7 +16,7 @@ func LoadFonts(fontPath string) (*untie.FontSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	return untie.LoadFonts(untie.Fonts{
-		Math: untie.FontData{Bytes: fontBytes, ID: "NewCMMath-Book"},
+	return untie.LoadFontSet(untie.FontSetConfig{
+		Math: untie.FontFace{Bytes: fontBytes, ID: "NewCMMath-Book"},
 	})
 }

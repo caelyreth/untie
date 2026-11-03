@@ -4,10 +4,14 @@ A native desktop example built with [MyGo](https://mygo.egoist.dev/). The
 window has two areas:
 
 - a source editor with TeX/Typst switching;
-- a renderer that paints Untie's display list with `ui.Painter`.
+- a renderer that delegates drawing to the `untiemygo` adapter's `Draw`
+  helper.
 
 The two dialects keep separate source buffers, so switching syntax does not
 discard the formula being edited.
+
+The example uses the same public adapter that provides `BindMarkdown` hooks;
+the desktop editor calls `Renderer.Render` and `Renderer.Draw` directly.
 
 ## Run
 

@@ -35,7 +35,7 @@ func TestDailySTEMCorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fonts, err := daily.LoadFonts(filepath.Join(root, "testdata", "upstream", "fonts", "NewCMMath-Book.otf"))
+	fonts, err := daily.LoadFontSet(filepath.Join(root, "testdata", "upstream", "fonts", "NewCMMath-Book.otf"))
 	if err != nil {
 		t.Fatal(err)
 	}

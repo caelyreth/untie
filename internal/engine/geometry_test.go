@@ -475,9 +475,9 @@ func newNewCMEngine(t *testing.T, limits source.Limits) (*font.FontSet, *Engine)
 	if err != nil {
 		t.Fatalf("read font: %v", err)
 	}
-	set, err := font.Load(font.Fonts{Math: font.FontData{Bytes: bytes, ID: "NewCMMath-Book"}})
+	set, err := font.LoadFontSet(font.FontSetConfig{Math: font.FontFace{Bytes: bytes, ID: "NewCMMath-Book"}})
 	if err != nil {
-		t.Fatalf("font.Load() error = %v", err)
+		t.Fatalf("font.LoadFontSet() error = %v", err)
 	}
 	engine, err := New(set, limits)
 	if err != nil {

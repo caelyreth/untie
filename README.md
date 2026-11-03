@@ -85,9 +85,10 @@ A two-pane native editor example is in
 [examples/mygo](examples/mygo).
 
 A separately versioned MyGo Markdown adapter is in
-[contrib/mygo](contrib/mygo). It provides inline and display math hooks, a
-bounded immutable layout cache, theme-role drawing, and `ui.Tester` coverage
-without adding MyGo to the root module's dependencies.
+[contrib/mygo](contrib/mygo). Its package name is `untiemygo`, so imports need
+no alias. It provides inline and display math hooks, a bounded immutable layout
+cache, theme-role drawing, and `ui.Tester` coverage without adding MyGo to the
+root module's dependencies.
 
 ### License
 

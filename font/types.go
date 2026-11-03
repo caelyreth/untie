@@ -12,9 +12,9 @@ import (
 type FaceRef uint8
 
 const (
-	// MathFace is the primary math face supplied in Fonts.Math.
+	// MathFace is the primary math face supplied in FontSetConfig.Math.
 	MathFace FaceRef = iota
-	// TextFace is the optional text face supplied in Fonts.Text.
+	// TextFace is the optional text face supplied in FontSetConfig.Text.
 	TextFace
 
 	fallbackFaceBase FaceRef = 2

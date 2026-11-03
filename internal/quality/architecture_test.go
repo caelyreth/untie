@@ -247,6 +247,8 @@ var allowedExampleImports = map[string]packageRules{
 	exampleModulePath: {
 		Production: []string{
 			modulePath,
+			modulePath + "/contrib/mygo",
+			modulePath + "/render",
 			"github.com/egoist/mygo",
 			"github.com/egoist/mygo/ui",
 		},

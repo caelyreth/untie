@@ -6,6 +6,7 @@ tool github.com/egoist/mygo/cmd/mygo
 
 require (
 	github.com/caelyreth/untie v0.0.0
+	github.com/caelyreth/untie/contrib/mygo v0.0.0
 	github.com/egoist/mygo v0.7.4
 )
 
@@ -20,3 +21,5 @@ require (
 )
 
 replace github.com/caelyreth/untie => ../..
+
+replace github.com/caelyreth/untie/contrib/mygo => ../../contrib/mygo
