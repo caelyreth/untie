@@ -72,6 +72,8 @@ func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 		Descent:    descent,
 		Italic:     italic,
 		AxisHeight: axisHeight,
+		Items:      make([]display.Item, 0, s.outputItemCapacity(root.flatItems)),
+		Hits:       make([]display.Hit, 0, s.outputHitCapacity(root.flatHits)),
 	}
 	state := newFlattenState(s, box, 0, 0)
 	if err := state.visit(root, 0, 0); err != nil {
@@ -85,6 +87,47 @@ func (s *layoutState) flattenFragment(root *Fragment) (*display.Box, error) {
 	}
 	state.box.Overflow = state.overflow()
 	return state.box, nil
+}
+
+func (s *layoutState) outputItemCapacity(want int) int {
+	return boundedCapacity(want, s.limits.MaxOutputItems)
+}
+
+func (s *layoutState) outputHitCapacity(want int) int {
+	return boundedCapacity(want, s.limits.MaxNodes)
+}
+
+func boundedCapacity(want, limit int) int {
+	switch {
+	case want < 0:
+		return 0
+	case want > limit:
+		return limit
+	default:
+		return want
+	}
+}
+
+func reserveDisplayItems(items []display.Item, additional, limit int) []display.Item {
+	want := saturatedAdd(len(items), additional)
+	capacity := boundedCapacity(want, limit)
+	if capacity <= cap(items) {
+		return items
+	}
+	grown := make([]display.Item, len(items), capacity)
+	copy(grown, items)
+	return grown
+}
+
+func reserveDisplayHits(hits []display.Hit, additional, limit int) []display.Hit {
+	want := saturatedAdd(len(hits), additional)
+	capacity := boundedCapacity(want, limit)
+	if capacity <= cap(hits) {
+		return hits
+	}
+	grown := make([]display.Hit, len(hits), capacity)
+	copy(grown, hits)
+	return grown
 }
 
 type flattenState struct {
@@ -198,7 +241,8 @@ func (f *flattenState) visit(fragment *Fragment, x, y geometry.Em) error {
 	if err := f.layout.appendFragmentHits(f, fragment, x, y); err != nil {
 		return err
 	}
-	for _, draw := range fragment.items {
+	for drawIndex := 0; drawIndex < fragment.drawCount; drawIndex++ {
+		draw := fragment.drawAt(drawIndex)
 		if err := f.tick(); err != nil {
 			return err
 		}

@@ -8,7 +8,7 @@ import (
 )
 
 func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*Fragment, error) {
-	row := emptyFragment(env.Style.Size, s.scale(env.Style))
+	row := s.emptyFragment(env.Style.Size, s.scale(env.Style))
 	row.Class = ir.ClassNormal
 	row.TextLike = true
 
@@ -46,6 +46,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		atoms[i].leftClass = spacingLeftClass(atoms[i].node, normalized[i])
 		atoms[i].rightClass = spacingRightClass(atoms[i].node, normalized[i])
 	}
+	row.reserveDraws(len(atoms))
 
 	var x, ascent, descent, italic geometry.Em
 	var previousClass *ir.MathClass
@@ -88,7 +89,7 @@ func (s *layoutState) layoutRow(nodes []ir.Node, env environment, depth int) (*F
 		row.breaks = append(row.breaks, fragmentBreak{
 			x:    x,
 			kind: pending.kind,
-			cut:  len(row.items),
+			cut:  row.drawCount,
 		})
 		pending = pendingBreak{}
 	}

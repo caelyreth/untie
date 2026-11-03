@@ -179,6 +179,7 @@ type layoutState struct {
 	nodes         int
 	pathSegments  int
 	plannedOutput int
+	fragments     fragmentArena
 }
 
 type environment struct {
@@ -544,7 +545,7 @@ func (s *layoutState) layoutNode(n ir.Node, env environment, depth int) (fragmen
 	case *ir.Placeholder:
 		return s.layoutPlaceholder(node, env)
 	case *ir.Break, *ir.AlignMarker:
-		return emptyFragment(env.Style.Size, s.scale(env.Style)), nil
+		return s.emptyFragment(env.Style.Size, s.scale(env.Style)), nil
 	default:
 		return nil, fmt.Errorf("%w: %T", ErrUnsupported, n)
 	}

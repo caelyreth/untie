@@ -191,10 +191,17 @@ func (s *layoutState) layoutScripts(node *ir.Scripts, env environment, depth int
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	drawCount := 1
+	for _, child := range []*Fragment{topLeft, bottomLeft, topRight, bottomRight, top, bottom} {
+		if child != nil {
+			drawCount++
+		}
+	}
+	fragment.reserveDraws(drawCount)
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
 	fragment.Italic = base.Italic

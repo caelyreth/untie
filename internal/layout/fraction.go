@@ -162,10 +162,15 @@ func (s *layoutState) layoutVerticalFraction(node *ir.Fraction, env environment,
 		}
 	}
 
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	drawCount := 2
+	if showBar {
+		drawCount++
+	}
+	fragment.reserveDraws(drawCount)
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
 	fragment.Italic = numerator.Italic
@@ -267,10 +272,11 @@ func (s *layoutState) layoutHorizontalFraction(node *ir.Fraction, env environmen
 	}
 	ascent := max(max(numerator.Ascent, slash.Ascent), denominator.Ascent)
 	descent := max(max(numerator.Descent, slash.Descent), denominator.Descent)
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(len(parts))
 	x := geometry.Em(0)
 	for _, part := range parts {
 		if err := fragment.pushGroup(x, 0, part); err != nil {
@@ -389,10 +395,11 @@ func (s *layoutState) layoutSkewedFraction(node *ir.Fraction, env environment, n
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(3)
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
 	fragment.Italic = numerator.Italic

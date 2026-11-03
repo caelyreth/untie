@@ -18,10 +18,15 @@ func (s *layoutState) layoutCancel(node *ir.Cancel, env environment, depth int) 
 		return nil, err
 	}
 
-	fragment, err := newFragment(body.Metrics, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(body.Metrics, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	drawCount := 2
+	if node.Inverted {
+		drawCount++
+	}
+	fragment.reserveDraws(drawCount)
 	fragment.BaseAscent = body.BaseAscent
 	fragment.BaseDescent = body.BaseDescent
 	fragment.AccentTop = body.AccentTop

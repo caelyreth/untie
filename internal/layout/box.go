@@ -43,10 +43,18 @@ func (s *layoutState) layoutBox(node *ir.Box, env environment, depth int) (*Frag
 		return nil, fmt.Errorf("%w: box radius: %w", ErrInvalidInput, err)
 	}
 
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	drawCount := 1
+	if node.HasFill {
+		drawCount++
+	}
+	if node.HasBorder {
+		drawCount++
+	}
+	fragment.reserveDraws(drawCount)
 	fragment.BaseAscent = body.BaseAscent
 	fragment.BaseDescent = body.BaseDescent
 	fragment.AccentTop = body.AccentTop

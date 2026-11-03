@@ -69,10 +69,11 @@ func (s *layoutState) layoutLine(node *ir.Line, env environment, depth int) (*Fr
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{Width: body.Width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
+	fragment, err := s.newFragment(Metrics{Width: body.Width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, s.scale(env.Style))
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(2)
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent
 	fragment.Italic = body.Italic

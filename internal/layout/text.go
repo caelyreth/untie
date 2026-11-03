@@ -92,10 +92,11 @@ func (s *layoutState) layoutTextRun(run TextRun, env environment, textLike bool)
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, factor)
+	fragment, err := s.newFragment(Metrics{Width: width, Ascent: ascent, Descent: descent}, ir.ClassNormal, env.Style.Size, factor)
 	if err != nil {
 		return nil, err
 	}
+	fragment.reserveDraws(len(run.Glyphs))
 	fragment.Italic = italic
 	fragment.BaseAscent = ascent
 	fragment.BaseDescent = descent

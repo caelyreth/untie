@@ -49,7 +49,7 @@ func (s *layoutState) layoutTableGrid(
 	if err != nil {
 		return nil, err
 	}
-	fragment, err := newFragment(Metrics{
+	fragment, err := s.newFragment(Metrics{
 		Width:   totalWidth,
 		Ascent:  baseline,
 		Descent: descent,

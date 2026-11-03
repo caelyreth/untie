@@ -41,10 +41,21 @@ type Fragment struct {
 	// StretchableHorizontal mirrors the base glyph's MATH construction.
 	StretchableHorizontal bool
 
-	items  []placedDraw
-	hits   []sourceHit
+	firstDraw placedDraw
+	moreDraws []placedDraw
+	drawCount int
+	// flatItems and flatHits are exact finalized subtree counts. A child must
+	// be complete before it is placed with pushGroup, as required by the
+	// immutable-after-construction fragment contract.
+	flatItems int
+	flatHits  int
+
+	firstHit sourceHit
+	moreHits []sourceHit
+	hitCount int
+	ownHit   int
+
 	breaks []fragmentBreak
-	ownHit int
 }
 
 type fragmentBreak struct {
@@ -105,6 +116,35 @@ type pathDraw struct {
 	paint ir.Paint
 }
 
+const (
+	firstFragmentChunk = 4
+	maxFragmentChunk   = 32
+)
+
+// fragmentArena owns the layout-created fragments for one layout pass. Chunks
+// are never reused or moved, so returned pointers remain valid until the
+// layoutState itself is collected.
+type fragmentArena struct {
+	chunks [][]Fragment
+	used   int
+}
+
+func (a *fragmentArena) allocate() *Fragment {
+	last := len(a.chunks) - 1
+	if last < 0 || a.used == len(a.chunks[last]) {
+		size := firstFragmentChunk
+		if last >= 0 {
+			size = min(len(a.chunks[last])*2, maxFragmentChunk)
+		}
+		a.chunks = append(a.chunks, make([]Fragment, size))
+		last++
+		a.used = 0
+	}
+	fragment := &a.chunks[last][a.used]
+	a.used++
+	return fragment
+}
+
 func newFragment(metrics Metrics, class ir.MathClass, size MathSize, scale geometry.Em) (*Fragment, error) {
 	if metrics.Width < 0 || metrics.Ascent < 0 || metrics.Descent < 0 {
 		return nil, fmt.Errorf("%w: negative fragment metrics", ErrInvalidInput)
@@ -132,11 +172,36 @@ func emptyFragment(size MathSize, scale geometry.Em) *Fragment {
 	return &Fragment{Size: size, Scale: scale, ownHit: -1}
 }
 
+func (s *layoutState) newFragment(metrics Metrics, class ir.MathClass, size MathSize, scale geometry.Em) (*Fragment, error) {
+	if metrics.Width < 0 || metrics.Ascent < 0 || metrics.Descent < 0 {
+		return nil, fmt.Errorf("%w: negative fragment metrics", ErrInvalidInput)
+	}
+	fragment := s.fragments.allocate()
+	*fragment = Fragment{
+		Metrics:      metrics,
+		Class:        class,
+		Size:         size,
+		Scale:        scale,
+		BaseAscent:   metrics.Ascent,
+		BaseDescent:  metrics.Descent,
+		AccentTop:    metrics.Width / 2,
+		AccentBottom: metrics.Width / 2,
+		ownHit:       -1,
+	}
+	return fragment, nil
+}
+
+func (s *layoutState) emptyFragment(size MathSize, scale geometry.Em) *Fragment {
+	fragment := s.fragments.allocate()
+	*fragment = Fragment{Size: size, Scale: scale, ownHit: -1}
+	return fragment
+}
+
 func (f *Fragment) push(x, y geometry.Em, kind drawKind, glyph *GlyphFragment, rule *ruleDraw, group *Fragment) error {
 	if f == nil {
 		return fmt.Errorf("%w: nil fragment", ErrInvalidInput)
 	}
-	f.items = append(f.items, placedDraw{
+	f.appendDraw(placedDraw{
 		x:     x,
 		y:     y,
 		kind:  kind,
@@ -145,6 +210,59 @@ func (f *Fragment) push(x, y geometry.Em, kind drawKind, glyph *GlyphFragment, r
 		group: group,
 	})
 	return nil
+}
+
+func (f *Fragment) appendDraw(draw placedDraw) {
+	if f.drawCount == 0 {
+		f.firstDraw = draw
+	} else {
+		f.moreDraws = append(f.moreDraws, draw)
+	}
+	f.drawCount++
+	f.flatItems = saturatedAdd(f.flatItems, drawFlatItems(draw))
+	if draw.kind == drawGroup && draw.group != nil {
+		f.flatHits = saturatedAdd(f.flatHits, draw.group.flatHits)
+	}
+}
+
+func (f *Fragment) drawAt(index int) placedDraw {
+	if index == 0 {
+		return f.firstDraw
+	}
+	return f.moreDraws[index-1]
+}
+
+// reserveDraws sets an exact tail capacity without allocating for the first
+// draw, which is stored inline. Callers should use known construction counts.
+func (f *Fragment) reserveDraws(count int) {
+	if count <= 1 || cap(f.moreDraws) >= count-1 {
+		return
+	}
+	draws := make([]placedDraw, len(f.moreDraws), count-1)
+	copy(draws, f.moreDraws)
+	f.moreDraws = draws
+}
+
+func drawFlatItems(draw placedDraw) int {
+	switch draw.kind {
+	case drawGroup:
+		if draw.group != nil {
+			return draw.group.flatItems
+		}
+	case drawGlyph:
+		if draw.glyph != nil && len(draw.glyph.Glyph.Parts) > 0 {
+			return len(draw.glyph.Glyph.Parts)
+		}
+	}
+	return 1
+}
+
+func saturatedAdd(a, b int) int {
+	maxInt := int(^uint(0) >> 1)
+	if b > 0 && a > maxInt-b {
+		return maxInt
+	}
+	return a + b
 }
 
 // AddGroup places child relative to the receiver's baseline origin.
@@ -205,7 +323,7 @@ func (f *Fragment) pushPath(x, y geometry.Em, path *pathDraw) error {
 	if path == nil || len(path.path) == 0 {
 		return fmt.Errorf("%w: empty path drawable", ErrInvalidInput)
 	}
-	f.items = append(f.items, placedDraw{x: x, y: y, kind: drawPath, path: path})
+	f.appendDraw(placedDraw{x: x, y: y, kind: drawPath, path: path})
 	return nil
 }
 
