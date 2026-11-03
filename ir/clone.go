@@ -246,6 +246,20 @@ func (s *cloneState) cloneNode(n Node, depth int) (Node, error) {
 			return nil, err
 		}
 		return &out, nil
+	case *Overlay:
+		out := *n
+		var err error
+		if out.Body, err = s.clone(n.Body, depth+1); err != nil {
+			return nil, err
+		}
+		return &out, nil
+	case *Raise:
+		out := *n
+		var err error
+		if out.Body, err = s.clone(n.Body, depth+1); err != nil {
+			return nil, err
+		}
+		return &out, nil
 	case *Color:
 		out := *n
 		var err error

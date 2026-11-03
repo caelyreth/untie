@@ -1,8 +1,9 @@
 # Migrating To 0.4
 
 Untie 0.4 adds core output policy, shaped-text provenance, and the complete
-MyGo editor integration surface. The runtime version is `0.4.0+layout.4`, and
-the process-wide Engine cache schema is `4`.
+MyGo editor integration surface, editor geometry, and high-value TeX layout
+constructs. The runtime version is `0.4.0+layout.5`, and the process-wide
+Engine cache schema is `5`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -174,15 +175,61 @@ produced that cluster in a right-to-left run. The internal layout text-source
 port carries the same information; external code should use
 `FontSet.ShapeText`, which populates it.
 
+## Font-Size Declarations
+
+The KaTeX-compatible declarations `\tiny`, `\sixptsize`, `\scriptsize`,
+`\footnotesize`, `\small`, `\normalsize`, `\large`, `\Large`, `\LARGE`,
+`\huge`, and `\Huge` now lower to neutral IR.
+
+`ir.Style` gained `SetFontSize` and percentage-valued `FontSize`. The frontend
+uses the exact KaTeX multipliers from 50% through 248.8%. Size declarations
+scope to the remainder of their source group, nested declarations replace the
+active absolute size, and scripts continue to apply MATH script scaling.
+Text-mode declarations use the same IR and layout path.
+
+## Overlap And Raise Primitives
+
+Two neutral node families replace the old explicit-unsupported behavior:
+
+- `ir.Overlay` places content at a zero-width insertion point with start,
+  center, or end alignment;
+- `ir.Raise` shifts content vertically by a signed source length without
+  changing horizontal advance.
+
+`\mathrlap`/`\rlap`, `\mathclap`/`\clap`, and `\mathllap`/`\llap` lower to
+overlays. The non-`math` forms parse text-mode bodies. `\raisebox{length}{body}`
+lowers to `Raise` with a text-mode hbox body. Overlay ink outside the zero-width
+box participates in `Box.Overflow`.
+
+`\vcenter`, `\phase`, `\enclose`, and other constructs without a lossless
+neutral representation remain explicit unsupported diagnostics.
+
+## Multiline Row Tags
+
+Direct row-scope `\tag`, `\tag*`, `\nonumber`, and `\notag` now populate
+`ir.EquationTag.Line`. `Box.Tag` remains the formula-level tag; `Box.Tags`
+contains row-scoped `TagBox` values with nonnegative source-row indexes.
+
+Formula-level and row-level tags are mutually exclusive. Row events must be
+unique and source ordered, and each row-tag item/hit range occupies a contiguous
+parent-frame suffix. Constrained display reserves one right-aligned tag column
+while keeping the multiline formula block as one unbreakable line.
+
+Nested environments, tags in ordinary groups or syntactic arguments, inline
+tags, and automatic document counters remain outside the contract.
+
 ## Display And Cache Compatibility
 
 - `display.Box` gained `FontUsage`;
 - `display.Item` gained `Snap`;
 - `display.Box` gained `CaretStops`;
+- `display.Box` gained `Tags` for source-row tags;
 - `display.Item` and `display.Hit` gained `NodeID`;
-- canonical box JSON may include `fontUsage`, `snap`, `carets`, and node IDs;
+- canonical IR gained `Style.FontSize`, `Overlay`, and `Raise`;
+- canonical box JSON may include `fontUsage`, `snap`, `carets`, `tags`, and
+  node IDs;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.4`;
-- the Engine cache schema is now `4`.
+- `untie.Version()` is now `0.4.0+layout.5`;
+- the Engine cache schema is now `5`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.

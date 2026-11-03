@@ -3,6 +3,7 @@ package layout
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/caelyreth/untie/display"
@@ -56,6 +57,110 @@ func TestSingleLineEquationTagLayoutContract(t *testing.T) {
 	}
 	if !closeHost(starred.Tag.Width, 8) || len(starred.Items) != 2 || !closeHost(starred.Width, 16) {
 		t.Fatalf("starred tag geometry = width:%v items:%d parent:%v", starred.Tag.Width, len(starred.Items), starred.Width)
+	}
+}
+
+func TestMultilineRowTagsUseSourceRowsAndIndependentTagRanges(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	root := ir.NewMultiline(
+		source.NewRange(0, 7),
+		[]ir.Node{glyph("x", ir.ClassNormal)},
+		[]ir.Node{glyph("y", ir.ClassNormal)},
+	)
+	firstBody := glyph("A", ir.ClassNormal)
+	secondBody := glyph("B", ir.ClassNormal)
+	formula := &ir.Formula{
+		Root: root,
+		Tags: []ir.EquationTag{
+			{Body: firstBody, Span: source.NewRange(1, 2), Origin: source.NewRange(1, 2), Manual: true, Line: 0},
+			{Body: secondBody, Span: source.NewRange(5, 6), Origin: source.NewRange(5, 6), Manual: true, Starred: true, Line: 1},
+		},
+	}
+	box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, testStyle(16))
+	if err != nil {
+		t.Fatalf("LayoutFormulaContext() error = %v", err)
+	}
+	if box.Tag != nil || len(box.Tags) != 2 || len(box.Lines) != 0 {
+		t.Fatalf("tags = parent:%+v rows:%+v lines:%d", box.Tag, box.Tags, len(box.Lines))
+	}
+	if !closeHost(box.Width, 32) {
+		t.Fatalf("width = %v, want formula plus 24-unit tag column", box.Width)
+	}
+	if !closeHost(box.Tags[0].X, 8) || !closeHost(box.Tags[0].Y, 0) ||
+		!closeHost(box.Tags[0].Width, 24) || box.Tags[0].Line != 0 {
+		t.Fatalf("first tag = %+v", box.Tags[0])
+	}
+	if !closeHost(box.Tags[1].X, 24) || !closeHost(box.Tags[1].Y, 24.8) ||
+		!closeHost(box.Tags[1].Width, 8) || box.Tags[1].Line != 1 {
+		t.Fatalf("second tag = %+v", box.Tags[1])
+	}
+	if box.Tags[0].Items.End() != box.Tags[1].Items.Start ||
+		box.Tags[1].Items.End() != len(box.Items) ||
+		box.Tags[0].Hits.End() != box.Tags[1].Hits.Start ||
+		box.Tags[1].Hits.End() != len(box.Hits) {
+		t.Fatalf("tag ranges are not a contiguous suffix: items %+v/%+v of %d, hits %+v/%+v of %d",
+			box.Tags[0].Items, box.Tags[1].Items, len(box.Items),
+			box.Tags[0].Hits, box.Tags[1].Hits, len(box.Hits))
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	canonical, err := box.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical() error = %v", err)
+	}
+	if !strings.Contains(string(canonical), `"tags":[`) {
+		t.Fatalf("canonical output omitted row tags: %s", canonical)
+	}
+	clone := box.Clone()
+	clone.Tags[0].X++
+	if box.Tags[0].X == clone.Tags[0].X {
+		t.Fatal("Clone shared row-tag storage")
+	}
+}
+
+func TestConstrainedMultilineRowTagsReserveTagColumn(t *testing.T) {
+	t.Parallel()
+
+	renderer, _, _ := newTestRenderer(t)
+	root := ir.NewMultiline(
+		source.NewRange(0, 3),
+		[]ir.Node{glyph("x", ir.ClassNormal)},
+		[]ir.Node{glyph("y", ir.ClassNormal)},
+	)
+	formula := &ir.Formula{
+		Root: root,
+		Tags: []ir.EquationTag{
+			{Body: glyph("1", ir.ClassNormal), Span: source.NewRange(1, 2), Origin: source.NewRange(1, 2), Manual: true, Line: 0},
+			{Body: glyph("2", ir.ClassNormal), Span: source.NewRange(2, 3), Origin: source.NewRange(2, 3), Manual: true, Line: 1},
+		},
+	}
+	style := testStyle(16)
+	style.MaxWidth = 64
+	style.Align = display.AlignCenter
+	box, err := renderer.LayoutFormulaContext(context.Background(), formula, ir.Display, style)
+	if err != nil {
+		t.Fatalf("LayoutFormulaContext() error = %v", err)
+	}
+	if len(box.Lines) != 1 || len(box.Tags) != 2 || box.Width != style.MaxWidth {
+		t.Fatalf("layout = lines:%d tags:%d width:%v", len(box.Lines), len(box.Tags), box.Width)
+	}
+	if !closeHost(box.Lines[0].OffsetX, 16) || box.Lines[0].Tag != nil {
+		t.Fatalf("line = %+v, want centered formula and no line-tag pointer", box.Lines[0])
+	}
+	if !closeHost(box.Tags[0].X, 40) || !closeHost(box.Tags[1].X, 40) {
+		t.Fatalf("tag x positions = %v/%v, want equal width tags right-aligned at 40",
+			box.Tags[0].X, box.Tags[1].X)
+	}
+	if box.Tags[0].Items.Start != box.Lines[0].Items.End() ||
+		box.Tags[0].Hits.Start != box.Lines[0].Hits.End() {
+		t.Fatal("tag ranges overlap the constrained formula line")
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
 	}
 }
 

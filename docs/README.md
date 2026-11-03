@@ -6,7 +6,7 @@ display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
 These docs describe the public API at library version `0.4.0` and layout
-revision `4`. They focus on the behavior a host or code assistant can rely on
+revision `5`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
 ## Start Here
@@ -63,7 +63,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Migrating to 0.4](migration-v0.4.md) records core color policy, fallback
   reporting, pixel-grid snapping, MyGo accessibility, hit testing, diagnostics,
   clipboard, inline baseline integration, caret geometry, inline splitting,
-  explicit stable node identities, and cache identity changes.
+  explicit stable node identities, TeX sizing, overlap/raise primitives,
+  source-row tags, and cache identity changes.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a

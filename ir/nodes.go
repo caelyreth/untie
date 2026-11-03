@@ -3,7 +3,7 @@ package ir
 import "github.com/caelyreth/untie/source"
 
 // FormulaTagLine identifies a tag that belongs to the complete formula rather
-// than one source row. Phase 1 renders only formula-level tags.
+// than one source row.
 const FormulaTagLine = -1
 
 // Formula is the validated root returned by a frontend lowering pass. Tags are
@@ -13,12 +13,13 @@ type Formula struct {
 	Tags []EquationTag
 }
 
-// EquationTag is one formula-scoped tag or numbering-suppression event.
+// EquationTag is one formula- or row-scoped tag or numbering-suppression event.
 //
 // Body is normal math IR and is nil only for a suppression-only event. Line is
 // FormulaTagLine for a tag associated with the complete formula, or a
-// zero-based source row for future multiline output. Document counters never
-// enter this type.
+// zero-based source row for multiline output. Formula-level and row-level
+// events cannot be mixed, and row events must be ordered and unique. Document
+// counters never enter this type.
 type EquationTag struct {
 	Body       Node
 	Span       source.Range
@@ -303,11 +304,53 @@ type Style struct {
 	NewSize    MathSize
 	SetCramped bool
 	Cramped    bool
+	// SetFontSize applies an explicit font-size scale to body. FontSize is a
+	// non-negative percentage of the root host font size; 100% is the root
+	// size. Unlike math Size, it scales text and math content uniformly.
+	SetFontSize bool
+	FontSize    Length
 }
 
 // NewStyle constructs an explicit style wrapper.
 func NewStyle(span source.Range, body Node) *Style {
 	return &Style{Base: NewBase(KindStyle, span), Body: body}
+}
+
+// Overlay places body at a zero-width insertion point.
+//
+// The body may extend to either side according to Alignment. Its vertical
+// metrics participate in the surrounding layout, but its horizontal advance
+// does not. Use Raise when content must preserve its advance and only shift
+// vertically.
+type Overlay struct {
+	Base
+	Body      Node
+	Alignment OverlayAlignment
+}
+
+// NewOverlay constructs zero-width horizontally positioned content.
+func NewOverlay(span source.Range, body Node, alignment OverlayAlignment) *Overlay {
+	return &Overlay{
+		Base:      NewBase(KindOverlay, span),
+		Body:      body,
+		Alignment: alignment,
+	}
+}
+
+// Raise shifts body vertically without changing its horizontal advance.
+//
+// Amount is a signed source length; positive values move body upward. The
+// resulting ascent and descent are clamped at the baseline, while visible ink
+// outside those metrics remains available to overflow reporting.
+type Raise struct {
+	Base
+	Body   Node
+	Amount Length
+}
+
+// NewRaise constructs a vertically shifted box.
+func NewRaise(span source.Range, body Node, amount Length) *Raise {
+	return &Raise{Base: NewBase(KindRaise, span), Body: body, Amount: amount}
 }
 
 // Color applies an explicit or role paint to body.

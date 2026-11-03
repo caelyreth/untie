@@ -332,6 +332,26 @@ func normalizeNode(n ir.Node, inherited semanticMode) (any, error) {
 		baseValue["new-size"] = mathSizeName(node.NewSize)
 		baseValue["set-cramped"] = node.SetCramped
 		baseValue["cramped"] = node.Cramped
+		baseValue["set-font-size"] = node.SetFontSize
+		baseValue["font-size"] = normalizedLength(node.FontSize)
+		return baseValue, nil
+	case *ir.Overlay:
+		body, err := normalizeNode(node.Body, childMode)
+		if err != nil {
+			return nil, err
+		}
+		baseValue["kind"] = "overlay"
+		baseValue["body"] = body
+		baseValue["alignment"] = overlayAlignmentName(node.Alignment)
+		return baseValue, nil
+	case *ir.Raise:
+		body, err := normalizeNode(node.Body, childMode)
+		if err != nil {
+			return nil, err
+		}
+		baseValue["kind"] = "raise"
+		baseValue["body"] = body
+		baseValue["amount"] = normalizedLength(node.Amount)
 		return baseValue, nil
 	case *ir.Color:
 		body, err := normalizeNode(node.Body, childMode)
@@ -430,13 +450,26 @@ var accentCanonicalForms = map[string]string{
 
 func isTransparentSizeStyle(node *ir.Style) bool {
 	base := node.NodeBase()
-	return node.SetSize && !node.SetCramped &&
+	return node.SetSize && !node.SetCramped && !node.SetFontSize &&
 		base.Class == ir.ClassNormal &&
 		base.Variant == ir.VariantAuto &&
 		base.Paint.Role == ir.PaintInk && !base.Paint.HasExplicit &&
 		base.Limits == ir.LimitsAuto &&
 		base.LeftSpacing.IsZero() && base.RightSpacing.IsZero() &&
 		!base.IgnoreAsSpace
+}
+
+func overlayAlignmentName(alignment ir.OverlayAlignment) string {
+	switch alignment {
+	case ir.OverlayStart:
+		return "start"
+	case ir.OverlayCenter:
+		return "center"
+	case ir.OverlayEnd:
+		return "end"
+	default:
+		return "invalid"
+	}
 }
 
 func normalizedBase(n ir.Node, size ir.MathSize, cramped bool) map[string]any {

@@ -121,11 +121,17 @@ func (s *layoutState) layoutMultiline(node *ir.Multiline, env environment, depth
 	fragment.BaseAscent = baseline
 	fragment.BaseDescent = descent
 	fragment.TextLike = true
+	fragment.rows = make([]fragmentRow, len(rows))
 
 	for rowIndex, row := range rows {
 		rowBaseline, err := sum(rowTops[rowIndex], rowAscent[rowIndex], -baseline)
 		if err != nil {
 			return nil, err
+		}
+		fragment.rows[rowIndex] = fragmentRow{
+			baseline: rowBaseline,
+			ascent:   rowAscent[rowIndex],
+			descent:  rowDescent[rowIndex],
 		}
 		if maxColumns <= 1 {
 			x := geometry.Em(0)

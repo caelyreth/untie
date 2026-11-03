@@ -495,7 +495,7 @@
       "index": 66,
       "category": "layout",
       "kind": "semantic-ir-mismatch",
-      "detail": "TeX diagnostics: unsupported: overlapping boxes are not represented in the neutral math IR",
+      "detail": "root[0].limit-bottom: expected {\"alignment\":\"center\",\"body\":[{\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"1\",\"variant\":\"auto\"},{\"class\":\"re...\u003csha256:6fce6e5e2f91c976\u003e, got [{\"class\":\"normal\",\"cramped\":false,\"ignore-as-space\":false,\"kind\":\"atom\",\"left-spacing\":null,\"limits\":\"auto\",\"paint\":[\"role\",\"ink\"],\"right-spacing\":null,\"size\":\"display\",\"text\":\"1\",\"variant\":\"auto\"},{\"class\":\"relation\",\"cramped\":false,\"igno...\u003csha256:e7ed1f2b3f40faae\u003e",
       "reason": "Reviewed remaining frontend semantic difference after neutral class, style, and construct lowering; the exact differing field is recorded in detail."
     },
     {

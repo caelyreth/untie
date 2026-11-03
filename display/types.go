@@ -21,7 +21,7 @@ const (
 )
 
 // FormulaTagLine identifies a tag that belongs to the complete formula rather
-// than one rendered display line. It is the only Phase-1 TagBox line value.
+// than one rendered display line or source row.
 const FormulaTagLine = -1
 
 // Style is a layout request in host units.
@@ -104,14 +104,14 @@ type LineBox struct {
 
 // TagBox is equation-tag metadata. Its Items and Hits ranges index the owning
 // Box's parent-frame slices. X and Y are parent-frame coordinates and do not
-// move with LineBox.OffsetX. Line is FormulaTagLine for the formula-level
-// Phase-1 contract.
+// move with LineBox.OffsetX. Line is FormulaTagLine for Box.Tag, or a zero-based
+// source row for an entry in Box.Tags.
 type TagBox struct {
 	Source  source.Range
 	Manual  bool
 	Starred bool
-	// Line is FormulaTagLine. Zero-based row tags are reserved for future
-	// multiline equation-tag support and are not emitted by Phase 1.
+	// Line is FormulaTagLine for a formula-level tag, or a zero-based source
+	// row for a multiline row tag.
 	Line    int
 	X       float32
 	Y       float32
@@ -227,6 +227,11 @@ type Box struct {
 	// Items and Hits ranges identify its records in this Box. It is excluded
 	// from formula-root breaks.
 	Tag *TagBox
+	// Tags contains source-row-scoped equation tags in ascending row order.
+	// It is mutually exclusive with Tag. Each range indexes this Box's
+	// parent-frame Items and Hits and remains row-scoped even when a constrained
+	// display wraps the formula block as one line.
+	Tags []TagBox
 	// Lines is populated only for display layout with a positive Style.MaxWidth.
 	// A constrained display result always has at least one line, including when
 	// the complete formula fits. Its Width is the requested MaxWidth, even when
@@ -274,6 +279,7 @@ func cloneBox(b *Box, cloneNested bool) *Box {
 		canonicalTag = &tag
 		out.Tag = canonicalTag
 	}
+	out.Tags = append([]TagBox(nil), b.Tags...)
 	if !cloneNested || len(b.Lines) == 0 {
 		out.Lines = nil
 		return &out

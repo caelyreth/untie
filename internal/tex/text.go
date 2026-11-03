@@ -240,7 +240,11 @@ func (p *parser) parseTextCommandToken(t token) astNode {
 		return astErr(t.span, t.text, source.CodeUnexpectedToken)
 	case "\\tiny", "\\sixptsize", "\\scriptsize", "\\footnotesize", "\\small",
 		"\\normalsize", "\\large", "\\Large", "\\LARGE", "\\huge", "\\Huge":
-		return p.parseUnsupportedTextSizing(t)
+		return p.parseTextSizing(t)
+	case "\\mathclap", "\\mathllap", "\\mathrlap", "\\llap", "\\rlap", "\\clap":
+		return p.parseOverlay(t, true)
+	case "\\raisebox":
+		return p.parseRaiseBox(t)
 	case "\\ ", "\\space", "\\nobreakspace":
 		return astLiteralText(t, " ")
 	case "\\relax":
@@ -332,18 +336,9 @@ func (p *parser) parseInlineMathText(open token) astNode {
 	}
 }
 
-func (p *parser) parseUnsupportedTextSizing(command token) astNode {
+func (p *parser) parseTextSizing(command token) astNode {
 	body := p.parseTextSequence()
-	span := source.Merge(command.span, body.base().span)
-	body.base().span = span
-	body.base().origin = containerOrigin(command, body, span)
-	p.report(source.Diagnostic{
-		Range:    normalizeRange(command.span),
-		Severity: source.SeverityError,
-		Code:     source.CodeUnsupported,
-		Message:  "math font-size declaration '" + command.text + "' requires a neutral font-size field",
-	})
-	return body
+	return p.sizingNode(command, body)
 }
 
 var textSymbolCommands = map[string]string{
@@ -493,6 +488,12 @@ func plainText(n astNode) (string, bool) {
 	case *astSpaceNode:
 		return " ", true
 	case *astVariantNode:
+		return plainText(n.body)
+	case *astStyleNode:
+		return plainText(n.body)
+	case *astOverlayNode:
+		return plainText(n.body)
+	case *astRaiseNode:
 		return plainText(n.body)
 	case *astErrorNode:
 		return n.text, true

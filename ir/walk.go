@@ -55,6 +55,10 @@ func Children(n Node) []Node {
 		return out
 	case *Style:
 		return compact(n.Body)
+	case *Overlay:
+		return compact(n.Body)
+	case *Raise:
+		return compact(n.Body)
 	case *Color:
 		return compact(n.Body)
 	case *Box:
@@ -124,6 +128,10 @@ func VisitChildren(n Node, visit func(Node)) {
 			}
 		}
 	case *Style:
+		visitNode(n.Body)
+	case *Overlay:
+		visitNode(n.Body)
+	case *Raise:
 		visitNode(n.Body)
 	case *Color:
 		visitNode(n.Body)

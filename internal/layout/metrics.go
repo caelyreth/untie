@@ -103,16 +103,21 @@ func (m MathMetrics) normalized() MathMetrics {
 }
 
 func (s *layoutState) scale(style Style) geometry.Em {
+	var base geometry.Em
 	switch style.Size {
 	case Display, Text:
-		return geometry.Em(geometry.EmScale)
+		base = geometry.Em(geometry.EmScale)
 	case Script:
-		return geometry.Em(s.metrics.ScriptPercentScaleDown) * geometry.Em(geometry.EmScale) / 100
+		base = geometry.Em(s.metrics.ScriptPercentScaleDown) * geometry.Em(geometry.EmScale) / 100
 	case ScriptScript:
-		return geometry.Em(s.metrics.ScriptScriptPercentScaleDown) * geometry.Em(geometry.EmScale) / 100
+		base = geometry.Em(s.metrics.ScriptScriptPercentScaleDown) * geometry.Em(geometry.EmScale) / 100
 	default:
 		return 0
 	}
+	if style.SizeScale != 0 && style.SizeScale != geometry.Em(geometry.EmScale) {
+		base = base * style.SizeScale / geometry.Em(geometry.EmScale)
+	}
+	return base
 }
 
 func (s *layoutState) metricAt(value geometry.Em, style Style) (geometry.Em, error) {
