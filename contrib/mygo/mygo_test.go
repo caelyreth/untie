@@ -208,6 +208,41 @@ func TestElementUsesSourceFallback(t *testing.T) {
 	}
 }
 
+func TestMissingGlyphKeepsPartialFormula(t *testing.T) {
+	renderer := newTestRenderer(t, Options{})
+	const source = `x+\text{中}+y`
+	result, err := renderer.Render(
+		context.Background(),
+		source,
+		untie.Display,
+		untie.Style{Size: 24},
+	)
+	if err != nil {
+		t.Fatalf("Render() error = %v, want visible recovery", err)
+	}
+	if result.Box == nil || len(result.Box.Items) == 0 {
+		t.Fatal("Render() returned no visible partial box")
+	}
+	if len(result.Diagnostics) == 0 ||
+		result.Diagnostics[0].Code != untie.CodeMissingGlyph {
+		t.Fatalf("diagnostics = %+v, want missing-glyph", result.Diagnostics)
+	}
+	if inline, ok := renderer.InlineMath(source, 16); !ok || inline.Width <= 0 {
+		t.Fatalf("InlineMath() = %+v, %v, want visible partial object", inline, ok)
+	}
+
+	before := renderer.CacheStats()
+	tester := ui.NewTester(func(c *ui.Context) {
+		renderer.Element(c, source, untie.Display)
+	}, 320, 120)
+	if tester.FramePending() {
+		t.Fatal("Element() left a frame pending")
+	}
+	if after := renderer.CacheStats(); after.Hits <= before.Hits {
+		t.Fatalf("Element() did not reuse the recovered partial box: before %+v after %+v", before, after)
+	}
+}
+
 func TestDrawUsesThemeRoleColors(t *testing.T) {
 	renderer := newTestRenderer(t, Options{
 		Draw: DrawOptions{Align: render.AlignCenter},
