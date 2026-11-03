@@ -69,6 +69,7 @@ func newParser(src string, mode ir.Mode, macros map[string]Macro, limits source.
 }
 
 func (p *parser) parse() (ir.Node, []ir.EquationTag, *irarena.Arena) {
+	defer p.exp.release()
 	parsedRoot := p.parseSequence(stopEOF)
 	arena := irarena.New(len(p.src))
 	lower := newLowerer(p.limits, p.report, arena)

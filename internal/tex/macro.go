@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/caelyreth/untie/source"
 )
@@ -21,6 +22,7 @@ type macroScope struct {
 
 type expander struct {
 	tokens             []token
+	tokenSlot          *[]token
 	rootScope          macroScope
 	scopes             []macroScope
 	diagnostic         func(source.Diagnostic)
@@ -31,11 +33,25 @@ type expander struct {
 	limitReported      bool
 }
 
+const maxPooledTokens = 64 * 1024
+
+var tokenBufferPool = sync.Pool{
+	New: func() any {
+		return new([]token)
+	},
+}
+
 func newExpander(src string, limits source.Limits, macros map[string]Macro, diagnostic func(source.Diagnostic)) *expander {
 	lex := newLexer(src, limits, false, diagnostic)
 	capacity := tokenCapacityHint(src, limits.MaxTokens)
+	slot := tokenBufferPool.Get().(*[]token)
+	tokens := (*slot)[:0]
+	if cap(tokens) < capacity {
+		tokens = make([]token, 0, capacity)
+	}
 	e := &expander{
-		tokens:     make([]token, 0, capacity),
+		tokens:     tokens,
+		tokenSlot:  slot,
 		diagnostic: diagnostic,
 		limits:     limits,
 	}
@@ -85,6 +101,19 @@ func newExpander(src string, limits source.Limits, macros map[string]Macro, diag
 		}
 	}
 	return e
+}
+
+func (e *expander) release() {
+	if e == nil || e.tokenSlot == nil {
+		return
+	}
+	clear(e.tokens)
+	if cap(e.tokens) <= maxPooledTokens {
+		*e.tokenSlot = e.tokens[:0]
+		tokenBufferPool.Put(e.tokenSlot)
+	}
+	e.tokens = nil
+	e.tokenSlot = nil
 }
 
 func normalizeMacroName(name string) string {
