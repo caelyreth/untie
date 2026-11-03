@@ -211,27 +211,49 @@ func (r *Renderer) InlineMath(source string, size float32) (markdown.InlineObjec
 	}, true
 }
 
+// Element renders source as a standalone MyGo element.
+//
+// The element has the formula's natural size plus the configured padding and
+// scales down when its layout box is smaller. Inline mode is useful for
+// standalone formula elements; use InlineMath or BindMarkdown when the formula
+// must participate in a text baseline.
+//
+// Rendering reuses the adapter cache. If parsing or layout fails, the element
+// shows the source as selectable danger-colored text instead of disappearing.
+func (r *Renderer) Element(c *ui.Context, source string, mode untie.Mode) ui.Element {
+	if c == nil || !c.Valid() {
+		return ui.Element{}
+	}
+	if r == nil {
+		return ui.Text(c, source).TextColor(c.Theme().Danger)
+	}
+	size := r.baseSize
+	if mode == untie.Display {
+		size = r.displaySize
+	}
+	result, err := r.Render(context.Background(), source, mode, untie.Style{})
+	if err != nil || result == nil || result.Box == nil {
+		return ui.Text(c, source).FontSize(size).TextColor(c.Theme().Danger)
+	}
+	box := result.Box
+	bounds := box.Bounds()
+	padding := r.draw.Padding
+	return ui.Box(c).
+		Width(max(1, bounds.Width+2*padding)).
+		Height(max(1, bounds.Height+2*padding)).
+		Label(source).
+		Draw(func(painter *ui.Painter, rect ui.Rect) {
+			_ = r.Draw(painter, box, rect)
+		})
+}
+
 // DisplayMath builds a full-width display-math element for MyGo Markdown.
 //
 // The element paints at native size and scales down when its host width is too
 // narrow. A layout failure falls back to selectable source text in the danger
 // color rather than hiding the input.
 func (r *Renderer) DisplayMath(c *ui.Context, source string) ui.Element {
-	result, err := r.Render(context.Background(), source, untie.Display,
-		untie.Style{Size: r.displaySize})
-	if err != nil || result == nil || result.Box == nil {
-		return ui.Text(c, source).FontSize(r.displaySize).TextColor(c.Theme().Danger)
-	}
-	box := result.Box
-	bounds := box.Bounds()
-	height := max(float32(1), bounds.Height+2*r.draw.Padding)
-	return ui.Box(c).
-		FillWidth().
-		Height(height).
-		Label(source).
-		Draw(func(painter *ui.Painter, rect ui.Rect) {
-			_ = r.Draw(painter, box, rect)
-		})
+	return r.Element(c, source, untie.Display).FillWidth()
 }
 
 // BindMarkdown installs math rendering on options and enables single-dollar

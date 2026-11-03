@@ -27,7 +27,7 @@ func TestViewSwitchesDialect(t *testing.T) {
 	if !strings.Contains(model.typstSource, "sqrt") {
 		t.Fatalf("Typst source = %q", model.typstSource)
 	}
-	if model.box == nil {
+	if !model.ready {
 		t.Fatalf("Typst render failed: %s", model.message)
 	}
 }
@@ -39,7 +39,7 @@ func TestParseDiagnosticsRemainVisibleWithPreview(t *testing.T) {
 	}
 	model.texSource = `x^`
 	model.compile()
-	if model.box == nil {
+	if !model.ready {
 		t.Fatalf("preview unexpectedly missing: %s", model.message)
 	}
 	if !model.hasDiagnosticErrors() {

@@ -162,6 +162,52 @@ func TestDisplayMathBuildsElement(t *testing.T) {
 	}
 }
 
+func TestElementBuildsStandaloneDrawable(t *testing.T) {
+	renderer := newTestRenderer(t, Options{
+		Draw: DrawOptions{Padding: 6, Align: render.AlignCenter},
+	})
+	tester := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Fill().Padding(12).Children(func() {
+			renderer.Element(c, `\int_0^1 x^2\,dx`, untie.Display).FillWidth()
+		})
+	}, 360, 180)
+	stats := renderer.CacheStats()
+	if stats.Entries != 1 || stats.Misses != 1 {
+		t.Fatalf("standalone element cache = %+v", stats)
+	}
+	if tester.FramePending() {
+		t.Fatal("standalone element left a frame pending")
+	}
+	tester.Frame()
+	if got := renderer.CacheStats(); got.Hits <= stats.Hits {
+		t.Fatalf("second frame did not reuse cached element: before %+v after %+v", stats, got)
+	}
+	image := tester.Image()
+	background := image.RGBAAt(0, 0)
+	painted := false
+	for y := 0; y < image.Bounds().Dy() && !painted; y++ {
+		for x := 0; x < image.Bounds().Dx(); x++ {
+			if image.RGBAAt(x, y) != background {
+				painted = true
+				break
+			}
+		}
+	}
+	if !painted {
+		t.Fatal("standalone element painted no visible content")
+	}
+}
+
+func TestElementUsesSourceFallback(t *testing.T) {
+	renderer := newTestRenderer(t, Options{})
+	tester := ui.NewTester(func(c *ui.Context) {
+		renderer.Element(c, `\frac{1}{`, untie.Mode(99))
+	}, 240, 120)
+	if !tester.HasText(`\frac{1}{`) {
+		t.Fatalf("fallback texts = %q", tester.Texts())
+	}
+}
+
 func TestDrawUsesThemeRoleColors(t *testing.T) {
 	renderer := newTestRenderer(t, Options{
 		Draw: DrawOptions{Align: render.AlignCenter},

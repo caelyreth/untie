@@ -33,3 +33,25 @@ func Example() {
 	fmt.Println(math.CacheStats().Entries)
 	// Output: 1
 }
+
+func ExampleRenderer_Element() {
+	data, err := os.ReadFile("../../testdata/upstream/fonts/NewCMMath-Book.otf")
+	if err != nil {
+		panic(err)
+	}
+	fonts, err := untie.LoadMathFont(data)
+	if err != nil {
+		panic(err)
+	}
+	math, err := untiemygo.New(fonts, untiemygo.Options{CacheEntries: 8})
+	if err != nil {
+		panic(err)
+	}
+
+	ui.NewTester(func(c *ui.Context) {
+		math.Element(c, `e^{i\pi}+1=0`, untie.Display).FillWidth()
+	}, 400, 120)
+
+	fmt.Println(math.CacheStats().Entries)
+	// Output: 1
+}

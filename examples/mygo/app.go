@@ -33,9 +33,9 @@ type app struct {
 	typstSource string
 
 	editorHeight float32
-	box          *untie.Box
 	diagnostics  []untie.Diagnostic
 	message      string
+	ready        bool
 }
 
 func newApp(fontBytes []byte) (*app, error) {
@@ -120,14 +120,14 @@ func (a *app) preview(c *ui.Context) {
 				TextAlign(ui.End).TextColor(t.TextMuted)
 		})
 		ui.Box(c).Height(1).Background(t.Border)
-		ui.Box(c).Grow(1).Fill().Clip().Draw(func(p *ui.Painter, r ui.Rect) {
-			if a.box == nil {
-				drawMessage(p, r, a.message, t.Danger)
+		ui.Box(c).Grow(1).Fill().Clip().Children(func() {
+			if !a.ready {
+				ui.Box(c).Fill().Draw(func(p *ui.Painter, r ui.Rect) {
+					drawMessage(p, r, a.message, t.Danger)
+				})
 				return
 			}
-			if err := a.renderer().Draw(p, a.box, r); err != nil {
-				drawMessage(p, r, err.Error(), t.Danger)
-			}
+			a.renderer().Element(c, *a.source(), untie.Display).Fill()
 		})
 	})
 }
@@ -157,11 +157,11 @@ func (a *app) compile() {
 		untie.Display,
 		untie.Style{},
 	)
-	a.box = nil
 	a.diagnostics = nil
+	a.ready = false
 	if result != nil {
-		a.box = result.Box
 		a.diagnostics = result.Diagnostics
+		a.ready = result.Box != nil
 	}
 	a.message = diagnosticMessage(a.diagnostics)
 	if err != nil {
