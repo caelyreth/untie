@@ -4,8 +4,8 @@ Untie 0.4 adds core output policy, shaped-text provenance, the complete MyGo
 editor integration surface, editor geometry, structured accessibility
 descriptions, Presentation MathML interchange, formula labels and references,
 bounded chemistry, high-value TeX layout constructs, and variable-font
-coordinates. The runtime version is `0.4.0+layout.7`, and the process-wide
-Engine cache schema is `7`.
+coordinates. The runtime version is `0.4.0+layout.8`, and the process-wide
+Engine cache schema is `8`.
 
 Most integrations compile unchanged because every new policy is disabled at its
 zero value. Applications that persist boxes, canonical snapshots, or adapter
@@ -320,7 +320,7 @@ behavior.
   node IDs;
 - expression and renderer parse-cache identity includes TeX references;
 - MyGo layout keys now include `ColorPolicy` and `PixelGrid`;
-- `untie.Version()` is now `0.4.0+layout.7`;
-- the Engine cache schema is now `7`.
+- `untie.Version()` is now `0.4.0+layout.8`;
+- the Engine cache schema is now `8`.
 
 Drop persisted prepared-engine, layout, or canonical-output caches from 0.3.
