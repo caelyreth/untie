@@ -85,7 +85,7 @@ func (m *formulaMorph) height() float32 {
 	if m.currentBox == nil {
 		return 150
 	}
-	return min(250, max(140, m.currentBox.Bounds().Height+44))
+	return max(90, m.currentBox.Bounds().Height+44)
 }
 
 func (m *formulaMorph) draw(p *ui.Painter, rect ui.Rect) {
@@ -287,14 +287,9 @@ func fitTransform(box *untie.Box, viewport ui.Rect) (x, y, scale float32) {
 		return viewport.X, viewport.Y, 1
 	}
 	const padding = 22
-	scale = min(
-		max(0, viewport.W-2*padding)/bounds.Width,
-		max(0, viewport.H-2*padding)/bounds.Height,
-	)
-	scale = min(1, max(0.01, scale))
-	x = viewport.X + (viewport.W-bounds.Width*scale)/2 - bounds.X*scale
-	y = viewport.Y + (viewport.H-bounds.Height*scale)/2 - bounds.Y*scale
-	return x, y, scale
+	x = viewport.X + (viewport.W-bounds.Width)/2 - bounds.X
+	y = viewport.Y + padding - bounds.Y
+	return x, y, 1
 }
 
 func compatiblePaths(a, b geometry.Path) bool {

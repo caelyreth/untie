@@ -103,6 +103,24 @@ func TestMorphHidesStreamingErrorPaint(t *testing.T) {
 	}
 }
 
+func TestMorphUsesNaturalScaleForTallMath(t *testing.T) {
+	t.Parallel()
+
+	box := &untie.Box{Width: 700, Ascent: 1200, Descent: 544}
+	var morph formulaMorph
+	morph.currentBox = box
+	if height := morph.height(); height != 1788 {
+		t.Fatalf("morph height = %v, want natural content height", height)
+	}
+	x, y, scale := fitTransform(box, ui.Rect{X: 10, Y: 20, W: 900, H: 240})
+	if scale != 1 {
+		t.Fatalf("scale = %v, want natural scale", scale)
+	}
+	if x != 110 || y != 1242 {
+		t.Fatalf("origin = (%v,%v), want centered top origin (110,1242)", x, y)
+	}
+}
+
 func TestMorphInterpolatesGlyphPointsAndRuleBounds(t *testing.T) {
 	t.Parallel()
 
