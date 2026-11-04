@@ -25,6 +25,7 @@ glyph paths, rules, source hits, and accessibility text.
   accessibility;
 - deterministic Presentation MathML export and a bounded strict importer;
 - bounded `mhchem`-style `\ce` and `\pu` support without a chemistry database;
+- coalesced streaming layouts with stable display-list transitions;
 - optional SVG and PNG output.
 
 ### Use
@@ -139,6 +140,7 @@ Markdown binding, and existing-box drawing.
 - [Getting Started](docs/getting-started.md)
 - [Core Concepts](docs/concepts.md)
 - [Rendering](docs/rendering.md)
+- [Streaming](docs/streaming.md)
 - [MathML Interchange](docs/mathml.md)
 - [Editor Integration](docs/editor-integration.md)
 - [Fonts](docs/fonts.md)

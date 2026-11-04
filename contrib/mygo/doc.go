@@ -6,7 +6,9 @@
 // Element turns a formula string directly into a MyGo ui.Element; BindMarkdown
 // installs inline and display math callbacks for Markdown views. DisplayMath
 // is the compact fit-to-viewport path, while DisplayMathWidth lays out against
-// a known width and wraps before drawing at natural scale.
+// a known width and wraps before drawing at natural scale. NewStreamingMath
+// adapts Untie's coalesced stream sessions to a naturally sized, animated
+// display element.
 //
 // Standalone elements expose semantic alternative text as their accessibility
 // label and exact formula source as their value. ElementWithOptions adds

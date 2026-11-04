@@ -19,6 +19,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 - [Rendering the display list](rendering.md) defines coordinates, items,
   lines, tags, hits, overflow, bounds, drawing helpers, and optional SVG/PNG
   output.
+- [Streaming formula rendering](streaming.md) covers coalesced live layout,
+  stable display transitions, completed-stage reservations, and MyGo elements.
 - [MathML interchange](mathml.md) defines total Presentation MathML export and
   the strict bounded import subset.
 - [Editor integration](editor-integration.md) defines recovery, source
@@ -28,7 +30,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
 ## Integration Guides
 
 - [MyGo integration](mygo.md) provides the bounded adapter for MyGo Markdown
-  math, direct UI elements, theme-role drawing, and existing-box drawing.
+  math, direct UI elements, streaming elements, theme-role drawing, and
+  existing-box drawing.
 - [Fonts and fallback](fonts.md) covers the required math face, optional text
   face, ordered fallbacks, face IDs, and font identity.
 - [Parsing, diagnostics, and recovery](parsing.md) covers TeX and Typst input,

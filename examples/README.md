@@ -2,8 +2,8 @@
 
 - [`mygo-simple/`](mygo-simple/) shows Untie's editor-oriented MyGo element and
   Markdown integration in a native desktop window.
-- [`mygo-stream/`](mygo-stream/) streams editable Markdown with morphing math
-  into a MyGo view.
+- [`mygo-stream/`](mygo-stream/) streams editable Markdown through Untie's
+  native coalesced sessions and animated MyGo math elements.
 - [`mathml/`](mathml/) converts TeX or Typst to deterministic Presentation MathML.
 - [`svg/`](svg/) exports a formula as a deterministic standalone SVG.
 - [`png/`](png/) rasterizes a formula to an antialiased PNG.

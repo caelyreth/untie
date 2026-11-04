@@ -217,3 +217,30 @@ Paint roles remain semantic in the cache, so light and dark themes reuse the
 same geometry and resolve ink, error, and placeholder colors at draw time.
 The adapter layout key also includes authored-color policy and pixel-grid
 settings.
+
+## Streaming Math
+
+Use `NewStreamingMath` when display math changes while a language model,
+network response, or editor is still producing source:
+
+```go
+streamed, err := math.NewStreamingMath(ctx, untiemygo.StreamingMathOptions{
+	TargetSource: completedFormula,
+	HideErrors:   true,
+})
+if err != nil {
+	return err
+}
+
+ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).Children(func() {
+	streamed.Element(c, partialSource, c.Now()).MinWidthPercent(100)
+})
+```
+
+The adapter owns one `stream.Session`, coalesces source before layout, and
+draws moved paths, resized rules, and scale/fade entrances through the MyGo
+painter. `TargetSource` reserves the completed formula's natural stage so
+partial layouts do not resize or reposition the host document.
+
+See [Streaming formula rendering](streaming.md) for lifecycle, identity,
+ownership, and performance details.

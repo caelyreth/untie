@@ -7,13 +7,14 @@ their source identity across layouts: existing paths move point-by-point while
 rules such as fraction bars interpolate their bounds and scale. **Edit source**
 returns to the editor.
 
-Math keeps its natural scale in a fixed-height, two-axis scroll viewport. Large
-formulas pan inside that viewport instead of shrinking or repeatedly reflowing
-the whole page as tokens arrive.
+Math keeps the completed formula's natural scale and stage height while partial
+layouts animate inside it. Wide formulas pan horizontally instead of shrinking
+or repeatedly reflowing the whole page as tokens arrive.
 
-The example uses MyGo's incremental `markdown.Stream` parser and Untie's normal
-renderer cache. The morph is drawn through the public display-list adapter, not
-by mutating renderer internals.
+The example uses MyGo's incremental `markdown.Stream` parser and Untie's native
+`stream.Session` through `untiemygo.StreamingMath`. Rapid source updates are
+coalesced before layout, and the public display transition supplies both moved
+and entering commands without mutating renderer internals.
 
 ## Run
 
