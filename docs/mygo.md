@@ -233,7 +233,7 @@ if err != nil {
 }
 
 ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).Children(func() {
-	streamed.Element(c, partialSource, c.Now()).MinWidthPercent(100)
+	streamed.Element(c, partialSource).MinWidthPercent(100)
 })
 ```
 
@@ -241,6 +241,11 @@ The adapter owns one `stream.Session`, coalesces source before layout, and
 draws moved paths, resized rules, and scale/fade entrances through the MyGo
 painter. `TargetSource` reserves the completed formula's natural stage so
 partial layouts do not resize or reposition the host document.
+
+`Element` uses `c.Now()` for lifecycle decisions, asks MyGo to rebuild at the
+next commit deadline with `c.After`, and uses `painter.Now()` for paint-only
+animation frames. No separate polling or invalidation loop is required to
+deliver the final pending source.
 
 See [Streaming formula rendering](streaming.md) for lifecycle, identity,
 ownership, and performance details.

@@ -62,7 +62,20 @@ elapses, the most recent source is rendered once.
 Call `Update` again with the same source after the transition completes. This
 is how a pending final source is committed after the in-flight frame reaches
 its final state. Use `Session.Animating` or `Frame.Animating` to decide whether
-the host needs another animation frame.
+the host needs another paint frame.
+
+Use `Session.NextCommitIn` to schedule the full rebuild that commits pending
+source:
+
+```go
+if delay, ok := session.NextCommitIn(now); ok {
+	scheduleRebuildAfter(delay)
+}
+```
+
+This distinguishes the two clocks. Paint frames may sample interpolation with
+their current time without rebuilding. A host timer calls `Update` again at the
+reported deadline so the latest source is parsed and laid out once.
 
 ## Drawing
 
@@ -118,7 +131,7 @@ if err != nil {
 }
 
 ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).Children(func() {
-	streamed.Element(c, partialSource, c.Now()).MinWidthPercent(100)
+	streamed.Element(c, partialSource).MinWidthPercent(100)
 })
 ```
 
@@ -126,6 +139,10 @@ The element uses the completed stage for its natural dimensions and scale. Put
 it in a clipping or horizontal scroll container when it is wider than the
 available area. `HideErrors` omits error and placeholder paint during partial
 source recovery while retaining the stable layout reservation.
+
+`Element` reads `c.Now()`, schedules `c.After` at the session's next commit
+deadline, and samples interpolation with `painter.Now()`. Callers do not need to
+coordinate paint frames, rebuild timers, or commit deadlines themselves.
 
 The MyGo Markdown `Math` callback does not expose a block revision, so a host
 with multiple display blocks should retain one `StreamingMath` per callback
