@@ -53,6 +53,33 @@ func TestMhchemFixtureCorpus(t *testing.T) {
 	}
 }
 
+func TestMhchemRaTeXCoverageFamilies(t *testing.T) {
+	t.Parallel()
+
+	cases := []string{
+		`\ce{Hg^2+ ->[I-] HgI2 ->[I-] [Hg^{II}I4]^2-}`,
+		`\ce{Y^{99+}}`,
+		`\ce{^{0}_{-1}n^{-}}`,
+		`\ce{A v B (v) -> B ^ B (^)}`,
+		`\ce{O''_{i,x}}`,
+		`\ce{\ca Fe}`,
+		`\ce{$n$ H2O}`,
+		`\ce{A ->[$x$][$x_i$] B}`,
+		`\ce{CH4 + 2 $\left( \ce{O2 + 79/21 N2} \right)$}`,
+		`\ce{$K = \ce{\frac{[Hg^2+][Hg]}{[Hg2^2+]}}$}`,
+	}
+	for _, source := range cases {
+		source := source
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			result := parseTest(t, source, Options{})
+			if len(result.Diagnostics) != 0 {
+				t.Fatalf("diagnostics = %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestMhchemFormulaStructure(t *testing.T) {
 	t.Parallel()
 

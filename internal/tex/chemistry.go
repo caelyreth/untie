@@ -142,6 +142,12 @@ func (c *chemistryParser) parseItems(
 				pendingSpace = source.Detached()
 				continue
 			}
+			if upDown, ok := c.matchUpDownArrow(); ok {
+				items = append(items, upDown)
+				atTermStart = true
+				pendingSpace = source.Detached()
+				continue
+			}
 			if c.current().isControl() && c.current().text == "\\bond" {
 				items = append(items, c.parseBond())
 				atTermStart = false
@@ -250,10 +256,18 @@ func (c *chemistryParser) parseEntity(depth int, compact bool) astNode {
 				foldScripts()
 			}
 			bottom = script
+		case t.is(tokChar) && t.text == "'":
+			var primes astNode
+			for c.pos < len(c.tokens) && c.current().is(tokChar) && c.current().text == "'" {
+				prime := c.glyph(c.current(), "′", ir.ClassNormal)
+				primes = c.appendScript(primes, prime)
+				c.pos++
+			}
+			top = c.appendScript(top, primes)
 		case !compact && c.implicitChargeAhead():
-			top = c.parseImplicitCharge()
+			top = c.appendScript(top, c.parseImplicitCharge())
 		case !compact && c.implicitSubscriptAhead():
-			bottom = c.parseBareScript()
+			bottom = c.appendScript(bottom, c.parseBareScript())
 		default:
 			goto suffixesDone
 		}
@@ -290,7 +304,7 @@ func (c *chemistryParser) parseAtom(depth int, compact bool) astNode {
 			closeText,
 		)
 	case t.is(tokChar) && t.text == "$":
-		return c.parseUnsupportedMathSegment()
+		return c.parseEmbeddedMathSegment()
 	case t.is(tokChar) && unicode.IsLetter([]rune(t.text)[0]):
 		return c.parseTextAtom()
 	case t.is(tokChar) && unicode.IsDigit([]rune(t.text)[0]):
@@ -302,6 +316,13 @@ func (c *chemistryParser) parseAtom(depth int, compact bool) astNode {
 		}
 		c.pos++
 		return c.glyph(t, t.text, ir.ClassNormal)
+	case compact && t.is(tokChar) && (isChemSign(t.text) || t.text == "," || t.text == ";" || t.text == "'"):
+		text := chemistrySignText(t.text)
+		if t.text == "'" {
+			text = "′"
+		}
+		c.pos++
+		return c.glyph(t, text, ir.ClassNormal)
 	case t.isControl():
 		return c.parseControlAtom(depth, compact)
 	case t.is(tokAlignment) || t.is(tokParameter):
@@ -419,6 +440,11 @@ func (c *chemistryParser) parseControlAtom(depth int, compact bool) astNode {
 		return c.parseNestedChemistry(t, depth)
 	case "\\bond":
 		return c.parseBond()
+	case "\\ca":
+		c.pos++
+		return c.glyph(t, "∼", ir.ClassNormal)
+	case "\\frac":
+		return c.parseFraction(t, depth)
 	}
 	if spec, ok := symbolCommands[t.text]; ok {
 		c.pos++
@@ -437,6 +463,44 @@ func (c *chemistryParser) parseControlAtom(depth int, compact bool) astNode {
 	c.pos++
 	c.report(t.span, source.SeverityError, source.CodeUnsupported, "unsupported command in chemistry markup: "+t.text)
 	return c.errorNode(t.span, t.text, source.CodeUnsupported)
+}
+
+func (c *chemistryParser) parseFraction(command token, depth int) astNode {
+	c.pos++
+	numerator := c.parseCommandGroup(command, depth, "\\frac numerator")
+	denominator := c.parseCommandGroup(command, depth, "\\frac denominator")
+	span := source.Merge(command.span, denominator.base().span)
+	if !c.reserve(span) {
+		return c.errorNode(span, "chemistry node limit exceeded", source.CodeLimitExceeded)
+	}
+	return &astFractionNode{
+		astBase:     newASTBaseAt(astFraction, span, tokenOrigin(command)),
+		numerator:   numerator,
+		denominator: denominator,
+		bar:         true,
+		style:       ir.FractionVertical,
+	}
+}
+
+func (c *chemistryParser) parseCommandGroup(command token, depth int, name string) astNode {
+	c.consumeSpaces()
+	if c.pos >= len(c.tokens) || !c.current().is(tokBeginGroup) {
+		span := source.Merge(command.span, c.currentSpan())
+		c.report(span, source.SeverityError, source.CodeMissingArgument, name+" requires a braced argument")
+		return c.errorNode(span, command.text, source.CodeMissingArgument)
+	}
+	open := c.current()
+	c.pos++
+	items, closed, closeSpan := c.parseItems(chemistryClose{kind: tokEndGroup, text: "}"}, depth+1, false)
+	if !closed {
+		c.report(open.span, source.SeverityError, source.CodeUnclosedGroup, "unclosed "+name)
+	}
+	span := source.Merge(open.span, closeSpan)
+	if len(items) == 0 {
+		c.report(span, source.SeverityError, source.CodeInvalidValue, name+" is empty")
+		return c.errorNode(span, command.text, source.CodeInvalidValue)
+	}
+	return c.rowWithBase(items, span, tokenOrigin(open))
 }
 
 func (c *chemistryParser) parseLiteralTextCommand(command token) astNode {

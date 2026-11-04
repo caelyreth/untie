@@ -29,6 +29,10 @@ Supported formula syntax includes:
 - state annotations such as `H2(aq)`, `NaCl(s)`, and `CO3^2-_{(aq)}`;
 - additional compounds written with `.` or `*`, such as
   `KCr(SO4)2.12H2O`.
+- embedded TeX math segments such as `$n$`, `$x_i$`, and nested `\ce{...}`,
+  evaluated through the same bounded TeX parser;
+- the mhchem `\ca` approximation mark and the gas/precipitate arrows `^` and
+  `v` in standalone positions.
 
 Chemical symbols are rendered upright. Formula digits are ordinary math
 glyphs. Scripts retain normal neutral script semantics, so display layout can
@@ -57,6 +61,8 @@ Reaction arrows include `->`, `<-`, `<->`, `<-->`, `<=>`, `<=>>`, and
 
 Arrow annotations lower to `ScriptRoleLimits` with `LimitsAlways`. Source
 ranges for the arrow and both annotations remain independently addressable.
+Only adjacent bracket annotations form the top and bottom labels; whitespace
+after the first annotation starts the next formula term.
 
 ## Physical Quantities
 
@@ -114,11 +120,9 @@ silently approximated:
   structure search;
 - oxidation-state syntax beyond ordinary superscripts;
 - variable or symbolic coefficients beyond the accepted numeric forms;
-- arbitrary `\frac`, `\color`, and embedded `$...$` TeX inside a chemistry
-  argument;
+- arbitrary `\color` commands inside a chemistry argument;
 - specialist bonds such as donor/acceptor, aromatic, and multi-level
-  coordinate-bond diagrams;
-- precipitation/gas shorthand `v` and `^` in phrase positions;
+  coordinate-bond diagrams, including the `\bond{~...}` family;
 - measurement-uncertainty notation such as `1.23(4)e5` and correlated
   uncertainty expressions;
 - nested document-level chemistry macros or package configuration;

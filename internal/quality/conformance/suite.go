@@ -16,9 +16,25 @@ import (
 )
 
 const (
-	ratexCorpus = "ratex-core"
-	katexCorpus = "katex-cases"
+	ratexCoreCorpus      = "ratex-core"
+	ratexChemistryCorpus = "ratex-chemistry"
+	ratexCenternotCorpus = "ratex-centernot"
+	ratexSlashedCorpus   = "ratex-slashed"
+	ratexProofTreeCorpus = "ratex-prooftree"
+	katexCorpus          = "katex-cases"
 )
+
+var teXCorpora = []struct {
+	name  string
+	count int
+}{
+	{ratexCoreCorpus, 1075},
+	{ratexChemistryCorpus, 103},
+	{ratexCenternotCorpus, 19},
+	{ratexSlashedCorpus, 23},
+	{ratexProofTreeCorpus, 38},
+	{katexCorpus, 36},
+}
 
 // SuiteOptions selects tracked inputs and reviewed disposition data.
 type SuiteOptions struct {
@@ -43,9 +59,9 @@ func BuildTeXReport(ctx context.Context, options SuiteOptions) (*Report, error) 
 	for _, spec := range manifest.Corpora {
 		specs[spec.Name] = spec
 	}
-	for _, name := range []string{ratexCorpus, katexCorpus} {
-		if _, ok := specs[name]; !ok {
-			return nil, fmt.Errorf("corpus manifest has no %q", name)
+	for _, corpus := range teXCorpora {
+		if _, ok := specs[corpus.name]; !ok {
+			return nil, fmt.Errorf("corpus manifest has no %q", corpus.name)
 		}
 	}
 
@@ -73,23 +89,23 @@ func BuildTeXReport(ctx context.Context, options SuiteOptions) (*Report, error) 
 		},
 	}
 
-	for _, name := range []string{ratexCorpus, katexCorpus} {
-		corpus, err := fixture.LoadCorpus(options.FixtureRoot, specs[name])
+	for _, descriptor := range teXCorpora {
+		corpus, err := fixture.LoadCorpus(options.FixtureRoot, specs[descriptor.name])
 		if err != nil {
 			return nil, err
 		}
-		report.Corpora = append(report.Corpora, CorpusSummary{Name: name, Count: len(corpus.Cases)})
+		report.Corpora = append(report.Corpora, CorpusSummary{Name: descriptor.name, Count: len(corpus.Cases)})
 		for _, testCase := range corpus.Cases {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			input, err := teXInput(name, testCase, policy)
+			input, err := teXInput(descriptor.name, testCase, policy)
 			if err != nil {
 				return nil, err
 			}
 			result, err := evaluator.Evaluate(ctx, input)
 			if err != nil {
-				return nil, fmt.Errorf("%s/%s: %w", name, testCase.ID, err)
+				return nil, fmt.Errorf("%s/%s: %w", descriptor.name, testCase.ID, err)
 			}
 			if policy != nil {
 				policy.apply(&result)
@@ -123,7 +139,7 @@ func teXInput(corpus string, testCase fixture.Case, policy *Policy) (Input, erro
 		Expect: ExpectParse,
 	}
 	switch corpus {
-	case ratexCorpus:
+	case ratexCoreCorpus, ratexChemistryCorpus, ratexCenternotCorpus, ratexSlashedCorpus, ratexProofTreeCorpus:
 		return input, nil
 	case katexCorpus:
 		input.Mode = ir.Inline
@@ -182,21 +198,20 @@ func CheckCorpusSet(report *Report) error {
 	if report.Dialect != DialectTeX {
 		return fmt.Errorf("dialect is %q, want %q", report.Dialect, DialectTeX)
 	}
-	if len(report.Corpora) != 2 {
-		return fmt.Errorf("report has %d corpora, want 2", len(report.Corpora))
+	if len(report.Corpora) != len(teXCorpora) {
+		return fmt.Errorf("report has %d corpora, want %d", len(report.Corpora), len(teXCorpora))
+	}
+	wantCounts := make(map[string]int, len(teXCorpora))
+	for _, descriptor := range teXCorpora {
+		wantCounts[descriptor.name] = descriptor.count
 	}
 	for _, corpus := range report.Corpora {
-		switch corpus.Name {
-		case ratexCorpus:
-			if corpus.Count != 1075 {
-				return fmt.Errorf("%s has %d cases, want 1075", corpus.Name, corpus.Count)
-			}
-		case katexCorpus:
-			if corpus.Count != 36 {
-				return fmt.Errorf("%s has %d cases, want 36", corpus.Name, corpus.Count)
-			}
-		default:
+		count, ok := wantCounts[corpus.Name]
+		if !ok {
 			return fmt.Errorf("unexpected corpus %q", corpus.Name)
+		}
+		if corpus.Count != count {
+			return fmt.Errorf("%s has %d cases, want %d", corpus.Name, corpus.Count, count)
 		}
 	}
 	return nil

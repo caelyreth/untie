@@ -112,6 +112,17 @@ func (p *parser) parse() (ir.Node, []ir.EquationTag, []ir.EquationLabel, *iraren
 	return node, lower.lowerTags(p.tags), lower.lowerLabels(p.labels), arena
 }
 
+func (p *parser) parseEmbeddedMath(tokens []token) astNode {
+	outer := p.exp
+	sub := outer.subExpander(tokens)
+	p.exp = sub
+	defer func() {
+		p.exp = outer
+		outer.absorb(sub)
+	}()
+	return p.parseSequence(stopEOF)
+}
+
 func (p *parser) parseSequence(stop stopMode) astNode {
 	return p.parseSequenceWithInfix(stop, false)
 }

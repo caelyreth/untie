@@ -60,6 +60,7 @@ Supported and tested:
 - common accents such as `\hat`, `\tilde`, `\bar`, `\vec`, `\dot`, `\ddot`,
   and combining accents accepted by the text frontend;
 - `\cancel`, `\bcancel`, `\xcancel`, and `\sout`;
+- `\centernot` with centered relation-negation semantics;
 - `\boxed`, `\fbox`, `\colorbox`, and `\fcolorbox`;
 - `\phantom`, `\hphantom`, `\vphantom`, `\smash`, and `\mathstrut`;
 - zero-width overlap forms `\llap`, `\rlap`, `\clap`, `\mathllap`,
@@ -162,6 +163,8 @@ The following capabilities are not treated as silently ignorable TeX:
 | Raw HTML/DOM hooks: `\htmlClass`, `\htmlData`, `\htmlId`, `\htmlStyle`                                    | Unsupported or discarded metadata with diagnostics; no DOM.            |
 | Commutative diagrams: `CD` environment                                                                    | Unsupported diagnostic; bounded environment skip.                      |
 | Manual centering/enclosure: `\vcenter`, `\phase`, `\enclose`                                               | Unsupported; no lossless neutral primitive yet.                        |
+| Feynman slash notation: `\slashed`                                                                        | Unsupported; package-specific geometry is not in KaTeX core.           |
+| Proof trees: `prooftree` and bussproofs commands                                                          | Unsupported environment with a bounded diagnostic.                     |
 | `\nobreak`                                                                                                | Unsupported because suppression-only break policy is not represented.  |
 | Inline math delimiters nested in math mode: `\(`, `\)`, `\]`                                              | Parse diagnostic.                                                      |
 | Math commands in text mode, such as `\sqrt` inside `\text`                                                | `unsupported` diagnostic at the text-mode boundary.                    |
@@ -186,8 +189,10 @@ The preview remains drawable unless layout fails for a separate reason.
 that lowers to the existing neutral IR. It covers formulas, numeric
 coefficients, groups and multipliers, common bonds, charges, isotopes,
 reaction arrows with above/below annotations, state annotations, and common
-physical quantities. Unsupported chemistry syntax produces a visible error
-node and a structured diagnostic rather than disappearing.
+physical quantities, including embedded TeX math and nested chemistry.
+Specialist aromatic and multi-level bond forms remain explicit exclusions.
+Unsupported chemistry syntax produces a visible error node and a structured
+diagnostic rather than disappearing.
 
 See [Bounded TeX chemistry](chemistry.md) for the accepted grammar,
 accessibility behavior, and exact exclusions.

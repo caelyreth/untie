@@ -162,6 +162,8 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseMathClass(t)
 	case "\\not":
 		return p.parseNot(t)
+	case "\\centernot":
+		return p.parseNot(t)
 	case "\\dblcolon", "\\coloncolon":
 		return p.parseCompositeRelation(t, "∷")
 	case "\\coloneqq", "\\colonequals":

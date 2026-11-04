@@ -26,20 +26,31 @@ text and speech, hit semantics, tags, wrapping, and overflow.
 The reviewed TeX baseline covers:
 
 - 36 normalized KaTeX cases;
-- 1,075 RaTeX core corpus lines.
+- 1,075 RaTeX core corpus lines;
+- 103 RaTeX chemistry cases;
+- 19 RaTeX centered-negation cases;
+- 23 RaTeX slashed-symbol cases;
+- 38 RaTeX proof-tree cases.
 
 Current outcomes:
 
 | Outcome     | Cases |
 | ----------- | ----: |
-| Pass        | 1,045 |
+| Pass        | 1,185 |
 | Diagnostic  |    26 |
-| Unsupported |    40 |
+| Unsupported |    83 |
 | Bug         |     0 |
 | Unexplained |     0 |
 
 Unsupported entries have explicit reviewed classifications. They are not
 crashes or silently skipped inputs.
+
+The bounded chemistry frontend parses 100 of the 103 RaTeX chemistry cases,
+including embedded TeX math, signed scripts, adjacent arrow annotations, and
+nested chemistry. The three reviewed exclusions are one whole-formula
+dollar-delimited case and two specialist aromatic/multi-level bond cases.
+Centered negation passes all 19 cases. Slashed-symbol and proof-tree suites are
+tracked as explicit scope exclusions.
 
 ## Typst Coverage
 

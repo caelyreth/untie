@@ -22,8 +22,7 @@ func (c *chemistryParser) matchArrow() (astNode, bool) {
 	c.consumeSpaces()
 	if c.annotationAhead() {
 		top, _ = c.parseAnnotation()
-		c.consumeSpaces()
-		if c.annotationAhead() {
+		if !c.spaceBefore(c.pos) && c.annotationAhead() {
 			bottom, _ = c.parseAnnotation()
 		}
 	}
@@ -39,6 +38,44 @@ func (c *chemistryParser) matchArrow() (astNode, bool) {
 		node.role = ir.ScriptRoleLimits
 	}
 	return scripts, true
+}
+
+func (c *chemistryParser) matchUpDownArrow() (astNode, bool) {
+	if c.pos >= len(c.tokens) {
+		return nil, false
+	}
+	t := c.current()
+	beforeBoundary := c.pos == 0 || c.spaceBefore(c.pos) || c.previousIsDelimiter()
+	afterBoundary := c.spaceAfter(c.pos) || c.nextIsDelimiter(c.pos+1)
+	if t.is(tokSuperscript) && beforeBoundary && afterBoundary {
+		c.pos++
+		return c.glyph(t, "↑", ir.ClassRelation), true
+	}
+	if !t.is(tokChar) || t.text != "v" {
+		return nil, false
+	}
+	if !beforeBoundary || !afterBoundary {
+		return nil, false
+	}
+	c.pos++
+	return c.glyph(t, "↓", ir.ClassRelation), true
+}
+
+func (c *chemistryParser) previousIsDelimiter() bool {
+	if c.pos == 0 {
+		return true
+	}
+	previous := c.tokens[c.pos-1]
+	return previous.is(tokChar) && (previous.text == "(" || previous.text == "[")
+}
+
+func (c *chemistryParser) nextIsDelimiter(index int) bool {
+	index = c.nextNonSpace(index)
+	if index >= len(c.tokens) {
+		return true
+	}
+	t := c.tokens[index]
+	return c.isGroupClose(t) || t.is(tokChar) && (t.text == "(" || t.text == "[")
 }
 
 func (c *chemistryParser) arrowAt() (int, source.Range, string, bool) {
@@ -294,24 +331,40 @@ func (c *chemistryParser) additionCompound(t token) astNode {
 	return c.rowWithBase([]astNode{space, dot, space}, t.span, tokenOrigin(t))
 }
 
-func (c *chemistryParser) parseUnsupportedMathSegment() astNode {
-	start := c.pos
+func (c *chemistryParser) parseEmbeddedMathSegment() astNode {
+	open := c.current()
 	c.pos++
+	start := c.pos
+	closed := false
 	for c.pos < len(c.tokens) {
 		t := c.current()
 		c.pos++
 		if t.is(tokChar) && t.text == "$" {
+			closed = true
 			break
 		}
 	}
-	span := c.tokens[start].span
-	if c.pos > start+1 {
+	end := c.pos
+	if closed {
+		end--
+	}
+	span := open.span
+	if c.pos > 0 {
 		span = source.Merge(span, c.tokens[c.pos-1].span)
 	}
-	text := c.sourceText(span)
-	if text == "" {
-		text = "$"
+	if !closed {
+		c.report(span, source.SeverityError, source.CodeUnclosedGroup, "unclosed embedded TeX math")
 	}
-	c.report(span, source.SeverityError, source.CodeUnsupported, "embedded TeX math in chemistry markup is outside the bounded grammar")
-	return c.errorNode(span, text, source.CodeUnsupported)
+	if start == end {
+		c.report(span, source.SeverityError, source.CodeInvalidValue, "embedded TeX math is empty")
+		return c.errorNode(span, "$", source.CodeInvalidValue)
+	}
+	body := c.p.parseEmbeddedMath(c.tokens[start:end])
+	if body == nil {
+		c.report(span, source.SeverityError, source.CodeInvalidValue, "embedded TeX math is empty")
+		return c.errorNode(span, c.sourceText(span), source.CodeInvalidValue)
+	}
+	body.base().span = span
+	body.base().origin = span
+	return body
 }

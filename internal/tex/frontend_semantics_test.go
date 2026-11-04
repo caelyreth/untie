@@ -196,6 +196,23 @@ func TestNotPrefersSemanticNegatedRelations(t *testing.T) {
 	}
 }
 
+func TestCenternotUsesRelationNegation(t *testing.T) {
+	t.Parallel()
+
+	result := parseTest(t, `a\centernot{\between}b`, Options{})
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("diagnostics = %+v", result.Diagnostics)
+	}
+	items := rowItems(t, result.Root)
+	if len(items) != 3 {
+		t.Fatalf("items = %d, want 3", len(items))
+	}
+	node := requireKind[*ir.Cancel](t, items[1])
+	if node.Role != ir.CancelRoleNegation || node.Class != ir.ClassRelation {
+		t.Fatalf("centernot role/class = %v/%v, want negation/relation", node.Role, node.Class)
+	}
+}
+
 func TestCancelCommandsSetStrokeMode(t *testing.T) {
 	t.Parallel()
 

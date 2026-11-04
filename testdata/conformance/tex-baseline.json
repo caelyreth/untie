@@ -7,8 +7,24 @@
       "count": 36
     },
     {
+      "name": "ratex-centernot",
+      "count": 19
+    },
+    {
+      "name": "ratex-chemistry",
+      "count": 103
+    },
+    {
       "name": "ratex-core",
       "count": 1075
+    },
+    {
+      "name": "ratex-prooftree",
+      "count": 38
+    },
+    {
+      "name": "ratex-slashed",
+      "count": 23
     }
   ],
   "limits": {
@@ -44,10 +60,10 @@
     }
   },
   "summary": {
-    "total": 1111,
-    "pass": 1066,
+    "total": 1294,
+    "pass": 1185,
     "diagnostic": 26,
-    "unsupported": 19,
+    "unsupported": 83,
     "bug": 0,
     "unexplained": 0
   },
@@ -90,7 +106,7 @@
     },
     {
       "family": "command:\\,",
-      "total": 6
+      "total": 7
     },
     {
       "family": "command:\\.",
@@ -121,12 +137,24 @@
       "total": 1
     },
     {
+      "family": "command:\\AXC",
+      "total": 1
+    },
+    {
       "family": "command:\\Alpha",
       "total": 1
     },
     {
       "family": "command:\\And",
       "total": 1
+    },
+    {
+      "family": "command:\\AxiomC",
+      "total": 37
+    },
+    {
+      "family": "command:\\BIC",
+      "total": 5
     },
     {
       "family": "command:\\Bbb",
@@ -171,6 +199,10 @@
     {
       "family": "command:\\Bigr",
       "total": 2
+    },
+    {
+      "family": "command:\\BinaryInfC",
+      "total": 8
     },
     {
       "family": "command:\\Box",
@@ -230,7 +262,7 @@
     },
     {
       "family": "command:\\Delta",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\Diamond",
@@ -313,6 +345,10 @@
       "total": 1
     },
     {
+      "family": "command:\\LL",
+      "total": 1
+    },
+    {
       "family": "command:\\LaTeX",
       "total": 1
     },
@@ -329,6 +365,10 @@
       "total": 1
     },
     {
+      "family": "command:\\LeftLabel",
+      "total": 5
+    },
+    {
       "family": "command:\\Leftarrow",
       "total": 1
     },
@@ -342,15 +382,15 @@
     },
     {
       "family": "command:\\Longleftarrow",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\Longleftrightarrow",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\Longrightarrow",
-      "total": 1
+      "total": 3
     },
     {
       "family": "command:\\Lrarr",
@@ -413,7 +453,19 @@
       "total": 1
     },
     {
+      "family": "command:\\QuaternaryInfC",
+      "total": 1
+    },
+    {
+      "family": "command:\\QuinaryInfC",
+      "total": 2
+    },
+    {
       "family": "command:\\R",
+      "total": 1
+    },
+    {
+      "family": "command:\\RL",
       "total": 1
     },
     {
@@ -431,6 +483,10 @@
     {
       "family": "command:\\Rho",
       "total": 1
+    },
+    {
+      "family": "command:\\RightLabel",
+      "total": 5
     },
     {
       "family": "command:\\Rightarrow",
@@ -461,12 +517,28 @@
       "total": 1
     },
     {
+      "family": "command:\\TIC",
+      "total": 3
+    },
+    {
       "family": "command:\\Theta",
+      "total": 1
+    },
+    {
+      "family": "command:\\TrinaryInfC",
+      "total": 1
+    },
+    {
+      "family": "command:\\UIC",
       "total": 1
     },
     {
       "family": "command:\\Uarr",
       "total": 1
+    },
+    {
+      "family": "command:\\UnaryInfC",
+      "total": 27
     },
     {
       "family": "command:\\Uparrow",
@@ -559,6 +631,30 @@
     {
       "family": "command:\\alpha",
       "total": 6
+    },
+    {
+      "family": "command:\\alwaysDashedLine",
+      "total": 2
+    },
+    {
+      "family": "command:\\alwaysNoLine",
+      "total": 2
+    },
+    {
+      "family": "command:\\alwaysRootAtBottom",
+      "total": 1
+    },
+    {
+      "family": "command:\\alwaysRootAtTop",
+      "total": 3
+    },
+    {
+      "family": "command:\\alwaysSingleLine",
+      "total": 1
+    },
+    {
+      "family": "command:\\alwaysSolidLine",
+      "total": 1
     },
     {
       "family": "command:\\amalg",
@@ -678,7 +774,7 @@
     },
     {
       "family": "command:\\begin",
-      "total": 74
+      "total": 112
     },
     {
       "family": "command:\\begingroup",
@@ -686,7 +782,7 @@
     },
     {
       "family": "command:\\beta",
-      "total": 3
+      "total": 4
     },
     {
       "family": "command:\\beth",
@@ -826,7 +922,11 @@
     },
     {
       "family": "command:\\boldsymbol",
-      "total": 1
+      "total": 2
+    },
+    {
+      "family": "command:\\bond",
+      "total": 6
     },
     {
       "family": "command:\\bot",
@@ -889,6 +989,10 @@
       "total": 1
     },
     {
+      "family": "command:\\ca",
+      "total": 2
+    },
+    {
       "family": "command:\\cal",
       "total": 1
     },
@@ -914,11 +1018,15 @@
     },
     {
       "family": "command:\\ce",
-      "total": 1
+      "total": 92
     },
     {
       "family": "command:\\centerdot",
       "total": 1
+    },
+    {
+      "family": "command:\\centernot",
+      "total": 19
     },
     {
       "family": "command:\\cfrac",
@@ -1161,6 +1269,10 @@
       "total": 1
     },
     {
+      "family": "command:\\dashedLine",
+      "total": 5
+    },
+    {
       "family": "command:\\dashleftarrow",
       "total": 1
     },
@@ -1358,7 +1470,7 @@
     },
     {
       "family": "command:\\end",
-      "total": 73
+      "total": 111
     },
     {
       "family": "command:\\endgroup",
@@ -1410,7 +1522,7 @@
     },
     {
       "family": "command:\\eta",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\eth",
@@ -1427,6 +1539,10 @@
     {
       "family": "command:\\exp",
       "total": 2
+    },
+    {
+      "family": "command:\\fCenter",
+      "total": 3
     },
     {
       "family": "command:\\fallingdotseq",
@@ -1462,7 +1578,7 @@
     },
     {
       "family": "command:\\frac",
-      "total": 13
+      "total": 18
     },
     {
       "family": "command:\\frak",
@@ -1474,7 +1590,7 @@
     },
     {
       "family": "command:\\gamma",
-      "total": 2
+      "total": 3
     },
     {
       "family": "command:\\gcd",
@@ -1682,7 +1798,7 @@
     },
     {
       "family": "command:\\iff",
-      "total": 1
+      "total": 3
     },
     {
       "family": "command:\\iiint",
@@ -1706,11 +1822,11 @@
     },
     {
       "family": "command:\\impliedby",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\implies",
-      "total": 1
+      "total": 8
     },
     {
       "family": "command:\\in",
@@ -1730,7 +1846,7 @@
     },
     {
       "family": "command:\\infty",
-      "total": 10
+      "total": 11
     },
     {
       "family": "command:\\injlim",
@@ -1850,7 +1966,7 @@
     },
     {
       "family": "command:\\left",
-      "total": 10
+      "total": 12
     },
     {
       "family": "command:\\leftarrow",
@@ -2098,7 +2214,7 @@
     },
     {
       "family": "command:\\mathbf",
-      "total": 2
+      "total": 5
     },
     {
       "family": "command:\\mathbin",
@@ -2134,7 +2250,7 @@
     },
     {
       "family": "command:\\mathit",
-      "total": 1
+      "total": 3
     },
     {
       "family": "command:\\mathllap",
@@ -2158,7 +2274,7 @@
     },
     {
       "family": "command:\\mathrm",
-      "total": 3
+      "total": 4
     },
     {
       "family": "command:\\mathscr",
@@ -2166,7 +2282,7 @@
     },
     {
       "family": "command:\\mid",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\middle",
@@ -2210,7 +2326,7 @@
     },
     {
       "family": "command:\\mu",
-      "total": 6
+      "total": 8
     },
     {
       "family": "command:\\multimap",
@@ -2341,6 +2457,10 @@
       "total": 1
     },
     {
+      "family": "command:\\noLine",
+      "total": 3
+    },
+    {
       "family": "command:\\nobreakspace",
       "total": 1
     },
@@ -2438,7 +2558,7 @@
     },
     {
       "family": "command:\\nu",
-      "total": 5
+      "total": 6
     },
     {
       "family": "command:\\nvDash",
@@ -2566,11 +2686,11 @@
     },
     {
       "family": "command:\\parallel",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\partial",
-      "total": 5
+      "total": 11
     },
     {
       "family": "command:\\perp",
@@ -2606,7 +2726,7 @@
     },
     {
       "family": "command:\\pm",
-      "total": 3
+      "total": 4
     },
     {
       "family": "command:\\pmb",
@@ -2678,11 +2798,11 @@
     },
     {
       "family": "command:\\psi",
-      "total": 9
+      "total": 10
     },
     {
       "family": "command:\\pu",
-      "total": 1
+      "total": 14
     },
     {
       "family": "command:\\qquad",
@@ -2690,7 +2810,7 @@
     },
     {
       "family": "command:\\quad",
-      "total": 9
+      "total": 18
     },
     {
       "family": "command:\\r",
@@ -2774,11 +2894,11 @@
     },
     {
       "family": "command:\\right",
-      "total": 9
+      "total": 11
     },
     {
       "family": "command:\\rightarrow",
-      "total": 2
+      "total": 4
     },
     {
       "family": "command:\\rightarrowtail",
@@ -2829,6 +2949,14 @@
       "total": 1
     },
     {
+      "family": "command:\\rootAtBottom",
+      "total": 4
+    },
+    {
+      "family": "command:\\rootAtTop",
+      "total": 6
+    },
+    {
       "family": "command:\\rparen",
       "total": 1
     },
@@ -2854,7 +2982,7 @@
     },
     {
       "family": "command:\\scriptscriptstyle",
-      "total": 3
+      "total": 5
     },
     {
       "family": "command:\\scriptsize",
@@ -2862,7 +2990,7 @@
     },
     {
       "family": "command:\\scriptstyle",
-      "total": 3
+      "total": 5
     },
     {
       "family": "command:\\sdot",
@@ -2933,12 +3061,20 @@
       "total": 2
     },
     {
+      "family": "command:\\singleLine",
+      "total": 3
+    },
+    {
       "family": "command:\\sinh",
       "total": 1
     },
     {
       "family": "command:\\sixptsize",
       "total": 1
+    },
+    {
+      "family": "command:\\slashed",
+      "total": 23
     },
     {
       "family": "command:\\small",
@@ -2967,6 +3103,10 @@
     {
       "family": "command:\\smile",
       "total": 1
+    },
+    {
+      "family": "command:\\solidLine",
+      "total": 3
     },
     {
       "family": "command:\\sout",
@@ -3070,7 +3210,7 @@
     },
     {
       "family": "command:\\sum",
-      "total": 13
+      "total": 14
     },
     {
       "family": "command:\\tag",
@@ -3078,11 +3218,11 @@
     },
     {
       "family": "command:\\text",
-      "total": 67
+      "total": 68
     },
     {
       "family": "command:\\textcolor",
-      "total": 2
+      "total": 4
     },
     {
       "family": "command:\\textcopyright",
@@ -3146,7 +3286,7 @@
     },
     {
       "family": "command:\\textstyle",
-      "total": 5
+      "total": 6
     },
     {
       "family": "command:\\texttt",
@@ -3318,7 +3458,7 @@
     },
     {
       "family": "command:\\underset",
-      "total": 1
+      "total": 3
     },
     {
       "family": "command:\\unlhd",
@@ -3614,7 +3754,7 @@
     },
     {
       "family": "command:\\xleftrightarrow",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\xleftrightharpoons",
@@ -3630,7 +3770,7 @@
     },
     {
       "family": "command:\\xrightarrow",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\xrightharpoondown",
@@ -3670,11 +3810,11 @@
     },
     {
       "family": "command:\\{",
-      "total": 3
+      "total": 4
     },
     {
       "family": "command:\\}",
-      "total": 2
+      "total": 3
     },
     {
       "family": "command:\\~",
@@ -3785,6 +3925,10 @@
       "total": 1
     },
     {
+      "family": "environment:prooftree",
+      "total": 38
+    },
+    {
       "family": "environment:rcases",
       "total": 1
     },
@@ -3810,7 +3954,7 @@
     },
     {
       "family": "feature:group",
-      "total": 365
+      "total": 543
     },
     {
       "family": "feature:row-break",
@@ -3818,7 +3962,7 @@
     },
     {
       "family": "feature:scripts",
-      "total": 91
+      "total": 138
     },
     {
       "family": "literal",
@@ -4701,6 +4845,1830 @@
       ],
       "commands": [
         "\\text"
+      ]
+    },
+    {
+      "id": "line:000001",
+      "corpus": "ratex-centernot",
+      "index": 1,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies"
+      ]
+    },
+    {
+      "id": "line:000002",
+      "corpus": "ratex-centernot",
+      "index": 2,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\impliedby",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\impliedby"
+      ]
+    },
+    {
+      "id": "line:000003",
+      "corpus": "ratex-centernot",
+      "index": 3,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\iff",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\iff"
+      ]
+    },
+    {
+      "id": "line:000004",
+      "corpus": "ratex-centernot",
+      "index": 4,
+      "status": "pass",
+      "families": [
+        "command:\\Longleftarrow",
+        "command:\\Longleftrightarrow",
+        "command:\\Longrightarrow",
+        "command:\\centernot",
+        "command:\\quad"
+      ],
+      "commands": [
+        "\\Longleftarrow",
+        "\\Longleftrightarrow",
+        "\\Longrightarrow",
+        "\\centernot",
+        "\\quad"
+      ]
+    },
+    {
+      "id": "line:000005",
+      "corpus": "ratex-centernot",
+      "index": 5,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\mid",
+        "command:\\parallel",
+        "command:\\quad",
+        "command:\\rightarrow",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\mid",
+        "\\parallel",
+        "\\quad",
+        "\\rightarrow"
+      ]
+    },
+    {
+      "id": "line:000006",
+      "corpus": "ratex-centernot",
+      "index": 6,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\xrightarrow",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\xrightarrow"
+      ]
+    },
+    {
+      "id": "line:000007",
+      "corpus": "ratex-centernot",
+      "index": 7,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\xleftrightarrow",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\xleftrightarrow"
+      ]
+    },
+    {
+      "id": "line:000008",
+      "corpus": "ratex-centernot",
+      "index": 8,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\rightarrow",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\rightarrow"
+      ]
+    },
+    {
+      "id": "line:000009",
+      "corpus": "ratex-centernot",
+      "index": 9,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot"
+      ]
+    },
+    {
+      "id": "line:000010",
+      "corpus": "ratex-centernot",
+      "index": 10,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies",
+        "command:\\textstyle",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies",
+        "\\textstyle"
+      ]
+    },
+    {
+      "id": "line:000011",
+      "corpus": "ratex-centernot",
+      "index": 11,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies",
+        "command:\\scriptstyle",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies",
+        "\\scriptstyle"
+      ]
+    },
+    {
+      "id": "line:000012",
+      "corpus": "ratex-centernot",
+      "index": 12,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies",
+        "command:\\scriptscriptstyle",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies",
+        "\\scriptscriptstyle"
+      ]
+    },
+    {
+      "id": "line:000013",
+      "corpus": "ratex-centernot",
+      "index": 13,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies"
+      ]
+    },
+    {
+      "id": "line:000014",
+      "corpus": "ratex-centernot",
+      "index": 14,
+      "status": "pass",
+      "families": [
+        "command:\\Longrightarrow",
+        "command:\\centernot",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\Longrightarrow",
+        "\\centernot"
+      ]
+    },
+    {
+      "id": "line:000015",
+      "corpus": "ratex-centernot",
+      "index": 15,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\iff",
+        "command:\\textcolor",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\iff",
+        "\\textcolor"
+      ]
+    },
+    {
+      "id": "line:000016",
+      "corpus": "ratex-centernot",
+      "index": 16,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\mathbf",
+        "command:\\mathit",
+        "command:\\quad",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\mathbf",
+        "\\mathit",
+        "\\quad"
+      ]
+    },
+    {
+      "id": "line:000017",
+      "corpus": "ratex-centernot",
+      "index": 17,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\frac",
+        "command:\\quad",
+        "command:\\sum",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\frac",
+        "\\quad",
+        "\\sum"
+      ]
+    },
+    {
+      "id": "line:000018",
+      "corpus": "ratex-centernot",
+      "index": 18,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies",
+        "command:\\quad",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies",
+        "\\quad"
+      ]
+    },
+    {
+      "id": "line:000019",
+      "corpus": "ratex-centernot",
+      "index": 19,
+      "status": "pass",
+      "families": [
+        "command:\\centernot",
+        "command:\\implies",
+        "command:\\textcolor",
+        "feature:group"
+      ],
+      "commands": [
+        "\\centernot",
+        "\\implies",
+        "\\textcolor"
+      ]
+    },
+    {
+      "id": "line:000001",
+      "corpus": "ratex-chemistry",
+      "index": 1,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000002",
+      "corpus": "ratex-chemistry",
+      "index": 2,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000003",
+      "corpus": "ratex-chemistry",
+      "index": 3,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "RaTeX's golden fixture includes whole-formula dollar delimiters; Untie accepts the expression body and leaves document delimiters to the host.",
+      "families": [
+        "command:\\ce",
+        "command:\\pu",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\pu"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 0,
+          "end": 1,
+          "message": "nested math delimiters are not supported in math mode"
+        },
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 40,
+          "end": 41,
+          "message": "nested math delimiters are not supported in math mode"
+        }
+      ],
+      "detail": "frontend reports an unsupported construct"
+    },
+    {
+      "id": "line:000004",
+      "corpus": "ratex-chemistry",
+      "index": 4,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000005",
+      "corpus": "ratex-chemistry",
+      "index": 5,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000006",
+      "corpus": "ratex-chemistry",
+      "index": 6,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000007",
+      "corpus": "ratex-chemistry",
+      "index": 7,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000008",
+      "corpus": "ratex-chemistry",
+      "index": 8,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000009",
+      "corpus": "ratex-chemistry",
+      "index": 9,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000010",
+      "corpus": "ratex-chemistry",
+      "index": 10,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000011",
+      "corpus": "ratex-chemistry",
+      "index": 11,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000012",
+      "corpus": "ratex-chemistry",
+      "index": 12,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000013",
+      "corpus": "ratex-chemistry",
+      "index": 13,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000014",
+      "corpus": "ratex-chemistry",
+      "index": 14,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000015",
+      "corpus": "ratex-chemistry",
+      "index": 15,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000016",
+      "corpus": "ratex-chemistry",
+      "index": 16,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000017",
+      "corpus": "ratex-chemistry",
+      "index": 17,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000018",
+      "corpus": "ratex-chemistry",
+      "index": 18,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000019",
+      "corpus": "ratex-chemistry",
+      "index": 19,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000020",
+      "corpus": "ratex-chemistry",
+      "index": 20,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000021",
+      "corpus": "ratex-chemistry",
+      "index": 21,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000022",
+      "corpus": "ratex-chemistry",
+      "index": 22,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000023",
+      "corpus": "ratex-chemistry",
+      "index": 23,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000024",
+      "corpus": "ratex-chemistry",
+      "index": 24,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000025",
+      "corpus": "ratex-chemistry",
+      "index": 25,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000026",
+      "corpus": "ratex-chemistry",
+      "index": 26,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000027",
+      "corpus": "ratex-chemistry",
+      "index": 27,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000028",
+      "corpus": "ratex-chemistry",
+      "index": 28,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000029",
+      "corpus": "ratex-chemistry",
+      "index": 29,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000030",
+      "corpus": "ratex-chemistry",
+      "index": 30,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000031",
+      "corpus": "ratex-chemistry",
+      "index": 31,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000032",
+      "corpus": "ratex-chemistry",
+      "index": 32,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000033",
+      "corpus": "ratex-chemistry",
+      "index": 33,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000034",
+      "corpus": "ratex-chemistry",
+      "index": 34,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\{",
+        "command:\\}",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\{",
+        "\\}"
+      ]
+    },
+    {
+      "id": "line:000035",
+      "corpus": "ratex-chemistry",
+      "index": 35,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\left",
+        "command:\\right",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce",
+        "\\left",
+        "\\right"
+      ]
+    },
+    {
+      "id": "line:000036",
+      "corpus": "ratex-chemistry",
+      "index": 36,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000037",
+      "corpus": "ratex-chemistry",
+      "index": 37,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000038",
+      "corpus": "ratex-chemistry",
+      "index": 38,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\infty",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce",
+        "\\infty"
+      ]
+    },
+    {
+      "id": "line:000039",
+      "corpus": "ratex-chemistry",
+      "index": 39,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000040",
+      "corpus": "ratex-chemistry",
+      "index": 40,
+      "status": "pass",
+      "families": [
+        "command:\\ca",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ca",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000041",
+      "corpus": "ratex-chemistry",
+      "index": 41,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000042",
+      "corpus": "ratex-chemistry",
+      "index": 42,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000043",
+      "corpus": "ratex-chemistry",
+      "index": 43,
+      "status": "pass",
+      "families": [
+        "command:\\Delta",
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\Delta",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000044",
+      "corpus": "ratex-chemistry",
+      "index": 44,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\mu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce",
+        "\\mu"
+      ]
+    },
+    {
+      "id": "line:000045",
+      "corpus": "ratex-chemistry",
+      "index": 45,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\eta",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\eta"
+      ]
+    },
+    {
+      "id": "line:000046",
+      "corpus": "ratex-chemistry",
+      "index": 46,
+      "status": "pass",
+      "families": [
+        "command:\\beta",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\beta",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000047",
+      "corpus": "ratex-chemistry",
+      "index": 47,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\gamma",
+        "command:\\nu",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\gamma",
+        "\\nu"
+      ]
+    },
+    {
+      "id": "line:000048",
+      "corpus": "ratex-chemistry",
+      "index": 48,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\frac",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\frac"
+      ]
+    },
+    {
+      "id": "line:000049",
+      "corpus": "ratex-chemistry",
+      "index": 49,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000050",
+      "corpus": "ratex-chemistry",
+      "index": 50,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000051",
+      "corpus": "ratex-chemistry",
+      "index": 51,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000052",
+      "corpus": "ratex-chemistry",
+      "index": 52,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000053",
+      "corpus": "ratex-chemistry",
+      "index": 53,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000054",
+      "corpus": "ratex-chemistry",
+      "index": 54,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000055",
+      "corpus": "ratex-chemistry",
+      "index": 55,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000056",
+      "corpus": "ratex-chemistry",
+      "index": 56,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000057",
+      "corpus": "ratex-chemistry",
+      "index": 57,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000058",
+      "corpus": "ratex-chemistry",
+      "index": 58,
+      "status": "pass",
+      "families": [
+        "command:\\bond",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\bond",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000059",
+      "corpus": "ratex-chemistry",
+      "index": 59,
+      "status": "pass",
+      "families": [
+        "command:\\bond",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\bond",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000060",
+      "corpus": "ratex-chemistry",
+      "index": 60,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Specialist aromatic and multi-level bond drawings are outside the bounded neutral chemistry grammar.",
+      "families": [
+        "command:\\bond",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\bond",
+        "\\ce"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 5,
+          "end": 13,
+          "message": "unsupported \\bond kind ~"
+        },
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 14,
+          "end": 23,
+          "message": "unsupported \\bond kind ~-"
+        }
+      ],
+      "detail": "frontend reports an unsupported construct"
+    },
+    {
+      "id": "line:000061",
+      "corpus": "ratex-chemistry",
+      "index": 61,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Specialist aromatic and multi-level bond drawings are outside the bounded neutral chemistry grammar.",
+      "families": [
+        "command:\\bond",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\bond",
+        "\\ce"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 5,
+          "end": 15,
+          "message": "unsupported \\bond kind ~--"
+        },
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 16,
+          "end": 25,
+          "message": "unsupported \\bond kind ~="
+        },
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 26,
+          "end": 36,
+          "message": "unsupported \\bond kind -~-"
+        }
+      ],
+      "detail": "frontend reports an unsupported construct"
+    },
+    {
+      "id": "line:000062",
+      "corpus": "ratex-chemistry",
+      "index": 62,
+      "status": "pass",
+      "families": [
+        "command:\\bond",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\bond",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000063",
+      "corpus": "ratex-chemistry",
+      "index": 63,
+      "status": "pass",
+      "families": [
+        "command:\\bond",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\bond",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000064",
+      "corpus": "ratex-chemistry",
+      "index": 64,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000065",
+      "corpus": "ratex-chemistry",
+      "index": 65,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000066",
+      "corpus": "ratex-chemistry",
+      "index": 66,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000067",
+      "corpus": "ratex-chemistry",
+      "index": 67,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000068",
+      "corpus": "ratex-chemistry",
+      "index": 68,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000069",
+      "corpus": "ratex-chemistry",
+      "index": 69,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000070",
+      "corpus": "ratex-chemistry",
+      "index": 70,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000071",
+      "corpus": "ratex-chemistry",
+      "index": 71,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000072",
+      "corpus": "ratex-chemistry",
+      "index": 72,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000073",
+      "corpus": "ratex-chemistry",
+      "index": 73,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000074",
+      "corpus": "ratex-chemistry",
+      "index": 74,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000075",
+      "corpus": "ratex-chemistry",
+      "index": 75,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000076",
+      "corpus": "ratex-chemistry",
+      "index": 76,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000077",
+      "corpus": "ratex-chemistry",
+      "index": 77,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000078",
+      "corpus": "ratex-chemistry",
+      "index": 78,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\pm",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce",
+        "\\pm"
+      ]
+    },
+    {
+      "id": "line:000079",
+      "corpus": "ratex-chemistry",
+      "index": 79,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000080",
+      "corpus": "ratex-chemistry",
+      "index": 80,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000081",
+      "corpus": "ratex-chemistry",
+      "index": 81,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000082",
+      "corpus": "ratex-chemistry",
+      "index": 82,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000083",
+      "corpus": "ratex-chemistry",
+      "index": 83,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000084",
+      "corpus": "ratex-chemistry",
+      "index": 84,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000085",
+      "corpus": "ratex-chemistry",
+      "index": 85,
+      "status": "pass",
+      "families": [
+        "command:\\ca",
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ca",
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000086",
+      "corpus": "ratex-chemistry",
+      "index": 86,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000087",
+      "corpus": "ratex-chemistry",
+      "index": 87,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "feature:group"
+      ],
+      "commands": [
+        "\\ce"
+      ]
+    },
+    {
+      "id": "line:000088",
+      "corpus": "ratex-chemistry",
+      "index": 88,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\text",
+        "command:\\underset",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\text",
+        "\\underset"
+      ]
+    },
+    {
+      "id": "line:000089",
+      "corpus": "ratex-chemistry",
+      "index": 89,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\frac",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\frac"
+      ]
+    },
+    {
+      "id": "line:000090",
+      "corpus": "ratex-chemistry",
+      "index": 90,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\frac",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\frac"
+      ]
+    },
+    {
+      "id": "line:000091",
+      "corpus": "ratex-chemistry",
+      "index": 91,
+      "status": "pass",
+      "families": [
+        "command:\\ce",
+        "command:\\mathrm",
+        "command:\\underset",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\mathrm",
+        "\\underset"
+      ]
+    },
+    {
+      "id": "line:000092",
+      "corpus": "ratex-chemistry",
+      "index": 92,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000093",
+      "corpus": "ratex-chemistry",
+      "index": 93,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000094",
+      "corpus": "ratex-chemistry",
+      "index": 94,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000095",
+      "corpus": "ratex-chemistry",
+      "index": 95,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000096",
+      "corpus": "ratex-chemistry",
+      "index": 96,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000097",
+      "corpus": "ratex-chemistry",
+      "index": 97,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000098",
+      "corpus": "ratex-chemistry",
+      "index": 98,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000099",
+      "corpus": "ratex-chemistry",
+      "index": 99,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000100",
+      "corpus": "ratex-chemistry",
+      "index": 100,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000101",
+      "corpus": "ratex-chemistry",
+      "index": 101,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000102",
+      "corpus": "ratex-chemistry",
+      "index": 102,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "line:000103",
+      "corpus": "ratex-chemistry",
+      "index": 103,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
       ]
     },
     {
@@ -19578,6 +21546,2306 @@
         "\\dddot",
         "\\quad"
       ]
+    },
+    {
+      "id": "line:000001",
+      "corpus": "ratex-prooftree",
+      "index": 1,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000002",
+      "corpus": "ratex-prooftree",
+      "index": 2,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AXC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AXC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000003",
+      "corpus": "ratex-prooftree",
+      "index": 3,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UIC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UIC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000004",
+      "corpus": "ratex-prooftree",
+      "index": 4,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BinaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BinaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000005",
+      "corpus": "ratex-prooftree",
+      "index": 5,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BIC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BIC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000006",
+      "corpus": "ratex-prooftree",
+      "index": 6,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\TrinaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\TrinaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000007",
+      "corpus": "ratex-prooftree",
+      "index": 7,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\TIC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\TIC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000008",
+      "corpus": "ratex-prooftree",
+      "index": 8,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\QuaternaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\QuaternaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000009",
+      "corpus": "ratex-prooftree",
+      "index": 9,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\QuinaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\QuinaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000010",
+      "corpus": "ratex-prooftree",
+      "index": 10,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\LeftLabel",
+        "command:\\RightLabel",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\LeftLabel",
+        "\\RightLabel",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000011",
+      "corpus": "ratex-prooftree",
+      "index": 11,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\LL",
+        "command:\\RL",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\LL",
+        "\\RL",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000012",
+      "corpus": "ratex-prooftree",
+      "index": 12,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\solidLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\solidLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000013",
+      "corpus": "ratex-prooftree",
+      "index": 13,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\singleLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\singleLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000014",
+      "corpus": "ratex-prooftree",
+      "index": 14,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\dashedLine",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\dashedLine",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000015",
+      "corpus": "ratex-prooftree",
+      "index": 15,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\noLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\noLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000016",
+      "corpus": "ratex-prooftree",
+      "index": 16,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysDashedLine",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysDashedLine",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000017",
+      "corpus": "ratex-prooftree",
+      "index": 17,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysNoLine",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\solidLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysNoLine",
+        "\\begin",
+        "\\end",
+        "\\solidLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000018",
+      "corpus": "ratex-prooftree",
+      "index": 18,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysSingleLine",
+        "command:\\begin",
+        "command:\\dashedLine",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysSingleLine",
+        "\\begin",
+        "\\dashedLine",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000019",
+      "corpus": "ratex-prooftree",
+      "index": 19,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysSolidLine",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\noLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysSolidLine",
+        "\\begin",
+        "\\end",
+        "\\noLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000020",
+      "corpus": "ratex-prooftree",
+      "index": 20,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\rootAtTop",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\rootAtTop"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000021",
+      "corpus": "ratex-prooftree",
+      "index": 21,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\rootAtBottom",
+        "command:\\rootAtTop",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\rootAtBottom",
+        "\\rootAtTop"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000022",
+      "corpus": "ratex-prooftree",
+      "index": 22,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysRootAtTop",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysRootAtTop",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000023",
+      "corpus": "ratex-prooftree",
+      "index": 23,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysRootAtBottom",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\rootAtTop",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysRootAtBottom",
+        "\\begin",
+        "\\end",
+        "\\rootAtTop"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000024",
+      "corpus": "ratex-prooftree",
+      "index": 24,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\fCenter",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\fCenter"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000025",
+      "corpus": "ratex-prooftree",
+      "index": 25,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BIC",
+        "command:\\BinaryInfC",
+        "command:\\LeftLabel",
+        "command:\\RightLabel",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BIC",
+        "\\BinaryInfC",
+        "\\LeftLabel",
+        "\\RightLabel",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000026",
+      "corpus": "ratex-prooftree",
+      "index": 26,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BIC",
+        "command:\\BinaryInfC",
+        "command:\\alwaysDashedLine",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\singleLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BIC",
+        "\\BinaryInfC",
+        "\\alwaysDashedLine",
+        "\\begin",
+        "\\end",
+        "\\singleLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000027",
+      "corpus": "ratex-prooftree",
+      "index": 27,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BinaryInfC",
+        "command:\\TIC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\dashedLine",
+        "command:\\end",
+        "command:\\rootAtTop",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BinaryInfC",
+        "\\TIC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\dashedLine",
+        "\\end",
+        "\\rootAtTop"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000028",
+      "corpus": "ratex-prooftree",
+      "index": 28,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BinaryInfC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysRootAtTop",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\rootAtBottom",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BinaryInfC",
+        "\\UnaryInfC",
+        "\\alwaysRootAtTop",
+        "\\begin",
+        "\\end",
+        "\\rootAtBottom"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000029",
+      "corpus": "ratex-prooftree",
+      "index": 29,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\QuinaryInfC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\QuinaryInfC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000030",
+      "corpus": "ratex-prooftree",
+      "index": 30,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\LeftLabel",
+        "command:\\RightLabel",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\fCenter",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\LeftLabel",
+        "\\RightLabel",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end",
+        "\\fCenter"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000031",
+      "corpus": "ratex-prooftree",
+      "index": 31,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BinaryInfC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BinaryInfC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000032",
+      "corpus": "ratex-prooftree",
+      "index": 32,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\LeftLabel",
+        "command:\\RightLabel",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\LeftLabel",
+        "\\RightLabel",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000033",
+      "corpus": "ratex-prooftree",
+      "index": 33,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\LeftLabel",
+        "command:\\RightLabel",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\LeftLabel",
+        "\\RightLabel",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000034",
+      "corpus": "ratex-prooftree",
+      "index": 34,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\begin",
+        "command:\\dashedLine",
+        "command:\\end",
+        "command:\\noLine",
+        "command:\\rootAtBottom",
+        "command:\\rootAtTop",
+        "command:\\solidLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\begin",
+        "\\dashedLine",
+        "\\end",
+        "\\noLine",
+        "\\rootAtBottom",
+        "\\rootAtTop",
+        "\\solidLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000035",
+      "corpus": "ratex-prooftree",
+      "index": 35,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BinaryInfC",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\fCenter",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BinaryInfC",
+        "\\begin",
+        "\\end",
+        "\\fCenter"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000036",
+      "corpus": "ratex-prooftree",
+      "index": 36,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BIC",
+        "command:\\BinaryInfC",
+        "command:\\TIC",
+        "command:\\begin",
+        "command:\\end",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BIC",
+        "\\BinaryInfC",
+        "\\TIC",
+        "\\begin",
+        "\\end"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000037",
+      "corpus": "ratex-prooftree",
+      "index": 37,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysRootAtTop",
+        "command:\\begin",
+        "command:\\end",
+        "command:\\rootAtBottom",
+        "command:\\rootAtTop",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\UnaryInfC",
+        "\\alwaysRootAtTop",
+        "\\begin",
+        "\\end",
+        "\\rootAtBottom",
+        "\\rootAtTop"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000038",
+      "corpus": "ratex-prooftree",
+      "index": 38,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion.",
+      "families": [
+        "command:\\AxiomC",
+        "command:\\BIC",
+        "command:\\UnaryInfC",
+        "command:\\alwaysNoLine",
+        "command:\\begin",
+        "command:\\dashedLine",
+        "command:\\end",
+        "command:\\singleLine",
+        "environment:prooftree",
+        "feature:group"
+      ],
+      "commands": [
+        "\\AxiomC",
+        "\\BIC",
+        "\\UnaryInfC",
+        "\\alwaysNoLine",
+        "\\begin",
+        "\\dashedLine",
+        "\\end",
+        "\\singleLine"
+      ],
+      "environments": [
+        "prooftree"
+      ],
+      "codes": [
+        "invalid-environment"
+      ],
+      "diagnostics": [
+        {
+          "code": "invalid-environment",
+          "severity": 0,
+          "start": 0,
+          "end": 17,
+          "message": "unknown TeX environment 'prooftree'"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000001",
+      "corpus": "ratex-slashed",
+      "index": 1,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000002",
+      "corpus": "ratex-slashed",
+      "index": 2,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000003",
+      "corpus": "ratex-slashed",
+      "index": 3,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\partial",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000004",
+      "corpus": "ratex-slashed",
+      "index": 4,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000005",
+      "corpus": "ratex-slashed",
+      "index": 5,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\partial",
+        "command:\\slashed"
+      ],
+      "commands": [
+        "\\partial",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000006",
+      "corpus": "ratex-slashed",
+      "index": 6,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\mu",
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\mu",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000007",
+      "corpus": "ratex-slashed",
+      "index": 7,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\,",
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\,",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000008",
+      "corpus": "ratex-slashed",
+      "index": 8,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\mathbf",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\mathbf",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000009",
+      "corpus": "ratex-slashed",
+      "index": 9,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\frac",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\frac",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 9,
+          "end": 17,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000010",
+      "corpus": "ratex-slashed",
+      "index": 10,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\partial",
+        "command:\\psi",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\psi",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 2,
+          "end": 10,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000011",
+      "corpus": "ratex-slashed",
+      "index": 11,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\quad",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\quad",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 16,
+          "end": 24,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 32,
+          "end": 40,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000012",
+      "corpus": "ratex-slashed",
+      "index": 12,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\partial",
+        "command:\\quad",
+        "command:\\scriptstyle",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\quad",
+        "\\scriptstyle",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 12,
+          "end": 20,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 28,
+          "end": 36,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 44,
+          "end": 52,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000013",
+      "corpus": "ratex-slashed",
+      "index": 13,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\partial",
+        "command:\\quad",
+        "command:\\scriptscriptstyle",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\quad",
+        "\\scriptscriptstyle",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 18,
+          "end": 26,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 34,
+          "end": 42,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 50,
+          "end": 58,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000014",
+      "corpus": "ratex-slashed",
+      "index": 14,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\quad",
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\quad",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 3,
+          "end": 11,
+          "message": "undefined control sequence: \\slashed"
+        },
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 27,
+          "end": 35,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000015",
+      "corpus": "ratex-slashed",
+      "index": 15,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000016",
+      "corpus": "ratex-slashed",
+      "index": 16,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000017",
+      "corpus": "ratex-slashed",
+      "index": 17,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\mathbf",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\mathbf",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 8,
+          "end": 16,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000018",
+      "corpus": "ratex-slashed",
+      "index": 18,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\boldsymbol",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\boldsymbol",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 12,
+          "end": 20,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000019",
+      "corpus": "ratex-slashed",
+      "index": 19,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\mathit",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\mathit",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 8,
+          "end": 16,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000020",
+      "corpus": "ratex-slashed",
+      "index": 20,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000021",
+      "corpus": "ratex-slashed",
+      "index": 21,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000022",
+      "corpus": "ratex-slashed",
+      "index": 22,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\left",
+        "command:\\partial",
+        "command:\\right",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\left",
+        "\\partial",
+        "\\right",
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 6,
+          "end": 14,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
+    },
+    {
+      "id": "line:000023",
+      "corpus": "ratex-slashed",
+      "index": 23,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ],
+      "codes": [
+        "unknown-command"
+      ],
+      "diagnostics": [
+        {
+          "code": "unknown-command",
+          "severity": 0,
+          "start": 0,
+          "end": 8,
+          "message": "undefined control sequence: \\slashed"
+        }
+      ],
+      "detail": "upstream case expects successful parsing"
     }
   ]
 }

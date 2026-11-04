@@ -116,6 +116,35 @@ func (e *expander) release() {
 	e.tokenSlot = nil
 }
 
+// subExpander creates an expander over an already-tokenized source range. It
+// preserves parser-visible macro scopes and expansion budgets, and the caller
+// must absorb the counters after parsing.
+func (e *expander) subExpander(tokens []token) *expander {
+	sub := &expander{
+		tokens:             slices.Clone(tokens),
+		rootScope:          e.rootScope,
+		scopes:             slices.Clone(e.scopes),
+		diagnostic:         e.diagnostic,
+		limits:             e.limits,
+		expansionCount:     e.expansionCount,
+		expandedTokenCount: e.expandedTokenCount,
+		disabled:           e.disabled,
+		limitReported:      e.limitReported,
+	}
+	slices.Reverse(sub.tokens)
+	return sub
+}
+
+func (e *expander) absorb(sub *expander) {
+	if sub == nil {
+		return
+	}
+	e.expansionCount = sub.expansionCount
+	e.expandedTokenCount = sub.expandedTokenCount
+	e.disabled = sub.disabled
+	e.limitReported = sub.limitReported
+}
+
 func normalizeMacroName(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" || strings.HasPrefix(name, "\\") {

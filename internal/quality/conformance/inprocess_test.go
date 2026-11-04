@@ -18,7 +18,14 @@ func TestTeXCorpusTerminatesInProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ratex-core", "katex-cases"} {
+	for _, name := range []string{
+		"ratex-core",
+		"ratex-chemistry",
+		"ratex-centernot",
+		"ratex-slashed",
+		"ratex-prooftree",
+		"katex-cases",
+	} {
 		var spec fixture.CorpusSpec
 		for _, candidate := range manifest.Corpora {
 			if candidate.Name == name {

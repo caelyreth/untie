@@ -188,6 +188,30 @@
       "families": ["environment:CD"],
       "codes": ["unsupported"],
       "reason": "Commutative-diagram environments are outside the neutral math IR and are explicitly rejected."
+    },
+    {
+      "corpus": "ratex-chemistry",
+      "ids": ["line:000003"],
+      "codes": ["unsupported"],
+      "reason": "RaTeX's golden fixture includes whole-formula dollar delimiters; Untie accepts the expression body and leaves document delimiters to the host."
+    },
+    {
+      "corpus": "ratex-chemistry",
+      "families": ["command:\\bond"],
+      "codes": ["unsupported"],
+      "reason": "Specialist aromatic and multi-level bond drawings are outside the bounded neutral chemistry grammar."
+    },
+    {
+      "corpus": "ratex-slashed",
+      "families": ["command:\\slashed"],
+      "codes": ["unknown-command"],
+      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface."
+    },
+    {
+      "corpus": "ratex-prooftree",
+      "families": ["environment:prooftree"],
+      "codes": ["invalid-environment"],
+      "reason": "Proof-tree environments are outside the neutral math IR and remain an explicit scope exclusion."
     }
   ],
   "knownGaps": []
