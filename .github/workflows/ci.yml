@@ -23,6 +23,8 @@ jobs:
         with:
           go-version: 1.27.3
           cache: true
+      - name: Fetch pinned upstream fixtures
+        run: go run ./internal/quality/upstreamfetch fetch
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - name: Verify modules
@@ -72,6 +74,8 @@ jobs:
         with:
           go-version: 1.27.3
           cache: true
+      - name: Fetch pinned upstream fixtures
+        run: go run ./internal/quality/upstreamfetch fetch
       - name: Race detector
         env:
           CGO_ENABLED: "1"
@@ -113,6 +117,8 @@ jobs:
       - uses: cachix/install-nix-action@v31.11.3
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fetch pinned upstream fixtures
+        run: nix develop . --command go run ./internal/quality/upstreamfetch fetch
       - name: Install dependencies
         working-directory: web
         run: nix develop .. --command bun install --frozen-lockfile

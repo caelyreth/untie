@@ -91,8 +91,8 @@ func TestManifestAndAllCorporaLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(manifest.Corpora) != 7 {
-		t.Fatalf("corpora = %d, want 7", len(manifest.Corpora))
+	if len(manifest.Corpora) != 11 {
+		t.Fatalf("corpora = %d, want 11", len(manifest.Corpora))
 	}
 	corpora, err := LoadAllCorpora(root, manifest)
 	if err != nil {
@@ -102,8 +102,8 @@ func TestManifestAndAllCorporaLoad(t *testing.T) {
 	for _, corpus := range corpora {
 		total += len(corpus.Cases)
 	}
-	if total != 1282 {
-		t.Fatalf("total cases = %d, want 1282", total)
+	if total != 1465 {
+		t.Fatalf("total cases = %d, want 1465", total)
 	}
 	selection, err := LoadTypletSelection(filepath.Join(root, "manifests", "typlet-selection.json"))
 	if err != nil {

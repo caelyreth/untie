@@ -18,6 +18,20 @@ cross-dialect behavior. It is not a runtime dependency.
   from static KaTeX, Typlet, and RaTeX references, plus explicit Untie
   malformed-recovery cases. It copies no reference output.
 
+## Hydrating Upstream Inputs
+
+Raw upstream inputs are pinned by commit, path, and SHA-256 rather than
+committed. After a fresh checkout, run:
+
+```sh
+go run ./internal/quality/upstreamfetch fetch
+```
+
+Use `go run ./internal/quality/upstreamfetch --check` to verify existing files
+without network access. Reviewed selections, hand-transcribed cases, derived
+fonts, licenses, and manifests remain tracked. Upstream golden images are never
+fetched because Untie compares canonical structure, not upstream screenshots.
+
 ## Review Rules
 
 - Do not update an expected result merely to make a failing implementation

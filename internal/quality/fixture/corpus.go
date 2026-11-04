@@ -45,7 +45,7 @@ func LoadCorpus(root string, spec CorpusSpec) (*Corpus, error) {
 	case TypletJSONL:
 		cases, err = loadTypletCases(root, corpusPath, spec)
 	case RawLines:
-		cases, err = loadRawCases(corpusPath, spec.ExpectedCount)
+		cases, err = loadRawCases(corpusPath, spec.ExpectedCount, spec.CommentPrefix)
 	case KaTeXJSONL:
 		var records []KaTeXCase
 		records, err = LoadKaTeXCases(corpusPath, spec.ExpectedCount)
@@ -197,12 +197,12 @@ func loadTypletCases(root, corpusPath string, spec CorpusSpec) ([]Case, error) {
 	return cases, nil
 }
 
-func loadRawCases(filePath string, expected int) ([]Case, error) {
+func loadRawCases(filePath string, expected int, commentPrefix string) ([]Case, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
-	lines := splitNonEmptyLines(data)
+	lines := splitRawLines(data, commentPrefix)
 	if len(lines) != expected {
 		return nil, fmt.Errorf("%s: decoded %d lines, want %d", filePath, len(lines), expected)
 	}
@@ -211,6 +211,20 @@ func loadRawCases(filePath string, expected int) ([]Case, error) {
 		cases[i] = Case{Index: i + 1, ID: fmt.Sprintf("line:%06d", i+1), Source: source}
 	}
 	return cases, nil
+}
+
+func splitRawLines(data []byte, commentPrefix string) []string {
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
+	raw := strings.Split(text, "\n")
+	lines := make([]string, 0, len(raw))
+	for _, line := range raw {
+		line = strings.TrimSpace(line)
+		if line == "" || commentPrefix != "" && strings.HasPrefix(line, commentPrefix) {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	return lines
 }
 
 // Classification is the required disposition of every corpus case.

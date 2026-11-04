@@ -61,6 +61,31 @@
       "expectedCount": 1075
     },
     {
+      "name": "ratex-chemistry",
+      "format": "raw-lines",
+      "corpusFile": "ratex-0.1.15/chemistry-test-cases.txt",
+      "expectedCount": 103
+    },
+    {
+      "name": "ratex-centernot",
+      "format": "raw-lines",
+      "corpusFile": "ratex-0.1.15/centernot-test-cases.txt",
+      "commentPrefix": "#",
+      "expectedCount": 19
+    },
+    {
+      "name": "ratex-slashed",
+      "format": "raw-lines",
+      "corpusFile": "ratex-0.1.15/slashed-test-cases.txt",
+      "expectedCount": 23
+    },
+    {
+      "name": "ratex-prooftree",
+      "format": "raw-lines",
+      "corpusFile": "ratex-0.1.15/prooftree-test-cases.txt",
+      "expectedCount": 38
+    },
+    {
       "name": "katex-cases",
       "format": "katex-jsonl",
       "corpusFile": "katex/cases.jsonl",

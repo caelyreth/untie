@@ -3,9 +3,28 @@ package fixture
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestRawCorpusSkipsBlankLinesAndReviewedComments(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "cases.txt")
+	data := "# fixture note\n\nx+1\r\ny^2\n"
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cases, err := loadRawCases(path, 2, "#")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != 2 || cases[0].Source != "x+1" || cases[1].Source != "y^2" {
+		t.Fatalf("cases = %#v", cases)
+	}
+}
 
 func TestRunCorpusRunsEveryCaseAndAccountsForAll(t *testing.T) {
 	t.Parallel()

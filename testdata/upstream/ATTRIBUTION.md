@@ -4,6 +4,18 @@ All files below `testdata/upstream` are test data. They are not linked into the
 Untie library. The upstream projects were inspected statically; none is
 compiled or executed by this repository's tests.
 
+Raw upstream inputs are not committed. `sources.lock.json` pins each exact
+repository commit and source path, and `manifest.sha256` pins the content hash.
+Hydrate them with:
+
+```sh
+go run ./internal/quality/upstreamfetch fetch
+```
+
+`--check` verifies hydrated files without network access, and `--clean` removes
+only the raw inputs. Reviewed projections, derived fonts, licenses, manifests,
+and hand-transcribed cases remain tracked.
+
 ## Typlet
 
 - Project: Typlet 0.2.0
@@ -11,15 +23,15 @@ compiled or executed by this repository's tests.
 - Source: <https://github.com/dbccccccc/Typlet>
 - License: MIT; see `licenses/Typlet-MIT.txt`
 - Imported paths:
-  - `test/corpus/paired.jsonl`
-  - `test/fixtures/typst-0.15.1/paired.jsonl`
-  - `test/fixtures/typst-0.15.1/font.jsonl`
+  - `test/corpus/paired.jsonl`, fetched exactly
+  - `test/fixtures/typst-0.15.1/paired.jsonl`, fetched exactly
+  - `test/fixtures/typst-0.15.1/font.jsonl`, fetched exactly
   - selected records from `test/corpus/{features,code,symbols,syntax}.jsonl`
   - matching selected records from
     `test/fixtures/typst-0.15.1/{features,code,symbols,syntax}.jsonl`
 - Transformations:
-  - The paired corpus and its frame fixture are byte-for-byte copies.
-  - The NewCM metric dump is a byte-for-byte copy.
+  - The paired corpus, its frame fixture, and the NewCM metric dump are
+    byte-for-byte fetched copies.
   - Selected datasets retain original record order and values. `jq -c` was
     used only to select the IDs recorded in `manifests/typlet-selection.json`;
     whitespace and key spelling were not semantically changed.
@@ -36,10 +48,19 @@ Apache-2.0; see `licenses/Typst-Apache-2.0.txt` and
 - Commit: `f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3`
 - Source: <https://github.com/erweixin/RaTeX>
 - License: MIT; see `licenses/RaTeX-MIT.txt`
-- Imported path: `tests/golden/test_cases.txt`
-- Transformation: byte-for-byte copy as `core-test-cases.txt`.
+- Imported paths:
+  - `tests/golden/test_cases.txt` to `core-test-cases.txt`
+  - `tests/golden/test_case_ce.txt` to `chemistry-test-cases.txt`
+  - `tests/golden/test_cases_centernot.txt` to `centernot-test-cases.txt`
+  - `tests/golden/test_cases_slashed.txt` to `slashed-test-cases.txt`
+  - `tests/golden/test_cases_prooftree.txt` to `prooftree-test-cases.txt`
+- Transformation: exact pinned fetches. RaTeX golden PNGs and diff images are
+  not imported.
 
-The 1,075-line core corpus excludes RaTeX's chemistry and proof-tree suites.
+The corpus counts are 1,075 core, 103 chemistry, 19 centered-negation, 23
+slashed-symbol, and 38 proof-tree formulas. The centered-negation file's leading
+provenance comment is excluded by the corpus manifest rather than parsed as a
+formula.
 
 ## KaTeX
 
@@ -65,7 +86,7 @@ The 1,075-line core corpus excludes RaTeX's chemistry and proof-tree suites.
   `files/fonts/NewCMMath-Book.otf`
 - Source:
   <https://github.com/typst/typst-assets/blob/94dcb990edb36311ef85162baa26e4a8205e0bf0/files/fonts/NewCMMath-Book.otf>
-- Transformation: none
+- Transformation: none; fetched from the pinned revision
 - License: GUST Font License 1.0, based on LPPL 1.3c or later. The complete
   font licensing section and third-party notice distributed by `typst-assets`
   are in `licenses/typst-assets-NOTICE.txt`.
@@ -114,12 +135,13 @@ zero-valued remaining constants. This gives the variable-outline, HVAR, MVAR,
 and MATH-construction tests one small offline fixture. It is not a production
 font and does not imply system-font discovery.
 
-Only variable-font tests load these faces. `fonts/Estedad-VF.ttf` is byte-for-
-byte upstream data and supplies a second real design axis (`wdth`) for generic
-axis and canonical-order tests.
+Only variable-font tests load these faces. `fonts/Estedad-VF.ttf` is fetched
+byte-for-byte and supplies a second real design axis (`wdth`) for generic axis
+and canonical-order tests.
 
 ## Corpus Manifest
 
 `manifests/corpora.json` records the exact loadable corpus paths and counts.
-`manifest.sha256` records the SHA-256 of every imported file. Neither manifest
-may be regenerated from implementation output.
+`sources.lock.json` records the exact remote source for every hydrated raw
+input. `manifest.sha256` records the SHA-256 of every imported file. None of
+these manifests may be regenerated from implementation output.

@@ -165,6 +165,7 @@ type CorpusSpec struct {
 	Name                 string                 `json:"name"`
 	Format               CorpusFormat           `json:"format"`
 	CorpusFile           string                 `json:"corpusFile"`
+	CommentPrefix        string                 `json:"commentPrefix,omitempty"`
 	FixtureFile          string                 `json:"fixtureFile,omitempty"`
 	ExpectedCount        int                    `json:"expectedCount"`
 	ExpectedFixtureCount int                    `json:"expectedFixtureCount,omitempty"`
@@ -239,6 +240,9 @@ func (m *CorpusManifest) Validate() error {
 			}
 		default:
 			return fmt.Errorf("corpus %q has unknown format %q", spec.Name, spec.Format)
+		}
+		if spec.CommentPrefix != "" && spec.Format != RawLines {
+			return fmt.Errorf("corpus %q sets commentPrefix for format %q", spec.Name, spec.Format)
 		}
 		if (spec.SelectionFile == "") != (spec.SelectionKey == "") {
 			return fmt.Errorf("corpus %q must set both selectionFile and selectionKey or neither", spec.Name)

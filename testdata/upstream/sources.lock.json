@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "repository": "https://github.com/go-text/typesetting-utils",
+      "commit": "4ffe8874dabcb8a86a3c8534d2545ea5b95304ea",
+      "sourcePath": "opentype/common/Estedad-VF.ttf",
+      "target": "fonts/Estedad-VF.ttf"
+    },
+    {
+      "repository": "https://github.com/typst/typst-assets",
+      "commit": "94dcb990edb36311ef85162baa26e4a8205e0bf0",
+      "sourcePath": "files/fonts/NewCMMath-Book.otf",
+      "target": "fonts/NewCMMath-Book.otf"
+    },
+    {
+      "repository": "https://github.com/erweixin/RaTeX",
+      "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
+      "sourcePath": "tests/golden/test_cases_centernot.txt",
+      "target": "ratex-0.1.15/centernot-test-cases.txt"
+    },
+    {
+      "repository": "https://github.com/erweixin/RaTeX",
+      "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
+      "sourcePath": "tests/golden/test_case_ce.txt",
+      "target": "ratex-0.1.15/chemistry-test-cases.txt"
+    },
+    {
+      "repository": "https://github.com/erweixin/RaTeX",
+      "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
+      "sourcePath": "tests/golden/test_cases.txt",
+      "target": "ratex-0.1.15/core-test-cases.txt"
+    },
+    {
+      "repository": "https://github.com/erweixin/RaTeX",
+      "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
+      "sourcePath": "tests/golden/test_cases_prooftree.txt",
+      "target": "ratex-0.1.15/prooftree-test-cases.txt"
+    },
+    {
+      "repository": "https://github.com/erweixin/RaTeX",
+      "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
+      "sourcePath": "tests/golden/test_cases_slashed.txt",
+      "target": "ratex-0.1.15/slashed-test-cases.txt"
+    },
+    {
+      "repository": "https://github.com/dbccccccc/Typlet",
+      "commit": "c3ebcac2db54ee123faaab8c437c83e7f66ec0a5",
+      "sourcePath": "test/corpus/paired.jsonl",
+      "target": "typlet-0.2.0/corpus/paired.jsonl"
+    },
+    {
+      "repository": "https://github.com/dbccccccc/Typlet",
+      "commit": "c3ebcac2db54ee123faaab8c437c83e7f66ec0a5",
+      "sourcePath": "test/fixtures/typst-0.15.1/font.jsonl",
+      "target": "typlet-0.2.0/fixtures/typst-0.15.1/font.jsonl"
+    },
+    {
+      "repository": "https://github.com/dbccccccc/Typlet",
+      "commit": "c3ebcac2db54ee123faaab8c437c83e7f66ec0a5",
+      "sourcePath": "test/fixtures/typst-0.15.1/paired.jsonl",
+      "target": "typlet-0.2.0/fixtures/typst-0.15.1/paired.jsonl"
+    }
+  ]
+}

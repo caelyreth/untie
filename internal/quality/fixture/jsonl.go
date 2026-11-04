@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 )
 
 const maxFixtureLine = 64 << 20
@@ -118,13 +117,4 @@ func parseInt(raw json.RawMessage, field string) (int, error) {
 		return 0, fmt.Errorf("%s must be an integer: %w", field, err)
 	}
 	return number, nil
-}
-
-func splitNonEmptyLines(data []byte) []string {
-	text := strings.ReplaceAll(string(data), "\r\n", "\n")
-	text = strings.TrimSuffix(text, "\n")
-	if text == "" {
-		return nil
-	}
-	return strings.Split(text, "\n")
 }

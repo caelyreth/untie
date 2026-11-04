@@ -80,6 +80,9 @@ var untieStdlibPolicy = stdlibPolicy{
 		modulePath + "/internal/quality/conformance": {
 			"os/exec": "external reference adapters are launched only by the conformance harness",
 		},
+		modulePath + "/internal/quality/upstreamfetch": {
+			"net/http": "the developer-only fixture hydrator downloads pinned test inputs",
+		},
 	},
 }
 
@@ -245,6 +248,9 @@ var allowedProjectImports = map[string]packageRules{
 	},
 	modulePath + "/internal/quality/fixture": {
 		Production: []string{modulePath + "/geometry", modulePath + "/source"},
+	},
+	modulePath + "/internal/quality/upstreamfetch": {
+		Production: []string{modulePath + "/internal/quality/fixture"},
 	},
 	modulePath + "/internal/irarena": {
 		Production: []string{modulePath + "/ir", modulePath + "/source"},

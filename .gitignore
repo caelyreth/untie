@@ -6,6 +6,14 @@ dist/
 *.syso
 coverage.*
 
+# fixtures
+/testdata/upstream/fonts/Estedad-VF.ttf
+/testdata/upstream/fonts/NewCMMath-Book.otf
+/testdata/upstream/ratex-*/
+/testdata/upstream/typlet-0.2.0/corpus/paired.jsonl
+/testdata/upstream/typlet-0.2.0/fixtures/typst-0.15.1/font.jsonl
+/testdata/upstream/typlet-0.2.0/fixtures/typst-0.15.1/paired.jsonl
+
 # nix
 .direnv/
 
