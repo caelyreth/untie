@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/caelyreth/untie"
+	"github.com/caelyreth/untie/display"
+	"github.com/caelyreth/untie/geometry"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -44,18 +47,92 @@ func TestStreamRendersMarkdownAndMath(t *testing.T) {
 }
 
 func TestFormulaMorphKeepsPreviousBox(t *testing.T) {
-	t.Parallel()
-
-	first := &untie.Box{Width: 20, Ascent: 10}
-	second := &untie.Box{Width: 40, Ascent: 12}
+	model, err := newApp(mathFont)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := model.renderer.Render(context.Background(), `x`, untie.Display, untie.Style{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := model.renderer.Render(context.Background(), `x^2`, untie.Display, untie.Style{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	now := time.Now()
 	var morph formulaMorph
-	morph.update(first, `x`, now)
-	morph.update(second, `x^2`, now.Add(16*time.Millisecond))
-	if morph.previous != first || morph.current != second {
-		t.Fatalf("morph boxes = previous:%p current:%p", morph.previous, morph.current)
+	morph.update(first.Box, `x`, now, true)
+	morph.update(second.Box, `x^2`, now.Add(16*time.Millisecond), true)
+	if morph.previousBox != first.Box || morph.currentBox != second.Box {
+		t.Fatalf("morph boxes = previous:%p current:%p", morph.previousBox, morph.currentBox)
+	}
+	if len(morph.previous) == 0 || len(morph.current) == 0 {
+		t.Fatalf("morph commands = previous:%d current:%d", len(morph.previous), len(morph.current))
+	}
+	previousKeys := make(map[string]struct{}, len(morph.previous))
+	for _, shape := range morph.previous {
+		previousKeys[shape.key] = struct{}{}
+	}
+	shared := false
+	for _, shape := range morph.current {
+		if _, ok := previousKeys[shape.key]; ok {
+			shared = true
+			break
+		}
+	}
+	if !shared {
+		t.Fatal("successive layouts shared no stable morph command")
 	}
 	if morph.source != `x^2` || morph.started.IsZero() {
 		t.Fatalf("morph state = %+v", morph)
+	}
+}
+
+func TestMorphHidesStreamingErrorPaint(t *testing.T) {
+	t.Parallel()
+
+	box := &untie.Box{Items: []display.Item{
+		{Kind: display.ItemRule, Paint: display.Paint{Role: display.RoleError}},
+		{Kind: display.ItemRule, Paint: display.Paint{Role: display.RoleInk}},
+	}}
+	if shapes := extractMorphShapes(box, true); len(shapes) != 1 {
+		t.Fatalf("streaming shapes = %d, want only the non-error rule", len(shapes))
+	}
+	if shapes := extractMorphShapes(box, false); len(shapes) != 2 {
+		t.Fatalf("completed shapes = %d, want both rules", len(shapes))
+	}
+}
+
+func TestMorphInterpolatesGlyphPointsAndRuleBounds(t *testing.T) {
+	t.Parallel()
+
+	a := geometry.Path{
+		{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: 0, Y: 0}}},
+		{Op: geometry.SegLineTo, Points: [3]geometry.Point{{X: 10, Y: 0}}},
+	}
+	b := geometry.Path{
+		{Op: geometry.SegMoveTo, Points: [3]geometry.Point{{X: 4, Y: 2}}},
+		{Op: geometry.SegLineTo, Points: [3]geometry.Point{{X: 18, Y: 6}}},
+	}
+	path := lerpPath(a, b, 0.5)
+	if path[0].Points[0] != (geometry.Point{X: 2, Y: 1}) ||
+		path[1].Points[0] != (geometry.Point{X: 14, Y: 3}) {
+		t.Fatalf("morphed path = %#v", path)
+	}
+	bar := lerpRect(
+		geometry.Rect{X: 0, Y: 10, Width: 20, Height: 1},
+		geometry.Rect{X: 4, Y: 14, Width: 32, Height: 3},
+		0.5,
+	)
+	if bar != (geometry.Rect{X: 2, Y: 12, Width: 26, Height: 2}) {
+		t.Fatalf("morphed fraction bar = %#v", bar)
+	}
+
+	matches := matchMorphShapes(
+		[]morphShape{{key: "old", kind: morphRule, bound: geometry.Rect{X: 2, Y: 4}}},
+		[]morphShape{{key: "new", kind: morphRule, bound: geometry.Rect{X: 3, Y: 4}}},
+	)
+	if matches[0] != 0 {
+		t.Fatalf("changed fraction bar was not matched: %v", matches)
 	}
 }

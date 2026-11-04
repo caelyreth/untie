@@ -204,7 +204,7 @@ func (a *app) stream(c *ui.Context) {
 func (a *app) displayMath(c *ui.Context, source string) {
 	result, err := a.renderer.Render(context.Background(), source, untie.Display, untie.Style{})
 	if result != nil && result.Box != nil {
-		a.morph.update(result.Box, source, c.Now())
+		a.morph.update(result.Box, source, c.Now(), a.streaming)
 	} else {
 		a.morph.fail(err)
 	}
