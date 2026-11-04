@@ -88,6 +88,13 @@ func (m *formulaMorph) height() float32 {
 	return max(90, m.currentBox.Bounds().Height+44)
 }
 
+func (m *formulaMorph) contentWidth() float32 {
+	if m.currentBox == nil {
+		return 1
+	}
+	return max(1, m.currentBox.Bounds().Width+44)
+}
+
 func (m *formulaMorph) draw(p *ui.Painter, rect ui.Rect) {
 	if m.currentBox == nil || len(m.current) == 0 {
 		drawMorphMessage(p, rect, m.message)

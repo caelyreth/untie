@@ -112,6 +112,9 @@ func TestMorphUsesNaturalScaleForTallMath(t *testing.T) {
 	if height := morph.height(); height != 1788 {
 		t.Fatalf("morph height = %v, want natural content height", height)
 	}
+	if width := morph.contentWidth(); width != 744 {
+		t.Fatalf("morph width = %v, want natural scrollable width", width)
+	}
 	x, y, scale := fitTransform(box, ui.Rect{X: 10, Y: 20, W: 900, H: 240})
 	if scale != 1 {
 		t.Fatalf("scale = %v, want natural scale", scale)

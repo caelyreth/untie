@@ -7,6 +7,10 @@ their source identity across layouts: existing paths move point-by-point while
 rules such as fraction bars interpolate their bounds and scale. **Edit source**
 returns to the editor.
 
+Math keeps its natural scale in a fixed-height, two-axis scroll viewport. Large
+formulas pan inside that viewport instead of shrinking or repeatedly reflowing
+the whole page as tokens arrive.
+
 The example uses MyGo's incremental `markdown.Stream` parser and Untie's normal
 renderer cache. The morph is drawn through the public display-list adapter, not
 by mutating renderer internals.

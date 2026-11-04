@@ -16,6 +16,7 @@ import (
 )
 
 const defaultStreamSpeed = 165
+const formulaViewportHeight = 360
 
 type page uint8
 
@@ -54,6 +55,7 @@ type app struct {
 
 	page   page
 	scroll ui.ScrollState
+	math   ui.ScrollState
 	morph  formulaMorph
 }
 
@@ -208,8 +210,11 @@ func (a *app) displayMath(c *ui.Context, source string) {
 	} else {
 		a.morph.fail(err)
 	}
-	ui.Box(c).AlignSelf(ui.Stretch).Height(a.morph.height()).
-		Margin(8, 0).Draw(a.morph.draw)
+	ui.ScrollBoth(c).AlignSelf(ui.Stretch).Height(formulaViewportHeight).
+		TrackScroll(&a.math).Margin(8, 0).Children(func() {
+		ui.Box(c).Width(a.morph.contentWidth()).MinWidthPercent(100).
+			Height(a.morph.height()).Draw(a.morph.draw)
+	})
 }
 
 func (a *app) start(now time.Time) {
@@ -218,6 +223,7 @@ func (a *app) start(now time.Time) {
 	a.started = now
 	a.shown = 0
 	a.scroll.Y = 0
+	a.math.X, a.math.Y = 0, 0
 	a.morph.reset()
 }
 
@@ -226,6 +232,7 @@ func (a *app) reset() {
 	a.complete = false
 	a.started = time.Time{}
 	a.shown = 0
+	a.math.X, a.math.Y = 0, 0
 	a.morph.reset()
 }
 
