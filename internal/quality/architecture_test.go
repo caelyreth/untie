@@ -349,6 +349,7 @@ var allowedContribImports = map[string]packageRules{
 			modulePath,
 			modulePath + "/mathml",
 			modulePath + "/render",
+			modulePath + "/stream",
 			"github.com/egoist/mygo/ui",
 			"github.com/egoist/mygo/ui/markdown",
 			"github.com/egoist/mygo/ui/markdown/parser",
