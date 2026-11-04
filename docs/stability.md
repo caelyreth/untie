@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.4.2` with layout revision `8`. This page defines
+Untie is currently version `0.4.3` with layout revision `8`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -14,8 +14,10 @@ Primary packages:
 - `github.com/caelyreth/untie/fontsource` for `io/fs` loading helpers
 - `github.com/caelyreth/untie/render` for framework-neutral drawing, path
   resolution, and viewport fitting
+- `github.com/caelyreth/untie/stream` for coalesced live source updates,
+  display-list transitions, and host-scheduled commits
 - `github.com/caelyreth/untie/contrib/mygo` for MyGo elements, Markdown math,
-  and painter integration
+  streaming elements, and painter integration
 
 Primary surface:
 
@@ -29,6 +31,9 @@ Primary surface:
   `Renderer.Render`, `RecoveryMode`, `LayoutOptions`;
 - `render.Walk`, `render.Command`, `render.ResolvePath`, `render.Fit`,
   `render.FitOptions`, and `render.Transform`;
+- `stream.NewSession`, `SessionOptions`, `Session.Update`,
+  `Session.NextCommitIn`, `Frame`, `TransitionOptions`, `Timing`, `Command`,
+  and `Frame.Walk`;
 - `(*untiemygo.Renderer).Element`, `BindMarkdown`, `InlineMath`, `DisplayMath`,
   `DisplayMathWidth`, `Draw`, `DrawBox`, `PaintResolver`, `ScaleMode`, and
   `CacheStats` in the optional MyGo adapter;
@@ -94,7 +99,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.4.2+layout.8
+0.4.3+layout.8
 ```
 
 The package-level engine cache includes that whole string. A layout behavior

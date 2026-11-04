@@ -16,12 +16,15 @@ the public `contrib/mygo` module are versioned together.
    Historical migration notes retain the version they document.
 4. Run the complete local gate described in
    [`CONTRIBUTING.md`](../CONTRIBUTING.md).
-5. Review the changelog output locally, replacing `VERSION` with the release
-   version without the `v` prefix:
+5. Review the changelog output locally against the previous published tag.
+   Before creating the new tag, compare that tag with `HEAD`:
 
    ```sh
-   VERSION=0.4.2
-   npx --yes changelogithub@15.0.5 --to "v$VERSION" --dry
+   npx --yes changelogithub@15.0.5 \
+     --from v0.4.2 \
+     --to HEAD \
+     --github caelyreth/untie \
+     --dry
    ```
 
 The release notes come from one-line Conventional Commit subjects. The
@@ -33,7 +36,7 @@ and excludes nested module tags from root release changelogs.
 Create both module tags on the same commit:
 
 ```sh
-VERSION=0.4.2
+VERSION=0.4.3
 git tag -a "v$VERSION" -m "v$VERSION"
 git tag -a "contrib/mygo/v$VERSION" -m "contrib/mygo/v$VERSION"
 git push origin "v$VERSION" "contrib/mygo/v$VERSION"
