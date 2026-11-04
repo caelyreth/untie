@@ -156,11 +156,11 @@ Markdown binding, and existing-box drawing.
 
 ### Release
 
-The latest published tag is `v0.3.0`; `v0.4.0` is the next release target.
-Untie remains pre-1.0 while its API stability tiers are validated in real
-integrations. Release notes are generated from Conventional Commits; see
-[GitHub Releases](https://github.com/caelyreth/untie/releases) for published
-changes and [Release Process](docs/releasing.md) for the maintainer workflow.
+`v0.4.0` is the latest published release.
+Untie remains pre-1.0 while its API stability tiers are validated through real
+integrations. Release notes are generated from Conventional Commits and
+published in [GitHub Releases](https://github.com/caelyreth/untie/releases);
+see [Release Process](docs/releasing.md) for the maintainer workflow.
 
 ### License
 
