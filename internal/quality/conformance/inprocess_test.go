@@ -21,6 +21,7 @@ func TestTeXCorpusTerminatesInProcess(t *testing.T) {
 	for _, name := range []string{
 		"ratex-core",
 		"ratex-chemistry",
+		"ratex-physics",
 		"ratex-centernot",
 		"ratex-slashed",
 		"ratex-prooftree",

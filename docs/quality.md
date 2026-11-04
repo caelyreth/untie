@@ -28,6 +28,7 @@ The reviewed TeX baseline covers:
 - 36 normalized KaTeX cases;
 - 1,075 RaTeX core corpus lines;
 - 103 RaTeX chemistry cases;
+- 45 RaTeX physics-gallery cases;
 - 19 RaTeX centered-negation cases;
 - 23 RaTeX slashed-symbol cases;
 - 38 RaTeX proof-tree cases.
@@ -36,9 +37,9 @@ Current outcomes:
 
 | Outcome     | Cases |
 | ----------- | ----: |
-| Pass        | 1,185 |
+| Pass        | 1,252 |
 | Diagnostic  |    26 |
-| Unsupported |    83 |
+| Unsupported |    61 |
 | Bug         |     0 |
 | Unexplained |     0 |
 
@@ -49,8 +50,11 @@ The bounded chemistry frontend parses 100 of the 103 RaTeX chemistry cases,
 including embedded TeX math, signed scripts, adjacent arrow annotations, and
 nested chemistry. The three reviewed exclusions are one whole-formula
 dollar-delimited case and two specialist aromatic/multi-level bond cases.
-Centered negation passes all 19 cases. Slashed-symbol and proof-tree suites are
-tracked as explicit scope exclusions.
+Centered negation passes all 19 cases. The physics gallery passes 44 of 45
+cases; its only exclusion is another whole-formula dollar-delimited entry.
+Feynman slash notation passes the separate 23-case slashed-symbol suite through
+the shared `CancelRoleSlashed` IR and layout path. Proof trees remain an explicit
+scope exclusion.
 
 ## Typst Coverage
 

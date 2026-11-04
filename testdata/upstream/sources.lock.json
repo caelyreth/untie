@@ -34,6 +34,12 @@
     {
       "repository": "https://github.com/erweixin/RaTeX",
       "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
+      "sourcePath": "website/public/data/physics.json",
+      "target": "ratex-0.1.15/physics.json"
+    },
+    {
+      "repository": "https://github.com/erweixin/RaTeX",
+      "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
       "sourcePath": "tests/golden/test_cases_prooftree.txt",
       "target": "ratex-0.1.15/prooftree-test-cases.txt"
     },

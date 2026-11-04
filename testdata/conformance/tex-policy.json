@@ -202,10 +202,10 @@
       "reason": "Specialist aromatic and multi-level bond drawings are outside the bounded neutral chemistry grammar."
     },
     {
-      "corpus": "ratex-slashed",
-      "families": ["command:\\slashed"],
-      "codes": ["unknown-command"],
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface."
+      "corpus": "ratex-physics",
+      "ids": ["formula:000024"],
+      "codes": ["unsupported"],
+      "reason": "RaTeX's physics gallery includes one whole-formula dollar-delimited entry; Untie accepts the expression body and leaves document delimiters to the host."
     },
     {
       "corpus": "ratex-prooftree",

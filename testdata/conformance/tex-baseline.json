@@ -19,6 +19,10 @@
       "count": 1075
     },
     {
+      "name": "ratex-physics",
+      "count": 45
+    },
+    {
       "name": "ratex-prooftree",
       "count": 38
     },
@@ -60,10 +64,10 @@
     }
   },
   "summary": {
-    "total": 1294,
-    "pass": 1185,
+    "total": 1339,
+    "pass": 1252,
     "diagnostic": 26,
-    "unsupported": 83,
+    "unsupported": 61,
     "bug": 0,
     "unexplained": 0
   },
@@ -106,7 +110,7 @@
     },
     {
       "family": "command:\\,",
-      "total": 7
+      "total": 8
     },
     {
       "family": "command:\\.",
@@ -354,7 +358,7 @@
     },
     {
       "family": "command:\\Lambda",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\Large",
@@ -450,7 +454,7 @@
     },
     {
       "family": "command:\\Psi",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\QuaternaryInfC",
@@ -510,7 +514,7 @@
     },
     {
       "family": "command:\\Sigma",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\Subset",
@@ -922,7 +926,7 @@
     },
     {
       "family": "command:\\boldsymbol",
-      "total": 2
+      "total": 3
     },
     {
       "family": "command:\\bond",
@@ -1006,7 +1010,7 @@
     },
     {
       "family": "command:\\cdot",
-      "total": 4
+      "total": 5
     },
     {
       "family": "command:\\cdotp",
@@ -1018,7 +1022,7 @@
     },
     {
       "family": "command:\\ce",
-      "total": 92
+      "total": 93
     },
     {
       "family": "command:\\centerdot",
@@ -1578,7 +1582,7 @@
     },
     {
       "family": "command:\\frac",
-      "total": 18
+      "total": 24
     },
     {
       "family": "command:\\frak",
@@ -1714,11 +1718,11 @@
     },
     {
       "family": "command:\\hat",
-      "total": 6
+      "total": 7
     },
     {
       "family": "command:\\hbar",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\hbox",
@@ -1806,7 +1810,7 @@
     },
     {
       "family": "command:\\iint",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\image",
@@ -1966,7 +1970,7 @@
     },
     {
       "family": "command:\\left",
-      "total": 12
+      "total": 13
     },
     {
       "family": "command:\\leftarrow",
@@ -2214,7 +2218,7 @@
     },
     {
       "family": "command:\\mathbf",
-      "total": 5
+      "total": 9
     },
     {
       "family": "command:\\mathbin",
@@ -2250,7 +2254,7 @@
     },
     {
       "family": "command:\\mathit",
-      "total": 3
+      "total": 4
     },
     {
       "family": "command:\\mathllap",
@@ -2326,7 +2330,7 @@
     },
     {
       "family": "command:\\mu",
-      "total": 8
+      "total": 10
     },
     {
       "family": "command:\\multimap",
@@ -2354,7 +2358,7 @@
     },
     {
       "family": "command:\\nabla",
-      "total": 4
+      "total": 6
     },
     {
       "family": "command:\\natnums",
@@ -2558,7 +2562,7 @@
     },
     {
       "family": "command:\\nu",
-      "total": 6
+      "total": 8
     },
     {
       "family": "command:\\nvDash",
@@ -2594,7 +2598,7 @@
     },
     {
       "family": "command:\\oint",
-      "total": 1
+      "total": 2
     },
     {
       "family": "command:\\omega",
@@ -2690,7 +2694,7 @@
     },
     {
       "family": "command:\\partial",
-      "total": 11
+      "total": 20
     },
     {
       "family": "command:\\perp",
@@ -2710,7 +2714,7 @@
     },
     {
       "family": "command:\\pi",
-      "total": 2
+      "total": 3
     },
     {
       "family": "command:\\pitchfork",
@@ -2798,11 +2802,11 @@
     },
     {
       "family": "command:\\psi",
-      "total": 10
+      "total": 11
     },
     {
       "family": "command:\\pu",
-      "total": 14
+      "total": 27
     },
     {
       "family": "command:\\qquad",
@@ -2810,7 +2814,7 @@
     },
     {
       "family": "command:\\quad",
-      "total": 18
+      "total": 22
     },
     {
       "family": "command:\\r",
@@ -2894,7 +2898,7 @@
     },
     {
       "family": "command:\\right",
-      "total": 11
+      "total": 12
     },
     {
       "family": "command:\\rightarrow",
@@ -2982,7 +2986,7 @@
     },
     {
       "family": "command:\\scriptscriptstyle",
-      "total": 5
+      "total": 6
     },
     {
       "family": "command:\\scriptsize",
@@ -2990,7 +2994,7 @@
     },
     {
       "family": "command:\\scriptstyle",
-      "total": 5
+      "total": 6
     },
     {
       "family": "command:\\sdot",
@@ -3074,7 +3078,7 @@
     },
     {
       "family": "command:\\slashed",
-      "total": 23
+      "total": 46
     },
     {
       "family": "command:\\small",
@@ -3218,7 +3222,7 @@
     },
     {
       "family": "command:\\text",
-      "total": 68
+      "total": 69
     },
     {
       "family": "command:\\textcolor",
@@ -3346,7 +3350,7 @@
     },
     {
       "family": "command:\\times",
-      "total": 3
+      "total": 5
     },
     {
       "family": "command:\\tiny",
@@ -3954,7 +3958,7 @@
     },
     {
       "family": "feature:group",
-      "total": 543
+      "total": 582
     },
     {
       "family": "feature:row-break",
@@ -3962,11 +3966,11 @@
     },
     {
       "family": "feature:scripts",
-      "total": 138
+      "total": 148
     },
     {
       "family": "literal",
-      "total": 30
+      "total": 31
     }
   ],
   "cases": [
@@ -21548,6 +21552,696 @@
       ]
     },
     {
+      "id": "formula:000001",
+      "corpus": "ratex-physics",
+      "index": 1,
+      "status": "pass",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000002",
+      "corpus": "ratex-physics",
+      "index": 2,
+      "status": "pass",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000003",
+      "corpus": "ratex-physics",
+      "index": 3,
+      "status": "pass",
+      "families": [
+        "command:\\partial",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000004",
+      "corpus": "ratex-physics",
+      "index": 4,
+      "status": "pass",
+      "families": [
+        "command:\\slashed"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000005",
+      "corpus": "ratex-physics",
+      "index": 5,
+      "status": "pass",
+      "families": [
+        "command:\\partial",
+        "command:\\slashed"
+      ],
+      "commands": [
+        "\\partial",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000006",
+      "corpus": "ratex-physics",
+      "index": 6,
+      "status": "pass",
+      "families": [
+        "command:\\mu",
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\mu",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000007",
+      "corpus": "ratex-physics",
+      "index": 7,
+      "status": "pass",
+      "families": [
+        "command:\\,",
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\,",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000008",
+      "corpus": "ratex-physics",
+      "index": 8,
+      "status": "pass",
+      "families": [
+        "command:\\mathbf",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\mathbf",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000009",
+      "corpus": "ratex-physics",
+      "index": 9,
+      "status": "pass",
+      "families": [
+        "command:\\frac",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\frac",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000010",
+      "corpus": "ratex-physics",
+      "index": 10,
+      "status": "pass",
+      "families": [
+        "command:\\partial",
+        "command:\\psi",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\psi",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000011",
+      "corpus": "ratex-physics",
+      "index": 11,
+      "status": "pass",
+      "families": [
+        "command:\\quad",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\quad",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000012",
+      "corpus": "ratex-physics",
+      "index": 12,
+      "status": "pass",
+      "families": [
+        "command:\\partial",
+        "command:\\quad",
+        "command:\\scriptstyle",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\quad",
+        "\\scriptstyle",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000013",
+      "corpus": "ratex-physics",
+      "index": 13,
+      "status": "pass",
+      "families": [
+        "command:\\partial",
+        "command:\\quad",
+        "command:\\scriptscriptstyle",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\partial",
+        "\\quad",
+        "\\scriptscriptstyle",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000014",
+      "corpus": "ratex-physics",
+      "index": 14,
+      "status": "pass",
+      "families": [
+        "command:\\quad",
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\quad",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000015",
+      "corpus": "ratex-physics",
+      "index": 15,
+      "status": "pass",
+      "families": [
+        "command:\\slashed"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000016",
+      "corpus": "ratex-physics",
+      "index": 16,
+      "status": "pass",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000017",
+      "corpus": "ratex-physics",
+      "index": 17,
+      "status": "pass",
+      "families": [
+        "command:\\mathbf",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\mathbf",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000018",
+      "corpus": "ratex-physics",
+      "index": 18,
+      "status": "pass",
+      "families": [
+        "command:\\boldsymbol",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\boldsymbol",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000019",
+      "corpus": "ratex-physics",
+      "index": 19,
+      "status": "pass",
+      "families": [
+        "command:\\mathit",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\mathit",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000020",
+      "corpus": "ratex-physics",
+      "index": 20,
+      "status": "pass",
+      "families": [
+        "command:\\slashed",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000021",
+      "corpus": "ratex-physics",
+      "index": 21,
+      "status": "pass",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000022",
+      "corpus": "ratex-physics",
+      "index": 22,
+      "status": "pass",
+      "families": [
+        "command:\\left",
+        "command:\\partial",
+        "command:\\right",
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\left",
+        "\\partial",
+        "\\right",
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000023",
+      "corpus": "ratex-physics",
+      "index": 23,
+      "status": "pass",
+      "families": [
+        "command:\\slashed",
+        "feature:group"
+      ],
+      "commands": [
+        "\\slashed"
+      ]
+    },
+    {
+      "id": "formula:000024",
+      "corpus": "ratex-physics",
+      "index": 24,
+      "status": "unsupported",
+      "review": "scope-exclusion",
+      "reason": "RaTeX's physics gallery includes one whole-formula dollar-delimited entry; Untie accepts the expression body and leaves document delimiters to the host.",
+      "families": [
+        "command:\\ce",
+        "command:\\pu",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\ce",
+        "\\pu"
+      ],
+      "codes": [
+        "unsupported"
+      ],
+      "diagnostics": [
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 0,
+          "end": 1,
+          "message": "nested math delimiters are not supported in math mode"
+        },
+        {
+          "code": "unsupported",
+          "severity": 0,
+          "start": 40,
+          "end": 41,
+          "message": "nested math delimiters are not supported in math mode"
+        }
+      ],
+      "detail": "frontend reports an unsupported construct"
+    },
+    {
+      "id": "formula:000025",
+      "corpus": "ratex-physics",
+      "index": 25,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000026",
+      "corpus": "ratex-physics",
+      "index": 26,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000027",
+      "corpus": "ratex-physics",
+      "index": 27,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000028",
+      "corpus": "ratex-physics",
+      "index": 28,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000029",
+      "corpus": "ratex-physics",
+      "index": 29,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000030",
+      "corpus": "ratex-physics",
+      "index": 30,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000031",
+      "corpus": "ratex-physics",
+      "index": 31,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000032",
+      "corpus": "ratex-physics",
+      "index": 32,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000033",
+      "corpus": "ratex-physics",
+      "index": 33,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000034",
+      "corpus": "ratex-physics",
+      "index": 34,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000035",
+      "corpus": "ratex-physics",
+      "index": 35,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000036",
+      "corpus": "ratex-physics",
+      "index": 36,
+      "status": "pass",
+      "families": [
+        "command:\\pu",
+        "feature:group"
+      ],
+      "commands": [
+        "\\pu"
+      ]
+    },
+    {
+      "id": "formula:000037",
+      "corpus": "ratex-physics",
+      "index": 37,
+      "status": "pass",
+      "families": [
+        "command:\\Psi",
+        "command:\\frac",
+        "command:\\hat",
+        "command:\\hbar",
+        "command:\\partial",
+        "feature:group"
+      ],
+      "commands": [
+        "\\Psi",
+        "\\frac",
+        "\\hat",
+        "\\hbar",
+        "\\partial"
+      ]
+    },
+    {
+      "id": "formula:000038",
+      "corpus": "ratex-physics",
+      "index": 38,
+      "status": "pass",
+      "families": [
+        "command:\\frac",
+        "command:\\mathbf",
+        "command:\\nabla",
+        "command:\\partial",
+        "command:\\times",
+        "feature:group"
+      ],
+      "commands": [
+        "\\frac",
+        "\\mathbf",
+        "\\nabla",
+        "\\partial",
+        "\\times"
+      ]
+    },
+    {
+      "id": "formula:000039",
+      "corpus": "ratex-physics",
+      "index": 39,
+      "status": "pass",
+      "families": [
+        "command:\\Lambda",
+        "command:\\frac",
+        "command:\\mu",
+        "command:\\nu",
+        "command:\\pi",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\Lambda",
+        "\\frac",
+        "\\mu",
+        "\\nu",
+        "\\pi"
+      ]
+    },
+    {
+      "id": "formula:000040",
+      "corpus": "ratex-physics",
+      "index": 40,
+      "status": "pass",
+      "families": [
+        "command:\\Sigma",
+        "command:\\cdot",
+        "command:\\iint",
+        "command:\\mathbf",
+        "command:\\nabla",
+        "command:\\oint",
+        "command:\\partial",
+        "command:\\times",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\Sigma",
+        "\\cdot",
+        "\\iint",
+        "\\mathbf",
+        "\\nabla",
+        "\\oint",
+        "\\partial",
+        "\\times"
+      ]
+    },
+    {
+      "id": "formula:000041",
+      "corpus": "ratex-physics",
+      "index": 41,
+      "status": "pass",
+      "families": [
+        "command:\\frac",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\frac"
+      ]
+    },
+    {
+      "id": "formula:000042",
+      "corpus": "ratex-physics",
+      "index": 42,
+      "status": "pass",
+      "families": [
+        "feature:scripts"
+      ]
+    },
+    {
+      "id": "formula:000043",
+      "corpus": "ratex-physics",
+      "index": 43,
+      "status": "pass",
+      "families": [
+        "command:\\nu"
+      ],
+      "commands": [
+        "\\nu"
+      ]
+    },
+    {
+      "id": "formula:000044",
+      "corpus": "ratex-physics",
+      "index": 44,
+      "status": "pass",
+      "families": [
+        "literal"
+      ]
+    },
+    {
+      "id": "formula:000045",
+      "corpus": "ratex-physics",
+      "index": 45,
+      "status": "pass",
+      "families": [
+        "command:\\frac",
+        "command:\\text",
+        "feature:group",
+        "feature:scripts"
+      ],
+      "commands": [
+        "\\frac",
+        "\\text"
+      ]
+    },
+    {
       "id": "line:000001",
       "corpus": "ratex-prooftree",
       "index": 1,
@@ -23113,65 +23807,33 @@
       "id": "line:000001",
       "corpus": "ratex-slashed",
       "index": 1,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed",
         "feature:group"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000002",
       "corpus": "ratex-slashed",
       "index": 2,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed",
         "feature:group"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000003",
       "corpus": "ratex-slashed",
       "index": 3,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\partial",
         "command:\\slashed",
@@ -23180,55 +23842,25 @@
       "commands": [
         "\\partial",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000004",
       "corpus": "ratex-slashed",
       "index": 4,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000005",
       "corpus": "ratex-slashed",
       "index": 5,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\partial",
         "command:\\slashed"
@@ -23236,28 +23868,13 @@
       "commands": [
         "\\partial",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000006",
       "corpus": "ratex-slashed",
       "index": 6,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\mu",
         "command:\\slashed",
@@ -23267,28 +23884,13 @@
       "commands": [
         "\\mu",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000007",
       "corpus": "ratex-slashed",
       "index": 7,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\,",
         "command:\\slashed",
@@ -23298,28 +23900,13 @@
       "commands": [
         "\\,",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000008",
       "corpus": "ratex-slashed",
       "index": 8,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\mathbf",
         "command:\\slashed",
@@ -23328,28 +23915,13 @@
       "commands": [
         "\\mathbf",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000009",
       "corpus": "ratex-slashed",
       "index": 9,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\frac",
         "command:\\slashed",
@@ -23358,28 +23930,13 @@
       "commands": [
         "\\frac",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 9,
-          "end": 17,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000010",
       "corpus": "ratex-slashed",
       "index": 10,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\partial",
         "command:\\psi",
@@ -23390,28 +23947,13 @@
         "\\partial",
         "\\psi",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 2,
-          "end": 10,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000011",
       "corpus": "ratex-slashed",
       "index": 11,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\quad",
         "command:\\slashed",
@@ -23420,42 +23962,13 @@
       "commands": [
         "\\quad",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 16,
-          "end": 24,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 32,
-          "end": 40,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000012",
       "corpus": "ratex-slashed",
       "index": 12,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\partial",
         "command:\\quad",
@@ -23468,42 +23981,13 @@
         "\\quad",
         "\\scriptstyle",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 12,
-          "end": 20,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 28,
-          "end": 36,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 44,
-          "end": 52,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000013",
       "corpus": "ratex-slashed",
       "index": 13,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\partial",
         "command:\\quad",
@@ -23516,42 +24000,13 @@
         "\\quad",
         "\\scriptscriptstyle",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 18,
-          "end": 26,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 34,
-          "end": 42,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 50,
-          "end": 58,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000014",
       "corpus": "ratex-slashed",
       "index": 14,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\quad",
         "command:\\slashed",
@@ -23561,90 +24016,38 @@
       "commands": [
         "\\quad",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 3,
-          "end": 11,
-          "message": "undefined control sequence: \\slashed"
-        },
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 27,
-          "end": 35,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000015",
       "corpus": "ratex-slashed",
       "index": 15,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000016",
       "corpus": "ratex-slashed",
       "index": 16,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed",
         "feature:group"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000017",
       "corpus": "ratex-slashed",
       "index": 17,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\mathbf",
         "command:\\slashed",
@@ -23653,28 +24056,13 @@
       "commands": [
         "\\mathbf",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 8,
-          "end": 16,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000018",
       "corpus": "ratex-slashed",
       "index": 18,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\boldsymbol",
         "command:\\slashed",
@@ -23683,28 +24071,13 @@
       "commands": [
         "\\boldsymbol",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 12,
-          "end": 20,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000019",
       "corpus": "ratex-slashed",
       "index": 19,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\mathit",
         "command:\\slashed",
@@ -23713,28 +24086,13 @@
       "commands": [
         "\\mathit",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 8,
-          "end": 16,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000020",
       "corpus": "ratex-slashed",
       "index": 20,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed",
         "feature:group",
@@ -23742,56 +24100,26 @@
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000021",
       "corpus": "ratex-slashed",
       "index": 21,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed",
         "feature:group"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000022",
       "corpus": "ratex-slashed",
       "index": 22,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\left",
         "command:\\partial",
@@ -23804,48 +24132,20 @@
         "\\partial",
         "\\right",
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 6,
-          "end": 14,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     },
     {
       "id": "line:000023",
       "corpus": "ratex-slashed",
       "index": 23,
-      "status": "unsupported",
-      "review": "scope-exclusion",
-      "reason": "Feynman slash notation requires package-specific geometry and is not part of KaTeX's core command surface.",
+      "status": "pass",
       "families": [
         "command:\\slashed",
         "feature:group"
       ],
       "commands": [
         "\\slashed"
-      ],
-      "codes": [
-        "unknown-command"
-      ],
-      "diagnostics": [
-        {
-          "code": "unknown-command",
-          "severity": 0,
-          "start": 0,
-          "end": 8,
-          "message": "undefined control sequence: \\slashed"
-        }
-      ],
-      "detail": "upstream case expects successful parsing"
+      ]
     }
   ]
 }

@@ -46,6 +46,8 @@ func LoadCorpus(root string, spec CorpusSpec) (*Corpus, error) {
 		cases, err = loadTypletCases(root, corpusPath, spec)
 	case RawLines:
 		cases, err = loadRawCases(corpusPath, spec.ExpectedCount, spec.CommentPrefix)
+	case JSONFormulas:
+		cases, err = loadJSONFormulaCases(corpusPath, spec.ExpectedCount)
 	case KaTeXJSONL:
 		var records []KaTeXCase
 		records, err = LoadKaTeXCases(corpusPath, spec.ExpectedCount)
@@ -209,6 +211,39 @@ func loadRawCases(filePath string, expected int, commentPrefix string) ([]Case, 
 	cases := make([]Case, len(lines))
 	for i, source := range lines {
 		cases[i] = Case{Index: i + 1, ID: fmt.Sprintf("line:%06d", i+1), Source: source}
+	}
+	return cases, nil
+}
+
+type formulaDocument struct {
+	Count    int      `json:"count"`
+	Formulas []string `json:"formulas"`
+}
+
+func loadJSONFormulaCases(filePath string, expected int) ([]Case, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	var document formulaDocument
+	if err := decodeJSONObject(data, &document, true); err != nil {
+		return nil, fmt.Errorf("%s: %w", filePath, err)
+	}
+	if document.Count != expected || len(document.Formulas) != expected {
+		return nil, fmt.Errorf(
+			"%s: declared count %d, decoded %d formulas, want %d",
+			filePath,
+			document.Count,
+			len(document.Formulas),
+			expected,
+		)
+	}
+	cases := make([]Case, len(document.Formulas))
+	for i, source := range document.Formulas {
+		if strings.TrimSpace(source) == "" {
+			return nil, fmt.Errorf("%s: formula %d is empty", filePath, i+1)
+		}
+		cases[i] = Case{Index: i + 1, ID: fmt.Sprintf("formula:%06d", i+1), Source: source}
 	}
 	return cases, nil
 }

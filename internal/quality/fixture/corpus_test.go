@@ -26,6 +26,26 @@ func TestRawCorpusSkipsBlankLinesAndReviewedComments(t *testing.T) {
 	}
 }
 
+func TestJSONFormulaCorpusRequiresDeclaredAndDecodedCounts(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "formulas.json")
+	data := `{"count":2,"formulas":["x+1","y^2"]}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cases, err := loadJSONFormulaCases(path, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != 2 || cases[0].ID != "formula:000001" || cases[1].Source != "y^2" {
+		t.Fatalf("cases = %#v", cases)
+	}
+	if _, err := loadJSONFormulaCases(path, 3); err == nil {
+		t.Fatal("count mismatch was accepted")
+	}
+}
+
 func TestRunCorpusRunsEveryCaseAndAccountsForAll(t *testing.T) {
 	t.Parallel()
 	corpus := testCorpus("pass")

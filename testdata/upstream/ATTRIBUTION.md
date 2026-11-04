@@ -54,13 +54,14 @@ Apache-2.0; see `licenses/Typst-Apache-2.0.txt` and
   - `tests/golden/test_cases_centernot.txt` to `centernot-test-cases.txt`
   - `tests/golden/test_cases_slashed.txt` to `slashed-test-cases.txt`
   - `tests/golden/test_cases_prooftree.txt` to `prooftree-test-cases.txt`
+  - `website/public/data/physics.json` to `physics.json`
 - Transformation: exact pinned fetches. RaTeX golden PNGs and diff images are
   not imported.
 
-The corpus counts are 1,075 core, 103 chemistry, 19 centered-negation, 23
-slashed-symbol, and 38 proof-tree formulas. The centered-negation file's leading
-provenance comment is excluded by the corpus manifest rather than parsed as a
-formula.
+The corpus counts are 1,075 core, 103 chemistry, 45 physics-gallery, 19
+centered-negation, 23 slashed-symbol, and 38 proof-tree formulas. The
+centered-negation file's leading provenance comment is excluded by the corpus
+manifest rather than parsed as a formula.
 
 ## KaTeX
 

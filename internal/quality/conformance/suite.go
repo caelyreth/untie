@@ -18,6 +18,7 @@ import (
 const (
 	ratexCoreCorpus      = "ratex-core"
 	ratexChemistryCorpus = "ratex-chemistry"
+	ratexPhysicsCorpus   = "ratex-physics"
 	ratexCenternotCorpus = "ratex-centernot"
 	ratexSlashedCorpus   = "ratex-slashed"
 	ratexProofTreeCorpus = "ratex-prooftree"
@@ -30,6 +31,7 @@ var teXCorpora = []struct {
 }{
 	{ratexCoreCorpus, 1075},
 	{ratexChemistryCorpus, 103},
+	{ratexPhysicsCorpus, 45},
 	{ratexCenternotCorpus, 19},
 	{ratexSlashedCorpus, 23},
 	{ratexProofTreeCorpus, 38},
@@ -139,7 +141,7 @@ func teXInput(corpus string, testCase fixture.Case, policy *Policy) (Input, erro
 		Expect: ExpectParse,
 	}
 	switch corpus {
-	case ratexCoreCorpus, ratexChemistryCorpus, ratexCenternotCorpus, ratexSlashedCorpus, ratexProofTreeCorpus:
+	case ratexCoreCorpus, ratexChemistryCorpus, ratexPhysicsCorpus, ratexCenternotCorpus, ratexSlashedCorpus, ratexProofTreeCorpus:
 		return input, nil
 	case katexCorpus:
 		input.Mode = ir.Inline

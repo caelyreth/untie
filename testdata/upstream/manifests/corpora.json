@@ -67,6 +67,12 @@
       "expectedCount": 103
     },
     {
+      "name": "ratex-physics",
+      "format": "json-formulas",
+      "corpusFile": "ratex-0.1.15/physics.json",
+      "expectedCount": 45
+    },
+    {
       "name": "ratex-centernot",
       "format": "raw-lines",
       "corpusFile": "ratex-0.1.15/centernot-test-cases.txt",

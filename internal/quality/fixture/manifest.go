@@ -149,9 +149,10 @@ func VerifySHA256Manifest(root, manifestFile string) error {
 type CorpusFormat string
 
 const (
-	TypletJSONL CorpusFormat = "typlet-jsonl"
-	RawLines    CorpusFormat = "raw-lines"
-	KaTeXJSONL  CorpusFormat = "katex-jsonl"
+	TypletJSONL  CorpusFormat = "typlet-jsonl"
+	RawLines     CorpusFormat = "raw-lines"
+	JSONFormulas CorpusFormat = "json-formulas"
+	KaTeXJSONL   CorpusFormat = "katex-jsonl"
 )
 
 // KnownDifferenceEntry is an explicit, reviewed exclusion from strict matching.
@@ -234,7 +235,7 @@ func (m *CorpusManifest) Validate() error {
 			if *spec.ExpectedFrameCount < 0 || *spec.ExpectedFrameCount > spec.ExpectedFixtureCount {
 				return fmt.Errorf("corpus %q has invalid expectedFrameCount %d", spec.Name, *spec.ExpectedFrameCount)
 			}
-		case RawLines, KaTeXJSONL:
+		case RawLines, JSONFormulas, KaTeXJSONL:
 			if spec.FixtureFile != "" || spec.ExpectedFixtureCount != 0 || spec.ExpectedFrameCount != nil {
 				return fmt.Errorf("corpus %q has a fixture for non-Typlet format %q", spec.Name, spec.Format)
 			}
