@@ -19,7 +19,7 @@ the public `contrib/mygo` module are versioned together.
    version without the `v` prefix:
 
    ```sh
-   VERSION=0.4.1
+   VERSION=0.4.2
    npx --yes changelogithub@15.0.5 --to "v$VERSION" --dry
    ```
 
@@ -32,7 +32,7 @@ and excludes nested module tags from root release changelogs.
 Create both module tags on the same commit:
 
 ```sh
-VERSION=0.4.1
+VERSION=0.4.2
 git tag -a "v$VERSION" -m "v$VERSION"
 git tag -a "contrib/mygo/v$VERSION" -m "contrib/mygo/v$VERSION"
 git push origin "v$VERSION" "contrib/mygo/v$VERSION"

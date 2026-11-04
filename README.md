@@ -156,7 +156,7 @@ Markdown binding, and existing-box drawing.
 
 ### Release
 
-`v0.4.1` is the latest published release.
+`v0.4.2` is the latest published release.
 Untie remains pre-1.0 while its API stability tiers are validated through real
 integrations. Release notes are generated from Conventional Commits and
 published in [GitHub Releases](https://github.com/caelyreth/untie/releases);
