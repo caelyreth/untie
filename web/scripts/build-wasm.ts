@@ -21,7 +21,7 @@ const fontSource = join(
 const fontLicense = join(
   repositoryRoot,
   'examples',
-  'mygo',
+  'mygo-simple',
   'assets',
   'GUST-FONT-LICENSE.txt',
 )
