@@ -157,6 +157,7 @@ cadence, font set, and source rate.
 - Path templates passed to `Frame.Walk` are callback-scoped.
 - A session retains only its current frame and pending source; it is not an
   unbounded history of partial layouts.
-- Dynamic error visibility, edits that reorder formulas, and stable identity
-  across unrelated block edits require host-owned identity or a future
-  incremental frontend.
+- `HideErrors` and other transition options are fixed for a session. Changing
+  them requires a new session.
+- Edits that reorder formulas should use host-owned node identity. A future
+  incremental frontend can extend stability across unrelated block edits.
