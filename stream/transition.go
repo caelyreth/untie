@@ -52,6 +52,7 @@ type Command struct {
 type shape struct {
 	key    string
 	kind   Kind
+	class  paintClass
 	paint  display.Paint
 	bound  geometry.Rect
 	path   display.PathTemplate
@@ -61,6 +62,20 @@ type shape struct {
 	snap   display.SnapAxis
 	fontID string
 	glyph  uint16
+}
+
+type paintClass uint8
+
+const (
+	paintInk paintClass = iota
+	paintFallback
+)
+
+func paintClassOf(paint display.Paint) paintClass {
+	if paint.Role == display.RoleError || paint.Role == display.RolePlaceholder {
+		return paintFallback
+	}
+	return paintInk
 }
 
 type actionKind uint8
@@ -238,11 +253,14 @@ func extractShapes(box *untie.Box) ([]shape, error) {
 	ordinals := make(map[string]int, len(box.Items))
 	for i, item := range box.Items {
 		identity := shapeIdentity(box, item)
-		ordinal := ordinals[identity]
-		ordinals[identity] = ordinal + 1
-		key := fmt.Sprintf("%s:%d:%d", identity, item.Kind, ordinal)
+		class := paintClassOf(item.Paint)
+		base := fmt.Sprintf("%s:%d:%d", identity, class, item.Kind)
+		ordinal := ordinals[base]
+		ordinals[base] = ordinal + 1
+		key := fmt.Sprintf("%s:%d", base, ordinal)
 		common := shape{
 			key:    key,
+			class:  class,
 			paint:  item.Paint,
 			bound:  item.Bound,
 			snap:   item.Snap,
@@ -294,7 +312,7 @@ func shapeIdentity(box *untie.Box, item display.Item) string {
 	if item.Kind == display.ItemGlyphPath || item.Kind == display.ItemGlyphRef {
 		return fmt.Sprintf("glyph:%s:%d", item.FontID, item.Glyph)
 	}
-	return fmt.Sprintf("rule:%.2f:%.2f", item.Rect.Width, item.Rect.Height)
+	return "rule"
 }
 
 func matchShapes(previous, current []shape) []int {
@@ -337,7 +355,7 @@ func matchShapes(previous, current []shape) []int {
 }
 
 func fallbackCompatible(previous, current shape) bool {
-	if previous.kind != current.kind {
+	if previous.kind != current.kind || previous.class != current.class {
 		return false
 	}
 	if current.kind == Rule {

@@ -115,7 +115,9 @@ The transition uses stable identity in this order:
 
 Exact matches are preferred. A guarded nearest-neighbor fallback handles
 recovery layouts that move a source region without changing its glyph and path
-template.
+template. Fallback matching never crosses visible and error/placeholder paint
+classes, and rule identity does not include its current width or height, so a
+resizing fraction bar remains a move instead of becoming a new entrance.
 
 Shared glyph paths interpolate `At` and `Em`; they are not re-resolved into new
 geometry for every animation frame. Rules interpolate their rectangles.
