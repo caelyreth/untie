@@ -329,6 +329,7 @@ var allowedStreamExampleImports = map[string]packageRules{
 			modulePath,
 			modulePath + "/contrib/mygo",
 			modulePath + "/render",
+			modulePath + "/stream",
 			"github.com/egoist/mygo",
 			"github.com/egoist/mygo/ui",
 			"github.com/egoist/mygo/ui/markdown",

@@ -57,10 +57,39 @@ type Command struct {
 	Snap display.SnapAxis
 }
 
+// Timing selects the interpolation curve for a transition.
+type Timing uint8
+
+const (
+	// TimingEaseOutCubic starts quickly and settles gently. It is the default.
+	TimingEaseOutCubic Timing = iota
+	// TimingEaseInOutCubic accelerates from rest and settles gently.
+	TimingEaseInOutCubic
+)
+
+func (t Timing) valid() bool {
+	return t == TimingEaseOutCubic || t == TimingEaseInOutCubic
+}
+
+func (t Timing) apply(progress float32) float32 {
+	switch t {
+	case TimingEaseInOutCubic:
+		if progress < 0.5 {
+			return 4 * progress * progress * progress
+		}
+		left := -2*progress + 2
+		return 1 - left*left*left/2
+	default:
+		return easeOutCubic(progress)
+	}
+}
+
 // TransitionOptions configure display interpolation.
 type TransitionOptions struct {
 	// Duration zero uses DefaultDuration. Negative values are invalid.
 	Duration time.Duration
+	// Timing defaults to TimingEaseOutCubic.
+	Timing Timing
 	// HideErrors omits error and placeholder paint while source is partial.
 	HideErrors bool
 	// AppearanceStartScale zero uses DefaultAppearanceStartScale. One keeps
@@ -75,6 +104,10 @@ func (o TransitionOptions) normalized() (TransitionOptions, error) {
 	}
 	if o.Duration == 0 {
 		o.Duration = DefaultDuration
+	}
+	if !o.Timing.valid() {
+		return TransitionOptions{}, fmt.Errorf("%w: unknown timing %d",
+			ErrInvalidOptions, o.Timing)
 	}
 	if !finite(o.AppearanceStartScale) ||
 		o.AppearanceStartScale < 0 ||
@@ -128,6 +161,7 @@ type Transition struct {
 	started  time.Time
 	duration time.Duration
 	start    float32
+	timing   Timing
 }
 
 // NewTransition compares previous and current and prepares a reusable display
@@ -158,6 +192,7 @@ func NewTransition(
 		started:  started,
 		duration: options.Duration,
 		start:    options.AppearanceStartScale,
+		timing:   options.Timing,
 	}
 	matches := matchShapes(before, after)
 	for i := range after {
@@ -277,7 +312,7 @@ func (t *Transition) progress(at time.Time) float32 {
 	}
 	progress := float32(at.Sub(t.started)) / float32(t.duration)
 	progress = min(1, max(0, progress))
-	return easeOutCubic(progress)
+	return t.timing.apply(progress)
 }
 
 func extractShapes(box *untie.Box, hideErrors bool) ([]shape, error) {

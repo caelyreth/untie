@@ -28,6 +28,7 @@ session, err := stream.NewSession(ctx, renderer, stream.SessionOptions{
 	TargetSource: completedFormula,
 	Transition: stream.TransitionOptions{
 		Duration:             180 * time.Millisecond,
+		Timing:               stream.TimingEaseInOutCubic,
 		AppearanceStartScale: 0.72,
 		HideErrors:           true,
 	},
@@ -76,6 +77,11 @@ if delay, ok := session.NextCommitIn(now); ok {
 This distinguishes the two clocks. Paint frames may sample interpolation with
 their current time without rebuilding. A host timer calls `Update` again at the
 reported deadline so the latest source is parsed and laid out once.
+
+`TransitionOptions.Timing` selects the interpolation curve. The default
+`TimingEaseOutCubic` responds immediately and settles gently;
+`TimingEaseInOutCubic` starts and ends more slowly for a more deliberate stream
+animation.
 
 ## Drawing
 

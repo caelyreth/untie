@@ -193,6 +193,11 @@ func TestNewTransitionRejectsInvalidOptions(t *testing.T) {
 	}); err == nil {
 		t.Fatal("appearance scale above one accepted")
 	}
+	if _, err := stream.NewTransition(nil, box, time.Time{}, stream.TransitionOptions{
+		Timing: stream.Timing(255),
+	}); err == nil {
+		t.Fatal("unknown timing accepted")
+	}
 }
 
 func newTestRenderer(t testing.TB) *untie.Renderer {
