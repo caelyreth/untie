@@ -195,7 +195,7 @@ func TestNewTransitionRejectsInvalidOptions(t *testing.T) {
 	}
 }
 
-func newTestRenderer(t *testing.T) *untie.Renderer {
+func newTestRenderer(t testing.TB) *untie.Renderer {
 	t.Helper()
 	data, err := os.ReadFile("../testdata/upstream/fonts/NewCMMath-Book.otf")
 	if err != nil {
@@ -215,7 +215,7 @@ func newTestRenderer(t *testing.T) *untie.Renderer {
 	return renderer
 }
 
-func renderBox(t *testing.T, renderer *untie.Renderer, source string) *untie.Box {
+func renderBox(t testing.TB, renderer *untie.Renderer, source string) *untie.Box {
 	t.Helper()
 	result, err := renderer.Render(t.Context(), source, untie.RenderRequest{
 		Mode:  untie.Display,
