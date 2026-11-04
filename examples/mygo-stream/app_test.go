@@ -101,6 +101,46 @@ func TestPrepareDisplayMathSupportsMultipleBlocks(t *testing.T) {
 	}
 }
 
+func TestReplayFadesFormulaAndRestartsStream(t *testing.T) {
+	model, err := newApp(mathFont)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tester := ui.NewTester(model.view, 980, 760)
+	tester.Frame()
+	if err := tester.Click("Render stream"); err != nil {
+		t.Fatal(err)
+	}
+	tester.Advance(8 * time.Second)
+	if !model.complete || model.streaming {
+		t.Fatalf("initial stream state = complete:%v streaming:%v",
+			model.complete, model.streaming)
+	}
+	if err := tester.Click("Replay"); err != nil {
+		t.Fatal(err)
+	}
+	if !model.replaying || model.streaming {
+		t.Fatalf("replay state = replaying:%v streaming:%v",
+			model.replaying, model.streaming)
+	}
+	if opacity := model.mathOpacity(model.replayAt); opacity != 1 {
+		t.Fatalf("replay start opacity = %v", opacity)
+	}
+	if opacity := model.mathOpacity(model.replayAt.Add(replayFadeDuration / 2)); opacity <= 0 || opacity >= 1 {
+		t.Fatalf("replay middle opacity = %v", opacity)
+	}
+	tester.Advance(replayFadeDuration + 32*time.Millisecond)
+	if model.replaying || !model.streaming {
+		t.Fatalf("restarted state = replaying:%v streaming:%v",
+			model.replaying, model.streaming)
+	}
+	tester.Advance(8 * time.Second)
+	if !model.complete || model.streaming {
+		t.Fatalf("replayed stream state = complete:%v streaming:%v",
+			model.complete, model.streaming)
+	}
+}
+
 func mathTarget() string {
 	return `G_{\mu\nu} + \Lambda g_{\mu\nu}
 = \frac{8\pi G}{c^4} T_{\mu\nu}`

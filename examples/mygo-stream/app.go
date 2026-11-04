@@ -16,7 +16,10 @@ import (
 	"github.com/egoist/mygo/ui/markdown/parser"
 )
 
-const defaultStreamSpeed = 165
+const (
+	defaultStreamSpeed = 165
+	replayFadeDuration = 160 * time.Millisecond
+)
 
 type page uint8
 
@@ -50,7 +53,9 @@ type app struct {
 
 	streaming bool
 	complete  bool
+	replaying bool
 	started   time.Time
+	replayAt  time.Time
 	shown     int
 
 	page   page
@@ -153,7 +158,9 @@ func (a *app) renderPage(c *ui.Context) {
 			ui.Column(c).Gap(1).Children(func() {
 				ui.Text(c, "Rendered stream").FontSize(20).FontWeight(650)
 				status := "ready to stream"
-				if a.streaming {
+				if a.replaying {
+					status = "replaying"
+				} else if a.streaming {
 					status = fmt.Sprintf("streaming %d%% at %.0f bytes / second", a.progress(), a.streamSpeed)
 				} else if a.complete {
 					status = fmt.Sprintf("complete at %.0f bytes / second", a.streamSpeed)
@@ -162,6 +169,11 @@ func (a *app) renderPage(c *ui.Context) {
 			})
 			ui.Text(c, "Markdown + TeX").Grow(1).TextAlign(ui.End).
 				FontSize(12).TextColor(t.TextMuted)
+			if ui.Button(c, "Replay").Clicked() && !a.replaying {
+				a.replaying = true
+				a.replayAt = c.Now()
+				a.streaming = false
+			}
 			if ui.Button(c, "Edit source").Clicked() {
 				a.reset()
 				a.page = editorPage
@@ -177,13 +189,24 @@ func (a *app) renderPage(c *ui.Context) {
 
 func (a *app) stream(c *ui.Context) {
 	a.displayAt = 0
+	if a.replaying {
+		progress := float32(c.Now().Sub(a.replayAt)) / float32(replayFadeDuration)
+		if progress >= 1 {
+			a.replaying = false
+			a.start(c.Now())
+		} else {
+			c.Invalidate()
+		}
+	}
 	if a.shown == 0 && !a.streaming && !a.complete {
 		ui.Text(c, "Press Render stream to send the editable content through Markdown.").
 			FontSize(14).TextColor(c.Theme().TextMuted)
 		return
 	}
 	source := a.source
-	if a.streaming {
+	if a.replaying {
+		source = source[:a.shown]
+	} else if a.streaming {
 		visible := int(c.Now().Sub(a.started).Seconds() * a.streamSpeed)
 		visible = min(len(source), max(0, visible))
 		for visible < len(source) && !utf8.RuneStart(source[visible]) {
@@ -215,13 +238,16 @@ func (a *app) displayMath(c *ui.Context, source string) {
 	}
 	ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).TrackScroll(&a.math).
 		Margin(8, 0).Children(func() {
-		a.mathStreams[index].Element(c, source).MinWidthPercent(100)
+		a.mathStreams[index].Element(c, source).
+			Opacity(a.mathOpacity(c.Now())).
+			MinWidthPercent(100)
 	})
 }
 
 func (a *app) start(now time.Time) {
 	a.streaming = true
 	a.complete = false
+	a.replaying = false
 	a.started = now
 	a.shown = 0
 	a.scroll.Y = 0
@@ -232,11 +258,22 @@ func (a *app) start(now time.Time) {
 func (a *app) reset() {
 	a.streaming = false
 	a.complete = false
+	a.replaying = false
 	a.started = time.Time{}
 	a.shown = 0
 	a.math.X, a.math.Y = 0, 0
 	a.mathStreams = a.mathStreams[:0]
 	a.displayAt = 0
+}
+
+func (a *app) mathOpacity(now time.Time) float32 {
+	if !a.replaying {
+		return 1
+	}
+	progress := min(1, max(0,
+		float32(now.Sub(a.replayAt))/float32(replayFadeDuration)))
+	left := 1 - progress
+	return left * left * left
 }
 
 func (a *app) prepareDisplayMath() {
