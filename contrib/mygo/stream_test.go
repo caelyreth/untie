@@ -67,3 +67,26 @@ func TestNewStreamingMathValidatesRenderer(t *testing.T) {
 		t.Fatal("nil renderer accepted")
 	}
 }
+
+func TestStreamingMathAdvancesDuringPainterRepaint(t *testing.T) {
+	renderer := newTestRenderer(t, Options{DisplaySize: 30})
+	streamed, err := renderer.NewStreamingMath(t.Context(), StreamingMathOptions{
+		TargetSource: `x^2`,
+		Transition: stream.TransitionOptions{
+			Duration: 100 * time.Millisecond,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	tester := ui.NewTester(func(c *ui.Context) {
+		// Keep the build timestamp fixed. MyGo may rebuild the view, but the
+		// transition must still advance from the painter's frame clock.
+		streamed.Element(c, `x`, started)
+	}, 240, 120)
+	tester.Advance(200 * time.Millisecond)
+	if tester.FramePending() {
+		t.Fatal("entrance animation froze on its build timestamp")
+	}
+}

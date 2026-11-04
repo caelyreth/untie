@@ -127,7 +127,10 @@ func (m *StreamingMath) Element(c *ui.Context, source string, now time.Time) ui.
 		Label(label).
 		Value(semantics.Value).
 		Draw(func(painter *ui.Painter, rect ui.Rect) {
-			m.drawFrame(painter, frame, rect, now)
+			// AnimationFrame repaints this callback without rebuilding the
+			// element, so sampling the captured build time would freeze every
+			// entrance at its first partially faded frame.
+			m.drawFrame(painter, frame, rect, painter.Now())
 		})
 	return element
 }
