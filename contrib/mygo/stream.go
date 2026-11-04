@@ -88,8 +88,16 @@ func (m *StreamingMath) Frame() *stream.Frame {
 	return m.session.Frame()
 }
 
-// Element builds a drawable display-math element for the latest source.
-func (m *StreamingMath) Element(c *ui.Context, source string, now time.Time) ui.Element {
+// Element builds a drawable display-math element for the latest source using
+// the host frame clock.
+func (m *StreamingMath) Element(c *ui.Context, source string) ui.Element {
+	if c == nil || !c.Valid() {
+		return ui.Element{}
+	}
+	return m.element(c, source, c.Now())
+}
+
+func (m *StreamingMath) element(c *ui.Context, source string, now time.Time) ui.Element {
 	if c == nil || !c.Valid() {
 		return ui.Element{}
 	}
@@ -132,6 +140,11 @@ func (m *StreamingMath) Element(c *ui.Context, source string, now time.Time) ui.
 			// entrance at its first partially faded frame.
 			m.drawFrame(painter, frame, rect, painter.Now())
 		})
+	if delay, ok := m.session.NextCommitIn(now); ok {
+		// Painter.AnimationFrame repaints this committed layout, but only a
+		// view rebuild can call Session.Update and commit newer source.
+		c.After(delay)
+	}
 	return element
 }
 

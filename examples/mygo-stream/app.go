@@ -215,7 +215,7 @@ func (a *app) displayMath(c *ui.Context, source string) {
 	}
 	ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).TrackScroll(&a.math).
 		Margin(8, 0).Children(func() {
-		a.mathStreams[index].Element(c, source, c.Now()).MinWidthPercent(100)
+		a.mathStreams[index].Element(c, source).MinWidthPercent(100)
 	})
 }
 

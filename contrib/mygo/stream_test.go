@@ -37,9 +37,8 @@ func TestStreamingMathReservesCompletedStageAndDraws(t *testing.T) {
 		t.Fatalf("stage bounds = %+v, want %+v", got, want)
 	}
 
-	final := started.Add(100 * time.Millisecond)
 	tester := ui.NewTester(func(c *ui.Context) {
-		streamed.Element(c, `\frac{a`, final)
+		streamed.Element(c, `\frac{a`)
 	}, 400, 180)
 	tester.Frame()
 	if tester.FramePending() {
@@ -83,10 +82,43 @@ func TestStreamingMathAdvancesDuringPainterRepaint(t *testing.T) {
 	tester := ui.NewTester(func(c *ui.Context) {
 		// Keep the build timestamp fixed. MyGo may rebuild the view, but the
 		// transition must still advance from the painter's frame clock.
-		streamed.Element(c, `x`, started)
+		streamed.element(c, `x`, started)
 	}, 240, 120)
-	tester.Advance(200 * time.Millisecond)
+	tester.Advance(300 * time.Millisecond)
 	if tester.FramePending() {
 		t.Fatal("entrance animation froze on its build timestamp")
+	}
+}
+
+func TestStreamingMathSchedulesPendingSourceCommit(t *testing.T) {
+	renderer := newTestRenderer(t, Options{DisplaySize: 30})
+	streamed, err := renderer.NewStreamingMath(t.Context(), StreamingMathOptions{
+		TargetSource: `x^2`,
+		Transition: stream.TransitionOptions{
+			Duration: 100 * time.Millisecond,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := `x`
+	tester := ui.NewTester(func(c *ui.Context) {
+		streamed.Element(c, source)
+	}, 240, 120)
+
+	// Offer newer source inside the active transition. Painter frames animate,
+	// while Context.After must schedule the full rebuild that commits it.
+	source = `x^2`
+	tester.Frame()
+	if frame := streamed.Frame(); frame == nil || frame.Source() != `x` {
+		t.Fatalf("prematurely committed frame = %v", frame)
+	}
+	tester.Advance(300 * time.Millisecond)
+	frame := streamed.Frame()
+	if frame == nil || frame.Source() != `x^2` {
+		t.Fatalf("pending source did not commit: %v", frame)
+	}
+	if tester.FramePending() {
+		t.Fatal("stream did not settle after committing pending source")
 	}
 }
