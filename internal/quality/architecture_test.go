@@ -293,6 +293,17 @@ var allowedProjectImports = map[string]packageRules{
 		Tests:      []string{modulePath + "/render"},
 	},
 	modulePath + "/source": {},
+	modulePath + "/stream": {
+		Production: []string{
+			modulePath,
+			modulePath + "/display",
+			modulePath + "/geometry",
+		},
+		Tests: []string{
+			modulePath + "/render",
+			modulePath + "/stream",
+		},
+	},
 }
 
 // The MyGo examples are separate consumer modules. They may import Untie's
@@ -305,6 +316,8 @@ var allowedSimpleExampleImports = map[string]packageRules{
 		Production: []string{
 			modulePath,
 			modulePath + "/contrib/mygo",
+			modulePath + "/display",
+			modulePath + "/geometry",
 			modulePath + "/render",
 			"github.com/egoist/mygo",
 			"github.com/egoist/mygo/ui",
@@ -317,8 +330,6 @@ var allowedStreamExampleImports = map[string]packageRules{
 		Production: []string{
 			modulePath,
 			modulePath + "/contrib/mygo",
-			modulePath + "/display",
-			modulePath + "/geometry",
 			modulePath + "/render",
 			"github.com/egoist/mygo",
 			"github.com/egoist/mygo/ui",
