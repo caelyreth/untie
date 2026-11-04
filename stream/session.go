@@ -161,6 +161,27 @@ func (s *Session) Pending() bool {
 	return s != nil && s.hasPending
 }
 
+// NextCommitIn reports how long a host should wait before calling Update again
+// to commit the pending source. The returned duration is zero when a commit is
+// already due. ok is false when no source is pending.
+//
+// Non-UI hosts can use this with their timer scheduler. MyGo hosts can pass the
+// duration directly to Context.After, which requests a full view rebuild rather
+// than the paint-only frames used for interpolation.
+func (s *Session) NextCommitIn(now time.Time) (time.Duration, bool) {
+	if s == nil || !s.hasPending {
+		return 0, false
+	}
+	if s.frame == nil {
+		return 0, true
+	}
+	deadline := s.lastCommit.Add(s.transition.Duration)
+	if !deadline.After(now) {
+		return 0, true
+	}
+	return deadline.Sub(now), true
+}
+
 // Animating reports whether pending work or command interpolation needs
 // another host frame.
 func (s *Session) Animating(now time.Time) bool {

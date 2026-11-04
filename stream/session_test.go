@@ -53,6 +53,10 @@ func TestSessionCoalescesBeforeLayout(t *testing.T) {
 	if renderer.calls != 1 || !session.Pending() {
 		t.Fatalf("coalesced calls=%d pending=%v", renderer.calls, session.Pending())
 	}
+	delay, ok := session.NextCommitIn(now.Add(40 * time.Millisecond))
+	if !ok || delay != 140*time.Millisecond {
+		t.Fatalf("next commit delay = %v, %v, want 140ms", delay, ok)
+	}
 	frame, changed, err = session.Update(
 		t.Context(),
 		`x^2+1`,
@@ -63,6 +67,9 @@ func TestSessionCoalescesBeforeLayout(t *testing.T) {
 	}
 	if renderer.calls != 2 || frame.Source() != `x^2+1` {
 		t.Fatalf("commit calls=%d source=%q", renderer.calls, frame.Source())
+	}
+	if _, ok := session.NextCommitIn(now.Add(stream.DefaultDuration)); ok {
+		t.Fatal("next commit remains scheduled after commit")
 	}
 }
 
