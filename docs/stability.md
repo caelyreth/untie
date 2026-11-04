@@ -1,6 +1,6 @@
 # API Stability Tiers
 
-Untie is currently version `0.4.3` with layout revision `8`. This page defines
+Untie is currently version `0.5.0` with layout revision `8`. This page defines
 how these docs describe stability; it does not add a guarantee that is absent
 from the code.
 
@@ -32,11 +32,12 @@ Primary surface:
 - `render.Walk`, `render.Command`, `render.ResolvePath`, `render.Fit`,
   `render.FitOptions`, and `render.Transform`;
 - `stream.NewSession`, `SessionOptions`, `Session.Update`,
-  `Session.NextCommitIn`, `Frame`, `TransitionOptions`, `Timing`, `Command`,
-  and `Frame.Walk`;
+  `Session.NextCommitIn`, `Frame`, `NewTransition`, `Transition.Walk`, and
+  `Command`;
 - `(*untiemygo.Renderer).Element`, `BindMarkdown`, `InlineMath`, `DisplayMath`,
   `DisplayMathWidth`, `Draw`, `DrawBox`, `PaintResolver`, `ScaleMode`, and
-  `CacheStats` in the optional MyGo adapter;
+  `CacheStats`, `NewStreamingMath`, `StreamingMathOptions`, `StreamTiming`,
+  and `StreamingMath.Element` in the optional MyGo adapter;
 - `Parse`, `ParseContext`, `ParseTeX`, `ParseTypst`, `Expr`;
 - `Layout`, `LayoutContext`, `ClearLayoutEngineCache`;
 - `Style`, `Box`, `Item`, `Paint`, `Hit`, `CaretStop`, `Break`, `NodeID`,
@@ -99,7 +100,7 @@ Do not use them as an unversioned external wire protocol.
 `untie.Version()` combines a library version and layout revision:
 
 ```text
-0.4.3+layout.8
+0.5.0+layout.8
 ```
 
 The package-level engine cache includes that whole string. A layout behavior

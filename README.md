@@ -152,13 +152,14 @@ Markdown binding, and existing-box drawing.
 - [API Stability](docs/stability.md)
 - [Migrating to 0.3](docs/migration-v0.3.md)
 - [Migrating to 0.4](docs/migration-v0.4.md)
+- [Migrating to 0.5](docs/migration-v0.5.md)
 - [Release Process](docs/releasing.md)
 - [Security Policy](SECURITY.md)
 - [Full Documentation Index](docs/README.md)
 
 ### Release
 
-`v0.4.3` is the latest published release.
+`v0.5.0` is the latest published release.
 Untie remains pre-1.0 while its API stability tiers are validated through real
 integrations. Release notes are generated from Conventional Commits and
 published in [GitHub Releases](https://github.com/caelyreth/untie/releases);

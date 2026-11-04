@@ -5,7 +5,7 @@ out with a host-supplied OpenType MATH font. The result is a UI-independent
 display list of filled glyph paths, filled rules, source hits, break metadata,
 and accessibility text.
 
-These docs describe the public API at library version `0.4.3` and layout
+These docs describe the public API at library version `0.5.0` and layout
 revision `8`. They focus on the behavior a host or code assistant can rely on
 when integrating Untie; they are not a TeX or Typst language tutorial.
 
@@ -78,6 +78,8 @@ when integrating Untie; they are not a TeX or Typst language tutorial.
   explicit stable node identities, TeX sizing, overlap/raise primitives,
   source-row tags, formula labels, host-resolved equation references, bounded
   chemistry, and cache identity changes.
+- [Migrating to 0.5](migration-v0.5.md) moves animation timing and presentation
+  policy out of the stream package into host adapters.
 - [`encode/svg`](../encode/svg/doc.go) emits deterministic standalone SVG
   through the same framework-neutral drawing protocol.
 - [`encode/raster`](../encode/raster/doc.go) renders a display box to a
