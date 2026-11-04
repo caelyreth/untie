@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -16,7 +17,6 @@ import (
 )
 
 const defaultStreamSpeed = 165
-const formulaViewportHeight = 360
 
 type page uint8
 
@@ -56,7 +56,9 @@ type app struct {
 	page   page
 	scroll ui.ScrollState
 	math   ui.ScrollState
-	morph  formulaMorph
+
+	mathStreams []*untiemygo.StreamingMath
+	displayAt   int
 }
 
 func newApp(fontBytes []byte) (*app, error) {
@@ -174,6 +176,7 @@ func (a *app) renderPage(c *ui.Context) {
 }
 
 func (a *app) stream(c *ui.Context) {
+	a.displayAt = 0
 	if a.shown == 0 && !a.streaming && !a.complete {
 		ui.Text(c, "Press Render stream to send the editable content through Markdown.").
 			FontSize(14).TextColor(c.Theme().TextMuted)
@@ -204,16 +207,15 @@ func (a *app) stream(c *ui.Context) {
 }
 
 func (a *app) displayMath(c *ui.Context, source string) {
-	result, err := a.renderer.Render(context.Background(), source, untie.Display, untie.Style{})
-	if result != nil && result.Box != nil {
-		a.morph.update(result.Box, source, c.Now(), a.streaming)
-	} else {
-		a.morph.fail(err)
+	index := a.displayAt
+	a.displayAt++
+	if index >= len(a.mathStreams) || a.mathStreams[index] == nil {
+		ui.Text(c, source).Font("monospace").FontSize(13).TextColor(c.Theme().Danger)
+		return
 	}
-	ui.ScrollBoth(c).AlignSelf(ui.Stretch).Height(formulaViewportHeight).
-		TrackScroll(&a.math).Margin(8, 0).Children(func() {
-		ui.Box(c).Width(a.morph.contentWidth()).MinWidthPercent(100).
-			Height(a.morph.height()).Draw(a.morph.draw)
+	ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).TrackScroll(&a.math).
+		Margin(8, 0).Children(func() {
+		a.mathStreams[index].Element(c, source, c.Now()).MinWidthPercent(100)
 	})
 }
 
@@ -224,7 +226,7 @@ func (a *app) start(now time.Time) {
 	a.shown = 0
 	a.scroll.Y = 0
 	a.math.X, a.math.Y = 0, 0
-	a.morph.reset()
+	a.prepareDisplayMath()
 }
 
 func (a *app) reset() {
@@ -233,7 +235,28 @@ func (a *app) reset() {
 	a.started = time.Time{}
 	a.shown = 0
 	a.math.X, a.math.Y = 0, 0
-	a.morph.reset()
+	a.mathStreams = a.mathStreams[:0]
+	a.displayAt = 0
+}
+
+func (a *app) prepareDisplayMath() {
+	a.mathStreams = a.mathStreams[:0]
+	document := parser.Parse(a.source)
+	for i := 0; i < document.Len(); i++ {
+		if document.Block(i).Kind != parser.MathBlock {
+			continue
+		}
+		target := strings.TrimRight(document.Lines(i), "\n")
+		streamed, err := a.renderer.NewStreamingMath(
+			context.Background(),
+			untiemygo.StreamingMathOptions{TargetSource: target},
+		)
+		if err != nil {
+			streamed = nil
+		}
+		a.mathStreams = append(a.mathStreams, streamed)
+	}
+	a.displayAt = 0
 }
 
 func (a *app) progress() int {
