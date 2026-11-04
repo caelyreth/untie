@@ -60,7 +60,7 @@ func TestSessionCoalescesBeforeLayout(t *testing.T) {
 	frame, changed, err = session.Update(
 		t.Context(),
 		`x^2+1`,
-		now.Add(stream.DefaultDuration),
+		now.Add(stream.DefaultCommitInterval),
 	)
 	if err != nil || !changed {
 		t.Fatalf("commit: changed=%v err=%v", changed, err)
@@ -68,7 +68,10 @@ func TestSessionCoalescesBeforeLayout(t *testing.T) {
 	if renderer.calls != 2 || frame.Source() != `x^2+1` {
 		t.Fatalf("commit calls=%d source=%q", renderer.calls, frame.Source())
 	}
-	if _, ok := session.NextCommitIn(now.Add(stream.DefaultDuration)); ok {
+	if frame.Previous() == nil {
+		t.Fatal("committed frame has no previous box")
+	}
+	if _, ok := session.NextCommitIn(now.Add(stream.DefaultCommitInterval)); ok {
 		t.Fatal("next commit remains scheduled after commit")
 	}
 }
@@ -99,11 +102,8 @@ func TestSessionUsesCompletedTargetStage(t *testing.T) {
 	if got := frame.Stage().Bounds(); got != want {
 		t.Fatalf("stage bounds = %+v, want %+v", got, want)
 	}
-	if frame.Animating(time.Unix(600, 0)) != true {
-		t.Fatal("new frame is not animating")
-	}
-	if frame.Animating(time.Unix(600, 0).Add(stream.DefaultDuration)) {
-		t.Fatal("frame still animating after its duration")
+	if frame.Previous() != nil {
+		t.Fatal("first frame has a previous box")
 	}
 }
 
@@ -129,7 +129,7 @@ func TestSessionDoesNotRenderIdenticalSource(t *testing.T) {
 	}
 }
 
-func TestSessionUpdatesAfterAnimationWithoutDelay(t *testing.T) {
+func TestSessionUpdatesAfterCommitInterval(t *testing.T) {
 	t.Parallel()
 
 	renderer := &countingRenderer{renderer: newTestRenderer(t)}
@@ -146,9 +146,9 @@ func TestSessionUpdatesAfterAnimationWithoutDelay(t *testing.T) {
 	if _, changed, err := session.Update(
 		t.Context(),
 		`x+y`,
-		now.Add(stream.DefaultDuration),
+		now.Add(stream.DefaultCommitInterval),
 	); err != nil || !changed {
-		t.Fatalf("post-animation update changed=%v err=%v", changed, err)
+		t.Fatalf("post-interval update changed=%v err=%v", changed, err)
 	}
 	if renderer.calls != 2 {
 		t.Fatalf("renderer calls = %d, want 2", renderer.calls)

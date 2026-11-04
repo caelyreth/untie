@@ -1,9 +1,9 @@
 package stream_test
 
 import (
+	"math"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/caelyreth/untie"
 	"github.com/caelyreth/untie/render"
@@ -16,24 +16,15 @@ func TestTransitionFinalFrameMatchesCurrentBox(t *testing.T) {
 	renderer := newTestRenderer(t)
 	before := renderBox(t, renderer, `\frac{a}{b}`)
 	after := renderBox(t, renderer, `\frac{a}{b}+x`)
-	started := time.Unix(100, 0)
-	transition, err := stream.NewTransition(
-		before,
-		after,
-		started,
-		stream.TransitionOptions{Duration: 200 * time.Millisecond},
-	)
+	transition, err := stream.NewTransition(before, after)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var got []stream.Command
-	if err := transition.Walk(
-		started.Add(200*time.Millisecond),
-		func(command stream.Command) error {
-			got = append(got, command)
-			return nil
-		},
-	); err != nil {
+	if err := transition.Walk(1, 0.72, func(command stream.Command) error {
+		got = append(got, command)
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	var want []render.Command
@@ -68,32 +59,23 @@ func TestTransitionMovesSharedGlyphByTransform(t *testing.T) {
 	renderer := newTestRenderer(t)
 	before := renderBox(t, renderer, `x`)
 	after := renderBox(t, renderer, `x+y`)
-	started := time.Unix(200, 0)
-	transition, err := stream.NewTransition(
-		before,
-		after,
-		started,
-		stream.TransitionOptions{Duration: 200 * time.Millisecond},
-	)
+	transition, err := stream.NewTransition(before, after)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var moved, entered bool
-	if err := transition.Walk(
-		started.Add(100*time.Millisecond),
-		func(command stream.Command) error {
-			if command.Kind != stream.Path {
-				return nil
-			}
-			if command.Opacity == 1 && command.Em > 0 {
-				moved = true
-			}
-			if command.Opacity > 0 && command.Opacity < 1 {
-				entered = true
-			}
+	if err := transition.Walk(0.5, 0.72, func(command stream.Command) error {
+		if command.Kind != stream.Path {
 			return nil
-		},
-	); err != nil {
+		}
+		if command.Opacity == 1 && command.Em > 0 {
+			moved = true
+		}
+		if command.Opacity > 0 && command.Opacity < 1 {
+			entered = true
+		}
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if !moved || !entered {
@@ -106,28 +88,16 @@ func TestTransitionEnteringPathFadesAndScales(t *testing.T) {
 
 	renderer := newTestRenderer(t)
 	after := renderBox(t, renderer, `x`)
-	started := time.Unix(300, 0)
-	transition, err := stream.NewTransition(
-		nil,
-		after,
-		started,
-		stream.TransitionOptions{
-			Duration:             200 * time.Millisecond,
-			AppearanceStartScale: 0.5,
-		},
-	)
+	transition, err := stream.NewTransition(nil, after)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var command stream.Command
 	found := false
-	if err := transition.Walk(
-		started.Add(100*time.Millisecond),
-		func(next stream.Command) error {
-			command, found = next, true
-			return nil
-		},
-	); err != nil {
+	if err := transition.Walk(0.5, 0.5, func(next stream.Command) error {
+		command, found = next, true
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if !found {
@@ -147,27 +117,18 @@ func TestTransitionInterpolatesRuleBounds(t *testing.T) {
 	renderer := newTestRenderer(t)
 	before := renderBox(t, renderer, `\frac{a}{b}`)
 	after := renderBox(t, renderer, `\frac{a+b}{c}`)
-	started := time.Unix(400, 0)
-	transition, err := stream.NewTransition(
-		before,
-		after,
-		started,
-		stream.TransitionOptions{Duration: 200 * time.Millisecond},
-	)
+	transition, err := stream.NewTransition(before, after)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var rule *stream.Command
-	if err := transition.Walk(
-		started.Add(100*time.Millisecond),
-		func(command stream.Command) error {
-			if command.Kind == stream.Rule && command.Opacity == 1 {
-				copy := command
-				rule = &copy
-			}
-			return nil
-		},
-	); err != nil {
+	if err := transition.Walk(0.5, 0.72, func(command stream.Command) error {
+		if command.Kind == stream.Rule && command.Opacity == 1 {
+			copy := command
+			rule = &copy
+		}
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if rule == nil || rule.Rect.Width <= 0 {
@@ -175,28 +136,38 @@ func TestTransitionInterpolatesRuleBounds(t *testing.T) {
 	}
 }
 
-func TestNewTransitionRejectsInvalidOptions(t *testing.T) {
+func TestTransitionRejectsInvalidSampling(t *testing.T) {
 	t.Parallel()
 
 	renderer := newTestRenderer(t)
 	box := renderBox(t, renderer, `x`)
-	if _, err := stream.NewTransition(nil, nil, time.Time{}, stream.TransitionOptions{}); err == nil {
+	if _, err := stream.NewTransition(nil, nil); err == nil {
 		t.Fatal("nil current box accepted")
 	}
-	if _, err := stream.NewTransition(nil, box, time.Time{}, stream.TransitionOptions{
-		Duration: -time.Second,
-	}); err == nil {
-		t.Fatal("negative duration accepted")
+	transition, err := stream.NewTransition(nil, box)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := stream.NewTransition(nil, box, time.Time{}, stream.TransitionOptions{
-		AppearanceStartScale: 2,
-	}); err == nil {
-		t.Fatal("appearance scale above one accepted")
-	}
-	if _, err := stream.NewTransition(nil, box, time.Time{}, stream.TransitionOptions{
-		Timing: stream.Timing(255),
-	}); err == nil {
-		t.Fatal("unknown timing accepted")
+	for _, test := range []struct {
+		name                 string
+		progress             float32
+		appearanceStartScale float32
+	}{
+		{name: "negative progress", progress: -0.1, appearanceStartScale: 0.72},
+		{name: "progress above one", progress: 1.1, appearanceStartScale: 0.72},
+		{name: "NaN progress", progress: float32(math.NaN()), appearanceStartScale: 0.72},
+		{name: "negative appearance", progress: 0.5, appearanceStartScale: -0.1},
+		{name: "appearance above one", progress: 0.5, appearanceStartScale: 1.1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := transition.Walk(
+				test.progress,
+				test.appearanceStartScale,
+				func(stream.Command) error { return nil },
+			); err == nil {
+				t.Fatal("invalid sampling accepted")
+			}
+		})
 	}
 }
 

@@ -225,8 +225,12 @@ network response, or editor is still producing source:
 
 ```go
 streamed, err := math.NewStreamingMath(ctx, untiemygo.StreamingMathOptions{
-	TargetSource: completedFormula,
-	HideErrors:   true,
+	TargetSource:      completedFormula,
+	CommitInterval:    180 * time.Millisecond,
+	AnimationDuration: 180 * time.Millisecond,
+	Timing:            untiemygo.StreamEaseInOutCubic,
+	AppearanceScale:   0.72,
+	HideErrors:        true,
 })
 if err != nil {
 	return err
@@ -246,6 +250,10 @@ partial layouts do not resize or reposition the host document.
 next commit deadline with `c.After`, and uses `painter.Now()` for paint-only
 animation frames. No separate polling or invalidation loop is required to
 deliver the final pending source.
+
+Animation duration, easing, appearance scaling, and error visibility are
+MyGo-host policy. Untie's `stream` package only produces a time-free transition
+sampled at normalized progress.
 
 See [Streaming formula rendering](streaming.md) for lifecycle, identity,
 ownership, and performance details.

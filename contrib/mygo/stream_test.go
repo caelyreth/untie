@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/caelyreth/untie"
-	"github.com/caelyreth/untie/stream"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -16,10 +15,8 @@ func TestStreamingMathReservesCompletedStageAndDraws(t *testing.T) {
 	})
 	target := `\frac{a+b}{c}`
 	streamed, err := renderer.NewStreamingMath(t.Context(), StreamingMathOptions{
-		TargetSource: target,
-		Transition: stream.TransitionOptions{
-			Duration: 100 * time.Millisecond,
-		},
+		TargetSource:      target,
+		AnimationDuration: 100 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +37,7 @@ func TestStreamingMathReservesCompletedStageAndDraws(t *testing.T) {
 	tester := ui.NewTester(func(c *ui.Context) {
 		streamed.Element(c, `\frac{a`)
 	}, 400, 180)
-	tester.Frame()
+	tester.Advance(200 * time.Millisecond)
 	if tester.FramePending() {
 		t.Fatal("completed stream frame still requests animation")
 	}
@@ -70,10 +67,8 @@ func TestNewStreamingMathValidatesRenderer(t *testing.T) {
 func TestStreamingMathAdvancesDuringPainterRepaint(t *testing.T) {
 	renderer := newTestRenderer(t, Options{DisplaySize: 30})
 	streamed, err := renderer.NewStreamingMath(t.Context(), StreamingMathOptions{
-		TargetSource: `x^2`,
-		Transition: stream.TransitionOptions{
-			Duration: 100 * time.Millisecond,
-		},
+		TargetSource:      `x^2`,
+		AnimationDuration: 100 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -93,10 +88,8 @@ func TestStreamingMathAdvancesDuringPainterRepaint(t *testing.T) {
 func TestStreamingMathSchedulesPendingSourceCommit(t *testing.T) {
 	renderer := newTestRenderer(t, Options{DisplaySize: 30})
 	streamed, err := renderer.NewStreamingMath(t.Context(), StreamingMathOptions{
-		TargetSource: `x^2`,
-		Transition: stream.TransitionOptions{
-			Duration: 100 * time.Millisecond,
-		},
+		TargetSource:      `x^2`,
+		AnimationDuration: 100 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -120,5 +113,47 @@ func TestStreamingMathSchedulesPendingSourceCommit(t *testing.T) {
 	}
 	if tester.FramePending() {
 		t.Fatal("stream did not settle after committing pending source")
+	}
+}
+
+func TestStreamTimingCurvesAreMonotonicAndNonLinear(t *testing.T) {
+	t.Parallel()
+
+	for _, timing := range []StreamTiming{StreamEaseOutCubic, StreamEaseInOutCubic} {
+		if got := timing.apply(0); got != 0 {
+			t.Fatalf("timing %d at zero = %v", timing, got)
+		}
+		if got := timing.apply(1); got != 1 {
+			t.Fatalf("timing %d at one = %v", timing, got)
+		}
+		previous := float32(0)
+		for i := 1; i <= 100; i++ {
+			value := timing.apply(float32(i) / 100)
+			if value < previous {
+				t.Fatalf("timing %d is not monotonic at %d: %v < %v",
+					timing, i, value, previous)
+			}
+			previous = value
+		}
+		if timing.apply(0.25) == 0.25 {
+			t.Fatalf("timing %d is linear", timing)
+		}
+	}
+	if StreamEaseOutCubic.apply(0.25) <= StreamEaseInOutCubic.apply(0.25) {
+		t.Fatal("ease-out does not lead ease-in-out early in the transition")
+	}
+}
+
+func TestNewStreamingMathValidatesAnimationOptions(t *testing.T) {
+	renderer := newTestRenderer(t, Options{})
+	for _, options := range []StreamingMathOptions{
+		{AnimationDuration: -time.Second},
+		{Timing: StreamTiming(255)},
+		{AppearanceScale: -1},
+		{AppearanceScale: 2},
+	} {
+		if _, err := renderer.NewStreamingMath(t.Context(), options); err == nil {
+			t.Fatalf("invalid animation options accepted: %+v", options)
+		}
 	}
 }

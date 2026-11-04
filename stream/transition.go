@@ -4,19 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"time"
 
 	"github.com/caelyreth/untie"
 	"github.com/caelyreth/untie/display"
 	"github.com/caelyreth/untie/geometry"
-)
-
-const (
-	// DefaultDuration is the default time newly committed display geometry
-	// takes to reach its final layout.
-	DefaultDuration = 180 * time.Millisecond
-	// DefaultAppearanceStartScale is the default scale of entering commands.
-	DefaultAppearanceStartScale float32 = 0.72
 )
 
 var (
@@ -26,6 +17,8 @@ var (
 	ErrInvalidTransition = errors.New("stream: invalid transition")
 	// ErrInvalidVisitor reports a nil command visitor.
 	ErrInvalidVisitor = errors.New("stream: invalid visitor")
+	// ErrInvalidProgress reports non-finite or out-of-range sampling input.
+	ErrInvalidProgress = errors.New("stream: invalid progress")
 )
 
 // Kind identifies one sampled drawing command.
@@ -56,73 +49,6 @@ type Command struct {
 	Rect geometry.Rect
 	Snap display.SnapAxis
 }
-
-// Timing selects the interpolation curve for a transition.
-type Timing uint8
-
-const (
-	// TimingEaseOutCubic starts quickly and settles gently. It is the default.
-	TimingEaseOutCubic Timing = iota
-	// TimingEaseInOutCubic accelerates from rest and settles gently.
-	TimingEaseInOutCubic
-)
-
-func (t Timing) valid() bool {
-	return t == TimingEaseOutCubic || t == TimingEaseInOutCubic
-}
-
-func (t Timing) apply(progress float32) float32 {
-	switch t {
-	case TimingEaseInOutCubic:
-		if progress < 0.5 {
-			return 4 * progress * progress * progress
-		}
-		left := -2*progress + 2
-		return 1 - left*left*left/2
-	default:
-		return easeOutCubic(progress)
-	}
-}
-
-// TransitionOptions configure display interpolation.
-type TransitionOptions struct {
-	// Duration zero uses DefaultDuration. Negative values are invalid.
-	Duration time.Duration
-	// Timing defaults to TimingEaseOutCubic.
-	Timing Timing
-	// HideErrors omits error and placeholder paint while source is partial.
-	HideErrors bool
-	// AppearanceStartScale zero uses DefaultAppearanceStartScale. One keeps
-	// entering commands at their final scale while retaining the fade.
-	AppearanceStartScale float32
-}
-
-func (o TransitionOptions) normalized() (TransitionOptions, error) {
-	if o.Duration < 0 {
-		return TransitionOptions{}, fmt.Errorf("%w: negative duration %v",
-			ErrInvalidOptions, o.Duration)
-	}
-	if o.Duration == 0 {
-		o.Duration = DefaultDuration
-	}
-	if !o.Timing.valid() {
-		return TransitionOptions{}, fmt.Errorf("%w: unknown timing %d",
-			ErrInvalidOptions, o.Timing)
-	}
-	if !finite(o.AppearanceStartScale) ||
-		o.AppearanceStartScale < 0 ||
-		o.AppearanceStartScale > 1 {
-		return TransitionOptions{}, fmt.Errorf(
-			"%w: appearance start scale %v is outside [0,1]",
-			ErrInvalidOptions, o.AppearanceStartScale,
-		)
-	}
-	if o.AppearanceStartScale == 0 {
-		o.AppearanceStartScale = DefaultAppearanceStartScale
-	}
-	return o, nil
-}
-
 type shape struct {
 	key    string
 	kind   Kind
@@ -158,41 +84,25 @@ type Transition struct {
 	previous []shape
 	current  []shape
 	actions  []action
-	started  time.Time
-	duration time.Duration
-	start    float32
-	timing   Timing
 }
 
 // NewTransition compares previous and current and prepares a reusable display
 // transition. A nil previous makes every current command enter.
-func NewTransition(
-	previous, current *untie.Box,
-	started time.Time,
-	options TransitionOptions,
-) (*Transition, error) {
+func NewTransition(previous, current *untie.Box) (*Transition, error) {
 	if current == nil {
 		return nil, fmt.Errorf("%w: nil current box", ErrInvalidTransition)
 	}
-	options, err := options.normalized()
+	before, err := extractShapes(previous)
 	if err != nil {
 		return nil, err
 	}
-	before, err := extractShapes(previous, options.HideErrors)
-	if err != nil {
-		return nil, err
-	}
-	after, err := extractShapes(current, options.HideErrors)
+	after, err := extractShapes(current)
 	if err != nil {
 		return nil, err
 	}
 	t := &Transition{
 		previous: before,
 		current:  after,
-		started:  started,
-		duration: options.Duration,
-		start:    options.AppearanceStartScale,
-		timing:   options.Timing,
 	}
 	matches := matchShapes(before, after)
 	for i := range after {
@@ -233,32 +143,29 @@ func NewTransition(
 	return t, nil
 }
 
-// Duration returns the effective transition duration.
-func (t *Transition) Duration() time.Duration {
-	if t == nil {
-		return 0
-	}
-	return t.duration
-}
-
-// Animating reports whether at falls before the transition's final frame.
-func (t *Transition) Animating(at time.Time) bool {
-	if t == nil {
-		return false
-	}
-	return at.Before(t.started.Add(t.duration))
-}
-
-// Walk samples commands at time at. Once complete, it walks exactly the visible
-// commands of the current box in their original order.
-func (t *Transition) Walk(at time.Time, visit func(Command) error) error {
+// Walk samples commands at normalized progress. appearanceStartScale controls
+// the scale of entering and leaving commands. A progress of one walks exactly
+// the visible commands of the current box in their original order.
+func (t *Transition) Walk(
+	progress, appearanceStartScale float32,
+	visit func(Command) error,
+) error {
 	if visit == nil {
 		return ErrInvalidVisitor
 	}
 	if t == nil {
 		return nil
 	}
-	progress := t.progress(at)
+	if !finite(progress) || progress < 0 || progress > 1 {
+		return fmt.Errorf("%w: progress %v is outside [0,1]",
+			ErrInvalidProgress, progress)
+	}
+	if !finite(appearanceStartScale) ||
+		appearanceStartScale < 0 ||
+		appearanceStartScale > 1 {
+		return fmt.Errorf("%w: appearance start scale %v is outside [0,1]",
+			ErrInvalidProgress, appearanceStartScale)
+	}
 	if progress >= 1 {
 		for i := range t.current {
 			if err := emit(t.current[i], 1, 1, visit); err != nil {
@@ -270,11 +177,21 @@ func (t *Transition) Walk(at time.Time, visit func(Command) error) error {
 	for _, a := range t.actions {
 		switch a.kind {
 		case actionEnter:
-			if err := emit(t.current[a.current], progress, lerp(t.start, 1, progress), visit); err != nil {
+			if err := emit(
+				t.current[a.current],
+				progress,
+				lerp(appearanceStartScale, 1, progress),
+				visit,
+			); err != nil {
 				return err
 			}
 		case actionExit:
-			if err := emit(t.previous[a.previous], 1-progress, lerp(1, t.start, progress), visit); err != nil {
+			if err := emit(
+				t.previous[a.previous],
+				1-progress,
+				lerp(1, appearanceStartScale, progress),
+				visit,
+			); err != nil {
 				return err
 			}
 		case actionMovePath:
@@ -292,10 +209,20 @@ func (t *Transition) Walk(at time.Time, visit func(Command) error) error {
 				return err
 			}
 		case actionReplace:
-			if err := emit(t.previous[a.previous], 1-progress, lerp(1, t.start, progress), visit); err != nil {
+			if err := emit(
+				t.previous[a.previous],
+				1-progress,
+				lerp(1, appearanceStartScale, progress),
+				visit,
+			); err != nil {
 				return err
 			}
-			if err := emit(t.current[a.current], progress, lerp(t.start, 1, progress), visit); err != nil {
+			if err := emit(
+				t.current[a.current],
+				progress,
+				lerp(appearanceStartScale, 1, progress),
+				visit,
+			); err != nil {
 				return err
 			}
 		}
@@ -303,30 +230,13 @@ func (t *Transition) Walk(at time.Time, visit func(Command) error) error {
 	return nil
 }
 
-func (t *Transition) progress(at time.Time) float32 {
-	if t.duration <= 0 || !at.Before(t.started.Add(t.duration)) {
-		return 1
-	}
-	if !at.After(t.started) {
-		return 0
-	}
-	progress := float32(at.Sub(t.started)) / float32(t.duration)
-	progress = min(1, max(0, progress))
-	return t.timing.apply(progress)
-}
-
-func extractShapes(box *untie.Box, hideErrors bool) ([]shape, error) {
+func extractShapes(box *untie.Box) ([]shape, error) {
 	if box == nil {
 		return nil, nil
 	}
 	shapes := make([]shape, 0, len(box.Items))
 	ordinals := make(map[string]int, len(box.Items))
 	for i, item := range box.Items {
-		if hideErrors &&
-			(item.Paint.Role == display.RoleError ||
-				item.Paint.Role == display.RolePlaceholder) {
-			continue
-		}
 		identity := shapeIdentity(box, item)
 		ordinal := ordinals[identity]
 		ordinals[identity] = ordinal + 1
@@ -544,11 +454,6 @@ func lerpPoint(a, b geometry.Point, t float32) geometry.Point {
 
 func lerp(a, b, t float32) float32 {
 	return a + (b-a)*t
-}
-
-func easeOutCubic(t float32) float32 {
-	left := 1 - t
-	return 1 - left*left*left
 }
 
 func finite(value float32) bool {

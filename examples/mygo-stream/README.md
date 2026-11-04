@@ -14,9 +14,9 @@ or repeatedly reflowing the whole page as tokens arrive.
 The example uses MyGo's incremental `markdown.Stream` parser and Untie's native
 `stream.Session` through `untiemygo.StreamingMath`. Rapid source updates are
 coalesced before layout, and the public display transition supplies both moved
-and entering commands without mutating renderer internals. The example selects
-`stream.TimingEaseInOutCubic` for a slower entrance and a softer landing than
-the library's default ease-out curve.
+and entering commands without mutating renderer internals. Animation timing is
+owned by the MyGo adapter; the example selects
+`untiemygo.StreamEaseInOutCubic` for a slower entrance and softer landing.
 
 ## Run
 

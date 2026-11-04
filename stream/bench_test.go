@@ -12,20 +12,13 @@ func BenchmarkTransitionWalkFinal(b *testing.B) {
 	renderer := newTestRenderer(b)
 	before := renderBox(b, renderer, `\frac{a}{b}`)
 	after := renderBox(b, renderer, `\frac{a+b}{c}+x^2`)
-	started := time.Unix(1100, 0)
-	transition, err := stream.NewTransition(
-		before,
-		after,
-		started,
-		stream.TransitionOptions{Duration: 180 * time.Millisecond},
-	)
+	transition, err := stream.NewTransition(before, after)
 	if err != nil {
 		b.Fatal(err)
 	}
-	at := started.Add(180 * time.Millisecond)
 	b.ReportAllocs()
 	for b.Loop() {
-		if err := transition.Walk(at, func(stream.Command) error {
+		if err := transition.Walk(1, 0.72, func(stream.Command) error {
 			return nil
 		}); err != nil {
 			b.Fatal(err)
@@ -37,20 +30,13 @@ func BenchmarkTransitionWalkMid(b *testing.B) {
 	renderer := newTestRenderer(b)
 	before := renderBox(b, renderer, `\frac{a}{b}`)
 	after := renderBox(b, renderer, `\frac{a+b}{c}+x^2`)
-	started := time.Unix(1200, 0)
-	transition, err := stream.NewTransition(
-		before,
-		after,
-		started,
-		stream.TransitionOptions{Duration: 180 * time.Millisecond},
-	)
+	transition, err := stream.NewTransition(before, after)
 	if err != nil {
 		b.Fatal(err)
 	}
-	at := started.Add(90 * time.Millisecond)
 	b.ReportAllocs()
 	for b.Loop() {
-		if err := transition.Walk(at, func(stream.Command) error {
+		if err := transition.Walk(0.5, 0.72, func(stream.Command) error {
 			return nil
 		}); err != nil {
 			b.Fatal(err)
@@ -92,19 +78,12 @@ func TestTransitionWalkDoesNotAllocate(t *testing.T) {
 	renderer := newTestRenderer(t)
 	before := renderBox(t, renderer, `\frac{a}{b}`)
 	after := renderBox(t, renderer, `\frac{a+b}{c}+x^2`)
-	started := time.Unix(1400, 0)
-	transition, err := stream.NewTransition(
-		before,
-		after,
-		started,
-		stream.TransitionOptions{Duration: 180 * time.Millisecond},
-	)
+	transition, err := stream.NewTransition(before, after)
 	if err != nil {
 		t.Fatal(err)
 	}
-	at := started.Add(90 * time.Millisecond)
 	allocs := testing.AllocsPerRun(1000, func() {
-		if err := transition.Walk(at, func(stream.Command) error {
+		if err := transition.Walk(0.5, 0.72, func(stream.Command) error {
 			return nil
 		}); err != nil {
 			panic(err)

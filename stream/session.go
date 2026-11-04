@@ -8,6 +8,10 @@ import (
 	"github.com/caelyreth/untie"
 )
 
+// DefaultCommitInterval is the default spacing between accepted source
+// snapshots when SessionOptions.CommitInterval is zero.
+const DefaultCommitInterval = 180 * time.Millisecond
+
 // Renderer is the subset of Untie's renderer used by a Session.
 type Renderer interface {
 	Render(
@@ -24,8 +28,9 @@ type SessionOptions struct {
 	// TargetSource, when non-empty, is rendered once and exposed as the
 	// session's stable layout stage. Hosts use it to reserve final geometry.
 	TargetSource string
-	// Transition controls interpolation and partial-source error visibility.
-	Transition TransitionOptions
+	// CommitInterval bounds how often changing source is laid out. Zero uses
+	// DefaultCommitInterval. Negative values are invalid.
+	CommitInterval time.Duration
 }
 
 // Session coalesces source updates into immutable render frames.
@@ -33,14 +38,14 @@ type SessionOptions struct {
 // Session is caller-owned and must not be used concurrently. The renderer it
 // refers to may be shared concurrently by other sessions.
 type Session struct {
-	renderer   Renderer
-	options    SessionOptions
-	transition TransitionOptions
-	stage      *untie.Box
-	frame      *Frame
-	pending    string
-	hasPending bool
-	lastCommit time.Time
+	renderer       Renderer
+	options        SessionOptions
+	commitInterval time.Duration
+	stage          *untie.Box
+	frame          *Frame
+	pending        string
+	hasPending     bool
+	lastCommit     time.Time
 }
 
 // NewSession prepares a streaming renderer and an optional completed target
@@ -59,14 +64,17 @@ func NewSession(
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	transition, err := options.Transition.normalized()
-	if err != nil {
-		return nil, err
+	if options.CommitInterval < 0 {
+		return nil, fmt.Errorf("%w: negative commit interval %v",
+			ErrInvalidOptions, options.CommitInterval)
+	}
+	if options.CommitInterval == 0 {
+		options.CommitInterval = DefaultCommitInterval
 	}
 	s := &Session{
-		renderer:   renderer,
-		options:    options,
-		transition: transition,
+		renderer:       renderer,
+		options:        options,
+		commitInterval: options.CommitInterval,
 	}
 	if options.TargetSource != "" {
 		result, err := renderer.Render(ctx, options.TargetSource, options.Request)
@@ -82,8 +90,8 @@ func NewSession(
 	return s, nil
 }
 
-// Update offers the latest source and renders it when the previous transition
-// window has elapsed. Repetitive calls during that window coalesce to one
+// Update offers the latest source and renders it when the previous commit
+// interval has elapsed. Repetitive calls during that window coalesce to one
 // layout. changed reports whether a new immutable frame was committed.
 func (s *Session) Update(
 	ctx context.Context,
@@ -106,7 +114,7 @@ func (s *Session) Update(
 	}
 	s.pending = source
 	s.hasPending = true
-	if s.frame != nil && now.Before(s.lastCommit.Add(s.transition.Duration)) {
+	if s.frame != nil && now.Before(s.lastCommit.Add(s.commitInterval)) {
 		return s.frame, false, nil
 	}
 
@@ -124,25 +132,16 @@ func (s *Session) Update(
 	if s.frame != nil {
 		previous = s.frame.box
 	}
-	transition, err := NewTransition(
-		previous,
-		result.Box,
-		now,
-		s.transition,
-	)
-	if err != nil {
-		return s.frame, false, err
-	}
 	stage := s.stage
 	if stage == nil {
 		stage = result.Box
 	}
 	s.frame = &Frame{
-		source:     source,
-		box:        result.Box,
-		stage:      stage,
-		result:     result,
-		transition: transition,
+		source:   source,
+		previous: previous,
+		box:      result.Box,
+		stage:    stage,
+		result:   result,
 	}
 	s.lastCommit = now
 	return s.frame, true, err
@@ -175,29 +174,20 @@ func (s *Session) NextCommitIn(now time.Time) (time.Duration, bool) {
 	if s.frame == nil {
 		return 0, true
 	}
-	deadline := s.lastCommit.Add(s.transition.Duration)
+	deadline := s.lastCommit.Add(s.commitInterval)
 	if !deadline.After(now) {
 		return 0, true
 	}
 	return deadline.Sub(now), true
 }
 
-// Animating reports whether pending work or command interpolation needs
-// another host frame.
-func (s *Session) Animating(now time.Time) bool {
-	if s == nil {
-		return false
-	}
-	return s.hasPending || s.frame != nil && s.frame.Animating(now)
-}
-
-// Frame is one immutable committed layout and its transition.
+// Frame is one immutable committed layout.
 type Frame struct {
-	source     string
-	box        *untie.Box
-	stage      *untie.Box
-	result     *untie.RenderResult
-	transition *Transition
+	source   string
+	previous *untie.Box
+	box      *untie.Box
+	stage    *untie.Box
+	result   *untie.RenderResult
 }
 
 // Source returns the partial formula source rendered by this frame.
@@ -216,6 +206,14 @@ func (f *Frame) Box() *untie.Box {
 	return f.box
 }
 
+// Previous returns the immediately preceding box, or nil for the first frame.
+func (f *Frame) Previous() *untie.Box {
+	if f == nil {
+		return nil
+	}
+	return f.previous
+}
+
 // Stage returns the stable completed layout, or Box when no target was given.
 func (f *Frame) Stage() *untie.Box {
 	if f == nil {
@@ -230,19 +228,6 @@ func (f *Frame) Result() *untie.RenderResult {
 		return nil
 	}
 	return f.result
-}
-
-// Animating reports whether command interpolation is still in progress.
-func (f *Frame) Animating(at time.Time) bool {
-	return f != nil && f.transition != nil && f.transition.Animating(at)
-}
-
-// Walk samples drawing commands at time at.
-func (f *Frame) Walk(at time.Time, visit func(Command) error) error {
-	if f == nil || f.transition == nil {
-		return nil
-	}
-	return f.transition.Walk(at, visit)
 }
 
 // Diagnostics returns the current frame's immutable diagnostic snapshot.

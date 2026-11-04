@@ -11,7 +11,6 @@ import (
 	"github.com/caelyreth/untie"
 	untiemygo "github.com/caelyreth/untie/contrib/mygo"
 	"github.com/caelyreth/untie/render"
-	"github.com/caelyreth/untie/stream"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 	"github.com/egoist/mygo/ui/markdown/parser"
@@ -253,9 +252,7 @@ func (a *app) prepareDisplayMath() {
 			untiemygo.StreamingMathOptions{
 				TargetSource: target,
 				HideErrors:   true,
-				Transition: stream.TransitionOptions{
-					Timing: stream.TimingEaseInOutCubic,
-				},
+				Timing:       untiemygo.StreamEaseInOutCubic,
 			},
 		)
 		if err != nil {

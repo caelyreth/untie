@@ -8,12 +8,16 @@ The stream layer owns four jobs:
 - coalescing rapidly changing source before layout;
 - retaining the previous and current immutable `Box` values;
 - matching visible paths and rules across layouts;
-- sampling moved, resized, entering, exiting, and replaced commands.
+- sampling moved, resized, entering, exiting, and replaced commands at
+  normalized progress.
+
+Wall-clock duration, easing, appearance scale, repaint cadence, and error
+visibility belong to the host. Untie does not choose an animation curve.
 
 It does not incrementally parse TeX or Typst. Every committed source snapshot
 still receives a complete formula parse and layout. Coalescing limits that work
-to the display transition cadence instead of the input callback or render frame
-rate.
+to the host-selected commit interval instead of the input callback or render
+frame rate.
 
 ## Session
 
@@ -25,13 +29,8 @@ session, err := stream.NewSession(ctx, renderer, stream.SessionOptions{
 		Mode:  untie.Display,
 		Style: untie.Style{Size: 30},
 	},
-	TargetSource: completedFormula,
-	Transition: stream.TransitionOptions{
-		Duration:             180 * time.Millisecond,
-		Timing:               stream.TimingEaseInOutCubic,
-		AppearanceStartScale: 0.72,
-		HideErrors:           true,
-	},
+	TargetSource:   completedFormula,
+	CommitInterval: 180 * time.Millisecond,
 })
 if err != nil {
 	return err
@@ -55,15 +54,13 @@ if changed {
 }
 ```
 
-`Update` records the latest source immediately. Before the previous transition
-window has elapsed, later updates replace its pending source and return the
-existing frame without parsing or laying out a new box. After the window
+`Update` records the latest source immediately. Before the previous commit
+interval has elapsed, later updates replace its pending source and return the
+existing frame without parsing or laying out a new box. After the interval
 elapses, the most recent source is rendered once.
 
-Call `Update` again with the same source after the transition completes. This
-is how a pending final source is committed after the in-flight frame reaches
-its final state. Use `Session.Animating` or `Frame.Animating` to decide whether
-the host needs another paint frame.
+Call `Update` again when the commit interval expires. This is how a pending
+final source is committed independently of any visual animation still running.
 
 Use `Session.NextCommitIn` to schedule the full rebuild that commits pending
 source:
@@ -74,21 +71,26 @@ if delay, ok := session.NextCommitIn(now); ok {
 }
 ```
 
-This distinguishes the two clocks. Paint frames may sample interpolation with
-their current time without rebuilding. A host timer calls `Update` again at the
-reported deadline so the latest source is parsed and laid out once.
-
-`TransitionOptions.Timing` selects the interpolation curve. The default
-`TimingEaseOutCubic` responds immediately and settles gently;
-`TimingEaseInOutCubic` starts and ends more slowly for a more deliberate stream
-animation.
+This distinguishes layout commits from paint frames. Paint frames may sample
+interpolation with their current time without rebuilding. A host timer calls
+`Update` again at the reported deadline so the latest source is parsed and laid
+out once.
 
 ## Drawing
 
-`Frame.Walk` samples draw commands at one instant:
+Create a time-free transition from the frame's previous and current boxes, then
+sample it with the host's own normalized progress:
 
 ```go
-err := frame.Walk(now, func(command stream.Command) error {
+transition, err := stream.NewTransition(frame.Previous(), frame.Box())
+if err != nil {
+	return err
+}
+
+elapsed := float32(now.Sub(started)) / float32(hostDuration)
+progress := hostEase(elapsed)
+err = transition.Walk(progress, hostAppearanceStartScale,
+	func(command stream.Command) error {
 	switch command.Kind {
 	case stream.Path:
 		drawPath(command.Path, command.At, command.Em, command.Paint, command.Opacity)
@@ -96,12 +98,14 @@ err := frame.Walk(now, func(command stream.Command) error {
 		drawRule(command.Rect, command.Paint, command.Opacity)
 	}
 	return nil
-})
+	},
+)
 ```
 
 Path templates borrow immutable storage from the current box. Resolve a point
 in box coordinates as `At + point*Em`. `Opacity` multiplies the host-resolved
-paint color.
+paint color. `Walk(1, ...)` emits the exact final current box. The host decides
+when `progress` advances and whether another paint frame is needed.
 
 The transition uses stable identity in this order:
 
@@ -118,10 +122,10 @@ geometry for every animation frame. Rules interpolate their rectangles.
 Entering paths and rules fade and scale around their final bounds. Unrelated
 glyph replacements cross-fade instead of vertex-morphing unrelated outlines.
 
-At or after the transition deadline, `Walk` emits exactly the current box's
-visible paths and rules in original paint order, with full opacity. Interpolated
-geometry never becomes the host's source for hit testing, copying, caret
-placement, or accessibility; those operations continue to use `Frame.Box`.
+At progress one, `Walk` emits exactly the current box's visible paths and rules
+in original paint order, with full opacity. Interpolated geometry never becomes
+the host's source for hit testing, copying, caret placement, or accessibility;
+those operations continue to use `Frame.Box`.
 
 ## MyGo
 
@@ -129,8 +133,12 @@ placement, or accessibility; those operations continue to use `Frame.Box`.
 
 ```go
 streamed, err := math.NewStreamingMath(ctx, untiemygo.StreamingMathOptions{
-	TargetSource: completedFormula,
-	HideErrors:   true,
+	TargetSource:      completedFormula,
+	CommitInterval:    180 * time.Millisecond,
+	AnimationDuration: 180 * time.Millisecond,
+	Timing:            untiemygo.StreamEaseInOutCubic,
+	AppearanceScale:   0.72,
+	HideErrors:        true,
 })
 if err != nil {
 	return err
@@ -143,8 +151,9 @@ ui.ScrollHorizontal(c).AlignSelf(ui.Stretch).Children(func() {
 
 The element uses the completed stage for its natural dimensions and scale. Put
 it in a clipping or horizontal scroll container when it is wider than the
-available area. `HideErrors` omits error and placeholder paint during partial
-source recovery while retaining the stable layout reservation.
+available area. The adapter owns duration, easing, appearance scaling, paint
+cadence, and error visibility; these are host presentation policy rather than
+Untie rendering behavior.
 
 `Element` reads `c.Now()`, schedules `c.After` at the session's next commit
 deadline, and samples interpolation with `painter.Now()`. Callers do not need to
@@ -163,9 +172,9 @@ does not allocate path geometry or match tables.
 Local Apple M5 Pro reference results from `go test ./stream -bench . -benchmem`:
 
 ```text
-BenchmarkTransitionWalkFinal       119.1 ns/op   0 B/op   0 allocs/op
-BenchmarkTransitionWalkMid         129.2 ns/op   0 B/op   0 allocs/op
-BenchmarkSessionCoalescedUpdate      8.0 ns/op   0 B/op   0 allocs/op
+BenchmarkTransitionWalkFinal       116.7 ns/op   0 B/op   0 allocs/op
+BenchmarkTransitionWalkMid         115.2 ns/op   0 B/op   0 allocs/op
+BenchmarkSessionCoalescedUpdate      7.8 ns/op   0 B/op   0 allocs/op
 ```
 
 These numbers describe transition sampling and coalescing, not parse or layout.
@@ -177,10 +186,10 @@ cadence, font set, and source rate.
 - `Session` is caller-owned and not concurrency-safe.
 - The underlying `Renderer` may be shared concurrently by other sessions.
 - Frames and boxes are immutable. Do not mutate their slices.
-- Path templates passed to `Frame.Walk` are callback-scoped.
+- Path templates passed to `Transition.Walk` are callback-scoped.
 - A session retains only its current frame and pending source; it is not an
   unbounded history of partial layouts.
-- `HideErrors` and other transition options are fixed for a session. Changing
-  them requires a new session.
+- Animation timing and error visibility belong to the host. Changing them does
+  not require a new stream session.
 - Edits that reorder formulas should use host-owned node identity. A future
   incremental frontend can extend stability across unrelated block edits.
