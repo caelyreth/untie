@@ -19,6 +19,8 @@ type StreamingMathOptions struct {
 	// Transition controls duration, partial error visibility, and entering
 	// command scaling.
 	Transition stream.TransitionOptions
+	// HideErrors omits error and placeholder ink from streamed transitions.
+	HideErrors bool
 }
 
 // StreamingMath adapts one stream.Session to a MyGo display-math element.
@@ -42,6 +44,8 @@ func (r *Renderer) NewStreamingMath(
 	if r == nil || r.renderer == nil {
 		return nil, ErrInvalidOptions
 	}
+	transition := options.Transition
+	transition.HideErrors = transition.HideErrors || options.HideErrors
 	session, err := stream.NewSession(ctx, r.renderer, stream.SessionOptions{
 		Request: untie.RenderRequest{
 			Dialect: r.dialect,
@@ -50,7 +54,7 @@ func (r *Renderer) NewStreamingMath(
 			Parse:   r.parse,
 		},
 		TargetSource: options.TargetSource,
-		Transition:   options.Transition,
+		Transition:   transition,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("untiemygo: streaming math: %w", err)

@@ -249,7 +249,10 @@ func (a *app) prepareDisplayMath() {
 		target := strings.TrimRight(document.Lines(i), "\n")
 		streamed, err := a.renderer.NewStreamingMath(
 			context.Background(),
-			untiemygo.StreamingMathOptions{TargetSource: target},
+			untiemygo.StreamingMathOptions{
+				TargetSource: target,
+				HideErrors:   true,
+			},
 		)
 		if err != nil {
 			streamed = nil
