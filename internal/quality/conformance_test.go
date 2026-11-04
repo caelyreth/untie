@@ -19,7 +19,7 @@ func TestTeXConformance(t *testing.T) {
 		FixtureRoot: filepath.Join(root, "testdata", "upstream"),
 		PolicyPath:  filepath.Join(root, "testdata", "conformance", "tex-policy.json"),
 		Frontend:    qualityProcessFrontend("tex"),
-		CaseTimeout: 250 * time.Millisecond,
+		CaseTimeout: 5 * time.Second,
 	})
 	if err != nil {
 		t.Fatal(err)

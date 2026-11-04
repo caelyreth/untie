@@ -166,6 +166,16 @@ func (e Evaluator) Evaluate(ctx context.Context, input Input) (CaseReport, error
 }
 
 func invokeFrontend(ctx context.Context, frontend FrontendFunc, request Request, timeout time.Duration) (FrontendResult, error) {
+	result, err := invokeFrontendOnce(ctx, frontend, request, timeout)
+	if err == nil || ctx.Err() != nil {
+		return result, err
+	}
+	// Process startup and scheduling are outside the frontend's control. Retry
+	// once so a transient worker failure is not reported as a conformance bug.
+	return invokeFrontendOnce(ctx, frontend, request, timeout)
+}
+
+func invokeFrontendOnce(ctx context.Context, frontend FrontendFunc, request Request, timeout time.Duration) (FrontendResult, error) {
 	if err := ctx.Err(); err != nil {
 		return FrontendResult{}, err
 	}

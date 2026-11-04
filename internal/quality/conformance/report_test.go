@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/caelyreth/untie/ir"
@@ -174,6 +175,33 @@ func TestEvaluatorRejectsInvalidAndLimitDependentIR(t *testing.T) {
 	}
 }
 
+func TestEvaluatorRetriesTransientFrontendFailure(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	report, err := (Evaluator{
+		Frontend: func(context.Context, Request) (FrontendResult, error) {
+			if calls.Add(1) == 1 {
+				return FrontendResult{}, context.DeadlineExceeded
+			}
+			span := source.NewRange(0, 1)
+			return FrontendResult{Root: ir.NewRow(span, ir.NewGlyph(span, "x"))}, nil
+		},
+		ExplicitLimits: ExplicitTeXLimits(),
+	}).Evaluate(t.Context(), Input{
+		Corpus: "test", ID: "retry", Index: 1, Source: "x", Mode: ir.Inline, Expect: ExpectParse,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Status != StatusPass {
+		t.Fatalf("status = %q; detail: %s", report.Status, report.Detail)
+	}
+	if calls.Load() != 4 {
+		t.Fatalf("frontend calls = %d, want one failed attempt plus three successful evaluations", calls.Load())
+	}
+}
+
 func TestEvaluatorRejectsWrongDiagnosticSpan(t *testing.T) {
 	t.Parallel()
 
@@ -218,7 +246,9 @@ func TestReportRejectsUnexplainedCases(t *testing.T) {
 			Families: []string{"literal"}, Detail: "failure",
 		}},
 	}
-	if err := report.Validate(); err == nil || !strings.Contains(err.Error(), "unexplained") {
+	if err := report.Validate(); err == nil ||
+		!strings.Contains(err.Error(), "unexplained") ||
+		!strings.Contains(err.Error(), `detail "failure"`) {
 		t.Fatalf("error = %v", err)
 	}
 }

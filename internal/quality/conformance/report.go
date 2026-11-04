@@ -219,7 +219,12 @@ func (r *Report) Validate() error {
 		}
 		if result.Review == "" || strings.TrimSpace(result.Reason) == "" {
 			counts.Unexplained++
-			return fmt.Errorf("non-passing case %q is unexplained", key)
+			return fmt.Errorf(
+				"non-passing case %q is unexplained (status %q, detail %q)",
+				key,
+				result.Status,
+				result.Detail,
+			)
 		}
 		switch result.Status {
 		case StatusDiagnostic:
