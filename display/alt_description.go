@@ -132,12 +132,13 @@ const (
 	AltTableVector AltTableRole = "vector"
 )
 
-// AltCancelRole distinguishes cancellation from logical negation.
+// AltCancelRole distinguishes cancellation, negation, and Feynman slash.
 type AltCancelRole string
 
 const (
 	AltCancelStrike   AltCancelRole = "strike"
 	AltCancelNegation AltCancelRole = "negation"
+	AltCancelSlashed  AltCancelRole = "slashed"
 )
 
 // AltPosition identifies an above/below decoration.
@@ -894,7 +895,7 @@ func (r AltTableRole) valid() bool {
 }
 
 func (r AltCancelRole) valid() bool {
-	return r == AltCancelStrike || r == AltCancelNegation
+	return r == AltCancelStrike || r == AltCancelNegation || r == AltCancelSlashed
 }
 
 func (p AltPosition) valid() bool {

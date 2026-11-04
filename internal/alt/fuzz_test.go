@@ -199,7 +199,7 @@ func randomNode(cursor *fuzzCursor, depth int) ir.Node {
 		return ir.NewLine(span, randomNode(cursor, depth+1), ir.Position(cursor.next()%2))
 	case 12:
 		cancel := ir.NewCancel(span, randomNode(cursor, depth+1))
-		cancel.Role = ir.CancelRole(cursor.next() % 2)
+		cancel.Role = ir.CancelRole(cursor.next() % 3)
 		if cancel.Role == ir.CancelRoleStrike {
 			cancel.Cross = cursor.next()%2 == 0
 			cancel.Inverted = !cancel.Cross && cursor.next()%2 == 0

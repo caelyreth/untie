@@ -141,6 +141,12 @@ func TestDescriptionPreservesSemanticFields(t *testing.T) {
 		!hasAltFlag(canceled.Flags, display.AltFlagCross) {
 		t.Fatalf("cancel semantics = %#v", canceled)
 	}
+	slashedNode := ir.NewCancel(span, glyph("p"))
+	slashedNode.Role = ir.CancelRoleSlashed
+	slashed := Generate(slashedNode, ir.Inline, source.Limits{}).Description.Root
+	if slashed.CancelRole != display.AltCancelSlashed {
+		t.Fatalf("slashed semantics = %#v", slashed)
+	}
 
 	table := ir.NewTable(span,
 		ir.TableRow{Cells: []ir.Node{glyph("x"), glyph("1")}},

@@ -89,7 +89,7 @@ Every public canonical IR node family has a corresponding description kind:
 | `sized-delimiter` | literal delimiter, math variant, sizing policy |
 | `accent` | body, accent, above/below position, stretch/dotless flags |
 | `line` | body and overline/underline position |
-| `cancel` | cancellation/negation role, body, cross/inverted flags |
+| `cancel` | cancellation/negation/Feynman-slash role, body, cross/inverted flags |
 | `table` | matrix/array/cases/vector role, rows, cells, column alignment |
 | `multiline` | rows and optional `centered` flag |
 | `style` | body, explicit math size, cramped/uncramped state, uniform font-size percentage |
@@ -109,7 +109,7 @@ Semantic roles are explicit rather than inferred from visual placement:
 - `fractionStyle` preserves vertical, no-bar, skewed, and horizontal form;
 - `scriptRole` covers ordinary scripts, limits, overlays, and brace labels;
 - `tableRole` covers matrices, arrays, cases, and vectors;
-- `cancelRole` distinguishes a strike from logical negation.
+- `cancelRole` distinguishes a strike, logical negation, and Feynman slash.
 
 Explicit spaces expose stable semantic widths such as `thin`, `medium`,
 `thick`, `en`, `quad`, `double-quad`, and their common negative forms.

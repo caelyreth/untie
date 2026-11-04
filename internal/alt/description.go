@@ -563,10 +563,14 @@ func altScriptRole(role ir.ScriptRole) display.AltScriptRole {
 }
 
 func altCancelRole(role ir.CancelRole) display.AltCancelRole {
-	if role == ir.CancelRoleNegation {
+	switch role {
+	case ir.CancelRoleNegation:
 		return display.AltCancelNegation
+	case ir.CancelRoleSlashed:
+		return display.AltCancelSlashed
+	default:
+		return display.AltCancelStrike
 	}
-	return display.AltCancelStrike
 }
 
 func altTableRole(role ir.TableRole) display.AltTableRole {

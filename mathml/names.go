@@ -123,7 +123,7 @@ var fractionRoleNames = [...]string{"fraction", "binomial", "stacked"}
 
 var scriptRoleNames = [...]string{"ordinary", "limits", "overlay", "brace-label"}
 
-var cancelRoleNames = [...]string{"strike", "negation"}
+var cancelRoleNames = [...]string{"strike", "negation", "slashed"}
 
 var tableRoleNames = [...]string{"matrix", "array", "cases", "vector"}
 

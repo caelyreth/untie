@@ -450,6 +450,13 @@ func TestGenerateCancellation(t *testing.T) {
 	if _, err := GenerateContext(nil, glyph("x"), ir.Inline, source.Limits{}); !errors.Is(err, ErrInvalidContext) {
 		t.Fatalf("nil context error = %v, want ErrInvalidContext", err)
 	}
+
+	slashed := ir.NewCancel(source.NewRange(0, 1), glyph("p"))
+	slashed.Role = ir.CancelRoleSlashed
+	alt := Generate(slashed, ir.Inline, source.Limits{})
+	if alt.Text != "slashed(p)" || alt.Speech != "p slashed" {
+		t.Fatalf("slashed Alt = %#v", alt)
+	}
 }
 
 func TestGenerateIsSourceIndependentAndDeterministic(t *testing.T) {

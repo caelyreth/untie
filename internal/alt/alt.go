@@ -732,6 +732,13 @@ func (r *renderer) cancel(n *ir.Cancel, env renderEnv, depth int) (piece, error)
 			atomic: true,
 		}, nil
 	}
+	if n.Role == ir.CancelRoleSlashed {
+		return piece{
+			text:   "slashed(" + body.text + ")",
+			speech: body.speech + " slashed",
+			atomic: true,
+		}, nil
+	}
 	name := "cancel"
 	speech := body.speech + " canceled"
 	if n.Cross {

@@ -59,7 +59,7 @@ Supported and tested:
 - `\overset`, `\stackrel`, and `\underset`;
 - common accents such as `\hat`, `\tilde`, `\bar`, `\vec`, `\dot`, `\ddot`,
   and combining accents accepted by the text frontend;
-- `\cancel`, `\bcancel`, `\xcancel`, and `\sout`;
+- `\cancel`, `\bcancel`, `\xcancel`, `\sout`, and `\slashed`;
 - `\centernot` with centered relation-negation semantics;
 - `\boxed`, `\fbox`, `\colorbox`, and `\fcolorbox`;
 - `\phantom`, `\hphantom`, `\vphantom`, `\smash`, and `\mathstrut`;
@@ -163,7 +163,6 @@ The following capabilities are not treated as silently ignorable TeX:
 | Raw HTML/DOM hooks: `\htmlClass`, `\htmlData`, `\htmlId`, `\htmlStyle`                                    | Unsupported or discarded metadata with diagnostics; no DOM.            |
 | Commutative diagrams: `CD` environment                                                                    | Unsupported diagnostic; bounded environment skip.                      |
 | Manual centering/enclosure: `\vcenter`, `\phase`, `\enclose`                                               | Unsupported; no lossless neutral primitive yet.                        |
-| Feynman slash notation: `\slashed`                                                                        | Unsupported; package-specific geometry is not in KaTeX core.           |
 | Proof trees: `prooftree` and bussproofs commands                                                          | Unsupported environment with a bounded diagnostic.                     |
 | `\nobreak`                                                                                                | Unsupported because suppression-only break policy is not represented.  |
 | Inline math delimiters nested in math mode: `\(`, `\)`, `\]`                                              | Parse diagnostic.                                                      |

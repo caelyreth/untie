@@ -58,6 +58,9 @@ func TestValidateRejectsInvalidSemanticRoles(t *testing.T) {
 	cancel := NewCancel(span, glyph)
 	cancel.Role = CancelRoleNegation
 	cancel.Cross = true
+	slashed := NewCancel(span, glyph)
+	slashed.Role = CancelRoleSlashed
+	slashed.Inverted = true
 
 	table := NewTable(span, TableRow{Cells: []Node{glyph}})
 	table.Role = TableRoleVector + 1
@@ -66,6 +69,7 @@ func TestValidateRejectsInvalidSemanticRoles(t *testing.T) {
 		"fraction role without no-bar style": fraction,
 		"script role":                        scripts,
 		"negation with strike":               cancel,
+		"slashed with inverted strike":       slashed,
 		"table role":                         table,
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -213,6 +213,21 @@ func TestCenternotUsesRelationNegation(t *testing.T) {
 	}
 }
 
+func TestSlashedUsesNeutralFeynmanSlashRole(t *testing.T) {
+	t.Parallel()
+
+	for _, source := range []string{`\slashed{p}`, `\slashed p`, `\slashed1`} {
+		result := parseTest(t, source, Options{})
+		if len(result.Diagnostics) != 0 {
+			t.Fatalf("%s diagnostics = %+v", source, result.Diagnostics)
+		}
+		node := requireKind[*ir.Cancel](t, rowItems(t, result.Root)[0])
+		if node.Role != ir.CancelRoleSlashed {
+			t.Fatalf("%s role = %v, want slashed", source, node.Role)
+		}
+	}
+}
+
 func TestCancelCommandsSetStrokeMode(t *testing.T) {
 	t.Parallel()
 

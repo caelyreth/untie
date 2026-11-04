@@ -228,6 +228,64 @@ func TestCancelStrokesAndMetrics(t *testing.T) {
 	}
 }
 
+func TestSlashedCentersBodyAndSlashAndPreservesSlashWidth(t *testing.T) {
+	t.Parallel()
+
+	renderer, glyphs, _ := newTestRenderer(t)
+	glyphs.glyphs["x"] = testDecorationGlyph(em(1, 10), em(6, 10), em(2, 10))
+	glyphs.glyphs["/"] = testDecorationGlyph(em(1, 2), em(7, 10), em(1, 10))
+
+	plain, err := renderer.Layout(glyph("x", ir.ClassNormal), ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	slash, err := renderer.Layout(glyph("/", ir.ClassNormal), ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	slashed := ir.NewCancel(source.NewRange(0, 2), glyph("x", ir.ClassNormal))
+	slashed.Role = ir.CancelRoleSlashed
+	box, err := renderer.Layout(slashed, ir.Inline, testStyle(16))
+	if err != nil {
+		t.Fatalf("Layout(slashed) error = %v", err)
+	}
+	if err := box.Validate(); err != nil {
+		t.Fatalf("display validation error = %v", err)
+	}
+	if len(box.Items) != 2 {
+		t.Fatalf("items = %d, want body and slash glyph", len(box.Items))
+	}
+	width := maxFloat(plain.Width, slash.Width)
+	if !closeHost(box.Width, width) {
+		t.Fatalf("slashed metrics = %v/%v/%v", box.Width, box.Ascent, box.Descent)
+	}
+	if !closeHost(box.Items[0].At.X, (width-plain.Width)/2) || !closeHost(box.Items[0].At.Y, 0) {
+		t.Fatalf("body origin = %+v", box.Items[0].At)
+	}
+	if !closeHost(box.Items[1].At.X, (width-slash.Width)/2) || !closeHost(box.Items[1].At.Y, 1.6) {
+		t.Fatalf("slash origin = %+v, want x=%v y=1.6", box.Items[1].At, (width-slash.Width)/2)
+	}
+}
+
+func testDecorationGlyph(advance, ascent, descent geometry.Em) Glyph {
+	return Glyph{
+		ID:            1,
+		FontID:        "test-math",
+		Advance:       advance,
+		Ascent:        ascent,
+		Descent:       descent,
+		ExactGlyphRef: true,
+		Outline: Path{
+			{Op: geometry.SegMoveTo, Points: [3]Point{{X: 0, Y: -descent}}},
+			{Op: geometry.SegLineTo, Points: [3]Point{{X: advance, Y: -descent}}},
+			{Op: geometry.SegLineTo, Points: [3]Point{{X: advance, Y: ascent}}},
+			{Op: geometry.SegLineTo, Points: [3]Point{{X: 0, Y: ascent}}},
+			{Op: geometry.SegClose},
+		},
+	}
+}
+
 func cancelCenterLineForTest(t *testing.T, box *display.Box, item display.Item) (geometry.Point, geometry.Point) {
 	t.Helper()
 	path := pathSegmentsForTest(box, item)

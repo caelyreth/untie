@@ -128,6 +128,8 @@ func (p *parser) parseCommand(t token, stop stopMode) astNode {
 		return p.parseCancel(t)
 	case "\\sout":
 		return p.parseCancel(t)
+	case "\\slashed":
+		return p.parseSlashed(t)
 	case "\\text", "\\textrm", "\\textnormal", "\\textsf", "\\texttt",
 		"\\textbf", "\\textmd", "\\textit", "\\textup", "\\textsl", "\\emph",
 		"\\mbox", "\\hbox":
@@ -860,6 +862,15 @@ func (p *parser) parseCancel(command token) astNode {
 		body:     body,
 		cross:    command.text == "\\xcancel",
 		inverted: command.text == "\\bcancel",
+	}
+}
+
+func (p *parser) parseSlashed(command token) astNode {
+	body := compactAST(p.parseRequiredArgument(command))
+	return &astCancelNode{
+		astBase: newASTBaseAt(astCancel, source.Merge(command.span, body.base().span), tokenOrigin(command)),
+		body:    body,
+		role:    ir.CancelRoleSlashed,
 	}
 }
 

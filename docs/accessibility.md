@@ -112,6 +112,8 @@ The IR's semantic roles improve the output:
 - `TableRoleMatrix`, array, cases, and vector use distinct wording;
 - `CancelRoleNegation` can speak a recognized relation as "not equal to"
   instead of "equals canceled";
+- `CancelRoleSlashed` speaks Feynman slash notation without describing it as
+  cancellation;
 - brace labels, overlays, roots, fences, and accents use their semantic form.
 
 Structured descriptions also preserve uniform font-size declarations, overlay

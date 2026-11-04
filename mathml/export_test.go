@@ -36,6 +36,26 @@ func TestMarshalGolden(t *testing.T) {
 	}
 }
 
+func TestMarshalSlashedRole(t *testing.T) {
+	t.Parallel()
+
+	span := source.Detached()
+	slashed := ir.NewCancel(span, ir.NewGlyph(span, "p"))
+	slashed.Role = ir.CancelRoleSlashed
+	output, err := mathml.Marshal(
+		context.Background(),
+		&ir.Formula{Root: slashed},
+		ir.Inline,
+		mathml.Options{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(output), `data-untie-cancel-role="slashed"`) {
+		t.Fatalf("MathML = %s", output)
+	}
+}
+
 func TestMarshalCoversEveryIRNodeKind(t *testing.T) {
 	t.Parallel()
 	span := source.Detached()

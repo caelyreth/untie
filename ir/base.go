@@ -267,13 +267,14 @@ const (
 	ScriptRoleBraceLabel
 )
 
-// CancelRole distinguishes cancellation strokes from logical negation, which
-// can share the same geometric overlay.
+// CancelRole distinguishes cancellation, logical negation, and Feynman slash
+// notation, which can share one semantic decoration node.
 type CancelRole uint8
 
 const (
 	CancelRoleStrike CancelRole = iota
 	CancelRoleNegation
+	CancelRoleSlashed
 )
 
 // ColumnAlign is the alignment of a table column.

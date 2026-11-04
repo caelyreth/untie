@@ -571,11 +571,11 @@ func validateNode(n Node, s *validationState) error {
 		if err := s.validateNonNegativeField(n.Thickness, ".thickness"); err != nil {
 			return err
 		}
-		if n.Role > CancelRoleNegation {
+		if n.Role > CancelRoleSlashed {
 			return fmt.Errorf("%w: %s: invalid cancel role", ErrInvalidIR, &s.path)
 		}
-		if n.Role == CancelRoleNegation && (n.Cross || n.Inverted) {
-			return fmt.Errorf("%w: %s: negation cannot use cross or inverted cancellation", ErrInvalidIR, &s.path)
+		if n.Role != CancelRoleStrike && (n.Cross || n.Inverted) {
+			return fmt.Errorf("%w: %s: non-strike decoration cannot use cross or inverted cancellation", ErrInvalidIR, &s.path)
 		}
 	case *Table:
 		if err := validateTable(n, s); err != nil {

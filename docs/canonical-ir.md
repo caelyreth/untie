@@ -156,7 +156,7 @@ zero.
 | `SizedDelimiter` | One delimiter with an explicit sizing policy.                                 |
 | `Accent`         | Above/below accent with stretch and natural-fit controls.                     |
 | `Line`           | Overline or underline.                                                        |
-| `Cancel`         | Strike or negation overlay.                                                   |
+| `Cancel`         | Strike, negation, or Feynman slash overlay.                                    |
 | `Table`          | Matrix, array, cases, vector, or aligned grid.                                |
 | `Multiline`      | Source-ordered rows without a table grid.                                     |
 | `Style`          | Explicit math size, font scale, and cramping wrapper.                         |
@@ -213,7 +213,7 @@ Some roles avoid forcing layout policy into a frontend:
 - `FractionRole`: fraction, binomial, stacked;
 - `TableRole`: matrix, array, cases, vector;
 - `ScriptRole`: ordinary, limits, overlay, brace label;
-- `CancelRole`: strike, negation;
+- `CancelRole`: strike, negation, slashed;
 - `DelimiterSizing`: content, relative, absolute;
 - `LimitsPlacement`: automatic, always, never, display-only.
 
