@@ -11,7 +11,8 @@ the public `contrib/mygo` module are versioned together.
    layout behavior invalidates prepared-engine assumptions.
 3. Update current-version references in `README.md`, `docs/README.md`,
    `docs/stability.md`, `docs/concurrency.md`, `api_test.go`,
-   `contrib/mygo/go.mod`, `examples/mygo/go.mod`, and `web/wasm/go.mod`.
+   `contrib/mygo/go.mod`, `examples/mygo-simple/go.mod`,
+   `examples/mygo-stream/go.mod`, and `web/wasm/go.mod`.
    Historical migration notes retain the version they document.
 4. Run the complete local gate described in
    [`CONTRIBUTING.md`](../CONTRIBUTING.md).

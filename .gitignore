@@ -26,7 +26,8 @@ untie/
 
 # mygo
 .mygo/
-/examples/mygo/mygo
+/examples/mygo-simple/mygo
+/examples/mygo-stream/mygo
 
 # os
 .DS_Store

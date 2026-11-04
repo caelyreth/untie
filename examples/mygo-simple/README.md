@@ -1,4 +1,4 @@
-# Untie With MyGo
+# Untie With MyGo: Simple
 
 A native desktop example built with [MyGo](https://mygo.egoist.dev/). The
 window has two areas:
@@ -14,7 +14,7 @@ discard the formula being edited.
 ## Run
 
 ```sh
-cd examples/mygo
+cd examples/mygo-simple
 go tool mygo dev
 ```
 

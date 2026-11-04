@@ -112,8 +112,10 @@ layout, DOM, network access, or semantic TeX/Typst execution. The host owns
 those concerns. Untie's contract ends at a validated `Box`, its accessibility
 text, and its source metadata.
 
-The bundled [`examples/mygo`](../examples/mygo) application demonstrates direct
-formula elements in a native editor.
+The bundled [`examples/mygo-simple`](../examples/mygo-simple) application
+demonstrates direct formula elements in a native editor. The
+[`examples/mygo-stream`](../examples/mygo-stream) application demonstrates
+streaming Markdown with morphing math.
 
 For MyGo integration, use [`contrib/mygo`](../contrib/mygo/README.md). It can
 render a formula directly as a `ui.Element`, bind Markdown math, or draw an

@@ -1,4 +1,4 @@
-module github.com/caelyreth/untie/examples/mygo
+module github.com/caelyreth/untie/examples/mygo-stream
 
 go 1.27.3
 

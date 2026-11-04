@@ -35,7 +35,8 @@ jobs:
           test "$(git rev-parse "v$version^{commit}")" = "$GITHUB_SHA"
           test "$(git rev-parse "contrib/mygo/v$version^{commit}")" = "$GITHUB_SHA"
           grep -Fq "github.com/caelyreth/untie v$version" contrib/mygo/go.mod
-          grep -Fq "github.com/caelyreth/untie/contrib/mygo v$version" examples/mygo/go.mod
+          grep -Fq "github.com/caelyreth/untie/contrib/mygo v$version" examples/mygo-simple/go.mod
+          grep -Fq "github.com/caelyreth/untie/contrib/mygo v$version" examples/mygo-stream/go.mod
           grep -Fq "github.com/caelyreth/untie v$version" web/wasm/go.mod
       - name: Publish GitHub release
         env:

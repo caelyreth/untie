@@ -1,6 +1,6 @@
 {
-  "name": "Untie + MyGo",
-  "identifier": "dev.caelyreth.untie.mygo-example",
+  "name": "Untie Stream",
+  "identifier": "dev.caelyreth.untie.mygo-stream",
   "version": "0.1.0",
   "out": "build",
   "linux": {

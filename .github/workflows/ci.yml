@@ -32,7 +32,9 @@ jobs:
           go mod verify
           cd contrib/mygo
           go mod verify
-          cd ../../examples/mygo
+          cd ../../examples/mygo-simple
+          go mod verify
+          cd ../mygo-stream
           go mod verify
           cd ../../web/wasm
           go mod verify
@@ -47,7 +49,14 @@ jobs:
           CGO_ENABLED: "0"
         run: go test ./...
       - name: Test MyGo example
-        working-directory: examples/mygo
+        working-directory: examples/mygo-simple
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go test ./...
+          go vet ./...
+      - name: Test MyGo stream example
+        working-directory: examples/mygo-stream
         env:
           CGO_ENABLED: "0"
         run: |
@@ -83,7 +92,9 @@ jobs:
           go test -race ./...
           cd contrib/mygo
           go test -race ./...
-          cd ../../examples/mygo
+          cd ../../examples/mygo-simple
+          go test -race ./...
+          cd ../mygo-stream
           go test -race ./...
 
   cross-compile:

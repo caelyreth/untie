@@ -13,7 +13,10 @@ import (
 
 const modulePath = "github.com/caelyreth/untie"
 
-const exampleModulePath = modulePath + "/examples/mygo"
+const (
+	exampleModulePath       = modulePath + "/examples/mygo-simple"
+	exampleStreamModulePath = modulePath + "/examples/mygo-stream"
+)
 
 const contribModulePath = modulePath + "/contrib/mygo"
 
@@ -292,12 +295,12 @@ var allowedProjectImports = map[string]packageRules{
 	modulePath + "/source": {},
 }
 
-// examples/mygo is a separate consumer module. It may import Untie's public
-// API, packages from its own module and the exact third-party packages declared
-// for the example. Untie internals are rejected explicitly below; relying only
-// on Go's internal-package rule would incorrectly permit this module because it
-// shares Untie's module-path prefix.
-var allowedExampleImports = map[string]packageRules{
+// The MyGo examples are separate consumer modules. They may import Untie's
+// public API, packages from their own module and the exact third-party packages
+// declared for the example. Untie internals are rejected explicitly below;
+// relying only on Go's internal-package rule would incorrectly permit these
+// modules because they share Untie's module-path prefix.
+var allowedSimpleExampleImports = map[string]packageRules{
 	exampleModulePath: {
 		Production: []string{
 			modulePath,
@@ -305,6 +308,20 @@ var allowedExampleImports = map[string]packageRules{
 			modulePath + "/render",
 			"github.com/egoist/mygo",
 			"github.com/egoist/mygo/ui",
+		},
+	},
+}
+
+var allowedStreamExampleImports = map[string]packageRules{
+	exampleStreamModulePath: {
+		Production: []string{
+			modulePath,
+			modulePath + "/contrib/mygo",
+			modulePath + "/render",
+			"github.com/egoist/mygo",
+			"github.com/egoist/mygo/ui",
+			"github.com/egoist/mygo/ui/markdown",
+			"github.com/egoist/mygo/ui/markdown/parser",
 		},
 	},
 }
@@ -338,10 +355,18 @@ var architectureModules = []architectureModule{
 		Violations: packageImportViolations,
 	},
 	{
-		Name:       "examples/mygo",
+		Name:       "examples/mygo-simple",
 		Path:       exampleModulePath,
-		Dir:        filepath.Join("examples", "mygo"),
-		Allowed:    allowedExampleImports,
+		Dir:        filepath.Join("examples", "mygo-simple"),
+		Allowed:    allowedSimpleExampleImports,
+		Stdlib:     exampleStdlibPolicy,
+		Violations: examplePackageImportViolations,
+	},
+	{
+		Name:       "examples/mygo-stream",
+		Path:       exampleStreamModulePath,
+		Dir:        filepath.Join("examples", "mygo-stream"),
+		Allowed:    allowedStreamExampleImports,
 		Stdlib:     exampleStdlibPolicy,
 		Violations: examplePackageImportViolations,
 	},
@@ -571,13 +596,13 @@ func TestArchitectureExamplePolicyRejectsInternal(t *testing.T) {
 		exampleModulePath + "/futurepkg",
 		"github.com/egoist/mygo/ui",
 	}
-	if got := examplePackageImportViolations(exampleModulePath, allowed, false, allowedExampleImports, exampleStdlibPolicy); len(got) != 0 {
+	if got := examplePackageImportViolations(exampleModulePath, allowed, false, allowedSimpleExampleImports, exampleStdlibPolicy); len(got) != 0 {
 		t.Fatalf("allowed example imports rejected: %v", got)
 	}
-	if got := examplePackageImportViolations(exampleModulePath, []string{"os/exec"}, false, allowedExampleImports, exampleStdlibPolicy); len(got) == 0 {
+	if got := examplePackageImportViolations(exampleModulePath, []string{"os/exec"}, false, allowedSimpleExampleImports, exampleStdlibPolicy); len(got) == 0 {
 		t.Fatal("example policy accepted os/exec")
 	}
-	if got := examplePackageImportViolations(exampleModulePath, []string{"C"}, false, allowedExampleImports, exampleStdlibPolicy); len(got) == 0 {
+	if got := examplePackageImportViolations(exampleModulePath, []string{"C"}, false, allowedSimpleExampleImports, exampleStdlibPolicy); len(got) == 0 {
 		t.Fatal("example policy accepted cgo")
 	}
 }

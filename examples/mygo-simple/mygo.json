@@ -1,0 +1,9 @@
+{
+  "name": "Untie + MyGo",
+  "identifier": "dev.caelyreth.untie.mygo-simple",
+  "version": "0.1.0",
+  "out": "build",
+  "linux": {
+    "webview": false
+  }
+}
