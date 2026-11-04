@@ -22,6 +22,7 @@ discovery, a browser, a JavaScript runtime, or an image rasterizer to the core.
 Run these before handing off work:
 
 ```sh
+go run ./internal/quality/upstreamfetch fetch
 gofmt -l .
 CGO_ENABLED=0 go vet ./...
 CGO_ENABLED=0 go test ./...
@@ -74,8 +75,14 @@ done
 
 ## Fixtures And Generated Data
 
-Tracked test inputs live under `testdata`. They are immutable evidence for
-reviewed behavior, not outputs that may be changed to hide a regression.
+Reviewed test inputs live under `testdata`. They are immutable evidence for
+reviewed behavior, not outputs that may be changed to hide a regression. Raw
+upstream inputs are pinned and fetched rather than committed:
+
+```sh
+go run ./internal/quality/upstreamfetch fetch
+go run ./internal/quality/upstreamfetch --check
+```
 
 - Keep corpus counts, IDs, hashes, and classifications explicit.
 - Never silently skip a case. Record a supported, diagnostic, unsupported, or

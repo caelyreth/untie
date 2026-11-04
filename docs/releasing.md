@@ -6,14 +6,21 @@ the public `contrib/mygo` module are versioned together.
 ## Prepare
 
 1. Start from a clean `main` branch synchronized with `origin/main`.
-2. Update `libraryVersion` in [`version.go`](../version.go).
-3. Update version references in `README.md`, `docs/`, `contrib/mygo/go.mod`,
-   and `examples/mygo/go.mod`.
-4. Run the complete local gate described in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
-5. Review the changelog output locally:
+2. Choose the release version and update `libraryVersion` in
+   [`version.go`](../version.go). Keep the layout revision unchanged unless
+   layout behavior invalidates prepared-engine assumptions.
+3. Update current-version references in `README.md`, `docs/README.md`,
+   `docs/stability.md`, `docs/concurrency.md`, `api_test.go`,
+   `contrib/mygo/go.mod`, `examples/mygo/go.mod`, and `web/wasm/go.mod`.
+   Historical migration notes retain the version they document.
+4. Run the complete local gate described in
+   [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+5. Review the changelog output locally, replacing `VERSION` with the release
+   version without the `v` prefix:
 
    ```sh
-   npx --yes changelogithub@15.0.5 --to v0.4.0 --dry
+   VERSION=0.4.1
+   npx --yes changelogithub@15.0.5 --to "v$VERSION" --dry
    ```
 
 The release notes come from one-line Conventional Commit subjects. The
@@ -25,9 +32,10 @@ and excludes nested module tags from root release changelogs.
 Create both module tags on the same commit:
 
 ```sh
-git tag -a v0.4.0 -m "v0.4.0"
-git tag -a contrib/mygo/v0.4.0 -m "contrib/mygo/v0.4.0"
-git push origin v0.4.0 contrib/mygo/v0.4.0
+VERSION=0.4.1
+git tag -a "v$VERSION" -m "v$VERSION"
+git tag -a "contrib/mygo/v$VERSION" -m "contrib/mygo/v$VERSION"
+git push origin "v$VERSION" "contrib/mygo/v$VERSION"
 ```
 
 The `v*` tag starts the release workflow. It first runs the complete reusable
