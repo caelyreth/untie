@@ -14,6 +14,12 @@
       "target": "fonts/NewCMMath-Book.otf"
     },
     {
+      "repository": "https://github.com/stipub/stixfonts",
+      "commit": "744a22a4dd626cd14d75728aef34fc8ad7c85db0",
+      "sourcePath": "fonts/static_otf/STIXTwoMath-Regular.otf",
+      "target": "fonts/STIXTwoMath-Regular.otf"
+    },
+    {
       "repository": "https://github.com/erweixin/RaTeX",
       "commit": "f0ef2cf7c15d85c41743d4bd2df19759cf0dfee3",
       "sourcePath": "tests/golden/test_cases_centernot.txt",

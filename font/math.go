@@ -454,10 +454,11 @@ func parsePerGlyphMathValues(b []byte) (map[GlyphID]int32, error) {
 }
 
 func parseMathKernInfo(b []byte) (map[GlyphID]*mathKernRecord, error) {
-	if len(b) < 2 {
+	if len(b) < 4 {
 		return nil, errors.New("MathKernInfo is truncated")
 	}
 	covOff := int(binary.BigEndian.Uint16(b[0:2]))
+	count := int(binary.BigEndian.Uint16(b[2:4]))
 	covBytes, err := subtable(b, covOff)
 	if err != nil {
 		return nil, err
@@ -466,11 +467,14 @@ func parseMathKernInfo(b []byte) (map[GlyphID]*mathKernRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(cov) > (len(b)-2)/8 {
+	if len(cov) != count {
+		return nil, fmt.Errorf("MathKernInfo coverage has %d glyphs, record count is %d", len(cov), count)
+	}
+	if count > (len(b)-4)/8 {
 		return nil, errors.New("MathKernInfo records are truncated")
 	}
-	off := 2
-	records := make([][4]uint16, len(cov))
+	off := 4
+	records := make([][4]uint16, count)
 	for i := range records {
 		for corner := range records[i] {
 			v, err := readU16(b, &off)
@@ -482,14 +486,11 @@ func parseMathKernInfo(b []byte) (map[GlyphID]*mathKernRecord, error) {
 	}
 	out := make(map[GlyphID]*mathKernRecord, len(cov))
 	curves := make(map[uint16]*KernCurve)
-	// Typst/read-fonts exposes the first and third stored records as the
-	// top-left and bottom-left cut-ins. Use that side mapping so callers see the
-	// same semantic corners as the pinned layout oracle.
 	cornerOrder := [...]MathKernCorner{
-		MathKernTopLeft,
 		MathKernTopRight,
-		MathKernBottomLeft,
+		MathKernTopLeft,
 		MathKernBottomRight,
+		MathKernBottomLeft,
 	}
 	for gid, idx := range cov {
 		rec := &mathKernRecord{}

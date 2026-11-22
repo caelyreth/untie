@@ -106,7 +106,8 @@ assemblies, cmap entries, variation sequences, and `ssty`/`dtls` shaping.
 Four variation-sequence glyphs (`8465`, `8480`, `8481`, and `8483`) differ by
 one design unit because `ttf-parser` composes their legacy CFF endchar-seac
 components while Untie's outline parser does not. U+FFFF maps to `.notdef` and
-public rune lookup reports it as unmapped. Untie also retains the one
-spec-defined left-corner kern omitted by the reference data for prescript
-layout.
+public rune lookup reports it as unmapped.
+
+A pinned STIX Two Math Regular 2.13 b171 fixture also verifies font loading,
+height-dependent cut-in kerns on both sides of a glyph, and formula rendering.
 

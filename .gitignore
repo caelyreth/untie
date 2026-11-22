@@ -9,6 +9,7 @@ coverage.*
 # fixtures
 /testdata/upstream/fonts/Estedad-VF.ttf
 /testdata/upstream/fonts/NewCMMath-Book.otf
+/testdata/upstream/fonts/STIXTwoMath-Regular.otf
 /testdata/upstream/ratex-*/
 /testdata/upstream/typlet-0.2.0/corpus/paired.jsonl
 /testdata/upstream/typlet-0.2.0/fixtures/typst-0.15.1/font.jsonl

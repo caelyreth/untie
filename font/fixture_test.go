@@ -379,11 +379,6 @@ func TestNewCMGlyphMetricsConformance(t *testing.T) {
 		for corner, name := range []string{"topRight", "topLeft", "bottomRight", "bottomLeft"} {
 			expected, present := want.Kern[name]
 			gotCurve, gotOK := set.MathKernCurve(glyph, MathKernCorner(corner))
-			if id == 374 && name == "topLeft" && !present && gotOK {
-				// Typlet's fixture omits this spec-defined left-corner record.
-				// Untie retains all four corners for prescript layout.
-				continue
-			}
 			if present != gotOK {
 				failures = reportMetric(t, failures, "glyph %d %s kern presence = %v, want %v", id, name, gotOK, present)
 				continue

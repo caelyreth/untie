@@ -95,6 +95,21 @@ manifest rather than parsed as a formula.
 This is the exact font face named `NewCMMath-Book` by the Typlet frame fixtures.
 Its SHA-256 is pinned in `manifest.sha256`.
 
+## STIX Two Math
+
+- Font: STIX Two Math Regular, version 2.13 b171
+- Copyright: 2001-2021 The STIX Fonts Project Authors
+- Exact artifact: `stipub/stixfonts` revision
+  `744a22a4dd626cd14d75728aef34fc8ad7c85db0` (tag `v2.13b171`),
+  `fonts/static_otf/STIXTwoMath-Regular.otf`
+- Transformation: none; fetched from the pinned revision
+- License: SIL Open Font License 1.1; see `licenses/STIX-OFL-1.1.txt`
+  (upstream wording with trailing whitespace removed)
+
+This font exercises loading and rendering with height-dependent MATH kerns,
+including left-corner records absent from the NewCM fixture. Its SHA-256 is
+pinned in `manifest.sha256`.
+
 ## Noto shaping subsets
 
 - Copyright: 2013 Google LLC
